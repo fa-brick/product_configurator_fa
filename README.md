@@ -1,43 +1,54 @@
+# product_configurator_fa
 
-[![Runboat](https://img.shields.io/badge/runboat-Try%20me-875A7B.png)](https://runboat.odoo-community.org/builds?repo=OCA/product-configurator&target_branch=18.0)
-[![Pre-commit Status](https://github.com/OCA/product-configurator/actions/workflows/pre-commit.yml/badge.svg?branch=18.0)](https://github.com/OCA/product-configurator/actions/workflows/pre-commit.yml?query=branch%3A18.0)
-[![Build Status](https://github.com/OCA/product-configurator/actions/workflows/test.yml/badge.svg?branch=18.0)](https://github.com/OCA/product-configurator/actions/workflows/test.yml?query=branch%3A18.0)
-[![codecov](https://codecov.io/gh/OCA/product-configurator/branch/18.0/graph/badge.svg)](https://codecov.io/gh/OCA/product-configurator)
-[![Translation Status](https://translation.odoo-community.org/widgets/product-configurator-18-0/-/svg-badge.svg)](https://translation.odoo-community.org/engage/product-configurator-18-0/?utm_source=widget)
+Configurateur de produits pour Odoo 18 — socle du configurateur fa-brick.
 
-<!-- /!\ do not modify above this line -->
+## Provenance
 
-# product-configurator
+Ce dépôt est un **fork** de [OCA/product-configurator](https://github.com/OCA/product-configurator),
+branche `18.0`, sous licence **AGPL-3**. L'attribution d'origine (Pledra, Odoo Community
+Association) est conservée dans chaque manifeste, comme l'exige la licence.
 
-product-configurator
+⚠️ **L'amont ne sera pas suivi.** La divergence prévue est trop importante pour que des
+synchronisations aient un sens (décision D-096). Ce qui était « des modifications à reporter »
+devient donc **notre propre code** — et les migrations d'une version d'Odoo à l'autre, que l'OCA
+portait, deviennent les nôtres.
 
-<!-- /!\ do not modify below this line -->
+## Renommage — pourquoi les modules s'appellent `*_fa`
 
-<!-- prettier-ignore-start -->
+Odoo résout un module par le **premier chemin d'addons** et ignore silencieusement l'autre. Tant
+que le nom d'origine subsiste, deux installations peuvent diverger sans le moindre message
+d'erreur. Le renommage n'est donc pas cosmétique : il rend l'ambiguïté impossible.
 
-[//]: # (addons)
+| module | rôle |
+|---|---|
+| `product_configurator_fa` | le cœur — règles, session, attributs |
+| `product_configurator_fa_sale` | session → devis |
+| `product_configurator_fa_mrp` | configuration → nomenclature |
 
-Available addons
-----------------
-addon | version | maintainers | summary
---- | --- | --- | ---
-[product_configurator](product_configurator/) | 18.0.1.0.0 | <a href='https://github.com/PCatinean'><img src='https://github.com/PCatinean.png' width='32' height='32' style='border-radius:50%;' alt='PCatinean'/></a> | Base for product configuration interface modules
-[product_configurator_mrp](product_configurator_mrp/) | 18.0.1.0.0 | <a href='https://github.com/PCatinean'><img src='https://github.com/PCatinean.png' width='32' height='32' style='border-radius:50%;' alt='PCatinean'/></a> | BOM Support for configurable products
-[product_configurator_sale](product_configurator_sale/) | 18.0.1.0.1 | <a href='https://github.com/PCatinean'><img src='https://github.com/PCatinean.png' width='32' height='32' style='border-radius:50%;' alt='PCatinean'/></a> | Product configuration interface modules for Sale
+## Vérification statique
 
-[//]: # (end addons)
+Un renommage de module ne casse pas au chargement : il casse **plus tard**, à l'exécution, quand
+`env.ref()` ne trouve rien ou qu'OWL réclame un template absent. Trois modes de panne, tous
+silencieux, tous couverts par :
 
-<!-- prettier-ignore-end -->
+```bash
+python3 tools/check_module_refs.py .
+```
 
-## Licenses
+Il signale les identifiants XML irrésolus, les survivances de l'ancien nom, et les templates QWeb
+réclamés par du JavaScript sans définition correspondante. C'est ce dernier contrôle qui a trouvé
+`boolean_button_widget.esm.js` lors du renommage initial — la définition avait été renommée, pas la
+référence.
 
-This repository is licensed under [AGPL-3.0](LICENSE).
+⚠️ Ce contrôle **ne remplace pas les tests** : il vérifie que les références se résolvent, pas que
+le code fait ce qu'il doit.
 
-However, each module can have a totally different license, as long as they adhere to Odoo Community Association (OCA)
-policy. Consult each module's `__manifest__.py` file, which contains a `license` key
-that explains its license.
+## Tests
 
-----
-OCA, or the [Odoo Community Association](http://odoo-community.org/), is a nonprofit
-organization whose mission is to support the collaborative development of Odoo features
-and promote its widespread use.
+**85 tests** hérités de l'OCA — 81 dans le cœur, 4 dans `_sale` et `_mrp`. Ils constituent le filet
+de tout ce qui suit : aucun lot ne commence avant qu'ils soient verts sous le nouveau nom.
+
+```bash
+odoo -d <base> -i product_configurator_fa,product_configurator_fa_sale,product_configurator_fa_mrp \
+     --test-enable --stop-after-init
+```

@@ -1,10 +1,10 @@
 [project]
-name = "odoo-addons-oca-product-configurator"
-version = "18.0.20250626.1"
+name = "odoo-addons-fa-brick-product-configurator"
+version = "18.0.20260814.1"
 dependencies = [
-    "odoo-addon-product_configurator==18.0.*",
-    "odoo-addon-product_configurator_mrp==18.0.*",
-    "odoo-addon-product_configurator_sale==18.0.*",
+    "odoo-addon-product_configurator_fa==18.0.*",
+    "odoo-addon-product_configurator_fa_mrp==18.0.*",
+    "odoo-addon-product_configurator_fa_sale==18.0.*",
 ]
 classifiers=[
     "Programming Language :: Python",

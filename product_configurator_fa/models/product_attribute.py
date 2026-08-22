@@ -1,4 +1,7 @@
 from ast import literal_eval
+from datetime import timedelta
+
+from psycopg2 import IntegrityError
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
@@ -252,6 +255,52 @@ class ProductAttribute(models.Model):
             return text
         return f"{text} {self.uom_id.name}"
 
+    def _resolves_to_values(self):
+        """Un nombre saisi sur cet attribut se RANGE-t-il en valeur d'attribut ?
+
+        La question n'a pas besoin d'un champ neuf : `create_variant` la porte
+        déjà. En `no_variant`, la valeur ne peut pas entrer dans l'identité
+        d'une variante — la ranger ne servirait à rien. Partout ailleurs, elle
+        le peut, et c'est tout l'objet de D-081 : le stock ne sait distinguer
+        deux portes que par leurs valeurs d'attribut.
+        """
+        self.ensure_one()
+        return self._is_numeric_custom() and self.create_variant != "no_variant"
+
+    def resolve_numeric_value(self, number):
+        """Rend LA valeur d'attribut qui porte ce nombre — en la créant au besoin.
+
+        ⚠️ Le motif « je cherche, sinon je crée » est un *check-then-insert* :
+        deux clients validant 3 200 au même instant passent tous deux le test,
+        et le stock se coupe en deux. La contrainte d'unicité en base est ce qui
+        tranche vraiment (`init`) ; ici, on rattrape sa violation plutôt que de
+        prétendre l'éviter.
+
+        Une valeur ARCHIVÉE est ressuscitée plutôt que dupliquée : le ménage
+        archive (D-082), et une largeur qui revient est la même largeur.
+        """
+        self.ensure_one()
+        name = self.canonical_custom_value(number)
+        value_obj = self.env["product.attribute.value"]
+        domain = [("attribute_id", "=", self.id), ("name", "=", name)]
+        existing = value_obj.with_context(active_test=False).search(domain, limit=1)
+        if existing:
+            if not existing.active:
+                existing.active = True
+            return existing
+        vals = {
+            "attribute_id": self.id,
+            "name": name,
+            "configurator_generated": True,
+        }
+        try:
+            with self.env.cr.savepoint():
+                return value_obj.sudo().create(vals).with_env(self.env)
+        except IntegrityError:
+            # Quelqu'un d'autre a créé la même largeur entre-temps : c'est la
+            # base qui l'a dit, et c'est la seule autorité qui pouvait le dire.
+            return value_obj.with_context(active_test=False).search(domain, limit=1)
+
     def _configurator_value_ids(self):
         """Values accepted for attributes in `self`."""
         values = self.value_ids
@@ -441,6 +490,25 @@ class ProductAttributeLine(models.Model):
             )
         return message
 
+    def resolve_numeric_value(self, number):
+        """Rend la valeur d'attribut de ce nombre, et l'ATTACHE à cette ligne.
+
+        L'attachement n'est pas un extra : une valeur absente de la ligne n'a
+        pas de `product.template.attribute.value`, et une variante ne peut
+        porter que des ptav. Sans lui, la largeur serait rangée au catalogue
+        global et n'entrerait dans l'identité d'aucune variante — le stock
+        resterait aveugle, c'est-à-dire exactement le défaut que D-081 corrige.
+
+        ⚠️ `sudo()` : celui qui configure n'a pas le droit d'écrire sur le
+        produit, et il ne doit pas l'avoir. C'est le même geste que la création
+        de la variante, elle aussi en `sudo()` chez OCA.
+        """
+        self.ensure_one()
+        value = self.attribute_id.resolve_numeric_value(number)
+        if value not in self.value_ids:
+            self.sudo().write({"value_ids": [(4, value.id)]})
+        return value
+
     def validate_custom_val(self, val, value_ids=None, custom_vals=None):
         """Refuse une saisie hors bornes — D-077, et sur la LIGNE, D-089.
 
@@ -608,6 +676,113 @@ class ProductAttributeLine(models.Model):
 
 class ProductAttributeValue(models.Model):
     _inherit = "product.attribute.value"
+
+    configurator_generated = fields.Boolean(
+        string="Created by the Configurator",
+        help="Set on values the configurator created from a free entry. "
+        "Only these are candidates for the automatic cleanup.",
+    )
+
+    def init(self):
+        """Unicité `(attribut, nom)` EN BASE — D-081, condition 2.
+
+        ⚠️ Aucun verrou applicatif ne remplace celle-ci : « je cherche, sinon je
+        crée » laisse passer deux clients simultanés, et le stock se coupe en
+        deux. Odoo n'en pose AUCUNE sur ce modèle.
+
+        Deux détails qui ne sont pas des détails :
+        · `name` est **traduit**, donc stocké en `jsonb`. L'index porte sur le
+          terme source (`name->>'en_US'`) et non sur l'objet entier : sinon
+          traduire une valeur en ferait une valeur différente, et le doublon
+          repasserait ;
+        · `WHERE active is true` — le ménage ARCHIVE (D-082), et une largeur
+          archivée ne doit pas empêcher la même largeur de revivre.
+        """
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS product_attribute_value_name_unique
+            ON %s (attribute_id, (name->>'en_US')) WHERE active is true
+            """
+            % self._table
+        )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Range le nombre, et pose la séquence — D-081, conditions 2 et 3.
+
+        ⚠️ Sans la séquence, les largeurs s'afficheraient **dans l'ordre où
+        elles ont été vendues** : les valeurs se trient par `sequence` puis par
+        id, et celles créées à la volée vaudraient toutes zéro. Le nombre
+        lui-même fait une séquence.
+        """
+        for vals in vals_list:
+            attribute = self.env["product.attribute"].browse(vals.get("attribute_id"))
+            name = vals.get("name")
+            if not attribute or not isinstance(name, str):
+                continue
+            if not attribute._is_numeric_custom():
+                continue
+            vals["name"] = name = attribute.canonical_custom_value(name)
+            if not vals.get("sequence"):
+                try:
+                    vals["sequence"] = int(round(float(name)))
+                except (TypeError, ValueError):
+                    pass
+        return super().create(vals_list)
+
+    @api.autovacuum
+    def _gc_configurator_values(self):
+        """Archive les largeurs créées par le configurateur et jamais servies.
+
+        ⚠️ **D-082 est à corriger sur la forme** : elle annonce « toute méthode
+        nommée `_gc_*` » — c'était vrai jusqu'aux versions précédentes. En
+        Odoo 18, `ir.autovacuum` ne collecte plus par le NOM mais par le
+        décorateur `@api.autovacuum` (`ir_autovacuum.py:34`). Une méthode juste
+        nommée `_gc_…` ne serait jamais appelée, et **rien ne le dirait**.
+
+        Le critère de D-082 est « créée il y a plus de N jours ET jamais
+        employée ». « Jamais employée » se lit ici **n'est portée par aucune
+        variante** : puisque rien n'est résolu avant le devis (D-082), une
+        valeur sans variante n'a jamais servi à vendre quoi que ce soit. Le
+        détour par les lignes de vente, les mouvements de stock et les
+        nomenclatures est donc inutile — et il aurait obligé le cœur du module
+        à connaître `sale` et `mrp`, qu'il ne dépend pas.
+
+        ⚠️ On ARCHIVE, on ne supprime pas : `product.template.attribute.value`
+        référence la valeur en `ondelete='restrict'`, et l'historique doit
+        rester lisible.
+        """
+        days = int(
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("product_configurator_fa.value_gc_days", 90)
+        )
+        candidates = self.sudo().search(
+            [
+                ("configurator_generated", "=", True),
+                ("create_date", "<", fields.Datetime.now() - timedelta(days=days)),
+            ]
+        )
+        if not candidates:
+            return
+        ptavs = (
+            self.env["product.template.attribute.value"]
+            .sudo()
+            .with_context(active_test=False)
+            .search([("product_attribute_value_id", "in", candidates.ids)])
+        )
+        served = ptavs.filtered("ptav_product_variant_ids").product_attribute_value_id
+        for value in candidates - served:
+            for ptav in ptavs.filtered(
+                lambda p, value=value: p.product_attribute_value_id == value
+            ):
+                line = ptav.attribute_line_id
+                # Une ligne non personnalisable doit garder au moins une valeur
+                # (`_check_valid_values`) : mieux vaut laisser la largeur en
+                # place que casser le produit pour faire du ménage.
+                if len(line.value_ids) > 1 or line.custom:
+                    line.write({"value_ids": [(3, value.id)]})
+            value.active = False
 
     def copy(self, default=None):
         """Add ' (Copy)' in name to prevent attribute

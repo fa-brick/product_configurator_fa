@@ -2,6 +2,7 @@ from . import test_create
 from . import test_configuration_rules
 from . import test_product
 from . import test_attribute_bounds
+from . import test_dimension_values
 from . import test_numeric_value_display
 from . import test_product_attribute
 from . import test_product_config

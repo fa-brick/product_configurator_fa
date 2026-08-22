@@ -795,6 +795,11 @@ class ProductConfigSession(models.Model):
         except Exception as exc:
             raise ValidationError(self.env._("Invalid Configuration")) from exc
 
+        # La saisie libre devient une VALEUR d'attribut ici, et pas avant :
+        # une configuration abandonnée ne doit rien laisser derrière elle
+        # (D-082). C'est ce qui rend la variante distinguable en stock (D-081).
+        value_ids = self._resolve_numeric_custom_vals(value_ids, custom_vals)
+
         duplicates = self.search_variant(
             value_ids=value_ids, product_tmpl_id=self.product_tmpl_id
         )
@@ -813,6 +818,26 @@ class ProductConfigSession(models.Model):
         )
 
         return variant
+
+    def _resolve_numeric_custom_vals(self, value_ids, custom_vals):
+        """Range les saisies numériques en valeurs d'attribut — D-081.
+
+        Rend les `value_ids` augmentés. La session, elle, n'est PAS modifiée :
+        elle garde le nombre en clair, qui est la trace de ce que le client a
+        tapé, et le seul enregistrement neuf est celui qu'exige la variante.
+        """
+        self.ensure_one()
+        resolved = list(value_ids or [])
+        for line in self.product_tmpl_id.attribute_line_ids:
+            attribute = line.attribute_id
+            if attribute.id not in (custom_vals or {}):
+                continue
+            if not attribute._resolves_to_values():
+                continue
+            value = line.resolve_numeric_value(custom_vals[attribute.id])
+            if value and value.id not in resolved:
+                resolved.append(value.id)
+        return resolved
 
     def _get_option_values(self, pricelist, value_ids=None):
         """Return only attribute values that have products attached with a

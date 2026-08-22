@@ -14,7 +14,7 @@ MODULES = [d for d in os.listdir(ROOT) if d.startswith("product_configurator_fa"
 PREFIX = "product_configurator_fa"
 
 defined = set()  # "module.id"
-referenced = []  # (module.id, fichier, ligne)
+referenced = []  # (identifiant, module, fichier, ligne)
 
 
 def walk(module):
@@ -67,17 +67,27 @@ for module in MODULES:
                 for m in pat.finditer(line):
                     for token in m.group(1).split(","):
                         token = token.strip().lstrip("!")
-                        if token.startswith(PREFIX):
-                            referenced.append((token, path, lineno))
+                        # « contient », et non « commence par » : un identifiant
+                        # implicite de modèle porte le nom du module APRÈS son
+                        # préfixe `model_`. Le filtrer sur le début le rendait
+                        # invisible — c'est ce qui a laissé passer
+                        # `model_product_configurator_fa` (L-110).
+                        if PREFIX in token:
+                            referenced.append((token, module, path, lineno))
         # colonnes *:id du CSV d'accès
         if path.endswith("ir.model.access.csv"):
             with open(path, newline="", encoding="utf-8") as fh:
                 for i, row in enumerate(csv.DictReader(fh), 2):
                     for col, val in row.items():
-                        if col.endswith(":id") and val and val.startswith(PREFIX):
-                            referenced.append((val, path, i))
+                        if col.endswith(":id") and val and PREFIX in val:
+                            referenced.append((val, module, path, i))
 
-missing = [(r, f, l) for (r, f, l) in referenced if r not in defined]
+def resolves(token, module):
+    """Un identifiant nu (`group_x`, `model_y`) vaut `<module_citant>.<identifiant>`."""
+    return token in defined or f"{module}.{token}" in defined
+
+
+missing = [(r, f, l) for (r, m, f, l) in referenced if not resolves(r, m)]
 
 # --- templates QWeb réclamés par le JS -----------------------------------
 # Même mode de panne que les identifiants XML, mais côté OWL : la définition

@@ -213,6 +213,45 @@ class ProductAttribute(models.Model):
                     )
                 )
 
+    def _is_numeric_custom(self):
+        """Un attribut dont la valeur EST un nombre."""
+        self.ensure_one()
+        return self.custom_type in ("integer", "float")
+
+    def canonical_custom_value(self, value):
+        """La forme STOCKÉE d'une valeur numérique : le nombre, et rien d'autre.
+
+        ⚠️ Sans elle, `2400`, `2400.0` et ` 2400 ` sont trois chaînes
+        différentes — donc trois valeurs d'attribut différentes le jour où une
+        dimension se range en valeur (D-081), pour une seule et même largeur.
+        La mise en forme ne REFUSE jamais : ce qui n'est pas un nombre ressort
+        tel quel, et c'est `validate_custom_val` qui tranche.
+        """
+        self.ensure_one()
+        if not self._is_numeric_custom() or value in (None, False, ""):
+            return value
+        try:
+            number = float(str(value).strip())
+        except (TypeError, ValueError):
+            return value
+        if number.is_integer():
+            return str(int(number))
+        return f"{number:.6f}".rstrip("0").rstrip(".")
+
+    def format_custom_value(self, value):
+        """La forme AFFICHÉE : le nombre, puis son unité.
+
+        La valeur reste le nombre — l'unité ne s'écrit nulle part en base, elle
+        se rajoute à l'affichage. L'y stocker ferait d'un changement d'unité une
+        migration de données, et d'une comparaison de largeurs une comparaison
+        de chaînes.
+        """
+        self.ensure_one()
+        text = self.canonical_custom_value(value)
+        if text in (None, False, "") or not self.uom_id:
+            return text
+        return f"{text} {self.uom_id.name}"
+
     def _configurator_value_ids(self):
         """Values accepted for attributes in `self`."""
         values = self.value_ids
@@ -309,12 +348,15 @@ class ProductAttributeLine(models.Model):
                 return bound._as_bounds(cause=bound.domain_id.name)
         return self._as_bounds()
 
-    @api.model
     def _format_bound(self, value):
-        """« 4000 », pas « 4000.0 » — une borne entière ne se lit pas en flottant."""
-        if float(value).is_integer():
-            return str(int(value))
-        return f"{value:.4f}".rstrip("0").rstrip(".")
+        """« 4000 mm » — une borne s'affiche comme la valeur qu'elle borne.
+
+        Le formatage vit sur l'ATTRIBUT et pas ici : une borne, une saisie et
+        une valeur rangée sont le même nombre vu à trois moments, et trois
+        mises en forme finiraient par diverger.
+        """
+        self.ensure_one()
+        return self.attribute_id.format_custom_value(value)
 
     @api.model
     def _bound_tolerance(self, *values):
@@ -683,6 +725,66 @@ class ProductAttributeValue(models.Model):
     #    ('unique_custom', 'unique(id,allow_custom_value)',
     #    'Only one custom value per dimension type is allowed')
     # ]
+
+
+class ProductAttributeCustomValue(models.Model):
+    """La valeur numérique qui a quitté la session pour la VARIANTE.
+
+    ⚠️ Le cœur d'Odoo affiche « Largeur: 2400 » et perd l'unité que la session
+    savait montrer (`product_config.py`, `_compute_val_name`) : la même valeur
+    se lisait donc avec son unité pendant la configuration et sans elle sur le
+    devis. Une seule règle, partout — la valeur est le nombre, l'affichage
+    porte l'unité.
+    """
+
+    _inherit = "product.attribute.custom.value"
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            ptav_id = vals.get("custom_product_template_attribute_value_id")
+            if "custom_value" in vals and ptav_id:
+                attribute = (
+                    self.env["product.template.attribute.value"]
+                    .browse(ptav_id)
+                    .attribute_id
+                )
+                vals["custom_value"] = attribute.canonical_custom_value(
+                    vals["custom_value"]
+                )
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if "custom_value" not in vals:
+            return super().write(vals)
+        result = True
+        for ptav, records in self.grouped(
+            "custom_product_template_attribute_value_id"
+        ).items():
+            canonical = dict(
+                vals,
+                custom_value=ptav.attribute_id.canonical_custom_value(
+                    vals["custom_value"]
+                ),
+            )
+            result = (
+                super(ProductAttributeCustomValue, records).write(canonical) and result
+            )
+        return result
+
+    @api.depends(
+        "custom_product_template_attribute_value_id.attribute_id.uom_id",
+        "custom_product_template_attribute_value_id.attribute_id.custom_type",
+    )
+    def _compute_name(self):
+        super()._compute_name()
+        for record in self:
+            attribute = record.custom_product_template_attribute_value_id.attribute_id
+            if not attribute.uom_id or not record.custom_value:
+                continue
+            label = record.custom_product_template_attribute_value_id.display_name
+            shown = attribute.format_custom_value(record.custom_value)
+            record.name = f"{label}: {shown}" if label else shown
 
 
 class ProductAttributePrice(models.Model):

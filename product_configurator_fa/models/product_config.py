@@ -1619,13 +1619,15 @@ class ProductConfigSessionCustomValue(models.Model):
     _rec_name = "attribute_id"
     _description = "Product Config Session Custom Value"
 
-    @api.depends("attribute_id", "attribute_id.uom_id")
+    @api.depends("value", "attribute_id", "attribute_id.uom_id")
     def _compute_val_name(self):
+        # La valeur est le NOMBRE, l'affichage porte l'unité — et la mise en
+        # forme vient de l'attribut, pas d'ici : c'est la même partout.
+        # ⚠️ `value` manquait au `depends` : renseigner une valeur ne
+        # recalculait pas son libellé.
         for attr_val_custom in self:
-            uom = attr_val_custom.attribute_id.uom_id.name
-            attr_val_custom.name = "{}{}".format(
-                attr_val_custom.value,
-                f" {uom}" if uom else "",
+            attr_val_custom.name = attr_val_custom.attribute_id.format_custom_value(
+                attr_val_custom.value
             )
 
     name = fields.Char(readonly=True, compute="_compute_val_name", store=True)
@@ -1646,6 +1648,39 @@ class ProductConfigSessionCustomValue(models.Model):
         column2="attachment_id",
         string="Attachments",
     )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Range le nombre sous sa forme canonique AVANT qu'il touche la base.
+
+        Le faire à l'écriture et non à l'affichage est ce qui rend deux saisies
+        de la même largeur ÉGALES : `2400` et `2400.0` ne doivent pas devenir
+        deux valeurs distinctes le jour du rangement en valeur d'attribut
+        (D-081).
+        """
+        for vals in vals_list:
+            if "value" in vals and vals.get("attribute_id"):
+                attribute = self.env["product.attribute"].browse(vals["attribute_id"])
+                vals["value"] = attribute.canonical_custom_value(vals["value"])
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if "value" not in vals:
+            return super().write(vals)
+        # ⚠️ Un seul `vals` pour des attributs différents : la forme canonique
+        # dépend de l'attribut, donc l'écriture se fait par groupe. Prendre
+        # `self.attribute_id` sans grouper ne rendrait rien dès le second
+        # attribut, et la mise en forme sauterait EN SILENCE.
+        result = True
+        for attribute, records in self.grouped("attribute_id").items():
+            canonical = dict(
+                vals, value=attribute.canonical_custom_value(vals["value"])
+            )
+            result = (
+                super(ProductConfigSessionCustomValue, records).write(canonical)
+                and result
+            )
+        return result
 
     def eval(self):
         """Return custom value evaluated using the related custom field type"""

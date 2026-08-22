@@ -1323,7 +1323,12 @@ class ProductConfigSession(models.Model):
             # Validate custom values
             attr = line.attribute_id
             if attr.id in custom_vals:
-                attr.validate_custom_val(custom_vals[attr.id])
+                # ⚠️ La validation porte sur la LIGNE, pas sur l'attribut global
+                # (D-089) — et elle reçoit la configuration courante, sans quoi
+                # une borne conditionnelle n'aurait aucun moyen de se choisir.
+                line.validate_custom_val(
+                    custom_vals[attr.id], value_ids=value_ids, custom_vals=custom_vals
+                )
             if final:
                 line_values = line._configurator_value_ids()
                 common_vals = set(value_ids) & set(line_values.ids)

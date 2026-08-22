@@ -4,6 +4,121 @@ from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
 
+class ProductAttributeBoundMixin(models.AbstractModel):
+    """Les trois bornes d'un attribut numérique — mini, maxi, pas.
+
+    Porté par DEUX modèles : la ligne d'attribut (les bornes par défaut) et la
+    borne conditionnelle (celles qui s'appliquent quand un domaine est
+    satisfait). Le mixin évite que les deux divergent — D-089.
+
+    ⚠️ `has_min_val` / `has_max_val` ne sont pas du confort : un `fields.Float`
+    d'Odoo ne peut PAS être nul (`convert_to_column` fait `float(value or 0.0)`,
+    odoo/fields.py:1670). Sans le drapeau, une borne légitimement nulle serait
+    indistinguable d'une absence de borne — le défaut d'OCA que D-089 nomme.
+    Le `step`, lui, n'a pas besoin de drapeau : un pas de zéro n'a pas de sens,
+    donc zéro veut dire « pas de pas », sans ambiguïté.
+    """
+
+    _name = "product.attribute.bound.mixin"
+    _description = "Bounds of a Numeric Attribute (min / max / step)"
+
+    has_min_val = fields.Boolean(
+        string="Has Minimum",
+        help="Check to enforce a minimum value. Needed to tell "
+        "'no minimum' from 'a minimum of zero'.",
+    )
+    min_val = fields.Float(
+        string="Minimum Value",
+        digits=(16, 4),
+        help="Minimum value allowed, enforced only when 'Has Minimum' is set",
+    )
+    has_max_val = fields.Boolean(
+        string="Has Maximum",
+        help="Check to enforce a maximum value. Needed to tell "
+        "'no maximum' from 'a maximum of zero'.",
+    )
+    max_val = fields.Float(
+        string="Maximum Value",
+        digits=(16, 4),
+        help="Maximum value allowed, enforced only when 'Has Maximum' is set",
+    )
+    step = fields.Float(
+        string="Step",
+        digits=(16, 4),
+        help="Allowed increment between the minimum and the maximum. "
+        "Zero means any value is allowed.",
+    )
+
+    @api.constrains("has_min_val", "min_val", "has_max_val", "max_val", "step")
+    def _check_bounds_consistency(self):
+        for record in self:
+            if (
+                record.has_min_val
+                and record.has_max_val
+                and record.max_val < record.min_val
+            ):
+                raise ValidationError(
+                    self.env._("Maximum value must be greater than Minimum value")
+                )
+            if record.step < 0:
+                raise ValidationError(self.env._("Step must not be negative"))
+
+    def _as_bounds(self, cause=None):
+        """Rend les bornes sous une forme neutre — `None` dit « pas de borne ».
+
+        Le reste du code raisonne sur ce dictionnaire et jamais sur les champs :
+        c'est ce qui empêche le `if minv and maxv` d'OCA de revenir, et c'est ce
+        qui permet à une borne conditionnelle et à une borne par défaut d'être
+        consommées par le même code.
+        """
+        self.ensure_one()
+        return {
+            "min_val": self.min_val if self.has_min_val else None,
+            "max_val": self.max_val if self.has_max_val else None,
+            "step": self.step or None,
+            "cause": cause,
+        }
+
+
+class ProductAttributeBound(models.Model):
+    """Une borne qui ne s'applique QUE si son domaine est satisfait — D-076.
+
+    « Ligne de ressort arrière → largeur maxi 4 000 » s'écrit ici, et le domaine
+    référence les valeurs par leur ENREGISTREMENT : renommer une valeur ne casse
+    donc rien, par construction. C'est ce qui a rendu inutile le code technique
+    que D-076 réclamait d'abord sur les valeurs.
+    """
+
+    _name = "product.attribute.bound"
+    _inherit = ["product.attribute.bound.mixin"]
+    _description = "Conditional Bound of a Product Attribute Line"
+    _order = "sequence, id"
+
+    attribute_line_id = fields.Many2one(
+        comodel_name="product.template.attribute.line",
+        string="Attribute Line",
+        required=True,
+        ondelete="cascade",
+        index=True,
+    )
+    domain_id = fields.Many2one(
+        comodel_name="product.config.domain",
+        string="Condition",
+        required=True,
+        ondelete="restrict",
+        help="Bounds below apply only to configurations matching this condition",
+    )
+    sequence = fields.Integer(
+        default=10,
+        help="First matching line wins, so order matters",
+    )
+
+    @api.depends("domain_id")
+    def _compute_display_name(self):
+        for bound in self:
+            bound.display_name = bound.domain_id.name or self.env._("Bound")
+
+
 class ProductAttribute(models.Model):
     _inherit = "product.attribute"
     _order = "sequence"
@@ -28,9 +143,10 @@ class ProductAttribute(models.Model):
     def onchange_custom_type(self):
         if self.custom_type in self._get_nosearch_fields():
             self.search_ok = False
-        if self.custom_type not in ("integer", "float"):
-            self.min_val = False
-            self.max_val = False
+        # ⚠️ Les bornes ne sont plus ici (D-089) : « Largeur » est partagée par
+        # un portail et une porte de garage, une borne globale ne peut être
+        # juste pour personne. Le nettoyage des bornes devenues sans objet se
+        # fait donc sur la LIGNE, dans `onchange_attribute`.
 
     @api.onchange("val_custom")
     def onchange_val_custom_field(self):
@@ -53,8 +169,6 @@ class ProductAttribute(models.Model):
         help="By unchecking the active field you can "
         "disable a attribute without deleting it",
     )
-    min_val = fields.Integer(string="Min Value", help="Minimum value allowed")
-    max_val = fields.Integer(string="Max Value", help="Maximum value allowed")
 
     # TODO: Exclude self from result-set of dependency
     val_custom = fields.Boolean(
@@ -99,56 +213,6 @@ class ProductAttribute(models.Model):
                     )
                 )
 
-    def validate_custom_val(self, val):
-        """Pass in a desired custom value and ensure it is valid.
-        Probably should check type, etc., but let's assume fine for the moment.
-        """
-        self.ensure_one()
-        if self.custom_type in ("integer", "float"):
-            minv = self.min_val
-            maxv = self.max_val
-            val = literal_eval(str(val))
-            if minv and maxv and (val < minv or val > maxv):
-                raise ValidationError(
-                    self.env._(
-                        "Selected custom value '%(name)s' must be "
-                        "between %(min_val)s and %(max_val)s",
-                        **{
-                            "name": self.name,
-                            "min_val": self.min_val,
-                            "max_val": self.max_val,
-                        },
-                    )
-                )
-            elif minv and val < minv:
-                raise ValidationError(
-                    self.env._(
-                        "Selected custom value '%(name)s' must be at least %(min_val)s",
-                        **{"name": self.name, "min_val": self.min_val},
-                    )
-                )
-            elif maxv and val > maxv:
-                raise ValidationError(
-                    self.env._(
-                        "Selected custom value '%(name)s' "
-                        "must be lower than %(max_value)s",
-                        **{"name": self.name, "max_value": self.max_val + 1},
-                    )
-                )
-
-    @api.constrains("min_val", "max_val")
-    def _check_constraint_min_max_value(self):
-        """Prevent to add Maximun value less than minimum value"""
-        for attribute in self:
-            if attribute.custom_type not in ("integer", "float"):
-                continue
-            minv = attribute.min_val
-            maxv = attribute.max_val
-            if maxv and minv and maxv < minv:
-                raise ValidationError(
-                    self.env._("Maximum value must be greater than Minimum value")
-                )
-
     def _configurator_value_ids(self):
         """Values accepted for attributes in `self`."""
         values = self.value_ids
@@ -158,7 +222,11 @@ class ProductAttribute(models.Model):
 
 
 class ProductAttributeLine(models.Model):
-    _inherit = "product.template.attribute.line"
+    # ⚠️ Avec un `_inherit` en LISTE, `_name` cesse d'être déduit : sans cette
+    # ligne, Odoo prend le nom de la CLASSE pour nom de modèle et refuse de
+    # démarrer (`models.py:143`).
+    _name = "product.template.attribute.line"
+    _inherit = ["product.template.attribute.line", "product.attribute.bound.mixin"]
     _order = "product_tmpl_id, sequence, id"
     # TODO: Order by dependencies first and then sequence so dependent fields
     # do not come before master field
@@ -174,6 +242,15 @@ class ProductAttributeLine(models.Model):
         self.required = self.attribute_id.required
         self.multi = self.attribute_id.multi
         self.custom = self.attribute_id.val_custom
+        # Des bornes sur un attribut qui n'est plus numérique ne s'appliqueraient
+        # jamais : les laisser en place, c'est afficher une règle inerte.
+        if self.attribute_id.custom_type not in ("integer", "float"):
+            self.has_min_val = False
+            self.min_val = 0
+            self.has_max_val = False
+            self.max_val = 0
+            self.step = 0
+            self.bound_ids = False
         # TODO: Remove all dependencies pointed towards the attribute being
         # changed
 
@@ -195,6 +272,146 @@ class ProductAttributeLine(models.Model):
     default_val = fields.Many2one(comodel_name="product.attribute.value")
 
     sequence = fields.Integer(default=10)
+
+    bound_ids = fields.One2many(
+        comodel_name="product.attribute.bound",
+        inverse_name="attribute_line_id",
+        string="Conditional Bounds",
+        copy=True,
+        help="Bounds that replace the ones above when their condition matches. "
+        "The first matching line wins.",
+    )
+    # Exposé pour les vues seulement : le type vit sur l'attribut, mais c'est la
+    # ligne qu'on édite, et un champ absent de la vue ne peut pas la conditionner.
+    attribute_custom_type = fields.Selection(
+        related="attribute_id.custom_type", string="Field Type", readonly=True
+    )
+
+    def _get_bounds(self, value_ids=None, custom_vals=None):
+        """Rend les bornes applicables à cette ligne pour une configuration.
+
+        La PREMIÈRE borne conditionnelle dont le domaine est satisfait gagne, et
+        elle remplace les bornes par défaut ENTIÈREMENT — jamais champ par champ.
+        Fusionner un maxi conditionnel avec un mini par défaut donnerait une règle
+        que personne n'a écrite nulle part, et qui ne se lit dans aucun écran.
+        Aucune ne correspond : les bornes portées par la ligne s'appliquent.
+
+        ⚠️ Un domaine VIDE est satisfait — c'est la sémantique de
+        `validate_domains_against_sels`, la même que pour les valeurs disponibles.
+        """
+        self.ensure_one()
+        session = self.env["product.config.session"]
+        for bound in self.bound_ids:
+            domains = bound.domain_id.compute_domain()
+            if session.validate_domains_against_sels(
+                domains, value_ids or [], custom_vals or {}
+            ):
+                return bound._as_bounds(cause=bound.domain_id.name)
+        return self._as_bounds()
+
+    @api.model
+    def _format_bound(self, value):
+        """« 4000 », pas « 4000.0 » — une borne entière ne se lit pas en flottant."""
+        if float(value).is_integer():
+            return str(int(value))
+        return f"{value:.4f}".rstrip("0").rstrip(".")
+
+    @api.model
+    def _bound_tolerance(self, *values):
+        """Tolérance de comparaison — un flottant ne tombe jamais juste."""
+        return max(abs(v) for v in (*values, 1.0)) * 1e-9
+
+    def _suggest_val(self, val, bounds):
+        """La valeur admissible la plus proche, ou `None` s'il n'en existe pas.
+
+        C'est la moitié « en PROPOSANT » de D-077 : refuser sans montrer le seul
+        chemin enferme l'utilisateur dans un ordre imposé qu'il doit deviner.
+        """
+        minv, maxv, step = bounds["min_val"], bounds["max_val"], bounds["step"]
+        suggestion = val
+        if minv is not None and suggestion < minv:
+            suggestion = minv
+        if maxv is not None and suggestion > maxv:
+            suggestion = maxv
+        if step:
+            base = minv if minv is not None else 0.0
+            suggestion = base + round((suggestion - base) / step) * step
+            tol = self._bound_tolerance(suggestion, step)
+            # Le pas peut faire sortir des bornes : on rentre, on ne sort jamais.
+            if minv is not None and suggestion < minv - tol:
+                suggestion += step
+            if maxv is not None and suggestion > maxv + tol:
+                suggestion -= step
+        return None if self._bounds_error(suggestion, bounds) else suggestion
+
+    def _bounds_error(self, val, bounds):
+        """Rend le message d'erreur, ou `None` si la valeur passe.
+
+        Rendre un message plutôt que lever laisse l'interface DEMANDER si une
+        valeur passe — le dialogue de D-077 a besoin de le savoir avant que
+        l'utilisateur ne valide, pas après.
+        """
+        self.ensure_one()
+        minv, maxv, step = bounds["min_val"], bounds["max_val"], bounds["step"]
+        name = self.attribute_id.name
+        tol = self._bound_tolerance(val, minv or 0.0, maxv or 0.0, step or 0.0)
+        message = None
+        if minv is not None and val < minv - tol:
+            message = self.env._(
+                "Custom value %(val)s for '%(name)s' is below the minimum "
+                "of %(min_val)s.",
+                val=self._format_bound(val),
+                name=name,
+                min_val=self._format_bound(minv),
+            )
+        elif maxv is not None and val > maxv + tol:
+            message = self.env._(
+                "Custom value %(val)s for '%(name)s' is above the maximum "
+                "of %(max_val)s.",
+                val=self._format_bound(val),
+                name=name,
+                max_val=self._format_bound(maxv),
+            )
+        elif step:
+            base = minv if minv is not None else 0.0
+            offset = abs((val - base) % step)
+            if offset > tol and abs(offset - step) > tol:
+                message = self.env._(
+                    "Custom value %(val)s for '%(name)s' must go by steps "
+                    "of %(step)s from %(base)s.",
+                    val=self._format_bound(val),
+                    name=name,
+                    step=self._format_bound(step),
+                    base=self._format_bound(base),
+                )
+        if message is None:
+            return None
+        if bounds.get("cause"):
+            message += " " + self.env._(
+                "This limit comes from condition '%(cause)s'.",
+                cause=bounds["cause"],
+            )
+        suggestion = self._suggest_val(val, bounds)
+        if suggestion is not None:
+            message += " " + self.env._(
+                "Nearest allowed value: %(suggestion)s.",
+                suggestion=self._format_bound(suggestion),
+            )
+        return message
+
+    def validate_custom_val(self, val, value_ids=None, custom_vals=None):
+        """Refuse une saisie hors bornes — D-077, et sur la LIGNE, D-089.
+
+        ⚠️ Le configurateur REFUSE là où le moteur borne (D-040 B) : il traite
+        une saisie humaine, dont la valeur engage une commande.
+        """
+        self.ensure_one()
+        if self.attribute_id.custom_type not in ("integer", "float"):
+            return
+        val = literal_eval(str(val))
+        message = self._bounds_error(val, self._get_bounds(value_ids, custom_vals))
+        if message:
+            raise ValidationError(message)
 
     @api.depends(
         "required", "custom", "product_tmpl_id", "product_tmpl_id.config_step_line_ids"

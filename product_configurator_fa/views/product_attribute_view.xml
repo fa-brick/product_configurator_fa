@@ -60,14 +60,11 @@
                     <group>
                         <group>
                             <field name="custom_type" />
-                            <field
-                                name="min_val"
-                                invisible="custom_type not in ['integer','float']"
-                            />
-                            <field
-                                name="max_val"
-                                invisible="custom_type not in ['integer','float']"
-                            />
+                            <!-- Les bornes ne sont plus ici : elles vivent sur la
+                                 ligne d'attribut du PRODUIT (D-089). « Largeur »
+                                 est partagée par un portail et une porte de
+                                 garage — une borne globale ne peut être juste
+                                 pour personne. -->
                         </group>
                         <group>
                             <field name="search_ok" />
@@ -208,6 +205,39 @@
                 <attribute
                     name="context"
                 >{'flag_config_ok': context.get('default_config_ok', False)}</attribute>
+            </xpath>
+            <xpath expr="//group[@name='main_field']" position="after">
+                <field name="attribute_custom_type" invisible="1" />
+                <group
+                    name="bounds"
+                    string="Bounds"
+                    invisible="attribute_custom_type not in ['integer', 'float']"
+                >
+                    <group>
+                        <label for="min_val" />
+                        <div class="o_row">
+                            <field name="has_min_val" />
+                            <field name="min_val" invisible="not has_min_val" />
+                        </div>
+                        <label for="max_val" />
+                        <div class="o_row">
+                            <field name="has_max_val" />
+                            <field name="max_val" invisible="not has_max_val" />
+                        </div>
+                        <field name="step" />
+                    </group>
+                    <field name="bound_ids" nolabel="1" colspan="2">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle" />
+                            <field name="domain_id" />
+                            <field name="has_min_val" />
+                            <field name="min_val" readonly="not has_min_val" />
+                            <field name="has_max_val" />
+                            <field name="max_val" readonly="not has_max_val" />
+                            <field name="step" />
+                        </list>
+                    </field>
+                </group>
             </xpath>
         </field>
     </record>

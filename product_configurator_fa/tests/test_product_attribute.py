@@ -69,48 +69,20 @@ class ProductAttributes(BaseCommon):
         )
 
     def test_01_onchange_custome_type(self):
-        self.ProductAttributeFuel.min_val = 20
-        self.ProductAttributeFuel.max_val = 30
-        self.ProductAttributeFuel.custom_type = "char"
-        self.ProductAttributeFuel.onchange_custom_type()
-        self.assertEqual(self.ProductAttributeFuel.min_val, 0, "Min value is not False")
-        self.assertEqual(self.ProductAttributeFuel.max_val, 0, "Max value is not False")
-
-        self.ProductAttributeFuel.min_val = 20
-        self.ProductAttributeFuel.max_val = 30
-        self.ProductAttributeFuel.custom_type = "integer"
-        self.ProductAttributeFuel.onchange_custom_type()
-        self.assertEqual(
-            self.ProductAttributeFuel.min_val,
-            20,
-            "Min value is not equal to existing min value",
-        )
-        self.assertEqual(
-            self.ProductAttributeFuel.max_val,
-            30,
-            "Max value is not equal to existing max value",
-        )
-
-        self.ProductAttributeFuel.custom_type = "float"
-        self.ProductAttributeFuel.onchange_custom_type()
-        self.assertEqual(
-            self.ProductAttributeFuel.min_val,
-            20,
-            "Min value is equal to existing min value \
-            when type is changed to integer to float",
-        )
-        self.assertEqual(
-            self.ProductAttributeFuel.max_val,
-            30,
-            "Max value is equal to existing max value \
-            when type is changed to integer to float",
-        )
+        # ⚠️ Les bornes ont quitté `product.attribute` (D-089) : cet onchange ne
+        # règle plus que la recherche. Ce que la version d'OCA vérifiait ici
+        # — le nettoyage des bornes — est vérifié sur la LIGNE, test_11.
         self.ProductAttributeFuel.custom_type = "binary"
         self.ProductAttributeFuel.onchange_custom_type()
         self.assertFalse(
             self.ProductAttributeFuel.search_ok,
             "Error: if search true\
             Method: onchange_custom_type()",
+        )
+        self.assertFalse(
+            hasattr(self.ProductAttributeFuel, "min_val")
+            and "min_val" in self.ProductAttributeFuel._fields,
+            "Les bornes doivent avoir quitté product.attribute (D-089)",
         )
 
     def test_02_onchange_val_custom(self):
@@ -127,25 +99,44 @@ class ProductAttributes(BaseCommon):
             self.ProductAttributeFuel.search_ok = True
 
     def test_04_validate_custom_val(self):
-        self.ProductAttributeFuel.write({"max_val": 20, "min_val": 10})
-        self.ProductAttributeFuel.custom_type = "integer"
+        # Même scénario qu'OCA, mais porté par la LIGNE (D-089) — et les bornes
+        # y sont désormais EXPLICITES : `has_min_val` dit qu'il y a un mini,
+        # `min_val` dit lequel.
+        self.attr_fuel.custom_type = "integer"
+        line = self.ProductAttributeLineFuel
+        line.write(
+            {"has_min_val": True, "min_val": 10, "has_max_val": True, "max_val": 20}
+        )
         with self.assertRaises(ValidationError):
-            self.ProductAttributeFuel.validate_custom_val(5)
+            line.validate_custom_val(5)
+        with self.assertRaises(ValidationError):
+            line.validate_custom_val(25)
+        # 10 et 20 sont dans les bornes : aucune exception attendue
+        line.validate_custom_val(10)
+        line.validate_custom_val(20)
 
-        self.ProductAttributeFuel.write({"max_val": 0, "min_val": 10})
-        self.ProductAttributeFuel.custom_type = "integer"
+        # Un mini seul, un maxi seul
+        line.write({"has_max_val": False, "max_val": 0})
         with self.assertRaises(ValidationError):
-            self.ProductAttributeFuel.validate_custom_val(5)
+            line.validate_custom_val(5)
+        line.validate_custom_val(500)
 
-        self.ProductAttributeFuel.write({"min_val": 0, "max_val": 20})
-        self.ProductAttributeFuel.custom_type = "integer"
+        line.write({"has_min_val": False, "has_max_val": True, "max_val": 20})
         with self.assertRaises(ValidationError):
-            self.ProductAttributeFuel.validate_custom_val(25)
+            line.validate_custom_val(25)
+        line.validate_custom_val(-500)
 
     def test_05_check_constraint_min_max_value(self):
-        self.ProductAttributeFuel.custom_type = "integer"
+        self.attr_fuel.custom_type = "integer"
         with self.assertRaises(ValidationError):
-            self.ProductAttributeFuel.write({"max_val": 10, "min_val": 20})
+            self.ProductAttributeLineFuel.write(
+                {
+                    "has_min_val": True,
+                    "min_val": 20,
+                    "has_max_val": True,
+                    "max_val": 10,
+                }
+            )
 
     # FIXME: broken on call `onchange_attribute` method as
     # """

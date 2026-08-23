@@ -196,6 +196,46 @@
         groups="product.group_product_variant"
     />
 
+    <!-- ⚠️ LE TAUX AU m² N'ÉTAIT SAISISSABLE NULLE PART. Le champ existait, ses
+         tests passaient — et aucun écran ne le portait : la fonctionnalité était
+         complète et inatteignable (D-162). Deux vues le réparent : le catalogue
+         (la valeur d'attribut, qui porte le défaut) et le produit (la valeur du
+         template, qui peut le surcharger). -->
+    <record id="product_attribute_view_form_sqm" model="ir.ui.view">
+        <field name="name">product.attribute.form.sqm</field>
+        <!-- ⚠️ Le modèle est celui de la vue PARENTE (`product.attribute`), pas
+             celui de la liste qu'on complète : la colonne vit à l'intérieur du
+             `value_ids`, la vue héritée reste celle de l'attribut. -->
+        <field name="model">product.attribute</field>
+        <field name="inherit_id" ref="product.product_attribute_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="after">
+                <field
+                    name="default_extra_price_sqm"
+                    column_invisible="parent.price_mode != 'per_sqm'"
+                />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_template_attribute_value_view_tree_sqm" model="ir.ui.view">
+        <field name="name">product.template.attribute.value.list.sqm</field>
+        <field name="model">product.template.attribute.value</field>
+        <field name="inherit_id" ref="product.product_template_attribute_value_view_tree" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='price_extra']" position="after">
+                <field name="price_mode" column_invisible="True" />
+                <field
+                    name="price_extra_sqm"
+                    widget="monetary"
+                    options="{'field_digits': True}"
+                    column_invisible="context.get('hide_sqm', False)"
+                    readonly="price_mode != 'per_sqm'"
+                />
+            </xpath>
+        </field>
+    </record>
+
     <!-- Product Attribute Line -->
     <record id="product_template_attribute_line_form_config" model="ir.ui.view">
         <field name="name">product.template.attribute.line.form</field>

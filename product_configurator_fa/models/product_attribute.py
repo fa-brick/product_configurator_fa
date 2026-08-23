@@ -1059,6 +1059,12 @@ class ProductAttributePrice(models.Model):
     # each attribute adds
 
     weight_extra = fields.Float(string="Attribute Weight Extra", digits="Stock Weight")
+    # Exposé pour les VUES seulement : le mode vit sur la ligne, mais c'est la
+    # valeur qu'on édite, et une colonne ne peut pas se cacher sur un champ
+    # qu'elle ne porte pas.
+    price_mode = fields.Selection(
+        related="attribute_line_id.price_mode", string="Extra Price Mode", readonly=True
+    )
     price_extra_sqm = fields.Float(
         string="Extra Price per m²",
         digits="Product Price",

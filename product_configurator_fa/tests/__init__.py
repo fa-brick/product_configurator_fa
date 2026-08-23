@@ -4,6 +4,7 @@ from . import test_product
 from . import test_attribute_bounds
 from . import test_dimension_values
 from . import test_numeric_value_display
+from . import test_price_grid
 from . import test_product_attribute
 from . import test_product_config
 from . import test_wizard

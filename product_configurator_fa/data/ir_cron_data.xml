@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <!--
+      Le prix de grille STOCKÉ est informatif : il dit « le prix en vigueur ce
+      jour ». Une grille datée le rend faux dès qu'un nouveau tarif prend effet,
+      d'où un rafraîchissement nocturne (D-084). ⚠️ Un devis, lui, ne lit jamais
+      ce champ : il interroge la grille à SA date.
+    -->
+    <record id="ir_cron_refresh_grid_price" model="ir.cron">
+        <field name="name">Configurator: refresh stored grid prices</field>
+        <field name="model_id" ref="product.model_product_product" />
+        <field name="state">code</field>
+        <field name="code">model._cron_refresh_grid_price()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True" />
+    </record>
+</odoo>

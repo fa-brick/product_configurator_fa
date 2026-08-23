@@ -911,7 +911,80 @@ class ProductConfigSession(models.Model):
             product_tmpl_id=product_tmpl.id, pt_attr_value_ids=av_ids
         )
         price_extra = sum(extra_prices.values())
-        return product_tmpl.list_price + price_extra
+        # Le prix d'un produit DIMENSIONNÉ vient de sa grille, pas du
+        # `list_price` du template — lequel n'est qu'un « à partir de » (D-083,
+        # D-093). Faute de grille, on retombe sur le comportement d'OCA : le
+        # produit n'est pas dimensionné, ou son absence de grille a déjà été
+        # signalée à l'arrivée dans la fiche.
+        base_price = self._get_config_grid_price(value_ids, custom_vals)
+        if base_price is None:
+            base_price = product_tmpl.list_price
+        price_sqm = self._get_cfg_price_sqm(value_ids, custom_vals)
+        return base_price + price_extra + price_sqm
+
+    def _get_config_dimensions(self, value_ids=None, custom_vals=None):
+        """Les deux cotes de la configuration COURANTE — D-098, D-161.
+
+        Pendant la configuration, une cote peut être encore une saisie libre
+        (`custom_vals`) ou déjà une valeur retenue (`value_ids`) : les deux
+        chemins existent, parce que le rangement en valeur n'a lieu qu'au devis
+        (D-082). On lit donc la saisie d'abord, la valeur ensuite.
+        """
+        self.ensure_one()
+        if custom_vals is None:
+            custom_vals = {}
+        dimensions = {}
+        for role, line in self.product_tmpl_id._grid_axis_lines().items():
+            attribute = line.attribute_id
+            raw = custom_vals.get(attribute.id)
+            if raw in (None, False, ""):
+                chosen = attribute.value_ids.filtered(
+                    lambda value, ids=value_ids or []: value.id in ids
+                )
+                raw = chosen[:1].name if chosen else None
+            try:
+                dimensions[role] = float(raw)
+            except (TypeError, ValueError):
+                continue
+        return dimensions
+
+    def _get_config_grid_price(self, value_ids=None, custom_vals=None):
+        """Le prix de grille de la configuration courante, ou `None`."""
+        self.ensure_one()
+        grid = self.product_tmpl_id._get_price_grid()
+        if not grid:
+            return None
+        dimensions = self._get_config_dimensions(value_ids, custom_vals)
+        if "axis_x" not in dimensions or "axis_y" not in dimensions:
+            return None
+        return grid.get_price(dimensions["axis_x"], dimensions["axis_y"])
+
+    def _get_cfg_price_sqm(self, value_ids=None, custom_vals=None):
+        """La part des suppléments AU MÈTRE CARRÉ — D-162.
+
+        Le taux vit dans `price_extra_sqm`, jamais dans `price_extra` : Odoo
+        somme ce dernier partout, et y ranger 25 €/m² le ferait facturer 25 €.
+        """
+        self.ensure_one()
+        dimensions = self._get_config_dimensions(value_ids, custom_vals)
+        if "axis_x" not in dimensions or "axis_y" not in dimensions:
+            return 0.0
+        rated = self.env["product.template.attribute.value"].search(
+            [
+                ("product_tmpl_id", "=", self.product_tmpl_id.id),
+                ("product_attribute_value_id", "in", value_ids or []),
+                ("price_extra_sqm", "!=", 0),
+            ]
+        )
+        rated = rated.filtered(
+            lambda ptav: ptav.attribute_line_id.price_mode == "per_sqm"
+        )
+        if not rated:
+            return 0.0
+        surface = self.product_tmpl_id._grid_surface(
+            dimensions["axis_x"], dimensions["axis_y"]
+        )
+        return sum(rated.mapped("price_extra_sqm")) * surface
 
     def _get_config_image(self, value_ids=None, custom_vals=None, size=None):
         """

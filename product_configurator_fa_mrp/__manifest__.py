@@ -3,15 +3,16 @@
 
 {
     "name": "Product Configurator Manufacturing (fa-brick)",
-    "version": "18.0.1.0.0",
+    "version": "18.0.1.1.0",
     "category": "Manufacturing",
     "summary": "BOM Support for configurable products",
     "author": "Pledra, Odoo Community Association (OCA), fa-brick",
     "license": "AGPL-3",
     "website": "https://github.com/fa-brick/product_configurator_fa",
-    "depends": ["mrp", "product_configurator_fa"],
+    "depends": ["mrp", "mrp_account", "product_configurator_fa"],
     "data": [
         "data/menu_product.xml",
+        "data/ir_cron_data.xml",
         "views/mrp_view.xml",
         "security/configurator_security.xml",
         "security/ir.model.access.csv",

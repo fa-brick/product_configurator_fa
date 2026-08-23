@@ -133,6 +133,22 @@
                     invisible="not config_ok"
                     groups="product_configurator_fa.group_product_configurator_fa"
                 >
+                    <div
+                        class="alert alert-warning"
+                        role="alert"
+                        invisible="not price_grid_warning"
+                    >
+                        <field name="price_grid_warning" nolabel="1" readonly="1" />
+                    </div>
+                    <separator colspan="4" string="Price Grid" name="price_grid" />
+                    <field name="price_grid_ids" nolabel="1">
+                        <list>
+                            <field name="name" />
+                            <field name="date_start" />
+                            <field name="date_end" />
+                            <field name="currency_id" />
+                        </list>
+                    </field>
                     <separator
                         colspan="4"
                         string="Configuration Restrictions"

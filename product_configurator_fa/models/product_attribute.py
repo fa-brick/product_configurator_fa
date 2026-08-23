@@ -200,6 +200,14 @@ class ProductAttribute(models.Model):
     )
     uom_id = fields.Many2one(comodel_name="uom.uom", string="Unit of Measure")
     image = fields.Binary()
+    price_mode = fields.Selection(
+        selection=[("fixed", "Fixed amount"), ("per_sqm", "Per square meter")],
+        default="fixed",
+        required=True,
+        string="Extra Price Mode",
+        help="Default mode for the extra price of this attribute's values. "
+        "Set on each product line, which is what actually applies.",
+    )
 
     # TODO prevent the same attribute from being defined twice on the
     # attribute lines
@@ -330,6 +338,7 @@ class ProductAttributeLine(models.Model):
         self.required = self.attribute_id.required
         self.multi = self.attribute_id.multi
         self.custom = self.attribute_id.val_custom
+        self.price_mode = self.attribute_id.price_mode
         # Des bornes sur un attribut qui n'est plus numérique ne s'appliqueraient
         # jamais : les laisser en place, c'est afficher une règle inerte.
         if self.attribute_id.custom_type not in ("integer", "float"):
@@ -360,6 +369,25 @@ class ProductAttributeLine(models.Model):
     default_val = fields.Many2one(comodel_name="product.attribute.value")
 
     sequence = fields.Integer(default=10)
+
+    dimension_role = fields.Selection(
+        selection=[
+            ("axis_x", "Grid axis X (columns)"),
+            ("axis_y", "Grid axis Y (rows)"),
+        ],
+        string="Dimension Role",
+        help="What this dimension is FOR, as opposed to what it is called. "
+        "The price grid is indexed by these two roles, and the surface used "
+        "by per-square-meter extras is their product.",
+    )
+    price_mode = fields.Selection(
+        selection=[("fixed", "Fixed amount"), ("per_sqm", "Per square meter")],
+        default="fixed",
+        required=True,
+        string="Extra Price Mode",
+        help="How the extra price of this attribute's values is read on this "
+        "product: a flat amount, or a rate per square meter",
+    )
 
     bound_ids = fields.One2many(
         comodel_name="product.attribute.bound",
@@ -489,6 +517,36 @@ class ProductAttributeLine(models.Model):
                 suggestion=self._format_bound(suggestion),
             )
         return message
+
+    @api.constrains("dimension_role", "product_tmpl_id")
+    def _check_dimension_role_unique(self):
+        """Un rôle, un seul porteur par produit — sinon la grille ne sait plus
+        quelle cote lire, et le choix se ferait par l'ordre des lignes."""
+        for line in self.filtered("dimension_role"):
+            twin = self.search(
+                [
+                    ("product_tmpl_id", "=", line.product_tmpl_id.id),
+                    ("dimension_role", "=", line.dimension_role),
+                    ("id", "!=", line.id),
+                ],
+                limit=1,
+            )
+            if twin:
+                raise ValidationError(
+                    self.env._(
+                        "'%(attribute)s' already plays this role on %(product)s",
+                        attribute=twin.attribute_id.display_name,
+                        product=line.product_tmpl_id.display_name,
+                    )
+                )
+            if not line.attribute_id._is_numeric_custom():
+                raise ValidationError(
+                    self.env._(
+                        "Only a numeric attribute can carry a grid axis — "
+                        "'%(attribute)s' is not one",
+                        attribute=line.attribute_id.display_name,
+                    )
+                )
 
     def resolve_numeric_value(self, number):
         """Rend la valeur d'attribut de ce nombre, et l'ATTACHE à cette ligne.
@@ -677,6 +735,11 @@ class ProductAttributeLine(models.Model):
 class ProductAttributeValue(models.Model):
     _inherit = "product.attribute.value"
 
+    default_extra_price_sqm = fields.Float(
+        string="Default Extra Price per m²",
+        digits="Product Price",
+        help="Catalogue rate, copied onto each product that uses this value",
+    )
     configurator_generated = fields.Boolean(
         string="Created by the Configurator",
         help="Set on values the configurator created from a free entry. "
@@ -968,6 +1031,31 @@ class ProductAttributePrice(models.Model):
     # each attribute adds
 
     weight_extra = fields.Float(string="Attribute Weight Extra", digits="Stock Weight")
+    price_extra_sqm = fields.Float(
+        string="Extra Price per m²",
+        digits="Product Price",
+        help="Rate applied to the surface of the product (grid axis X × axis Y) "
+        "when the attribute line is priced per square meter",
+    )
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Le taux du CATALOGUE devient celui du produit, sauf mention contraire.
+
+        Odoo fait déjà ce geste pour `price_extra`
+        (`product_template_attribute_line.py:244`) mais ne connaît pas notre
+        taux : sans cette recopie, la valeur créée pour un produit repartirait à
+        zéro et le nuancier ne servirait de défaut à rien (D-162).
+        """
+        for vals in vals_list:
+            if "price_extra_sqm" in vals or not vals.get("product_attribute_value_id"):
+                continue
+            value = self.env["product.attribute.value"].browse(
+                vals["product_attribute_value_id"]
+            )
+            if value.default_extra_price_sqm:
+                vals["price_extra_sqm"] = value.default_extra_price_sqm
+        return super().create(vals_list)
 
 
 class ProductAttributeValueLine(models.Model):

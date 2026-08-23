@@ -376,9 +376,222 @@ class ProductTemplate(models.Model):
             raise ValidationError(error_message)
 
 
+    price_grid_ids = fields.One2many(
+        comodel_name="product.price.grid",
+        inverse_name="product_tmpl_id",
+        string="Price Grids",
+    )
+    price_grid_warning = fields.Char(compute="_compute_price_grid_warning")
+
+    @api.depends("config_ok", "price_grid_ids", "price_grid_ids.active")
+    def _compute_price_grid_warning(self):
+        """L'absence de grille se signale À L'ARRIVÉE dans le produit — D-083.
+
+        Et non au moment du devis : on ne laisse pas quelqu'un configurer dix
+        minutes pour lui annoncer ensuite qu'on ne sait pas vendre.
+        """
+        for template in self:
+            missing = template.config_ok and not template.price_grid_ids
+            template.price_grid_warning = (
+                self.env._(
+                    "This configurable product has no price grid: it cannot be "
+                    "quoted until one is set."
+                )
+                if missing
+                else False
+            )
+
+    def _get_price_grid(self, date=None):
+        """La grille en vigueur à cette date — au plus une (D-083)."""
+        self.ensure_one()
+        # ⚠️ Odoo passe la date tantôt en `date`, tantôt en chaîne (un contexte,
+        # une valeur de devis) : comparer sans convertir lève un TypeError que
+        # rien n'annonce à la lecture.
+        date = fields.Date.to_date(date) or fields.Date.context_today(self)
+        grids = self.price_grid_ids.filtered(
+            lambda grid: (not grid.date_start or grid.date_start <= date)
+            and (not grid.date_end or grid.date_end >= date)
+        )
+        return grids[:1]
+
+    def _grid_axis_lines(self):
+        """Les deux lignes d'attribut qui portent les rôles d'axe — D-098."""
+        self.ensure_one()
+        lines = {}
+        for line in self.attribute_line_ids:
+            if line.dimension_role:
+                lines[line.dimension_role] = line
+        return lines
+
+    def _grid_surface(self, x_value, y_value):
+        """La surface en m² — le PRODUIT DES DEUX AXES, rien d'autre (D-161).
+
+        ⚠️ Première conversion d'unités du module : D-160 pose qu'un attribut
+        porte une unité et que personne ne convertit, mais 2 400 mm × 2 100 mm
+        ne fait pas 5 040 000 m². Un axe SANS unité est refusé plutôt que
+        supposé en millimètres — supposer ici, c'est se tromper d'un facteur
+        un million sans que rien ne le dise.
+        """
+        self.ensure_one()
+        axis_lines = self._grid_axis_lines()
+        metres = []
+        for role, value in (("axis_x", x_value), ("axis_y", y_value)):
+            line = axis_lines.get(role)
+            uom = line.attribute_id.uom_id if line else False
+            if not uom:
+                raise ValidationError(
+                    self.env._(
+                        "A surface cannot be computed on %(product)s: the grid "
+                        "axis has no unit of measure.",
+                        product=self.display_name,
+                    )
+                )
+            reference = uom.category_id.uom_ids.filtered(
+                lambda unit: unit.uom_type == "reference"
+            )
+            if not reference:
+                raise ValidationError(
+                    self.env._("The unit %(uom)s has no reference unit", uom=uom.name)
+                )
+            metres.append(uom._compute_quantity(value, reference, round=False))
+        return metres[0] * metres[1]
+
+    def _refresh_grid_list_price(self):
+        """Le `list_price` du template devient le « À PARTIR DE » — D-093.
+
+        Sans cela, la fiche annoncerait « Prix de vente : 200 € » alors
+        qu'aucune vente ne se ferait à ce prix.
+        """
+        for template in self:
+            grid = template._get_price_grid()
+            if grid:
+                template.list_price = grid._lowest_price()
+
+
 class ProductProduct(models.Model):
     _inherit = "product.product"
     _rec_name = "config_name"
+
+    grid_price = fields.Float(
+        string="Grid Price",
+        digits="Product Price",
+        readonly=True,
+        help="Price read in the grid in force TODAY. Informative only — a "
+        "quotation always reads the grid at its own date.",
+    )
+
+    def _get_grid_dimensions(self):
+        """Les deux cotes de cette variante, lues dans ses valeurs d'attribut.
+
+        Elles y sont parce que le lot 2 les y a rangées (D-081) : une dimension
+        n'est pas une valeur personnalisée, c'est une valeur d'attribut — et
+        c'est ce qui la rend lisible ici, sans session ni saisie.
+        """
+        self.ensure_one()
+        dimensions = {}
+        for ptav in self.product_template_attribute_value_ids:
+            role = ptav.attribute_line_id.dimension_role
+            if not role:
+                continue
+            try:
+                dimensions[role] = float(ptav.product_attribute_value_id.name)
+            except (TypeError, ValueError):
+                # Une valeur d'axe qui n'est pas un nombre ne dit rien : mieux
+                # vaut pas de prix de grille qu'un prix lu de travers.
+                return {}
+        return dimensions
+
+    def _get_grid_price(self, date=None):
+        """Le prix de grille de cette variante, ou `None` — jamais zéro."""
+        self.ensure_one()
+        grid = self.product_tmpl_id._get_price_grid(date=date)
+        if not grid:
+            return None
+        dimensions = self._get_grid_dimensions()
+        if "axis_x" not in dimensions or "axis_y" not in dimensions:
+            return None
+        return grid.get_price(dimensions["axis_x"], dimensions["axis_y"])
+
+    def _get_attributes_extra_price_sqm(self):
+        """La part des suppléments exprimée AU MÈTRE CARRÉ — D-162.
+
+        ⚠️ Elle ne peut pas passer par `price_extra`, que tout Odoo somme
+        comme un montant : 25 €/m² y serait ajouté comme 25 €, sans erreur et
+        sans trace.
+        """
+        self.ensure_one()
+        rated = self.product_template_attribute_value_ids.filtered(
+            lambda ptav: ptav.attribute_line_id.price_mode == "per_sqm"
+            and ptav.price_extra_sqm
+        )
+        if not rated:
+            return 0.0
+        dimensions = self._get_grid_dimensions()
+        if "axis_x" not in dimensions or "axis_y" not in dimensions:
+            return 0.0
+        surface = self.product_tmpl_id._grid_surface(
+            dimensions["axis_x"], dimensions["axis_y"]
+        )
+        return sum(rated.mapped("price_extra_sqm")) * surface
+
+    def _price_compute(
+        self, price_type, uom=None, currency=None, company=None, date=False
+    ):
+        """Pour un produit à grille, `list_price` REND LE PRIX DE GRILLE — D-093.
+
+        ⚠️ C'est le point unique par lequel tout Odoo demande le prix d'un
+        produit : listes de prix, devis, rapports, portail. Une remise
+        « professionnel −10 % » part de `list_price` (le défaut d'une règle) :
+        sans cette surcharge, elle s'appliquerait aux 200 € du template au lieu
+        des 540 € de la grille, et le devis afficherait un montant plausible.
+
+        La « quatrième base » — ajouter `grid_price` aux choix de `base` d'une
+        règle — a été écartée : il faudrait PENSER à la choisir, et l'oubli est
+        silencieux.
+
+        source : addons/product/models/product_product.py:794 — les étapes
+        (extras, unité, devise) sont reprises telles quelles ; voir P1 et P2 du
+        registre des points de contact.
+        """
+        if price_type != "list_price":
+            return super()._price_compute(
+                price_type, uom=uom, currency=currency, company=company, date=date
+            )
+        company = company or self.env.company
+        date = date or fields.Date.context_today(self)
+        prices = super()._price_compute(
+            price_type, uom=uom, currency=currency, company=company, date=date
+        )
+        for product in self.with_company(company):
+            grid_price = product._get_grid_price(date=date)
+            if grid_price is None:
+                continue
+            price = (
+                grid_price
+                + product._get_attributes_extra_price()
+                + product._get_attributes_extra_price_sqm()
+            )
+            if uom:
+                price = product.uom_id._compute_price(price, uom)
+            if currency:
+                price = product.currency_id._convert(price, currency, company, date)
+            prices[product.id] = price
+        return prices
+
+    @api.model
+    def _cron_refresh_grid_price(self):
+        """Rafraîchit le prix de grille STOCKÉ — informatif, jamais autorité.
+
+        ⚠️ D-084 : une grille datée rend tout champ stocké faux le jour où un
+        nouveau tarif prend effet. Ce champ dit « le prix en vigueur ce jour » ;
+        entre minuit et ce passage, il est périmé. Acceptable pour un
+        affichage, jamais pour un devis — qui lit la grille à SA date.
+        """
+        products = self.search([("config_ok", "=", True)])
+        for product in products:
+            grid_price = product._get_grid_price()
+            if grid_price is not None and grid_price != product.grid_price:
+                product.grid_price = grid_price
 
     @api.constrains("product_template_attribute_value_ids")
     def _check_duplicate_product(self):

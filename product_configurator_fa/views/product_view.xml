@@ -207,6 +207,10 @@
                                 options="{'no_create': True, 'no_create_edit': True}"
                                 widget="many2many_tags"
                             />
+                            <field
+                                name="visibility_domain_id"
+                                context="{'product_tmpl_id': parent.id, 'form_view_ref': 'product_configurator_fa.product_config_domain_form_view_template'}"
+                            />
                         </list>
                     </field>
                     <separator

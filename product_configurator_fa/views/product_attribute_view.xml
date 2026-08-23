@@ -212,6 +212,7 @@
                 <group name="configurator_pricing" string="Configurator">
                     <field name="dimension_role" />
                     <field name="price_mode" />
+                    <field name="visibility_domain_id" />
                 </group>
                 <group
                     name="bounds"

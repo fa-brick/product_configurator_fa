@@ -57,6 +57,111 @@ class ProductConfigDomain(models.Model):
             )
         return computed_domain
 
+    ATTRIBUTE_FIELD_PREFIX = "__attribute_"
+
+    @api.model
+    def _attribute_field_name(self, attribute):
+        """Le nom du champ FICTIF qui représente un attribut dans l'éditeur.
+
+        Même préfixe que les champs dynamiques d'OCA (`__attribute_<id>`) :
+        deux conventions pour la même chose finiraient par diverger.
+        """
+        return f"{self.ATTRIBUTE_FIELD_PREFIX}{attribute.id}"
+
+    def to_odoo_domain(self):
+        """Rend la condition sous la forme que le `DomainSelector` sait lire.
+
+        Le stockage reste celui d'OCA — des ENREGISTREMENTS, jamais du texte
+        (D-080). Cette traduction ne vit que le temps d'un aller-retour vers
+        l'éditeur.
+        """
+        self.ensure_one()
+        domain = []
+        lines = self.domain_line_ids.sorted()
+        # ⚠️ Même forme que `compute_domain`, y compris sa bizarrerie : le
+        # marqueur « | » précède la ligne QUI LE PORTE, et la DERNIÈRE ligne
+        # n'en émet jamais (sinon l'opérateur manquerait d'un opérande). Deux
+        # rendus qui divergeraient d'un caractère donneraient deux conditions
+        # différentes pour un même enregistrement.
+        for line in lines[:-1]:
+            if line.operator == "or":
+                domain.append("|")
+            domain.append(
+                (
+                    self._attribute_field_name(line.attribute_id),
+                    line.condition,
+                    line.value_ids.ids,
+                )
+            )
+        if lines:
+            last = lines[-1]
+            domain.append(
+                (
+                    self._attribute_field_name(last.attribute_id),
+                    last.condition,
+                    last.value_ids.ids,
+                )
+            )
+        return domain
+
+    def from_odoo_domain(self, domain):
+        """Réécrit les lignes de la condition depuis un domaine d'éditeur.
+
+        ⚠️ REFUSE ce que le stockage perdrait. Le `DomainSelector` sait
+        exprimer bien plus que les lignes d'OCA ne savent garder — groupes
+        imbriqués, autres opérateurs, autres champs. Branché tel quel, il
+        laisserait construire une condition que l'enregistrement perdrait EN
+        SILENCE (D-080). L'éditeur est restreint en amont ; ce refus est la
+        seconde barrière, celle qui ne dépend pas de l'interface.
+        """
+        self.ensure_one()
+        lines = []
+        pending_or = False
+        for leaf in domain:
+            if leaf in ("&", "!"):
+                raise ValidationError(
+                    self.env._(
+                        "Only OR and implicit AND are supported in a "
+                        "configuration condition"
+                    )
+                )
+            if leaf == "|":
+                pending_or = True
+                continue
+            field_name, operator, values = leaf
+            if not str(field_name).startswith(self.ATTRIBUTE_FIELD_PREFIX):
+                raise ValidationError(
+                    self.env._(
+                        "A configuration condition can only test attributes, "
+                        "not '%(field)s'",
+                        field=field_name,
+                    )
+                )
+            if operator not in ("in", "not in"):
+                raise ValidationError(
+                    self.env._(
+                        "A configuration condition only supports 'in' and "
+                        "'not in', not '%(operator)s'",
+                        operator=operator,
+                    )
+                )
+            attribute_id = int(field_name[len(self.ATTRIBUTE_FIELD_PREFIX) :])
+            lines.append(
+                (
+                    0,
+                    0,
+                    {
+                        "attribute_id": attribute_id,
+                        "condition": operator,
+                        "operator": "or" if pending_or else "and",
+                        "value_ids": [(6, 0, list(values))],
+                    },
+                )
+            )
+            pending_or = False
+        self.domain_line_ids = [(5, 0, 0)] + lines
+        return True
+
     name = fields.Char(required=True)
     domain_line_ids = fields.One2many(
         comodel_name="product.config.domain.line",
@@ -325,6 +430,28 @@ class ProductConfigStepLine(models.Model):
         required=True,
     )
     sequence = fields.Integer(default=10)
+    visibility_domain_id = fields.Many2one(
+        comodel_name="product.config.domain",
+        string="Visibility Condition",
+        ondelete="restrict",
+        help="This step is shown only when the condition matches. "
+        "Empty means always shown.",
+    )
+
+    def _is_visible(self, value_ids=None, custom_vals=None):
+        """L'étape est-elle montrée pour cette configuration ? — D-086.
+
+        Sans condition, oui : une étape ne se cache pas par défaut.
+        """
+        self.ensure_one()
+        if not self.visibility_domain_id:
+            return True
+        session = self.env["product.config.session"]
+        return session.validate_domains_against_sels(
+            self.visibility_domain_id.compute_domain(),
+            value_ids or [],
+            custom_vals or {},
+        )
 
     @api.constrains("config_step_id")
     def _check_config_step(self):
@@ -1178,6 +1305,11 @@ class ProductConfigSession(models.Model):
         open_step_lines = self.env["product.config.step.line"]
 
         for cfg_line in self.product_tmpl_id.config_step_line_ids:
+            # ⚠️ La condition EXPLICITE tranche avant l'effet de bord : une
+            # étape masquée par sa condition ne s'ouvre pas, même si ses
+            # attributs ont des valeurs disponibles (D-086).
+            if not cfg_line._is_visible(value_ids):
+                continue
             for attr_line in cfg_line.attribute_line_ids:
                 available_vals = self.values_available(
                     attr_line.value_ids.ids,
@@ -1485,6 +1617,12 @@ class ProductConfigSession(models.Model):
         attribute_line_ids = open_step_lines.mapped("attribute_line_ids")
         attribute_line_ids += self.get_extra_attribute_line_ids(
             product_template_id=product_tmpl
+        )
+        # ⚠️ Un attribut masqué qui reste OBLIGATOIRE bloque la configuration
+        # sans que rien ne s'affiche pour le débloquer. La visibilité doit donc
+        # être tranchée AVANT l'exigence, jamais après (D-086, esprit de D-078).
+        attribute_line_ids = attribute_line_ids.filtered(
+            lambda line: line._is_visible(value_ids, custom_vals)
         )
         self.check_attributes_configuration(
             attribute_line_ids, custom_vals, value_ids, final=final

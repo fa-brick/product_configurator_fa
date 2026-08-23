@@ -389,6 +389,14 @@ class ProductAttributeLine(models.Model):
         "product: a flat amount, or a rate per square meter",
     )
 
+    visibility_domain_id = fields.Many2one(
+        comodel_name="product.config.domain",
+        string="Visibility Condition",
+        ondelete="restrict",
+        help="This attribute is asked only when the condition matches. "
+        "Empty means always asked.",
+    )
+
     bound_ids = fields.One2many(
         comodel_name="product.attribute.bound",
         inverse_name="attribute_line_id",
@@ -402,6 +410,26 @@ class ProductAttributeLine(models.Model):
     attribute_custom_type = fields.Selection(
         related="attribute_id.custom_type", string="Field Type", readonly=True
     )
+
+    def _is_visible(self, value_ids=None, custom_vals=None):
+        """L'attribut est-il demandé pour cette configuration ? — D-086.
+
+        ⚠️ C'est le niveau du MILIEU, celui qui n'existait pas. Aujourd'hui un
+        attribut ne disparaît que par effet de bord — toutes ses valeurs
+        écartées — et il en découle deux défauts : un attribut NUMÉRIQUE, qui
+        n'a pas de valeurs, ne peut pas être masqué du tout ; et un masquage par
+        effet de bord ne se LIT pas, donc l'utilisateur voit un attribut
+        disparaître sans qu'aucune règle visible ne l'explique.
+        """
+        self.ensure_one()
+        if not self.visibility_domain_id:
+            return True
+        session = self.env["product.config.session"]
+        return session.validate_domains_against_sels(
+            self.visibility_domain_id.compute_domain(),
+            value_ids or [],
+            custom_vals or {},
+        )
 
     def _get_bounds(self, value_ids=None, custom_vals=None):
         """Rend les bornes applicables à cette ligne pour une configuration.

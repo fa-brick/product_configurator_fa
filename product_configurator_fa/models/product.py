@@ -376,6 +376,46 @@ class ProductTemplate(models.Model):
             raise ValidationError(error_message)
 
 
+    @api.model
+    def fields_get(self, allfields=None, attributes=None):
+        """Décrit les ATTRIBUTS d'un produit comme des champs — D-097.
+
+        C'est tout ce dont le `DomainSelector` a besoin : il n'appelle qu'une
+        chose, `fields_get` (`web/static/src/core/field_service.js:17`). Sans
+        cela il propose les champs techniques de `product.template` — « Image
+        1024 », « Estimation par Lot/Numéro de série » — et un utilisateur
+        métier n'en fait rien.
+
+        ⚠️ **Sous CONTEXTE, jamais partout.** Ces champs n'existent pas : les
+        exposer à tout appel de `fields_get` les ferait apparaître dans les
+        vues, les exports et les filtres, où plus rien ne saurait les lire.
+
+        ⚠️ Tous les attributs sont décrits en `many2one` vers une VALEUR, y
+        compris les numériques — parce que le stockage d'OCA ne connaît que
+        `in` / `not in` sur des valeurs (D-080). Décrire une dimension en
+        `float` laisserait construire `largeur > 4000`, que l'enregistrement
+        perdrait en silence.
+        """
+        fields = super().fields_get(allfields=allfields, attributes=attributes)
+        template_id = self.env.context.get("configurator_domain_tmpl_id")
+        if not template_id:
+            return fields
+        domain_obj = self.env["product.config.domain"]
+        template = self.browse(template_id)
+        for line in template.attribute_line_ids:
+            attribute = line.attribute_id
+            fields[domain_obj._attribute_field_name(attribute)] = {
+                "string": attribute.name,
+                "type": "many2one",
+                "relation": "product.attribute.value",
+                "domain": [("attribute_id", "=", attribute.id)],
+                "searchable": True,
+                "sortable": False,
+                "store": False,
+                "readonly": True,
+            }
+        return fields
+
     price_grid_ids = fields.One2many(
         comodel_name="product.price.grid",
         inverse_name="product_tmpl_id",

@@ -376,6 +376,44 @@ class ProductTemplate(models.Model):
             raise ValidationError(error_message)
 
 
+    def _price_compute(
+        self, price_type, uom=None, currency=None, company=None, date=False
+    ):
+        """Le prix d'une configuration EN COURS, avant qu'aucune variante n'existe.
+
+        ⚠️ Rien n'est créé avant le devis (D-082) : il n'y a donc pas de
+        `product.product` à qui demander un prix pendant la configuration. Le
+        prix de grille entre par le CONTEXTE, et tout le reste — pourcentages,
+        formules, devise, arrondis, cascades de listes de prix — continue de
+        marcher sans qu'on y touche, parce qu'on emprunte le chemin d'Odoo au
+        lieu d'en refaire un (D-092).
+
+        Le contexte porte un DICTIONNAIRE par template, et non un montant :
+        `_price_compute` peut recevoir plusieurs enregistrements, et une valeur
+        unique se serait appliquée à tous.
+
+        source : addons/product/models/product_template.py:688 — voir P17 du
+        registre des points de contact.
+        """
+        prices = super()._price_compute(
+            price_type, uom=uom, currency=currency, company=company, date=date
+        )
+        base_prices = self.env.context.get("configurator_base_prices") or {}
+        if price_type != "list_price" or not base_prices:
+            return prices
+        company = company or self.env.company
+        date = date or fields.Date.context_today(self)
+        for template in self.with_company(company):
+            if template.id not in base_prices:
+                continue
+            price = base_prices[template.id] + template._get_attributes_extra_price()
+            if uom:
+                price = template.uom_id._compute_price(price, uom)
+            if currency:
+                price = template.currency_id._convert(price, currency, company, date)
+            prices[template.id] = price
+        return prices
+
     @api.model
     def fields_get(self, allfields=None, attributes=None):
         """Décrit les ATTRIBUTS d'un produit comme des champs — D-097.

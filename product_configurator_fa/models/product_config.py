@@ -1,6 +1,8 @@
 import logging
+import secrets
 from ast import literal_eval
 from collections.abc import Iterable
+from datetime import timedelta
 from itertools import chain
 
 from odoo import api, fields, models
@@ -468,7 +470,11 @@ class ProductConfigStepLine(models.Model):
 
 
 class ProductConfigSession(models.Model):
+    # ⚠️ `mail.thread` : une session passe de main en main — un particulier, un
+    # professionnel, un commercial. Savoir qui a changé quoi et quand n'est pas
+    # un luxe (D-092). OCA n'en avait aucune trace.
     _name = "product.config.session"
+    _inherit = ["mail.thread"]
     _description = "Product Config Session"
 
     @api.depends(
@@ -612,15 +618,41 @@ class ProductConfigSession(models.Model):
         column1="cfg_session_id",
         column2="attr_val_id",
     )
-    user_id = fields.Many2one(comodel_name="res.users", required=True, string="User")
+    user_id = fields.Many2one(
+        comodel_name="res.users", required=True, string="User", tracking=True
+    )
+    active = fields.Boolean(default=True)
+    parent_id = fields.Many2one(
+        comodel_name="product.config.session",
+        string="Forked From",
+        ondelete="set null",
+        index=True,
+        tracking=True,
+        help="Session this one was forked from when another identity took it over",
+    )
+    child_ids = fields.One2many(
+        comodel_name="product.config.session",
+        inverse_name="parent_id",
+        string="Forks",
+    )
+    access_token = fields.Char(
+        string="Resume Token",
+        copy=False,
+        index=True,
+        help="Unguessable token a visitor uses to come back to this "
+        "configuration. Never the session number.",
+    )
     custom_value_ids = fields.One2many(
         comodel_name="product.config.session.custom.value",
         inverse_name="cfg_session_id",
         string="Custom Values",
     )
+    # ⚠️ NON STOCKÉ, et c'est D-092 qui l'impose : « le prix se recalcule à
+    # chaque ouverture, pour celui qui regarde ». Un prix stocké serait celui du
+    # DERNIER qui a calculé — un particulier transmet au professionnel, et le
+    # professionnel lirait le prix du particulier.
     price = fields.Float(
         compute="_compute_cfg_price",
-        store=True,
         digits="Product Price",
     )
     currency_id = fields.Many2one(
@@ -632,6 +664,7 @@ class ProductConfigSession(models.Model):
         required=True,
         selection=[("draft", "Draft"), ("done", "Done")],
         default="draft",
+        tracking=True,
     )
     weight = fields.Float(compute="_compute_cfg_weight", digits="Stock Weight")
     # Product preset
@@ -639,6 +672,108 @@ class ProductConfigSession(models.Model):
         comodel_name="product.product",
         string="Preset",
     )
+
+    @api.model
+    def _session_validity_days(self):
+        """Combien de jours un lien de reprise reste valable.
+
+        ⚠️ **Le même paramètre gouverne le ménage** : nettoyer une session plus
+        tôt que la promesse faite au visiteur (« ce lien reste valable N jours »)
+        serait un défaut visible du client (D-091, D-082).
+        """
+        return int(
+            self.env["ir.config_parameter"]
+            .sudo()
+            .get_param("product_configurator_fa.session_gc_days", 90)
+        )
+
+    def _ensure_access_token(self):
+        """Pose un jeton ALÉATOIRE, distinct du numéro de session — D-091.
+
+        ⚠️ `name` vaut `CS0001`, `CS0002`… : une séquence énumérable. Le donner
+        au visiteur laisserait lire les configurations des autres en tapant
+        `CS0042` — produit, dimensions, prix, et le client dès que la
+        configuration devient un devis. Ce n'est pas un risque théorique.
+
+        Et le contrôle d'accès ne peut pas venir d'ailleurs : un visiteur
+        anonyme est l'utilisateur PUBLIC, donc toutes les sessions anonymes
+        appartiendraient au même `user_id`. **Le jeton EST l'identité**, ce qui
+        rend son imprévisibilité non négociable.
+        """
+        for session in self:
+            if not session.sudo().access_token:
+                session.sudo().access_token = secrets.token_urlsafe(32)
+        return True
+
+    @api.model
+    def _find_by_access_token(self, token):
+        """Retrouve une session par son jeton, ou rien — jamais par son numéro."""
+        if not token or not isinstance(token, str):
+            return self.browse()
+        session = (
+            self.sudo()
+            .with_context(active_test=False)
+            .search([("access_token", "=", token)], limit=1)
+        )
+        if not session:
+            return self.browse()
+        limit = fields.Datetime.now() - timedelta(days=self._session_validity_days())
+        if session.create_date < limit or not session.active:
+            # La promesse faite au visiteur est datée : passé l'échéance, le
+            # lien ne rend rien plutôt que d'ouvrir une configuration qu'on a
+            # pu nettoyer entre-temps.
+            return self.browse()
+        return session
+
+    def _session_for_edit(self):
+        """Rend la session dans laquelle ÉCRIRE — la mienne, ou une fourche.
+
+        Une session appartient à une IDENTITÉ (D-092) : quand un utilisateur
+        identifié reprend celle d'un autre, une nouvelle session naît, reliée à
+        l'originale, et l'original garde sa version intacte.
+
+        ⚠️ La fourche a lieu à la première MODIFICATION, pas à l'ouverture —
+        sinon le commercial qui vient seulement regarder crée une session pour
+        rien. C'est la doctrine de D-082 appliquée ici.
+        """
+        self.ensure_one()
+        user = self.env.user
+        if self.user_id == user:
+            return self
+        fork = self.copy(
+            {
+                "user_id": user.id,
+                "parent_id": self.id,
+                "state": "draft",
+                "product_id": False,
+                "access_token": False,
+            }
+        )
+        fork._ensure_access_token()
+        fork._message_log(
+            body=self.env._(
+                "Configuration taken over from %(session)s", session=self.display_name
+            )
+        )
+        return fork
+
+    @api.autovacuum
+    def _gc_config_sessions(self):
+        """Archive les sessions abandonnées — D-082.
+
+        ⚠️ Le crochet se prend par le DÉCORATEUR en Odoo 18, pas par le nom
+        ([[L-137]]). Et le critère n'est pas seulement l'âge : une session
+        confirmée, ou qui a donné une variante, a servi — on n'y touche pas.
+        """
+        limit = fields.Datetime.now() - timedelta(days=self._session_validity_days())
+        abandoned = self.sudo().search(
+            [
+                ("state", "=", "draft"),
+                ("product_id", "=", False),
+                ("create_date", "<", limit),
+            ]
+        )
+        abandoned.write({"active": False})
 
     def action_confirm(self, product_id=None):
         for session in self:
@@ -894,7 +1029,12 @@ class ProductConfigSession(models.Model):
                         )
                     ) from exc
                 vals.update({"value_ids": [(6, 0, default_val_ids)]})
-        return super().create(vals_list)
+        sessions = super().create(vals_list)
+        # ⚠️ Le jeton se pose ICI et non dans un second `create` : la classe en
+        # définit déjà un, et une seconde définition du même nom écraserait la
+        # première EN SILENCE — c'est Python, pas Odoo, qui tranche ([[L-141]]).
+        sessions._ensure_access_token()
+        return sessions
 
     def create_get_variant(self, value_ids=None, custom_vals=None):
         """Creates a new product variant with the attributes passed
@@ -1012,7 +1152,7 @@ class ProductConfigSession(models.Model):
         return prices
 
     @api.model
-    def get_cfg_price(self, value_ids=None, custom_vals=None):
+    def get_cfg_price(self, value_ids=None, custom_vals=None, pricelist=None):
         """Computes the price of the configured product based on the
             configuration passed in via value_ids and custom_values
 
@@ -1047,7 +1187,25 @@ class ProductConfigSession(models.Model):
         if base_price is None:
             base_price = product_tmpl.list_price
         price_sqm = self._get_cfg_price_sqm(value_ids, custom_vals)
-        return base_price + price_extra + price_sqm
+
+        # ⚠️ OCA rendait `list_price + price_extra`, SANS liste de prix — alors
+        # que les options, elles, en tenaient compte (`_get_option_values`).
+        # Pour le flux particulier → professionnel, c'était bloquant : les deux
+        # voyaient le même prix (D-092).
+        #
+        # Le passage par la liste de prix n'est pas un calcul de plus : c'est le
+        # MÊME chemin que celui d'un devis — pourcentages, formules, devise,
+        # arrondis, cascades. Le prix de base y entre par le contexte, faute de
+        # variante : rien n'est créé avant le devis (D-082).
+        if pricelist is None:
+            pricelist = self.env.user.partner_id.property_product_pricelist
+        if not pricelist:
+            return base_price + price_extra + price_sqm
+        template = product_tmpl.with_context(
+            configurator_base_prices={product_tmpl.id: base_price},
+            current_attributes_price_extra=[price_extra, price_sqm],
+        )
+        return pricelist._get_product_price(template, 1.0)
 
     def _get_config_dimensions(self, value_ids=None, custom_vals=None):
         """Les deux cotes de la configuration COURANTE — D-098, D-161.

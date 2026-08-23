@@ -1244,6 +1244,25 @@ class ProductConfigSession(models.Model):
             return None
         return grid.get_price(dimensions["axis_x"], dimensions["axis_y"])
 
+    def get_config_surface(self, value_ids=None, custom_vals=None):
+        """La surface en m² de la configuration courante, ou 0 — D-161.
+
+        Point d'appel PUBLIC : c'est l'interface qui en a besoin, pour poser
+        `configurator_surface` dans le contexte et faire afficher aux valeurs au
+        mètre carré leur MONTANT plutôt que leur taux (arbitrage Gerry).
+
+        Rend 0 tant que les deux cotes ne sont pas connues — et zéro veut dire
+        « on ne sait pas encore », pas « c'est gratuit » : l'étiquette retombe
+        alors sur le taux, qui reste juste.
+        """
+        self.ensure_one()
+        dimensions = self._get_config_dimensions(value_ids, custom_vals)
+        if "axis_x" not in dimensions or "axis_y" not in dimensions:
+            return 0.0
+        return self.product_tmpl_id._grid_surface(
+            dimensions["axis_x"], dimensions["axis_y"]
+        )
+
     def _get_cfg_price_sqm(self, value_ids=None, custom_vals=None):
         """La part des suppléments AU MÈTRE CARRÉ — D-162.
 

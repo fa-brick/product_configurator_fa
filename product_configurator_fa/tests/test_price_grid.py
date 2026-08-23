@@ -313,6 +313,44 @@ class PriceGrid(BaseCommon):
         self.assertIn("/m²", shown)
         self.assertTrue(shown.startswith("RAL 8003"))
 
+    def test_17bis_with_the_surface_the_label_shows_the_AMOUNT(self):
+        """Le client voit ce que ÇA lui coûte, sans multiplier (arbitrage Gerry).
+
+        2,3 m × 2,1 m = 4,83 m² à 25 €/m² → 120,75.
+        """
+        session = self.env["product.config.session"].create(
+            {"product_tmpl_id": self.template.id, "user_id": self.env.user.id}
+        )
+        surface = session.get_config_surface(
+            custom_vals={self.attr_width.id: 2300, self.attr_height.id: 2100}
+        )
+        self.assertAlmostEqual(surface, 4.83, places=4)
+        shown = self.value_premium.with_context(
+            show_price_extra=True,
+            active_id=self.template.id,
+            configurator_surface=surface,
+        ).display_name
+        self.assertIn("120.75", shown)
+        self.assertNotIn("/m²", shown)
+
+    def test_17ter_no_surface_yet_means_the_RATE(self):
+        """⚠️ Zéro veut dire « on ne sait pas encore », pas « c'est gratuit » :
+        tant qu'une cote manque, on rend le taux plutôt qu'un montant calculé
+        sur une surface qu'on n'a pas."""
+        session = self.env["product.config.session"].create(
+            {"product_tmpl_id": self.template.id, "user_id": self.env.user.id}
+        )
+        surface = session.get_config_surface(
+            custom_vals={self.attr_width.id: 2300}  # la hauteur manque
+        )
+        self.assertEqual(surface, 0.0)
+        shown = self.value_premium.with_context(
+            show_price_extra=True,
+            active_id=self.template.id,
+            configurator_surface=surface,
+        ).display_name
+        self.assertIn("/m²", shown)
+
     def test_18_a_flat_extra_still_shows_as_a_flat_extra(self):
         """Le forfait d'OCA n'a pas changé de forme — seul le m² s'ajoute."""
         ptav = self.line_lacquer.product_template_value_ids.filtered(

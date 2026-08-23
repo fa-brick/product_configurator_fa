@@ -965,16 +965,29 @@ class ProductAttributeValue(models.Model):
         product_template_id = self.env.context.get("active_id", False)
         price_precision = self.env["decimal.precision"].precision_get("Product Price")
         rates = self.get_attribute_value_rates_sqm(product_template_id, self)
+        # La surface vient de l'INTERFACE, qui seule connaît la configuration en
+        # cours : `product.config.session.get_config_surface()`. Absente, on
+        # affiche le taux — c'est le cas du back-office, où aucune cote n'est
+        # saisie, et l'assistant d'OCA ne la fournira pas (D-097 l'abandonne).
+        surface = self.env.context.get("configurator_surface") or 0.0
         for attribute in self:
             extra_prices = attribute.get_attribute_value_extra_prices(
                 product_tmpl_id=product_template_id, pt_attr_value_ids=attribute
             )
             price_extra = extra_prices.get(attribute.id)
             rate = rates.get(attribute.id)
-            if rate:
-                # ⚠️ Un taux au m² ne s'affiche pas comme un forfait : sans le
-                # « /m² », « +25 » se lirait comme vingt-cinq euros, et le
-                # client d'une porte de 5 m² en paierait cent vingt-cinq.
+            if rate and surface:
+                # La surface est connue : le client voit ce que ÇA lui coûte,
+                # sans avoir à multiplier (arbitrage Gerry, 2026-08-23).
+                amount = rate * surface
+                name = f"{attribute.name} ( +{amount:.{price_precision}f} )"
+                attribute.display_name = name
+            elif rate:
+                # ⚠️ Pas encore de surface — les cotes ne sont pas toutes
+                # saisies. On rend le TAUX, qui reste juste, plutôt qu'un
+                # montant calculé sur une surface qu'on ne connaît pas. Et sans
+                # le « /m² », « +25 » se lirait comme vingt-cinq euros, quand le
+                # client d'une porte de 5 m² en paiera cent vingt-cinq.
                 name = f"{attribute.name} ( +{rate:.{price_precision}f} /m² )"
                 attribute.display_name = name
             elif price_extra:

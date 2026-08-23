@@ -768,6 +768,12 @@ class ProductAttributeValue(models.Model):
         digits="Product Price",
         help="Catalogue rate, copied onto each product that uses this value",
     )
+    # Exposé pour les écrans de la VALEUR : le mode se déclare sur l'attribut,
+    # mais c'est la valeur qu'on ouvre, et un champ ne peut pas se cacher sur
+    # une information que son enregistrement ne porte pas.
+    price_mode = fields.Selection(
+        related="attribute_id.price_mode", string="Extra Price Mode", readonly=True
+    )
     configurator_generated = fields.Boolean(
         string="Created by the Configurator",
         help="Set on values the configurator created from a free entry. "
@@ -926,6 +932,31 @@ class ProductAttributeValue(models.Model):
             extra_prices[attr_val_id.id] += line.price_extra
         return extra_prices
 
+    def get_attribute_value_rates_sqm(self, product_tmpl_id, pt_attr_value_ids):
+        """Les taux au m² de ces valeurs, sur ce produit — `{id de valeur: taux}`.
+
+        Ne rend que les valeurs dont la LIGNE est au mètre carré : un taux saisi
+        sur une ligne repassée au forfait ne doit pas ressurgir dans un libellé.
+
+        ⚠️ UNE requête pour tout le lot, là où le calcul des forfaits voisin en
+        fait une par valeur : `display_name` se calcule par paquets entiers dans
+        une liste, et c'est exactement là qu'une requête par ligne se paie.
+        """
+        if not product_tmpl_id or not pt_attr_value_ids:
+            return {}
+        lines = self.env["product.template.attribute.value"].search(
+            [
+                ("product_tmpl_id", "=", product_tmpl_id),
+                ("product_attribute_value_id", "in", pt_attr_value_ids.ids),
+                ("price_extra_sqm", "!=", 0),
+            ]
+        )
+        return {
+            line.product_attribute_value_id.id: line.price_extra_sqm
+            for line in lines
+            if line.attribute_line_id.price_mode == "per_sqm"
+        }
+
     def _compute_display_name(self):
         # useless return to make pylint happy
         res = super()._compute_display_name()
@@ -933,12 +964,20 @@ class ProductAttributeValue(models.Model):
             return res
         product_template_id = self.env.context.get("active_id", False)
         price_precision = self.env["decimal.precision"].precision_get("Product Price")
+        rates = self.get_attribute_value_rates_sqm(product_template_id, self)
         for attribute in self:
             extra_prices = attribute.get_attribute_value_extra_prices(
                 product_tmpl_id=product_template_id, pt_attr_value_ids=attribute
             )
             price_extra = extra_prices.get(attribute.id)
-            if price_extra:
+            rate = rates.get(attribute.id)
+            if rate:
+                # ⚠️ Un taux au m² ne s'affiche pas comme un forfait : sans le
+                # « /m² », « +25 » se lirait comme vingt-cinq euros, et le
+                # client d'une porte de 5 m² en paierait cent vingt-cinq.
+                name = f"{attribute.name} ( +{rate:.{price_precision}f} /m² )"
+                attribute.display_name = name
+            elif price_extra:
                 name = f"{attribute.name} ( +{price_extra:.{price_precision}f} )"
                 attribute.display_name = name
 

@@ -236,6 +236,47 @@
         </field>
     </record>
 
+    <record id="product_attribute_value_form_sqm" model="ir.ui.view">
+        <field name="name">product.attribute.line.value.form.sqm</field>
+        <field name="model">product.template.attribute.line</field>
+        <field name="inherit_id" ref="product.product_template_attribute_line_form" />
+        <field name="arch" type="xml">
+            <!-- Le formulaire d'une VALEUR, ouvert depuis la liste : sans lui, le
+                 taux ne se voyait qu'en colonne, et pas du tout sur la fiche. -->
+            <xpath expr="//field[@name='value_ids']/form/field[@name='name']" position="after">
+                <field name="price_mode" invisible="1" />
+                <field
+                    name="default_extra_price_sqm"
+                    invisible="price_mode != 'per_sqm'"
+                />
+            </xpath>
+            <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="after">
+                <field name="price_mode" column_invisible="True" />
+                <field
+                    name="default_extra_price_sqm"
+                    column_invisible="parent.price_mode != 'per_sqm'"
+                />
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_template_attribute_value_form_sqm" model="ir.ui.view">
+        <field name="name">product.template.attribute.value.form.sqm</field>
+        <field name="model">product.template.attribute.value</field>
+        <field name="inherit_id" ref="product.product_template_attribute_value_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='price_extra']" position="after">
+                <field name="price_mode" invisible="1" />
+                <field
+                    name="price_extra_sqm"
+                    widget="monetary"
+                    options="{'field_digits': True}"
+                    invisible="price_mode != 'per_sqm'"
+                />
+            </xpath>
+        </field>
+    </record>
+
     <!-- Product Attribute Line -->
     <record id="product_template_attribute_line_form_config" model="ir.ui.view">
         <field name="name">product.template.attribute.line.form</field>

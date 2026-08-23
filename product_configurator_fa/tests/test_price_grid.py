@@ -297,3 +297,39 @@ class PriceGrid(BaseCommon):
         variant = self._variant(2300, 2100)
         self.assertEqual(variant.lst_price, 420)
         self.assertEqual(variant._price_compute("list_price")[variant.id], 480)
+
+    def test_17_the_rate_shows_in_the_value_label(self):
+        """« Le prix au mètre carré doit paraître dans la valeur de l'attribut »
+        (Gerry, 2026-08-23).
+
+        ⚠️ Et il ne s'affiche PAS comme un forfait : sans le « /m² », « +25 » se
+        lirait comme vingt-cinq euros, et le client d'une porte de 5 m² en
+        paierait cent vingt-cinq.
+        """
+        shown = self.value_premium.with_context(
+            show_price_extra=True, active_id=self.template.id
+        ).display_name
+        self.assertIn("25", shown)
+        self.assertIn("/m²", shown)
+        self.assertTrue(shown.startswith("RAL 8003"))
+
+    def test_18_a_flat_extra_still_shows_as_a_flat_extra(self):
+        """Le forfait d'OCA n'a pas changé de forme — seul le m² s'ajoute."""
+        ptav = self.line_lacquer.product_template_value_ids.filtered(
+            lambda value: value.product_attribute_value_id == self.value_standard
+        )
+        ptav.price_extra = 40
+        shown = self.value_standard.with_context(
+            show_price_extra=True, active_id=self.template.id
+        ).display_name
+        self.assertIn("40", shown)
+        self.assertNotIn("/m²", shown)
+
+    def test_19_a_rate_left_on_a_flat_line_does_not_resurface(self):
+        """Repasser la ligne au forfait doit éteindre le taux, pas le laisser
+        traîner dans un libellé."""
+        self.line_lacquer.price_mode = "fixed"
+        shown = self.value_premium.with_context(
+            show_price_extra=True, active_id=self.template.id
+        ).display_name
+        self.assertNotIn("/m²", shown)

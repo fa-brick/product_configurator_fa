@@ -193,6 +193,58 @@ class ProductConfigurator(models.TransientModel):
             "price": price,
         }
 
+    def _auto_select_single_values(
+        self, domains, dynamic_fields, vals, product_tmpl_id=None
+    ):
+        """Retient d'office la valeur quand il n'en reste qu'UNE — D-167.
+
+        Règle donnée par Gerry : *« si on laisse une valeur sans condition, et que
+        c'est la seule solution pour l'attribut, alors elle se sélectionne
+        automatiquement. »* Elle ferme deux points d'un coup : l'attribut DÉRIVÉ de
+        Q-3 — restreindre à une seule valeur **vaut** poser cette valeur, et la
+        cascade « laquage spécial → couleur profil ∈ {blanc} » n'a plus besoin d'un
+        moteur de règles — et la teinte que l'enfant n'a pas (D-166), où la valeur
+        sans condition reste seule et devient le repli.
+
+        ⚠️ **L'autre moitié existait déjà** : `get_form_vals` sait effacer une
+        réponse devenue indisponible ; elle ne savait pas retenir celle qui reste.
+        Les deux vont ensemble, et dans cet ordre — sans quoi une valeur effacée
+        resterait vide jusqu'au clic suivant.
+
+        ⚠️ **PÉRIMÈTRE : les attributs à réponse unique et OBLIGATOIRES.**
+        · `multi` est écarté — imposer l'unique valeur d'une liste à cocher
+          transformerait une option en obligation ;
+        · un attribut **facultatif** est écarté lui aussi, et c'est le point à
+          arbitrer : le remplir d'office le rendrait impossible à laisser vide,
+          puisque chaque onchange le reposerait. Les cas cités par Gerry (la
+          couleur, la teinte du profil) sont tous obligatoires — « non interdit,
+          obligatoirement présent » (D-165, Q-7).
+
+        ⓘ Cette méthode ne décide PAS si la question reste affichée : c'est un
+        réglage, porté par l'attribut et surchargeable par le produit (D-168), et
+        il s'écrira avec l'écran qui le lit.
+        """
+        field_prefix = self._prefixes.get("field_prefix")
+        product_tmpl_id = product_tmpl_id or self.product_tmpl_id
+        for line in product_tmpl_id.attribute_line_ids:
+            if line.multi or not line.required:
+                continue
+            field_name = field_prefix + str(line.attribute_id.id)
+            domain = domains.get(field_name)
+            if not domain:
+                continue
+            available = domain[0][2]
+            if len(available) != 1:
+                continue
+            # Déjà répondu — on ne touche à rien. ⚠️ Une réponse EFFACÉE par la
+            # passe précédente vaut `None` ici, donc elle passe : c'est exactement
+            # le remplacement que D-167 exige.
+            if dynamic_fields.get(field_name):
+                continue
+            only_value = available[0]
+            vals[field_name] = only_value
+            dynamic_fields[field_name] = only_value
+
     def get_form_vals(
         self,
         dynamic_fields,
@@ -262,6 +314,12 @@ class ProductConfigurator(models.TransientModel):
             else:
                 # Use the single value if it exists in available IDs
                 vals[k] = v
+
+        # ── UNE VALEUR SEULE DISPONIBLE SE RETIENT D'ELLE-MÊME (D-167) ──────
+        # APRÈS la boucle ci-dessus, et l'ordre est la règle : celle-ci EFFACE une
+        # réponse devenue indisponible, celle-ci la REMPLACE. Faire l'inverse
+        # laisserait la valeur effacée en place jusqu'au prochain clic.
+        self._auto_select_single_values(domains, dynamic_fields, vals, product_tmpl_id)
 
         field_prefix = self._prefixes.get("field_prefix")
         # List of attributes to remove from value_ids as they are currently changed

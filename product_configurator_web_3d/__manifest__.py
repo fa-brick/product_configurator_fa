@@ -1,8 +1,8 @@
 {
     "name": "Product Configurator 3D Web (fa-brick)",
-    "version": "18.0.0.2.0",
+    "version": "18.0.0.3.0",
     "category": "Sales/Sales",
-    "summary": "3D configurator interface — the shell the views hang from",
+    "summary": "3D configurator interface — public routes, 3D viewer, views",
     "author": "fa-brick",
     # AGPL-3 comme le cœur du configurateur : ce module en dépend, et le SENS de
     # la dépendance décide de la licence (D-075). L'éditeur reste LGPL-3 et ne

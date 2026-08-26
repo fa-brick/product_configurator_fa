@@ -135,3 +135,31 @@ class TestPublicRoutes(HttpCase):
         brut = json.dumps(state)
         self.assertNotIn(self.session.access_token, brut)
         self.assertNotIn(self.session.name, brut)
+
+    # ── LA PAGE (lot 6) ──────────────────────────────────────────────────
+
+    def test_la_page_se_rend_pour_un_visiteur_anonyme(self):
+        """Elle est NUE : `web.frontend_layout`, sans `website` — et elle porte le
+        point de montage du composant."""
+        page = self.url_open(f"/configurator/{self.session.access_token}")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("product_configurator_web_3d.ConfiguratorPage", page.text)
+
+    def test_la_page_charge_le_bundle_qui_porte_le_VIEWER(self):
+        """⚠️ Sans `web.assets_frontend`, la page s'afficherait — vide. C'est le
+        blocage n° 2 du lot 6, et il se vérifie ici de bout en bout."""
+        page = self.url_open(f"/configurator/{self.session.access_token}")
+        self.assertIn("assets_frontend", page.text)
+
+    def test_un_jeton_inconnu_rend_QUAND_MÊME_la_page(self):
+        """⚠️ Délibéré (D-190) : c'est l'appel d'état qui dira que le lien ne vaut
+        rien. Un 404 ici dirait à qui tâtonne QUELS JETONS EXISTENT."""
+        page = self.url_open("/configurator/" + "z" * 32)
+        self.assertEqual(page.status_code, 200)
+
+    def test_le_jeton_voyage_en_PROP_et_nulle_part_ailleurs(self):
+        page = self.url_open(f"/configurator/{self.session.access_token}")
+        # Il est dans le prop du composant — c'est ainsi qu'il entre — et la page ne
+        # porte ni le numéro de session ni un autre jeton.
+        self.assertIn(self.session.access_token, page.text)
+        self.assertNotIn(self.session.name, page.text)

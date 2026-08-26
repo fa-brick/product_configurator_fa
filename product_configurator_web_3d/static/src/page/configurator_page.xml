@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+<t t-name="product_configurator_web_3d.ConfiguratorPage">
+    <!-- ⚠️ LE VIEWER À GAUCHE, LES QUESTIONS À DROITE (arbitrage Gerry, 2026-08-26).
+         En colonne sous 900 px : sur un téléphone, la 3D en premier — c'est elle qu'on
+         vient voir, et le lien arrive souvent par courriel. -->
+    <div class="o_cfg3d_page">
+
+        <div t-if="state.model and state.model.error" class="o_cfg3d_error">
+            <p t-esc="state.model.message"/>
+        </div>
+
+        <t t-else="">
+            <div class="o_cfg3d_viewer">
+                <PartViewer3D sketchItems="sketchItems"
+                              onSelectSketch="() => {}"
+                              displayMode="'realistic'"
+                              showPlanes="false"
+                              origineVisible="false"/>
+            </div>
+
+            <aside class="o_cfg3d_side">
+                <h1 class="o_cfg3d_title" t-esc="state.model and state.model.productName"/>
+
+                <div t-if="state.model and state.model.closed" class="o_cfg3d_closed"
+                     t-esc="closedLabel"/>
+
+                <t t-foreach="questions" t-as="question" t-key="question.id">
+                    <section class="o_cfg3d_question">
+                        <h2 t-esc="question.name"/>
+                        <div class="o_cfg3d_values">
+                            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                                <!-- ⚠️ Une valeur ÉTEINTE reste un bouton : c'est D-178,
+                                     un appui doit pouvoir en donner la raison. `disabled`
+                                     interdirait l'appui, donc la raison. -->
+                                <button class="o_cfg3d_value"
+                                        t-att-class="{
+                                            'o_cfg3d_value--chosen': value.chosen,
+                                            'o_cfg3d_value--muted': value.muted }"
+                                        t-on-click="() => this.onPick(question.id, value)">
+                                    <span t-esc="value.name"/>
+                                </button>
+                            </t>
+                        </div>
+                    </section>
+                </t>
+
+                <p t-if="!questions.length and !state.loading" class="o_cfg3d_note"
+                   t-esc="emptyLabel"/>
+
+                <!-- La raison d'un refus, là où le doigt vient de se poser. -->
+                <p t-if="state.reason" class="o_cfg3d_reason" t-esc="state.reason"/>
+
+                <div class="o_cfg3d_price">
+                    <span t-esc="priceLabel"/>
+                    <strong t-esc="price"/>
+                </div>
+            </aside>
+        </t>
+    </div>
+</t>
+</templates>

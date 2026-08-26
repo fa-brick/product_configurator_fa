@@ -24,6 +24,8 @@ inconnu, jeton périmé : la réponse est la même, `unknown_session`. Distingue
 jamais l'identifiant interne de la session ni un autre jeton : une page publique
 ne doit rien laisser filtrer qui permette d'énumérer.
 """
+import json
+
 from odoo import http
 from odoo.http import request
 
@@ -40,6 +42,27 @@ class ProductConfiguratorWeb3D(http.Controller):
         traversent.
         """
         return request.env["product.config.session"].sudo()._find_by_access_token(token)
+
+    @http.route(
+        "/configurator/<string:token>", type="http", auth="public", website=False,
+        sitemap=False,
+    )
+    def page(self, token, **kwargs):
+        """La page NUE — viewer à gauche, questions à droite (Gerry, 2026-08-26).
+
+        ⚠️ **Le jeton n'est pas vérifié ici, et c'est délibéré.** La page se rend, le
+        composant appelle `/configurator/state`, et c'est cette réponse qui dit si le
+        lien vaut quelque chose. Vérifier deux fois obligerait à répondre deux fois la
+        même chose — et un 404 ici dirait à qui tâtonne **quels jetons existent**, ce
+        que D-190 refuse précisément.
+
+        ⓘ `sitemap=False` : une configuration n'est pas une page à indexer. Sans lui,
+        un moteur qui suivrait un lien partagé enregistrerait le jeton d'un client.
+        """
+        return request.render(
+            "product_configurator_web_3d.configurator_page",
+            {"props": json.dumps({"token": token})},
+        )
 
     @http.route(
         "/configurator/state", type="json", auth="public", methods=["POST"],

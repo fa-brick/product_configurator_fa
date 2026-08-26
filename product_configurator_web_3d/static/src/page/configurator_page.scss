@@ -1,0 +1,63 @@
+/* La page publique du configurateur — viewer à gauche, questions à droite.
+   Aucune couleur de thème n'est empruntée : cette page est NUE, et rien de Bootstrap ne
+   décide de son fond. */
+.o_cfg3d_page {
+    display: flex;
+    align-items: stretch;
+    min-height: 100vh;
+
+    /* ⚠️ Sous 900 px, la 3D PASSE AU-DESSUS : le lien arrive souvent par courriel, donc
+       sur un téléphone, et c'est le produit qu'on vient voir en premier. */
+    @media (max-width: 900px) {
+        flex-direction: column;
+    }
+}
+
+.o_cfg3d_viewer {
+    flex: 1 1 auto;
+    position: relative;
+    min-height: 45vh;
+}
+
+.o_cfg3d_side {
+    flex: 0 0 340px;
+    padding: 16px;
+    overflow-y: auto;
+    border-left: 1px solid rgba(0, 0, 0, 0.08);
+
+    @media (max-width: 900px) {
+        flex: 1 1 auto;
+        border-left: none;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+    }
+}
+
+.o_cfg3d_title { font-size: 20px; margin-bottom: 12px; }
+.o_cfg3d_question { margin-bottom: 16px; h2 { font-size: 13px; opacity: 0.7; } }
+.o_cfg3d_values { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.o_cfg3d_value {
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    padding: 6px 10px;
+    background: transparent;
+
+    &--chosen { border-color: currentColor; font-weight: 600; }
+    /* ÉTEINTE, pas désactivée : le bouton reste cliquable pour pouvoir DIRE pourquoi. */
+    &--muted { opacity: 0.4; }
+}
+
+.o_cfg3d_price {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.o_cfg3d_reason, .o_cfg3d_note, .o_cfg3d_closed {
+    font-size: 12.5px;
+    opacity: 0.75;
+    margin: 8px 0;
+}
+
+.o_cfg3d_error { margin: 15vh auto; text-align: center; }

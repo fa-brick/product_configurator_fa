@@ -12,6 +12,7 @@
     "depends": ["product_configurator_fa", "product_editor"],
     "data": [
         "views/product_view.xml",
+        "views/configurator_page.xml",
     ],
     "assets": {
         # ══ LA PAGE PUBLIQUE A BESOIN DU VIEWER, PAS DE L'ÉDITEUR ══════════════
@@ -29,6 +30,12 @@
         # divergerait (doc Odoo 18 « assets », directive `include`).
         "web.assets_frontend": [
             ("include", "product_editor._viewer3d"),
+            # La PAGE elle-même — après le viewer qu'elle monte et la projection qu'elle
+            # appelle : l'ordre d'un bundle est significatif (L-001 côté éditeur).
+            "product_configurator_web_3d/static/src/configurator_state.js",
+            "product_configurator_web_3d/static/src/page/configurator_page.scss",
+            "product_configurator_web_3d/static/src/page/configurator_page.xml",
+            "product_configurator_web_3d/static/src/page/configurator_page.js",
         ],
     },
     "installable": True,

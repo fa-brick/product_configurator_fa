@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         LA PAGE PUBLIQUE — nue (lot 6, D-090)
+         ══════════════════════════════════════════════════════════════════════
+
+         ⚠️ `web.frontend_layout` et NON `website.layout` : ce module ne dépend pas de
+         `website`, et n'a pas à en dépendre. Le gabarit du module `web` charge déjà
+         `web.assets_frontend` — donc le viewer 3D — et accepte `no_header` / `no_footer`.
+         Y ajouter `website` amènerait ses menus, son éditeur et sa mise en page pour une
+         page qui n'en veut aucun (arbitrage Gerry, 2026-08-26 : « une page nue »).
+
+         ⓘ Le composant est monté par le service de composants publics d'Odoo 18 : il
+         cherche les `<owl-component name="…">` de la page. Le JETON entre ici, par un
+         prop, et ne ressort d'aucune réponse (D-190). -->
+    <template id="configurator_page" name="3D product configurator">
+        <t t-call="web.frontend_layout">
+            <t t-set="no_header" t-value="True"/>
+            <t t-set="no_footer" t-value="True"/>
+            <t t-set="html_data" t-value="{'style': 'height: 100%;'}"/>
+            <div id="wrap">
+                <owl-component name="product_configurator_web_3d.ConfiguratorPage"
+                               t-att-props="props"/>
+            </div>
+        </t>
+    </template>
+
+</odoo>

@@ -1,0 +1,17 @@
+{
+  "testEnvironment": "node",
+  "transform": {
+    "^.+\\.js$": "babel-jest"
+  },
+  "testMatch": [
+    "**/static/tests/**/*.test.js"
+  ],
+  "moduleNameMapper": {
+    "^@odoo/owl$": "<rootDir>/product_configurator_web_3d/static/tests/__mocks__/owl.js",
+    "^@web/core/l10n/translation$": "<rootDir>/product_configurator_web_3d/static/tests/__mocks__/web_core_l10n_translation.js",
+    "^@web/core/registry$": "<rootDir>/product_configurator_web_3d/static/tests/__mocks__/web_registry.js",
+    "^@web/core/network/rpc$": "<rootDir>/product_configurator_web_3d/static/tests/__mocks__/web_rpc.js",
+    "^@product_configurator_web_3d/(.*)$": "<rootDir>/product_configurator_web_3d/static/src/$1",
+    "^@product_editor/(.*)$": "<rootDir>/product_configurator_web_3d/static/tests/__mocks__/product_editor_stub.js"
+  }
+}

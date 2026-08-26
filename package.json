@@ -1,0 +1,15 @@
+{
+  "name": "product-configurator-fa",
+  "private": true,
+  "description": "Harnais de test JS du fork — blocage n° 4 du lot 6",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/preset-env": "^8.0.2",
+    "babel-jest": "^30.4.1",
+    "jest": "^30.4.2"
+  }
+}

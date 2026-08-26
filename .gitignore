@@ -86,3 +86,8 @@ docs/_build/
 
 # OCA rules
 !static/lib/
+
+# Harnais de test JS (lot 6, blocage n° 4) — les dépendances s'installent, elles ne se
+# versionnent pas. `package-lock.json`, LUI, se versionne : c'est ce qui rend deux
+# installations identiques.
+node_modules/

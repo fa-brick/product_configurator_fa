@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <record id="configurator_add_step_form" model="ir.ui.view">
+        <field name="name">product.configurator.add.step.form</field>
+        <field name="model">product.configurator.add.step</field>
+        <field name="arch" type="xml">
+            <form string="Add a step">
+                <group>
+                    <field name="product_tmpl_id" invisible="1" />
+                    <field name="config_step_id" options="{'no_create_edit': True}" />
+                    <!-- ⚠️ « À partir d'où » n'est pas un détail : l'étape est un
+                         SÉPARATEUR, et ce qui suit lui appartient (D-202). -->
+                    <field
+                        name="attribute_line_id"
+                        domain="[('product_tmpl_id', '=', product_tmpl_id)]"
+                        options="{'no_create': True, 'no_create_edit': True}"
+                    />
+                </group>
+                <footer>
+                    <button
+                        name="action_apply"
+                        type="object"
+                        string="Add"
+                        class="btn-primary"
+                    />
+                    <button string="Cancel" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

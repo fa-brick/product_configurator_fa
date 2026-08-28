@@ -86,7 +86,26 @@
                         </td>
                     </tr>
                 </t>
+                <!-- ⚠️ Une liste vide SANS point d'entrée se lit comme une panne.
+                     Le pied ci-dessous existe toujours ; ceci ne fait que le dire. -->
+                <tr t-if="isEmpty">
+                    <td colspan="5" class="text-muted fst-italic">
+                        No attribute yet — a configurable product needs at least one.
+                    </td>
+                </tr>
             </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="5">
+                        <button class="btn btn-link ps-0" t-on-click="() => this.addAttribute()">
+                            Add an attribute
+                        </button>
+                        <button class="btn btn-link" t-on-click="() => this.addStep()">
+                            Add a step
+                        </button>
+                    </td>
+                </tr>
+            </tfoot>
         </table>
     </t>
 

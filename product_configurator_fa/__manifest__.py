@@ -23,6 +23,7 @@
         "data/ir_sequence_data.xml",
         "data/ir_config_parameter_data.xml",
         "data/ir_cron_data.xml",
+        "wizard/configurator_add_step_view.xml",
         "views/product_view.xml",
         "views/product_attribute_view.xml",
         "views/product_config_view.xml",

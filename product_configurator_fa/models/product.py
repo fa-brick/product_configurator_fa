@@ -5,7 +5,7 @@ from mako.runtime import Context
 from mako.template import Template
 
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -209,6 +209,48 @@ class ProductTemplate(models.Model):
         self.ensure_one()
         self.env["product.template.attribute.line"].browse(line_id).config_step_id = False
         return True
+
+    def action_configurator_add_attribute(self):
+        """Ajoute un attribut depuis l'arbre — D-212.
+
+        ⓘ Le formulaire de LIGNE, pas une liste d'attributs : on y choisit
+        l'attribut ET ses valeurs, et un attribut sans valeur ne serait pas une
+        ligne valide pour le cœur.
+        """
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.env._("Add an attribute"),
+            "res_model": "product.template.attribute.line",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_product_tmpl_id": self.id},
+        }
+
+    def action_configurator_add_step(self):
+        """Pose une étape — en demandant SUR QUELLE LIGNE elle s'ouvre.
+
+        ⚠️ Une étape ne flotte pas : c'est un marqueur porté par la ligne qui
+        l'ouvre (D-202). Il faut donc deux informations, d'où l'assistant. Un
+        bouton qui devinerait « la dernière ligne » serait juste une fois sur
+        deux.
+        """
+        self.ensure_one()
+        if not self.attribute_line_ids:
+            raise UserError(
+                self.env._(
+                    "Add an attribute first: a step opens ON an attribute — it "
+                    "and everything below belong to it."
+                )
+            )
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.env._("Add a step"),
+            "res_model": "product.configurator.add.step",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_product_tmpl_id": self.id},
+        }
 
     def configurator_reorder(self, line_ids):
         """Réordonne les lignes d'attribut — l'ordre PORTE l'appartenance.

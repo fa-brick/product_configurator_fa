@@ -168,6 +168,29 @@ export class ConfiguratorTree extends Component {
         await this.load();
     }
 
+    /**
+     * ⚠️ L'ARBRE VIDE DOIT DIRE QUOI FAIRE. Une liste sans ligne et sans point
+     * d'entrée n'est pas « vide » : elle est cassée, du point de vue de qui la
+     * regarde. Constaté à l'écran par Gerry sur un produit sans attribut.
+     */
+    get isEmpty() {
+        return !(this.state.rows || []).length;
+    }
+
+    async addAttribute() {
+        const action = await this.orm.call(
+            "product.template", "action_configurator_add_attribute", [[this.templateId]]
+        );
+        this.action.doAction(action, {onClose: () => this.load()});
+    }
+
+    async addStep() {
+        const action = await this.orm.call(
+            "product.template", "action_configurator_add_step", [[this.templateId]]
+        );
+        this.action.doAction(action, {onClose: () => this.load()});
+    }
+
     async openValues(row) {
         const action = await this.orm.call(
             "product.template.attribute.line", "action_open_values", [[row.id]]

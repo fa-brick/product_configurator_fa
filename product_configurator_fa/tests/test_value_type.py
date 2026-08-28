@@ -2,7 +2,7 @@ from odoo.addons.base.tests.common import BaseCommon
 import importlib.util
 import os
 
-from odoo.tests.common import Form
+from odoo.tests import Form
 
 
 class ValueType(BaseCommon):

@@ -350,7 +350,18 @@ class ProductAttribute(models.Model):
         valeur proposée mais jamais retenue finit donc par s'effacer d'elle-même.
         """
         self.ensure_one()
-        produits = self._proposed_products()
+        return self._materialise_products(self._proposed_products())
+
+    def _materialise_products(self, produits):
+        """Donne une valeur à CHAQUE produit fourni — le geste, sans la source.
+
+        ⓘ Extrait de `_materialise_proposed_values` pour C4 : une condition qui
+        désigne des produits (D-201) a besoin du même geste, mais sur un ensemble
+        **choisi à la main** plutôt que sur le résultat d'un filtre. Deux copies
+        de cette mécanique auraient fini par diverger sur la réanimation ou sur
+        le marquage.
+        """
+        self.ensure_one()
         if not produits:
             return self.env["product.attribute.value"]
 

@@ -54,12 +54,23 @@
                                     name="template_attribute_value_ids"
                                     column_invisible="1"
                                 />
+                                <field name="attribute_value_type" column_invisible="1" />
                                 <field
                                     name="value_ids"
                                     widget="many2many_tags"
                                     options="{'no_create': True, 'no_create_edit': True}"
                                     context="{'show_attribute': False}"
                                     domain="[('id', 'in', template_attribute_value_ids)]"
+                                    invisible="product_ids"
+                                />
+                                <!-- C4, D-201 : la seconde forme de feuille. Visible
+                                     seulement sur un attribut de type produit, et elle
+                                     efface l'autre — une ligne désigne l'un OU l'autre. -->
+                                <field
+                                    name="product_ids"
+                                    widget="many2many_tags"
+                                    options="{'no_create': True, 'no_create_edit': True}"
+                                    invisible="attribute_value_type != 'product'"
                                 />
                                 <field name="operator" />
                             </list>
@@ -100,12 +111,23 @@
                                     name="template_attribute_value_ids"
                                     column_invisible="1"
                                 />
+                                <field name="attribute_value_type" column_invisible="1" />
                                 <field
                                     name="value_ids"
                                     widget="many2many_tags"
                                     options="{'no_create': True, 'no_create_edit': True}"
                                     context="{'show_attribute': False}"
                                     domain="[('id', 'in', template_attribute_value_ids)]"
+                                    invisible="product_ids"
+                                />
+                                <!-- C4, D-201 : la seconde forme de feuille. Visible
+                                     seulement sur un attribut de type produit, et elle
+                                     efface l'autre — une ligne désigne l'un OU l'autre. -->
+                                <field
+                                    name="product_ids"
+                                    widget="many2many_tags"
+                                    options="{'no_create': True, 'no_create_edit': True}"
+                                    invisible="attribute_value_type != 'product'"
                                 />
                                 <field name="operator" />
                             </list>

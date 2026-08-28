@@ -43,18 +43,24 @@ class ProductConfigDomain(models.Model):
             lines = domain.trans_implied_ids.mapped("domain_line_ids").sorted()
             if not lines:
                 continue
+            # ⓘ `_resolved_value_ids` — et non `value_ids` — pour que la forme
+            # « produit » (C4, D-201) soit évaluée par le MÊME moteur.
             for line in lines[:-1]:
                 if line.operator == "or":
                     computed_domain.append("|")
                 computed_domain.append(
-                    (line.attribute_id.id, line.condition, line.value_ids.ids)
+                    (
+                        line.attribute_id.id,
+                        line.condition,
+                        line._resolved_value_ids().ids,
+                    )
                 )
             # ensure 2 operands follow the last operator
             computed_domain.append(
                 (
                     lines[-1].attribute_id.id,
                     lines[-1].condition,
-                    lines[-1].value_ids.ids,
+                    lines[-1]._resolved_value_ids().ids,
                 )
             )
         return computed_domain
@@ -69,6 +75,20 @@ class ProductConfigDomain(models.Model):
         deux conventions pour la même chose finiraient par diverger.
         """
         return f"{self.ATTRIBUTE_FIELD_PREFIX}{attribute.id}"
+
+    PRODUCT_FIELD_PREFIX = "__product_"
+
+    @api.model
+    def _product_field_name(self, attribute):
+        """Le champ fictif d'une feuille « PRODUIT » — C4, D-201.
+
+        ⚠️ **Un préfixe distinct, et c'est le point.** Rendre une feuille
+        « produit » sous le champ des valeurs l'aurait fait revenir de l'éditeur
+        en feuille « valeur » : la règle se serait mise à désigner des valeurs
+        FIGÉES là où l'auteur avait désigné des produits — le silence exact que
+        `from_odoo_domain` existe pour empêcher (D-080).
+        """
+        return f"{self.PRODUCT_FIELD_PREFIX}{attribute.id}"
 
     def to_odoo_domain(self):
         """Rend la condition sous la forme que le `DomainSelector` sait lire.
@@ -88,23 +108,24 @@ class ProductConfigDomain(models.Model):
         for line in lines[:-1]:
             if line.operator == "or":
                 domain.append("|")
-            domain.append(
-                (
-                    self._attribute_field_name(line.attribute_id),
-                    line.condition,
-                    line.value_ids.ids,
-                )
-            )
+            domain.append(self._leaf_of(line))
         if lines:
-            last = lines[-1]
-            domain.append(
-                (
-                    self._attribute_field_name(last.attribute_id),
-                    last.condition,
-                    last.value_ids.ids,
-                )
-            )
+            domain.append(self._leaf_of(lines[-1]))
         return domain
+
+    def _leaf_of(self, line):
+        """La feuille d'éditeur d'une ligne — selon la forme qu'elle porte."""
+        if line.product_ids:
+            return (
+                self._product_field_name(line.attribute_id),
+                line.condition,
+                line.product_ids.ids,
+            )
+        return (
+            self._attribute_field_name(line.attribute_id),
+            line.condition,
+            line.value_ids.ids,
+        )
 
     def from_odoo_domain(self, domain):
         """Réécrit les lignes de la condition depuis un domaine d'éditeur.
@@ -131,7 +152,10 @@ class ProductConfigDomain(models.Model):
                 pending_or = True
                 continue
             field_name, operator, values = leaf
-            if not str(field_name).startswith(self.ATTRIBUTE_FIELD_PREFIX):
+            produits = str(field_name).startswith(self.PRODUCT_FIELD_PREFIX)
+            if not produits and not str(field_name).startswith(
+                self.ATTRIBUTE_FIELD_PREFIX
+            ):
                 raise ValidationError(
                     self.env._(
                         "A configuration condition can only test attributes, "
@@ -147,7 +171,12 @@ class ProductConfigDomain(models.Model):
                         operator=operator,
                     )
                 )
-            attribute_id = int(field_name[len(self.ATTRIBUTE_FIELD_PREFIX) :])
+            prefixe = (
+                self.PRODUCT_FIELD_PREFIX if produits
+                else self.ATTRIBUTE_FIELD_PREFIX
+            )
+            attribute_id = int(field_name[len(prefixe) :])
+            champ = "product_ids" if produits else "value_ids"
             lines.append(
                 (
                     0,
@@ -156,7 +185,7 @@ class ProductConfigDomain(models.Model):
                         "attribute_id": attribute_id,
                         "condition": operator,
                         "operator": "or" if pending_or else "and",
-                        "value_ids": [(6, 0, list(values))],
+                        champ: [(6, 0, list(values))],
                     },
                 )
             )
@@ -191,6 +220,7 @@ class ProductConfigDomain(models.Model):
         "domain_line_ids.attribute_id",
         "domain_line_ids.condition",
         "domain_line_ids.value_ids",
+        "domain_line_ids.product_ids",
         "domain_line_ids.operator",
         "domain_line_ids.sequence",
     )
@@ -240,7 +270,12 @@ class ProductConfigDomain(models.Model):
         labels = []
         lignes = self.domain_line_ids.sorted()
         for index, ligne in enumerate(lignes):
-            valeurs = " / ".join(ligne.value_ids.mapped("name"))
+            # ⓘ Une feuille « produit » se lit par ses PRODUITS, pas par les
+            # valeurs qu'elle résout : c'est ce que son auteur a écrit.
+            designes = ligne.product_ids or ligne.value_ids
+            valeurs = " / ".join(
+                designes.mapped("display_name" if ligne.product_ids else "name")
+            )
             dedans = ligne.condition == "in"
             libelle = "%s %s %s" % (
                 ligne.attribute_id.name or "?",
@@ -344,8 +379,120 @@ class ProductConfigDomainLine(models.Model):
         column1="line_id",
         column2="attribute_id",
         string="Values",
-        required=True,
     )
+
+    # ─ LA SECONDE FORME DE FEUILLE : DÉSIGNER DES PRODUITS — C4, D-201 ──────
+    #
+    # Arbitrage de Gerry : *« les conditions portent sur les valeurs d'attribut
+    # ET sur les produits. »* Les deux formes COEXISTENT — celle-ci n'en
+    # remplace aucune.
+    #
+    # ⚠️ **Pourquoi une seconde forme est nécessaire.** Sur un attribut à valeurs
+    # dynamiques, les valeurs n'existent qu'APRÈS avoir été proposées ou
+    # retenues : sans cette forme, une règle serait **impossible à écrire** tant
+    # que le catalogue de valeurs est vide. Désigner le produit, lui, se fait
+    # toujours.
+    #
+    # ⓘ L'ÉVALUATION RESTE UNIQUE : une feuille « produit » se résout en valeurs
+    # au moment de l'évaluation (`_resolved_value_ids`). Un seul moteur, deux
+    # formes de stockage — sinon `validate_domains_against_sels` aurait dû
+    # apprendre un second vocabulaire, et les deux se seraient écartés.
+    product_ids = fields.Many2many(
+        comodel_name="product.product",
+        relation="product_config_domain_line_product_rel",
+        column1="line_id",
+        column2="product_id",
+        string="Products",
+        help="Designate the products directly instead of their attribute "
+             "values. Useful on attributes with dynamic values, whose values "
+             "do not exist until they have been offered.",
+    )
+    attribute_value_type = fields.Selection(
+        related="attribute_id.value_type",
+        string="Attribute value type",
+    )
+
+    def _resolved_value_ids(self):
+        """Les valeurs que cette ligne teste — quelle que soit sa forme.
+
+        ⚠️ **LE SEUL POINT OÙ LES DEUX FORMES SE REJOIGNENT.** Tout ce qui lit
+        une condition passe par ici : l'évaluation, le résumé en pastilles, le
+        rendu vers l'éditeur. Une lecture qui prendrait `value_ids` en direct
+        verrait une feuille « produit » comme VIDE — donc un `in` qui ne matche
+        jamais et un `not in` qui matche toujours, en silence.
+        """
+        valeurs = self.env["product.attribute.value"]
+        for line in self:
+            if line.product_ids:
+                # ⓘ Les valeurs existent : elles sont matérialisées à
+                # l'enregistrement de la ligne (voir `_materialise_designated`),
+                # jamais ici — évaluer une condition ne doit rien écrire.
+                valeurs |= line.attribute_id.value_ids.filtered(
+                    lambda v, line=line: v.product_id in line.product_ids
+                )
+            else:
+                valeurs |= line.value_ids
+        return valeurs
+
+    @api.constrains("attribute_id", "value_ids", "product_ids")
+    def _check_leaf_form(self):
+        """Une ligne désigne des valeurs OU des produits — jamais les deux.
+
+        ⚠️ `value_ids` était `required` ; il ne peut plus l'être, sinon la forme
+        « produit » serait impossible à enregistrer. Cette garde REMPLACE cette
+        obligation : sans elle, une ligne vide passerait — et une condition vide
+        n'exclut rien, en silence.
+
+        ⚠️ **`attribute_id` est dans la liste EXPRÈS, et c'est le piège.** Odoo
+        ne déclenche une contrainte que pour les champs RÉELLEMENT écrits : une
+        ligne qui ne mentionne ni valeurs ni produits ne touchait aucun des deux
+        champs surveillés, et passait donc **sans être vérifiée** — exactement le
+        cas que cette garde existe pour attraper. `attribute_id` étant
+        obligatoire, il est toujours présent à la création.
+        """
+        for line in self:
+            if bool(line.value_ids) == bool(line.product_ids):
+                raise ValidationError(
+                    self.env._(
+                        "A condition line must designate either values or "
+                        "products, not both and not neither."
+                    )
+                )
+
+    def _materialise_designated(self):
+        """Donne une valeur à chaque produit désigné — au moment de l'écriture.
+
+        ⓘ Même geste que le filtre dynamique (D-222), et pour la même raison :
+        l'évaluation doit rester une LECTURE. Matérialiser à la volée aurait
+        écrit en base au milieu d'une configuration, y compris en lecture seule.
+        """
+        for line in self.filtered("product_ids"):
+            line.attribute_id._materialise_products(line.product_ids)
+
+    @api.onchange("attribute_id")
+    def _onchange_attribute_purge_leaf(self):
+        """Changer d'attribut vide la feuille — les deux formes.
+
+        ⚠️ Sans cela, la ligne gardait les valeurs de l'attribut PRÉCÉDENT :
+        `_resolved_value_ids` renvoyait des valeurs étrangères à l'attribut
+        testé, et la condition ne pouvait plus être vraie. Le même piège que la
+        purge des produits à la bascule de `value_type`.
+        """
+        self.value_ids = False
+        self.product_ids = False
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        lines._materialise_designated()
+        return lines
+
+    def write(self, vals):
+        res = super().write(vals)
+        if "product_ids" in vals or "attribute_id" in vals:
+            self._materialise_designated()
+        return res
+
     operator = fields.Selection(
         selection=_get_domain_operators,
         string="Operators",

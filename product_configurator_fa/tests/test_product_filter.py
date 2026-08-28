@@ -176,7 +176,7 @@ class ProductFilter(BaseCommon):
         le pire des messages d'erreur (D-194). Éprouvé par `Form`, seul chemin
         où un onchange existe ([[L-157]]).
         """
-        from odoo.tests.common import Form
+        from odoo.tests import Form
 
         self.attribute.dynamic_values = True
         self.attribute.product_filter_domain = str(
@@ -189,7 +189,7 @@ class ProductFilter(BaseCommon):
 
     def test_14_and_unticking_the_mode_clears_the_filter_too(self):
         """ⓘ Revenir à une liste tenue à la main : le filtre n'a plus d'objet."""
-        from odoo.tests.common import Form
+        from odoo.tests import Form
 
         self.attribute.dynamic_values = True
         self.attribute.product_filter_domain = str(

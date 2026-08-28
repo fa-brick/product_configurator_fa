@@ -793,6 +793,22 @@ class ProductTemplate(models.Model):
                 "store": False,
                 "readonly": True,
             }
+            # ⓘ C4, D-201 — un attribut de type PRODUIT se teste aussi par ses
+            # produits. Le champ est offert EN PLUS, jamais à la place : les
+            # deux formes coexistent, et une règle déjà écrite sur des valeurs
+            # doit continuer de s'éditer telle quelle.
+            if attribute.value_type == "product":
+                fields[domain_obj._product_field_name(attribute)] = {
+                    "string": self.env._(
+                        "%(attribute)s (products)", attribute=attribute.name
+                    ),
+                    "type": "many2one",
+                    "relation": "product.product",
+                    "searchable": True,
+                    "sortable": False,
+                    "store": False,
+                    "readonly": True,
+                }
         return fields
 
     price_grid_ids = fields.One2many(

@@ -41,6 +41,37 @@ class ConfiguratorAdd(BaseCommon):
         self.assertEqual(action["target"], "new")
         self.assertEqual(action["context"]["default_product_tmpl_id"], self.empty.id)
 
+    def test_10_l_assistant_est_utilisable_par_un_GESTIONNAIRE_pas_seulement_admin(self):
+        """⚠️ Le modèle n'avait AUCUNE règle d'accès — Odoo le disait à chaque
+
+        démarrage, et je l'avais laissé passer. Un `TransientModel` sans droits
+        est ouvert au superutilisateur seul : tous les tests passaient, et le
+        bouton aurait levé « accès refusé » chez le premier gestionnaire à s'en
+        servir. Cette couture s'exécute SOUS un utilisateur réel — c'est tout
+        l'objet.
+        """
+        gestionnaire = self.env["res.users"].create({
+            "name": "Config manager",
+            "login": "cfg_manager_acl",
+            "groups_id": [(6, 0, [
+                self.env.ref("base.group_user").id,
+                self.env.ref(
+                    "product_configurator_fa"
+                    ".group_product_configurator_fa_manager"
+                ).id,
+            ])],
+        })
+        assistant = (
+            self.env["product.configurator.add.step"]
+            .with_user(gestionnaire)
+            .create({
+                "product_tmpl_id": self.filled.id,
+                "config_step_id": self.step.id,
+                "attribute_line_id": self.filled.attribute_line_ids[0].id,
+            })
+        )
+        self.assertTrue(assistant.id)
+
     def test_02_adding_a_step_on_an_EMPTY_product_explains_why_it_cannot(self):
         """⚠️ C'est la contrepartie de la forme (A) : une étape ne flotte pas.
 

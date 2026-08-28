@@ -132,6 +132,21 @@ class ProductAttributeValue(models.Model):
         readonly=True,
     )
 
+    # ─ LA LIGNE SE REMPLIT SEULE — D-198 ────────────────────────────────────
+    #
+    # ⚠️ La miniature suivait déjà (elle est `related`) ; le NOM, non — et il est
+    # requis. Choisir « Chêne » obligeait à retaper « Chêne » pour pouvoir
+    # enregistrer. Le pendant exact de ce que le cœur fait pour le produit.
+    #
+    # Le nom personnalisé n'est jamais écrasé : voir le commentaire du cœur.
+    @api.onchange("material_id")
+    def _onchange_material_id_fills_the_name(self):
+        if not self.material_id:
+            return
+        ancien = self._origin.material_id.display_name if self._origin.material_id else False
+        if not self.name or self.name == ancien:
+            self.name = self.material_id.display_name
+
     # ─ DEUX BARRIÈRES, comme partout ailleurs (D-080, D-194, D-196) ─────────
     @api.constrains("material_id")
     def _check_material_only_for_material_type(self):

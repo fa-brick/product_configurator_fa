@@ -346,3 +346,58 @@ class ValueType(BaseCommon):
         apres = [n for n in ordre[ordre.index("default_extra_price_sqm") + 1:]
                  if conditions[n] != "True"]
         self.assertEqual(apres, [], f"des colonnes suivent encore : {apres}")
+
+    # ── la ligne se remplit seule (D-198) ───────────────────────────────────
+    def test_20_picking_a_product_FILLS_the_name(self):
+        """⚠️ `name` est REQUIS, et rien ne le recopiait.
+
+        Attente de Gerry : « lors du clic, toute la ligne est pré-remplie ». La
+        miniature suivait seule (elle est `related`) ; le nom, non — il fallait
+        retaper à la main ce qu'on venait de désigner, sous peine de ne pas
+        pouvoir enregistrer.
+        """
+        produit = self.env["product.product"].create({"name": "Stainless bracket"})
+        attribute = self.Attribute.create({
+            "name": "Bracket", "create_variant": "no_variant",
+            "value_type": "product",
+        })
+        with Form(self.env["product.attribute.value"].with_context(
+                default_attribute_id=attribute.id)) as f:
+            f.product_id = produit
+            self.assertEqual(f.name, produit.display_name)
+
+    def test_21_but_a_name_CHOSEN_BY_HAND_is_never_overwritten(self):
+        """⚠️ Un libellé est ce que le CLIENT lit — il ne s'écrase pas seul.
+
+        Sans cette précaution, corriger le produit d'une valeur renommée
+        effacerait le libellé choisi, en silence.
+        """
+        premier = self.env["product.product"].create({"name": "Bracket A"})
+        second = self.env["product.product"].create({"name": "Bracket B"})
+        attribute = self.Attribute.create({
+            "name": "Bracket choice", "create_variant": "no_variant",
+            "value_type": "product",
+        })
+        value = self.env["product.attribute.value"].create({
+            "name": "Renfort renforcé", "attribute_id": attribute.id,
+            "product_id": premier.id,
+        })
+        with Form(value) as f:
+            f.product_id = second
+        self.assertEqual(value.name, "Renfort renforcé")
+
+    def test_22_and_a_name_INHERITED_from_the_previous_product_follows(self):
+        """Le pendant : ce qui venait du produit suit le produit."""
+        premier = self.env["product.product"].create({"name": "Bracket A"})
+        second = self.env["product.product"].create({"name": "Bracket B"})
+        attribute = self.Attribute.create({
+            "name": "Bracket followed", "create_variant": "no_variant",
+            "value_type": "product",
+        })
+        value = self.env["product.attribute.value"].create({
+            "name": premier.display_name, "attribute_id": attribute.id,
+            "product_id": premier.id,
+        })
+        with Form(value) as f:
+            f.product_id = second
+        self.assertEqual(value.name, second.display_name)

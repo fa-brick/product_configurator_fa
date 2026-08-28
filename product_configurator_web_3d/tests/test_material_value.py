@@ -87,3 +87,32 @@ class MaterialValue(BaseCommon):
         })
         with self.assertRaises(Exception):
             self.other.unlink()
+
+    def test_05_picking_a_material_FILLS_the_name(self):
+        """⚠️ Le pendant, côté matière : `name` est requis et rien ne le remplissait.
+
+        Choisir « Oak » obligeait à retaper « Oak » pour pouvoir enregistrer.
+        """
+        from odoo.tests.common import Form
+        attribute = self.env["product.attribute"].create({
+            "name": "Finish named", "create_variant": "no_variant",
+            "value_type": "material",
+        })
+        with Form(self.env["product.attribute.value"].with_context(
+                default_attribute_id=attribute.id)) as f:
+            f.material_id = self.material
+            self.assertEqual(f.name, self.material.display_name)
+
+    def test_06_a_name_chosen_by_hand_survives_a_change_of_material(self):
+        from odoo.tests.common import Form
+        attribute = self.env["product.attribute"].create({
+            "name": "Finish kept name", "create_variant": "no_variant",
+            "value_type": "material",
+        })
+        value = self.env["product.attribute.value"].create({
+            "name": "Chêne premier choix", "attribute_id": attribute.id,
+            "material_id": self.material.id,
+        })
+        with Form(value) as f:
+            f.material_id = self.other
+        self.assertEqual(value.name, "Chêne premier choix")

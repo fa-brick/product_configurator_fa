@@ -1048,6 +1048,16 @@ class ProductAttributeValue(models.Model):
         help="By unchecking the active field you can "
         "disable a attribute value without deleting it",
     )
+    # ⚠️ Le type de l'attribut, LISIBLE DEPUIS LA VALEUR. Une vue ne sait pas
+    # suivre `attribute_id.value_type` : elle n'évalue que des champs qu'elle
+    # porte. Sans ce miroir, le formulaire d'une valeur ne peut pas masquer ce qui
+    # ne le concerne pas — et il montrait le produit à TOUT LE MONDE, y compris aux
+    # attributs de type « valeur ». Précédent du core, à la ligne près :
+    # `display_type = fields.Selection(related='attribute_id.display_type')`.
+    value_type = fields.Selection(
+        related="attribute_id.value_type", string="Value Type", readonly=True
+    )
+
     # ─ CE QUE LA VALEUR DÉSIGNE, quand ce n'est pas elle-même (D-196) ───────
     #
     # ⚠️ Ce champ EXISTAIT et n'était sur AUCUN écran. Il est pourtant lu à
@@ -1082,6 +1092,26 @@ class ProductAttributeValue(models.Model):
         help="Thumbnail shown when the attribute is displayed as colour swatches "
              "and no HTML colour is set.",
     )
+
+    # ─ LA LIGNE SE REMPLIT SEULE — D-198 ────────────────────────────────────
+    #
+    # Attente de Gerry : *« lors du clic la matière est sélectionnée, toute la ligne
+    # est pré-remplie »*. ⚠️ Ce n'était PAS le cas : la miniature suivait toute
+    # seule (elle est `related`), mais **rien ne recopiait le nom** — et `name` est
+    # REQUIS. Il fallait donc retaper à la main ce qu'on venait de désigner, sous
+    # peine de ne pas pouvoir enregistrer.
+    #
+    # ⚠️ Le nom n'est pas ÉCRASÉ s'il a été personnalisé. On ne remplace que le vide
+    # ou le nom hérité du produit précédent (lu sur `_origin`, l'enregistrement en
+    # base). Sans cette précaution, renommer une valeur puis corriger le produit
+    # effacerait le libellé choisi — et un libellé est ce que le client lit.
+    @api.onchange("product_id")
+    def _onchange_product_id_fills_the_name(self):
+        if not self.product_id:
+            return
+        ancien = self._origin.product_id.display_name if self._origin.product_id else False
+        if not self.name or self.name == ancien:
+            self.name = self.product_id.display_name
 
     # ─ DEUX BARRIÈRES, encore (D-080, D-194, D-196) ─────────────────────────
     @api.constrains("product_id")

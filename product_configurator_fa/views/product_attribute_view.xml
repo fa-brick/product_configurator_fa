@@ -246,7 +246,15 @@
                             <field name="attribute_id" />
                         </group>
                         <group>
-                            <field name="product_id" />
+                            <field name="value_type" invisible="1" />
+                            <!-- ⚠️ Le produit était offert à TOUS les types, y compris
+                                 à ceux dont une valeur ne désigne qu'elle-même. La
+                                 même règle qu'en liste (D-196), sur la fiche. -->
+                            <field
+                                name="product_id"
+                                invisible="value_type != 'product'"
+                                options="{'no_create': True}"
+                            />
                         </group>
                     </group>
                 </sheet>

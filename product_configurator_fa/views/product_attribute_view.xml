@@ -294,10 +294,13 @@
                              côte à côte auraient dit la même chose de deux
                              façons. Son avertissement « domaine invalide », lui,
                              reste visible — c'est le seul qui le signale. -->
+                        <!-- ⓘ `d-inline-flex` : un champ posé DANS un bouton se rend
+                             en BLOC, et le compteur tombait sur trois lignes
+                             (« → / 1 / proposed value(s) »). -->
                         <button
                             name="action_open_proposed_values"
                             type="object"
-                            class="btn-link ps-0"
+                            class="btn-link ps-0 d-inline-flex align-items-center gap-1"
                             colspan="2"
                             invisible="not product_filter_count"
                         >

@@ -457,7 +457,19 @@ class ProductAttribute(models.Model):
         if nouveau:
             concernes = self.filtered(lambda a: a.value_type != nouveau)
             concernes.value_ids._purge_designation(nouveau)
-        return super().write(vals)
+        res = super().write(vals)
+        # ⚠️ **LE FILTRE SE MATÉRIALISE DÈS QU'IL EST POSÉ** — demande de Gerry :
+        # *« affiche les enregistrements du filtre dans les valeurs d'attribut »*.
+        # Sans cela, les valeurs n'apparaissaient qu'à la première ouverture de
+        # l'assistant : la page d'attribut montrait une liste vide alors que le
+        # filtre annonçait cinquante-trois produits — deux écrans qui se
+        # contredisent.
+        #
+        # ⓘ L'opération est idempotente (D-221) : la refaire ne crée rien.
+        if "product_filter_domain" in vals or "dynamic_values" in vals:
+            for attribute in self.filtered("dynamic_values"):
+                attribute._materialise_proposed_values()
+        return res
 
     @api.constrains("value_type", "custom_type", "uom_id")
     def _check_format_only_for_plain_values(self):
@@ -1027,6 +1039,24 @@ class ProductAttributeLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # ⚠️ **UNE LIGNE DYNAMIQUE NAÎT AVEC LES VALEURS PROPOSÉES** — D-222.
+        # Le cœur exige au moins une valeur par ligne (`_check_valid_values`) :
+        # une ligne dynamique fraîche était donc IMPOSSIBLE à créer sans choisir
+        # d'abord une valeur à la main — sur un attribut dont tout l'objet est de
+        # ne pas tenir de liste.
+        #
+        # ⓘ On ne remplit QUE si rien n'est fourni : un appelant qui choisit ses
+        # valeurs garde le dernier mot.
+        attribut_obj = self.env["product.attribute"]
+        for vals in vals_list:
+            if vals.get("value_ids") or not vals.get("attribute_id"):
+                continue
+            attribut = attribut_obj.browse(vals["attribute_id"])
+            if not attribut.dynamic_values:
+                continue
+            proposees = attribut._materialise_proposed_values()
+            if proposees:
+                vals["value_ids"] = [(6, 0, proposees.ids)]
         lines = super().create(vals_list)
         lines._ensure_config_step_lines()
         return lines

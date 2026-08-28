@@ -562,7 +562,21 @@ class ProductConfigStepLine(models.Model):
                 lambda line, s=step_line: line.config_step_owner_id == s.config_step_id
             )
 
-    @api.depends("attribute_line_ids.required")
+    # ⚠️ LA DÉPENDANCE NE PASSE PAS PAR `attribute_line_ids`, qui est CALCULÉ et
+    # non stocké depuis D-202. Odoo l'a dit à chaque démarrage : *« Field
+    # 'attribute_line_ids' in dependency of 'required' should be searchable. This
+    # is necessary to determine which records to recompute »* — sans champ
+    # cherchable, il ne sait pas remonter des lignes vers les étapes à recalculer,
+    # et l'obligation d'une étape pouvait rester périmée.
+    #
+    # ⓘ On dépend donc de la SOURCE, exactement celle dont `attribute_line_ids`
+    # est tiré : les lignes du produit, leur ordre et leurs marqueurs.
+    @api.depends(
+        "config_step_id",
+        "product_tmpl_id.attribute_line_ids.required",
+        "product_tmpl_id.attribute_line_ids.sequence",
+        "product_tmpl_id.attribute_line_ids.config_step_id",
+    )
     def _compute_required(self):
         for step_line in self:
             step_line.required = any(step_line.attribute_line_ids.mapped("required"))

@@ -66,17 +66,26 @@ class ProductFilter(BaseCommon):
         with self.assertRaises(ValidationError):
             self.attribute.product_filter_domain = "ceci n'est pas un domaine"
 
-    def test_06_the_filter_only_PROPOSES_it_creates_nothing(self):
-        """⚠️ Le cœur de QJ : rien n'est matérialisé tant que rien n'est choisi.
+    def test_06_posing_the_filter_MATERIALISES_what_it_proposes(self):
+        """⚠️ **CE TEST DISAIT L'INVERSE, et c'est un changement de RÈGLE.**
 
-        Une liste dynamique qui créerait ses valeurs d'avance remplirait le
-        catalogue de valeurs que personne n'a retenues.
+        QJ posait : *« la valeur choisie est matérialisée »* — donc rien tant
+        que rien n'est choisi, et ce test le tenait. Gerry a demandé ensuite
+        d'*« afficher les enregistrements du filtre dans les valeurs
+        d'attribut »* : la liste doit montrer ce que le filtre propose, sans
+        attendre qu'un client passe.
+
+        ⚠️ **Ce que la nouvelle règle coûte** : le catalogue porte désormais une
+        valeur par produit proposé, retenue ou non. ⓘ `configurator_generated`
+        les marque, et le ménage existant archive celles que plus rien n'emploie
+        — une valeur jamais retenue finit donc par s'effacer d'elle-même.
         """
         self.attribute.product_filter_domain = str(
             [("categ_id", "=", self.categorie.id)]
         )
-        self.attribute._proposed_products()
-        self.assertFalse(self.attribute.value_ids)
+        self.assertEqual(self.attribute.value_ids.mapped("product_id"), self.poignees)
+        for valeur in self.attribute.value_ids:
+            self.assertTrue(valeur.configurator_generated)
 
     # ── ce que le filtre DONNE, avant de s'en servir (D-208) ────────────────
     def test_07_the_count_says_how_many_come_out(self):

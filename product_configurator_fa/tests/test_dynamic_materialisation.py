@@ -124,3 +124,66 @@ class DynamicMaterialisation(BaseCommon):
         materialisees = self.attribute._materialise_proposed_values()
         for valeur in materialisees:
             self.assertIn(valeur.id, proposes)
+
+    # ── ce qui se matérialise TOUT SEUL (D-222) ─────────────────────────────
+    def test_08_posing_the_filter_fills_the_ATTRIBUTE_values(self):
+        """⚠️ Demande de Gerry : voir les enregistrements du filtre dans la liste.
+
+        Sans cela, les valeurs n'apparaissaient qu'à la première ouverture de
+        l'assistant : la page d'attribut montrait une liste vide alors que le
+        filtre annonçait cinquante-trois produits — deux écrans qui se
+        contredisent.
+        """
+        neuf = self.env["product.attribute"].create({
+            "name": "Handle posed", "create_variant": "no_variant",
+            "value_type": "product", "dynamic_values": True,
+        })
+        self.assertFalse(neuf.value_ids)
+        neuf.product_filter_domain = str([("categ_id", "=", self.categorie.id)])
+        self.assertEqual(neuf.value_ids.mapped("product_id"), self.poignees)
+
+    def test_09_a_dynamic_LINE_is_born_with_them(self):
+        """⚠️ Le cœur exige au moins une valeur par ligne.
+
+        Une ligne dynamique fraîche était donc impossible à créer sans choisir
+        d'abord une valeur à la main — sur un attribut dont tout l'objet est de
+        ne pas tenir de liste.
+        """
+        gabarit = self.env["product.template"].create({
+            "name": "Door born", "config_ok": True,
+            "attribute_line_ids": [(0, 0, {"attribute_id": self.attribute.id})],
+        })
+        ligne = gabarit.attribute_line_ids
+        self.assertTrue(ligne.value_ids, "la ligne est née sans valeur")
+        for produit in self.poignees:
+            self.assertTrue(
+                ligne.value_ids.filtered(lambda v, p=produit: v.product_id == p)
+            )
+
+    def test_10_but_an_EXPLICIT_choice_keeps_the_last_word(self):
+        """ⓘ On ne remplit que si rien n'est fourni."""
+        gabarit = self.env["product.template"].create({
+            "name": "Door chosen", "config_ok": True,
+            "attribute_line_ids": [(0, 0, {
+                "attribute_id": self.attribute.id,
+                "value_ids": [(6, 0, self.amorce.ids)],
+            })],
+        })
+        self.assertEqual(gabarit.attribute_line_ids.value_ids, self.amorce)
+
+    def test_11_a_NON_dynamic_line_is_not_filled(self):
+        """La règle ne vaut que pour le régime dynamique."""
+        attribut = self.env["product.attribute"].create(
+            {"name": "Plain born", "create_variant": "no_variant"}
+        )
+        valeur = self.env["product.attribute.value"].create(
+            {"name": "One", "attribute_id": attribut.id}
+        )
+        gabarit = self.env["product.template"].create({
+            "name": "Plain born door", "config_ok": True,
+            "attribute_line_ids": [(0, 0, {
+                "attribute_id": attribut.id,
+                "value_ids": [(6, 0, valeur.ids)],
+            })],
+        })
+        self.assertEqual(gabarit.attribute_line_ids.value_ids, valeur)

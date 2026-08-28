@@ -255,6 +255,7 @@
                                 invisible="value_type != 'product'"
                                 options="{'no_create': True}"
                             />
+
                         </group>
                     </group>
                 </sheet>
@@ -305,6 +306,9 @@
                  ligne n'a qu'un seul mode — on sème donc le mode ET le montant qui
                  lui correspond, jamais l'autre. -->
             <xpath expr="//field[@name='value_ids']/list/field[@name='default_extra_price']" position="attributes">
+                <!-- ⓘ Cette colonne reste celle de TOUS les types. Pour un attribut de
+                     type produit, elle est simplement RENSEIGNÉE par le prix du produit
+                     et demeure modifiable (D-199) — le produit sème, le montant décide. -->
                 <attribute name="column_invisible">parent.price_mode == 'per_sqm'</attribute>
             </xpath>
             <xpath expr="//field[@name='value_ids']/list/field[@name='default_extra_price']" position="after">

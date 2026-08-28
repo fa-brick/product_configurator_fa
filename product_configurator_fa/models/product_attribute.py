@@ -1109,9 +1109,12 @@ class ProductAttributeValue(models.Model):
     def _onchange_product_id_fills_the_name(self):
         if not self.product_id:
             return
-        ancien = self._origin.product_id.display_name if self._origin.product_id else False
+        ancien = (
+            self._origin.product_id.display_name if self._origin.product_id else False
+        )
         if not self.name or self.name == ancien:
             self.name = self.product_id.display_name
+
 
     # ─ DEUX BARRIÈRES, encore (D-080, D-194, D-196) ─────────────────────────
     @api.constrains("product_id")
@@ -1130,6 +1133,22 @@ class ProductAttributeValue(models.Model):
     def get_attribute_value_extra_prices(
         self, product_tmpl_id, pt_attr_value_ids, pricelist=None
     ):
+        """Le supplément de chaque valeur sur ce produit — `{id de valeur: montant}`.
+
+        ⚠️ **UNE VALEUR QUI DÉSIGNE UN PRODUIT EST FACTURÉE AU PRIX DE CE PRODUIT**,
+        et le montant enregistré est alors ignoré. Ce n'est pas un oubli : c'est la
+        fonctionnalité, et `test_04_compute_cfg_price` l'énonce ligne à ligne —
+        prix du modèle, plus le `lst_price` du moteur, de la finition, de la boîte
+        et de l'option. Le prix suit donc le catalogue et la liste de prix du
+        client, sans reprise.
+
+        ⚠️ **NE PAS LA REMPLACER SANS ARBITRAGE.** Rendre le montant enregistré
+        décisionnaire — pour qu'un utilisateur puisse corriger le prix semé par le
+        produit — a été essayé le 2026-08-28 et MESURÉ sur la base de démo : le
+        prix d'une configuration tombait de 35 748 à 25 000, parce que les valeurs
+        existantes ne stockent aucun montant. La question est ouverte (voir la
+        question posée à Gerry le 2026-08-28), et elle porte sur la facture.
+        """
         extra_prices = {}
         if not pricelist:
             pricelist = self.env.user.partner_id.property_product_pricelist

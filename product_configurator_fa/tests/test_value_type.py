@@ -145,16 +145,21 @@ class ValueType(BaseCommon):
         self.assertEqual(attr.custom_type, "integer")
 
     # ── ce que le FORMAT contraint à son tour ───────────────────────────────
-    def test_10_only_three_formats_are_offered(self):
-        """⚠️ Le catalogue hérité en proposait huit — Gerry n'en garde que trois.
+    def test_10_only_four_formats_are_offered(self):
+        """⚠️ Le catalogue hérité en proposait huit — il en reste quatre.
 
         Un format dit comment se LIT un libellé : un mot, un entier, un décimal.
-        Les cinq autres décrivaient des widgets de saisie (`text` n'est qu'un
-        `char` plus haut, `binary` est un document, `color` fait double emploi
-        avec le type « matière »).
+        Les quatre retirés décrivaient des widgets de saisie (`text` n'est qu'un
+        `char` plus haut, `date` n'a jamais désigné une caractéristique de
+        produit, `color` fait double emploi avec le type « matière »).
+
+        ⚠️ `binary` a été retiré puis RÉTABLI le même jour : je l'avais écarté
+        d'un « une pièce jointe n'est pas une valeur », et c'était faux — le
+        client joint un fichier comme valeur personnalisée, et sept tests du
+        module l'exercent de bout en bout.
         """
         offerts = dict(self.Attribute._fields["custom_type"].selection)
-        self.assertEqual(sorted(offerts), ["char", "float", "integer"])
+        self.assertEqual(sorted(offerts), ["binary", "char", "float", "integer"])
 
     def test_11_a_unit_qualifies_a_NUMBER(self):
         """« Chêne mm » n'est pas une lecture, c'est un accident de saisie."""
@@ -295,40 +300,61 @@ class ValueType(BaseCommon):
             conditions[m.group(1)] = garde.group(1) if garde else "False"
         return conditions
 
-    def test_18_exactly_ONE_price_column_shows_at_a_time(self):
+    def test_18_no_two_price_columns_CONTRADICT_each_other(self):
         """⚠️ Ce n'est pas une question de place — c'est une question de FACTURE.
 
         Constat de Gerry : *« default_extra_price ne peut pas être visible en même
         temps que default_extra_price_sqm, c'est l'un ou l'autre en fin de
         ligne »*. Le module dit lui-même pourquoi : *« Odoo somme `price_extra`
-        partout, et y ranger 25 €/m² le ferait facturer 25 € »*. Deux champs
-        côte à côte invitent à remplir les deux, et le montant fixe serait alors
-        facturé EN PLUS du mètre carré — sans erreur et sans trace.
+        partout, et y ranger 25 €/m² le ferait facturer 25 € »*.
 
-        ⓘ La garde évalue les DEUX conditions pour chacun des deux modes, au lieu
-        de comparer des chaînes recopiées : elle éprouve la règle, pas l'écriture.
+        Et son arbitrage sur le produit, même raison : *« s'il est possible de
+        modifier et que seul un produit de la liste a son prix modifié, ça peut
+        être trompeur et fausser les prix »*. D'où deux invariants :
+
+          · un seul MONTANT FORFAITAIRE — le saisissable ou celui du produit,
+            jamais les deux : deux sources pour un nombre, et le lecteur ne sait
+            plus laquelle s'applique ;
+          · jamais le forfait ET le taux au m² ensemble.
+
+        ⓘ Un attribut de type produit sur une ligne au m² montre bien DEUX
+        montants — le prix du produit et le taux. C'est exact : les deux sont
+        facturés, le calcul du prix produit ne consulte pas le mode. Les cacher
+        serait mentir ; cette combinaison est une question ouverte, pas un défaut
+        d'affichage.
         """
         conditions = self._column_conditions("product.attribute", 'name="value_ids"')
-        fixe = conditions["default_extra_price"]
-        au_m2 = conditions["default_extra_price_sqm"]
 
         class _Parent:
-            def __init__(self, price_mode):
+            def __init__(self, value_type, price_mode):
+                self.value_type = value_type
                 self.price_mode = price_mode
 
-        for mode in ("fixed", "per_sqm"):
-            espace = {"parent": _Parent(mode)}
-            visibles = [
-                nom
-                for nom, garde in (("fixe", fixe), ("au m²", au_m2))
-                if not eval(garde, {"__builtins__": {}}, espace)  # noqa: S307
-            ]
-            self.assertEqual(
-                len(visibles), 1,
-                f"en mode {mode}, colonnes visibles : {visibles or 'aucune'}",
+        def visible(nom, parent):
+            return not eval(  # noqa: S307
+                conditions[nom], {"__builtins__": {}}, {"parent": parent}
             )
 
-    def test_19_and_they_sit_at_the_END_of_the_line(self):
+        for value_type in ("value", "product", "material"):
+            for price_mode in ("fixed", "per_sqm"):
+                parent = _Parent(value_type, price_mode)
+                forfait = visible("default_extra_price", parent)
+                produit = visible("product_price", parent)
+                au_m2 = visible("default_extra_price_sqm", parent)
+                cas = f"{value_type}/{price_mode}"
+
+                self.assertFalse(
+                    forfait and produit,
+                    f"{cas} : deux sources pour le montant forfaitaire",
+                )
+                self.assertFalse(
+                    forfait and au_m2, f"{cas} : le forfait et le taux ensemble"
+                )
+                self.assertTrue(
+                    forfait or produit or au_m2, f"{cas} : aucun montant visible"
+                )
+
+    def test_19_and_the_amounts_sit_at_the_END_of_the_line(self):
         """« c'est l'un ou l'autre EN FIN DE LIGNE ».
 
         ⚠️ La colonne au m² était insérée juste après le nom, donc loin de son
@@ -336,15 +362,22 @@ class ValueType(BaseCommon):
         la ligne selon le mode.
         """
         conditions = self._column_conditions("product.attribute", 'name="value_ids"')
-        ordre = list(conditions)
+        # ⓘ On ne compte que les colonnes qu'un utilisateur peut voir : la devise
+        # est portée en `column_invisible="True"` pour que `widget="monetary"` ait
+        # de quoi s'afficher, et elle n'occupe aucune place à l'écran.
+        ordre = [n for n in conditions if conditions[n] != "True"]
+        montants = ["default_extra_price", "product_price", "default_extra_price_sqm"]
+        places = [ordre.index(n) for n in montants]
         self.assertEqual(
-            ordre.index("default_extra_price_sqm"),
-            ordre.index("default_extra_price") + 1,
-            "les deux montants ne sont plus adjacents",
+            places, sorted(places),
+            "les montants ne se suivent plus dans l'ordre attendu",
+        )
+        self.assertEqual(
+            places[-1] - places[0], len(montants) - 1,
+            "une colonne étrangère s'est glissée entre les montants",
         )
         # Après eux, plus aucune colonne que l'utilisateur puisse voir.
-        apres = [n for n in ordre[ordre.index("default_extra_price_sqm") + 1:]
-                 if conditions[n] != "True"]
+        apres = [n for n in ordre[places[-1] + 1:] if conditions[n] != "True"]
         self.assertEqual(apres, [], f"des colonnes suivent encore : {apres}")
 
     # ── la ligne se remplit seule (D-198) ───────────────────────────────────
@@ -401,3 +434,30 @@ class ValueType(BaseCommon):
         with Form(value) as f:
             f.product_id = second
         self.assertEqual(value.name, second.display_name)
+
+    def test_23_an_ATTACHMENT_is_not_a_reading_format(self):
+        """⚠️ `binary` échappe à la règle des formats, et pour une bonne raison.
+
+        Le raisonnement de la garde est : « quand la valeur désigne un produit,
+        l'objet EST la réponse, il n'y a pas de libellé à lire ». Une pièce
+        jointe n'est pas un libellé — c'est un fichier que le client envoie en
+        PLUS. Rien n'empêche de demander un plan ou un échantillon à côté d'un
+        produit désigné.
+
+        ⓘ Trouvé en essayant de faire entrer trois tests du module dans la garde.
+        """
+        attribute = self.Attribute.create({
+            "name": "Bracket with a drawing", "create_variant": "no_variant",
+            "value_type": "product", "custom_type": "binary",
+        })
+        self.assertEqual(attribute.custom_type, "binary")
+
+    def test_24_but_a_unit_still_has_nothing_to_qualify_there(self):
+        """L'exemption porte sur le FORMAT, pas sur l'unité."""
+        from odoo.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.Attribute.create({
+                "name": "Bracket measured", "create_variant": "no_variant",
+                "value_type": "product", "custom_type": "binary",
+                "uom_id": self.env.ref("uom.product_uom_millimeter").id,
+            })

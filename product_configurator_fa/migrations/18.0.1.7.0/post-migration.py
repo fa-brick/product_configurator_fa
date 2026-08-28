@@ -17,7 +17,14 @@ import logging
 _logger = logging.getLogger(__name__)
 
 #: Ce que le `Selection` accepte désormais (`CUSTOM_TYPES` du modèle).
-KEPT = ("char", "integer", "float")
+#
+# ⚠️ `binary` EN FAIT PARTIE. Il avait été retiré de la liste le 2026-08-28 sur une
+# affirmation fausse de ma part — « une pièce jointe n'est pas une valeur » —, alors
+# que le client joint bel et bien un fichier comme valeur personnalisée et que sept
+# tests du module l'exercent. Cette migration est corrigée AVANT d'atteindre une
+# base qui en porterait : elle n'a tourné que sur les bases de travail, où aucune
+# valeur n'était en `binary` (mesuré).
+KEPT = ("char", "integer", "float", "binary")
 #: Les formats qu'une unité peut qualifier (`NUMERIC_TYPES`).
 NUMERIC = ("integer", "float")
 

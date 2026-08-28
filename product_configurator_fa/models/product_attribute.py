@@ -212,10 +212,34 @@ class ProductAttribute(models.Model):
     # ⚠️ Et un `onchange` NETTOIE en basculant le type. Sans lui, un format saisi
     # avant la bascule resterait, invisible, et le refus tomberait sur un champ
     # que l'utilisateur ne voit plus : le pire des messages d'erreur.
+    #
+    # ⚠️ **`binary` EST HORS DE CETTE RÈGLE.** Ce n'est pas un format de LECTURE :
+    # c'est un canal de pièce jointe — le client envoie un fichier. Le raisonnement
+    # ci-dessus (« l'objet est la réponse, il n'y a pas de libellé à lire ») ne le
+    # concerne donc pas : rien n'empêche de demander un plan ou un échantillon en
+    # plus d'un produit désigné.
+    #
+    # ⓘ Trouvé en essayant de faire entrer trois tests du module dans la garde :
+    # ils posaient un `binary` sur un attribut devenu « produit ». Contorsionner des
+    # tests amont pour les faire entrer dans une garde, c'est le signe que la garde
+    # est mal posée — pas que les tests le sont ([[L-160]]).
     @api.constrains("value_type", "custom_type", "uom_id")
     def _check_format_only_for_plain_values(self):
         for attribute in self:
             if attribute.value_type == "value":
+                continue
+            if attribute.custom_type == "binary":
+                # Reste l'unité, qui n'a toujours rien à qualifier ici.
+                if attribute.uom_id:
+                    raise ValidationError(
+                        self.env._(
+                            "A unit of measure qualifies a number. Here a value "
+                            "designates a %s: drop the unit.",
+                            dict(self._fields["value_type"].selection).get(
+                                attribute.value_type, attribute.value_type
+                            ),
+                        )
+                    )
                 continue
             if attribute.custom_type or attribute.uom_id:
                 raise ValidationError(
@@ -273,19 +297,29 @@ class ProductAttribute(models.Model):
     #   · `date`/`datetime` n'ont jamais désigné une caractéristique de produit ;
     #   · `color` faisait double emploi avec le type « matière », qui porte une
     #     vraie miniature — et une couleur de laquage n'est pas un code hexa ;
-    #   · `binary` (pièce jointe) n'est pas une valeur, c'est un document.
     #
-    # ⓘ Mesuré avant de trancher : sur `fabk18`, un seul attribut portait un de ces
-    # formats — « Brand » en `color`, sans ajout client et sans une seule valeur.
-    # Rien d'utilisé ne disparaît ; une migration nettoie ce reliquat.
+    # ⚠️ **`binary` EST RESTÉ, et j'avais eu tort de le compter parmi eux.** Je
+    # l'avais écarté d'un « une pièce jointe n'est pas une valeur, c'est un
+    # document » — et Gerry a décidé sur cette phrase. Elle était fausse : le
+    # client JOINT UN FICHIER comme valeur personnalisée, `product_config.py`
+    # valide la pièce jointe et refuse les incohérences, et **sept tests du module
+    # l'exercent de bout en bout**. Rétabli le 2026-08-28 sur ce constat.
     #
-    # ⚠️ Le CODE qui traite `binary` et `color` reste en place (`product_config.py`,
-    # wizard) : restreindre l'offre est réversible, arracher la plomberie ne l'est
-    # pas. Ces chemins deviennent inatteignables, ils ne deviennent pas faux.
+    # ⓘ Ces sept tests ne tournaient pas : la base de test n'avait pas les données
+    # de démo, et leur `setUpClass` échouait avant d'atteindre la moindre garde.
+    # Retirer une capacité sans pouvoir exécuter ce qui l'éprouve, c'est décider
+    # les yeux fermés — voir [[L-159]].
+    #
+    # ⓘ Mesuré avant de trancher : sur `fabk18`, un seul attribut portait un format
+    # abandonné — « Brand » en `color`, sans ajout client et sans une seule valeur.
+    #
+    # ⚠️ Le CODE qui traite `color` reste en place (`product_config.py`, wizard) :
+    # restreindre l'offre est réversible, arracher la plomberie ne l'est pas.
     CUSTOM_TYPES = [
         ("char", "Char"),
         ("integer", "Integer"),
         ("float", "Float"),
+        ("binary", "Attachment"),
     ]
 
     #: Les formats qui décrivent un NOMBRE — les seuls qu'une unité peut qualifier.
@@ -1092,6 +1126,35 @@ class ProductAttributeValue(models.Model):
         help="Thumbnail shown when the attribute is displayed as colour swatches "
              "and no HTML colour is set.",
     )
+
+    # ─ LE PRIX D'UNE VALEUR-PRODUIT SE LIT, IL NE SE SAISIT PAS — D-199 ─────
+    #
+    # Arbitrage de Gerry (2026-08-28), après mesure : *« pour les produits on va
+    # rester sur le prix du produit sans modification possible. car s'il est
+    # possible de modifier et que seul un produit de la liste a son prix modifié,
+    # ça peut être trompeur pour l'utilisateur et fausser les prix. »*
+    #
+    # ⚠️ La tentation était de rendre le montant modifiable. ESSAYÉ ET MESURÉ sur la
+    # base de démo : le prix d'une configuration tombait de 35 748 à 25 000, parce
+    # qu'aucune valeur existante ne stocke de montant — toutes s'appuient sur le
+    # prix du produit, et `test_04_compute_cfg_price` énonce cette règle ligne à
+    # ligne. Un prix mi-saisi mi-hérité au sein d'une même liste, c'est en outre
+    # deux sources pour un seul nombre : le lecteur ne peut plus savoir laquelle.
+    #
+    # ⓘ CE N'EST PAS EXACTEMENT LE MONTANT FACTURÉ, et il faut le savoir : la
+    # facture applique le prix CONTEXTUEL, qui dépend de la liste de prix du
+    # client. Dans un écran de CATALOGUE, afficher un prix qui change avec le
+    # lecteur serait pire — d'où le prix de vente de base. Un écart ne peut venir
+    # que d'une liste de prix, et il vient d'elle, pas d'ici.
+    product_price = fields.Float(
+        related="product_id.list_price",
+        string="Product Price",
+        readonly=True,
+        help="Sale price of the product this value stands for. This is what is "
+             "charged for this value — it cannot be overridden here.",
+    )
+    # Sans devise, `widget="monetary"` n'a rien à afficher.
+    currency_id = fields.Many2one(related="product_id.currency_id", readonly=True)
 
     # ─ LA LIGNE SE REMPLIT SEULE — D-198 ────────────────────────────────────
     #

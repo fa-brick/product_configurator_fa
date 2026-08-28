@@ -231,6 +231,56 @@ class ProductAttribute(models.Model):
                     )
                 ) from exc
 
+    # ─ CE QUE LE FILTRE DONNE, AVANT DE S'EN SERVIR — C2, D-208 ─────────────
+    #
+    # Demande de Gerry (2026-08-28) : *« il est intéressant, une fois le filtre
+    # appliqué, de connaître le nombre de produits qui en ressortent et de pouvoir
+    # afficher la liste des résultats dans un dialogue »*.
+    #
+    # ⚠️ Un domaine est une PROMESSE tant qu'on ne l'a pas appliqué. Écrit sans
+    # retour, il se vérifie au pire moment — devant le client, quand la liste
+    # proposée est vide ou compte trois cents lignes. Le compte le dit tout de
+    # suite ; le dialogue montre lesquels.
+    product_filter_count = fields.Integer(
+        string="Products found",
+        compute="_compute_product_filter_count",
+    )
+
+    @api.depends("product_filter_domain", "value_type")
+    def _compute_product_filter_count(self):
+        for attribute in self:
+            filtre = (attribute.product_filter_domain or "").strip()
+            if attribute.value_type != "product" or not filtre or filtre == "[]":
+                attribute.product_filter_count = 0
+                continue
+            # ⚠️ CE CALCUL NE DOIT PAS LEVER. Il tourne pendant la SAISIE, à chaque
+            # frappe dans l'éditeur de domaine : un domaine à moitié écrit est la
+            # règle, pas l'exception. Une exception ici casserait le formulaire au
+            # lieu d'attendre. Le refus, lui, se fait à l'enregistrement — c'est
+            # `_check_product_filter` qui dit non, avec ses mots.
+            try:
+                attribute.product_filter_count = self.env[
+                    "product.product"
+                ].search_count(literal_eval(filtre))
+            except Exception:
+                attribute.product_filter_count = 0
+
+    def action_open_proposed_products(self):
+        """Montre les produits que ce filtre propose — dans un dialogue.
+
+        ⓘ Un dialogue, comme pour les valeurs (D-206) : on revient là où on l'a
+        ouvert, sans perdre la fiche d'attribut qu'on est en train de régler.
+        """
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.env._("Products proposed by the filter"),
+            "res_model": "product.product",
+            "view_mode": "list",
+            "domain": literal_eval((self.product_filter_domain or "[]").strip() or "[]"),
+            "target": "new",
+        }
+
     def _proposed_products(self):
         """Les produits que ce filtre PROPOSE — rien de plus.
 

@@ -74,3 +74,46 @@ class ProductFilter(BaseCommon):
         )
         self.attribute._proposed_products()
         self.assertFalse(self.attribute.value_ids)
+
+    # ── ce que le filtre DONNE, avant de s'en servir (D-208) ────────────────
+    def test_07_the_count_says_how_many_come_out(self):
+        """⚠️ Un domaine est une promesse tant qu'on ne l'a pas appliqué.
+
+        Écrit sans retour, il se vérifie au pire moment — devant le client,
+        quand la liste proposée est vide ou compte trois cents lignes.
+        """
+        self.attribute.product_filter_domain = str(
+            [("categ_id", "=", self.categorie.id)]
+        )
+        self.assertEqual(self.attribute.product_filter_count, len(self.poignees))
+
+    def test_08_and_it_says_ZERO_when_nothing_is_filtered(self):
+        self.assertEqual(self.attribute.product_filter_count, 0)
+
+    def test_09_the_count_NEVER_raises_while_typing(self):
+        """⚠️ Le calcul tourne à CHAQUE FRAPPE dans l'éditeur de domaine.
+
+        Un domaine à moitié écrit est la règle, pas l'exception : une exception
+        ici casserait le formulaire au lieu d'attendre. Le refus se fait à
+        l'enregistrement, où `_check_product_filter` dit non avec ses mots.
+
+        ⓘ On écrit donc en SQL — l'ORM refuserait précisément ce qu'on veut
+        éprouver, à savoir un domaine invalide en cours de saisie.
+        """
+        self.env.cr.execute(
+            "UPDATE product_attribute SET product_filter_domain = %s WHERE id = %s",
+            ("[('champ_inexistant', '=', 1)]", self.attribute.id),
+        )
+        self.attribute.invalidate_recordset()
+        self.assertEqual(self.attribute.product_filter_count, 0)
+
+    def test_10_the_results_open_in_a_DIALOG(self):
+        """Comme les valeurs (D-206) : on revient là où on l'a ouvert."""
+        self.attribute.product_filter_domain = str(
+            [("categ_id", "=", self.categorie.id)]
+        )
+        action = self.attribute.action_open_proposed_products()
+        self.assertEqual(action["target"], "new")
+        self.assertEqual(action["res_model"], "product.product")
+        trouves = self.env["product.product"].search(action["domain"])
+        self.assertEqual(trouves, self.poignees)

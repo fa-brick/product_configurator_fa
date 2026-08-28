@@ -147,6 +147,27 @@
                             nolabel="1"
                             colspan="2"
                         />
+                        <!-- ⚠️ CE QUE LE FILTRE DONNE, AVANT DE S'EN SERVIR (D-208).
+                             Un domaine est une promesse tant qu'on ne l'a pas
+                             appliqué : sans retour, il se vérifie devant le client.
+                             Le compte le dit tout de suite, le bouton montre qui. -->
+                        <field name="product_filter_count" invisible="1" />
+                        <button
+                            name="action_open_proposed_products"
+                            type="object"
+                            icon="fa-search"
+                            class="btn-link ps-0"
+                            colspan="2"
+                            string="See the products found"
+                            invisible="not product_filter_count"
+                        />
+                        <div colspan="2" class="text-muted" invisible="product_filter_count">
+                            <!-- ⓘ Zéro produit n'est pas une erreur — un filtre en
+                                 cours d'écriture en donne zéro la plupart du temps.
+                                 On le DIT plutôt que d'afficher un bouton qui
+                                 ouvrirait une liste vide. -->
+                            No product matches this filter yet.
+                        </div>
                     </group>
                 </group>
 

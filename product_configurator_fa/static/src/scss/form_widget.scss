@@ -92,3 +92,16 @@ td:has(> .o_config_tree),
 div:has(> .o_config_tree) {
     width: 100%;
 }
+
+// ══ « DYNAMIC VALUES » À LA MÊME HAUTEUR QUE « VALUE TYPE » ═════════════════
+//
+// ⚠️ Odoo pose `mt-4 mb-3` sur TOUT titre de groupe (`makeSeparator`,
+// `view_compiler.js`) — soit une marge haute d'environ 24 px. Dans une colonne
+// de droite, ce titre descend donc d'autant sous la première ligne de la colonne
+// de gauche, qui n'en a pas. Constaté par Gerry, flèche à l'appui.
+//
+// ⓘ La spécificité suffit à battre l'utilitaire Bootstrap : pas de `!important`,
+// qui rendrait la règle impossible à corriger depuis un autre module.
+.o_config_filter_group .o_horizontal_separator:first-child {
+    margin-top: 0;
+}

@@ -160,12 +160,27 @@
                             <field name="required" string="Required" />
                             <label for="required" string="Required" />
                         </span>
+                        <!-- ⚠️ PLUS DE VERROU CROISÉ entre « Multi » et « Allow add ».
+                             Question de Gerry : *« si l'attribut autorise l'ajout, il ne
+                             peut pas être multi ? »*. Vérifié : **aucune contrainte de
+                             modèle ne l'interdisait** — deux `readonly` croisés dans la
+                             vue, hérités du fork OCA, sans raison consignée.
+
+                             ⓘ Et l'assistant prévoit EXPLICITEMENT la combinaison :
+                             `if field_type == "many2many": field_val = [(6, False,
+                             [custom_option_id])]`. Cette branche n'existerait pas si
+                             les deux s'excluaient. Le verrou rendait donc inatteignable
+                             un cas que le moteur sait traiter — la famille du taux au
+                             m² (D-162), « complet et inatteignable ».
+
+                             ⓘ `force_save` part avec lui : il n'existait que parce
+                             qu'un champ en lecture seule n'est pas enregistré. -->
                         <span class="d-inline-flex align-items-center gap-1">
-                            <field name="multi" readonly="val_custom" force_save="1" />
+                            <field name="multi" />
                             <label for="multi" string="Multi" />
                         </span>
                         <span class="d-inline-flex align-items-center gap-1">
-                            <field name="val_custom" readonly="multi" force_save="1" />
+                            <field name="val_custom" />
                             <label for="val_custom" string="Allow add" />
                         </span>
                     </div>
@@ -255,6 +270,7 @@
                     <group
                         string="Dynamic values"
                         name="product_filter"
+                        class="o_config_filter_group"
                         invisible="value_type != 'product' or not dynamic_values"
                     >
                         <field

@@ -158,8 +158,6 @@
                 <field
                     name="multi"
                     column_invisible="not context.get('default_config_ok', False)"
-                    readonly="custom"
-                    force_save="1"
                     width="90px"
                 />
                 <!-- ⚠️ « Custom » NE DISAIT RIEN. Constat de Gerry : *« Custom n'a
@@ -171,8 +169,6 @@
                     name="custom"
                     string="Allow add"
                     column_invisible="not context.get('default_config_ok', False)"
-                    readonly="multi"
-                    force_save="1"
                     width="100px"
                 />
             </xpath>

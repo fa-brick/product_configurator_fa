@@ -94,7 +94,14 @@
                                     <div class="o_facet_values position-relative d-flex flex-wrap align-items-center ps-2 rounded-end-2 text-wrap overflow-hidden">
                                         <small class="o_config_facet_title fw-bold me-1" t-esc="facet.title"/>
                                         <small class="o_config_facet_operator me-1" t-esc="facet.negated ? '≠' : '='"/>
-                                        <t t-foreach="facet.values" t-as="valeur" t-key="valeur_index">
+                                        <!-- ⓘ `or []` : une pastille sans valeurs
+                                             DÉGRADE au lieu de tuer l'onglet. Le cas
+                                             se produit quand les assets sont à jour
+                                             et le serveur non — voir [[L-171]]. Ce
+                                             n'est PAS un correctif, c'est un
+                                             amortisseur : le remède est le
+                                             redémarrage. -->
+                                        <t t-foreach="facet.values or []" t-as="valeur" t-key="valeur_index">
                                             <em t-if="!valeur_first" class="o_facet_values_sep small fw-bold mx-1 opacity-50" t-esc="facet.separator"/>
                                             <small class="o_facet_value text-truncate" t-esc="valeur" t-att-title="valeur"/>
                                         </t>

@@ -76,3 +76,19 @@
     // qu'on pose une condition.
     cursor: pointer;
 }
+
+// ⚠️ L'ARBRE PREND TOUTE LA LARGEUR, comme la liste des attributs. Sans cela il
+// se rétrécit à son contenu — constaté à l'écran : un tableau à quatre colonnes
+// occupant le tiers de la page, avec un grand vide à droite.
+//
+// ⓘ Le `w-100` de Bootstrap ne suffit pas seul : le champ qui le contient est
+// posé dans une cellule de formulaire, et c'est elle qu'il faut ouvrir.
+.o_config_tree {
+    width: 100%;
+    table-layout: auto;
+}
+.o_field_widget:has(> .o_config_tree),
+td:has(> .o_config_tree),
+div:has(> .o_config_tree) {
+    width: 100%;
+}

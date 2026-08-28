@@ -800,7 +800,6 @@ class ProductTemplate(models.Model):
         inverse_name="product_tmpl_id",
         string="Price Grids",
     )
-    price_grid_warning = fields.Char(compute="_compute_price_grid_warning")
 
     # ─ LA GRILLE SE RANGE AVEC LA LISTE DE PRIX — D-214 ─────────────────────
     #
@@ -845,23 +844,16 @@ class ProductTemplate(models.Model):
             "context": {"default_product_tmpl_id": self.id},
         }
 
-    @api.depends("config_ok", "price_grid_ids", "price_grid_ids.active")
-    def _compute_price_grid_warning(self):
-        """L'absence de grille se signale À L'ARRIVÉE dans le produit — D-083.
-
-        Et non au moment du devis : on ne laisse pas quelqu'un configurer dix
-        minutes pour lui annoncer ensuite qu'on ne sait pas vendre.
-        """
-        for template in self:
-            missing = template.config_ok and not template.price_grid_ids
-            template.price_grid_warning = (
-                self.env._(
-                    "This configurable product has no price grid: it cannot be "
-                    "quoted until one is set."
-                )
-                if missing
-                else False
-            )
+    # ⚠️ **LE BANDEAU « PAS DE GRILLE » A ÉTÉ RETIRÉ — il était FAUX.** Constat
+    # de Gerry (2026-08-28) : *« on peut configurer un produit sans grille de
+    # prix »*. Et le code le dit : `_get_config_grid_price` rend `None` sans
+    # grille, et l'appelant retombe sur le `list_price` du modèle. Le message
+    # annonçait donc un blocage qui n'existe pas — pire qu'un silence, puisqu'il
+    # décourage un usage licite.
+    #
+    # ⓘ Le champ calculé qui le portait part avec lui : un calcul que plus rien
+    # ne lit est une dépense et une promesse — celle qu'il dit encore quelque
+    # chose de vrai.
 
     def _get_price_grid(self, date=None):
         """La grille en vigueur à cette date — au plus une (D-083)."""

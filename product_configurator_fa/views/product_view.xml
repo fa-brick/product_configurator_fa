@@ -176,13 +176,6 @@
                     invisible="not config_ok"
                     groups="product_configurator_fa.group_product_configurator_fa"
                 >
-                    <div
-                        class="alert alert-warning"
-                        role="alert"
-                        invisible="not price_grid_warning"
-                    >
-                        <field name="price_grid_warning" nolabel="1" readonly="1" />
-                    </div>
                     <!-- ══ L'ARBRE DU CONFIGURATEUR — la maquette de Gerry ═══════════
                          ⚠️ **CES COLONNES VIVENT ICI, ET NULLE PART AILLEURS.** Je les
                          avais d'abord posées dans « Attributs & Variantes » en lisant
@@ -196,7 +189,6 @@
                          le second niveau (les VALEURS sous leur attribut) et la ligne
                          d'étape en propre. Les deux demandent un composant sur mesure —
                          une liste Odoo ne sait pas mêler deux modèles ni s'imbriquer. -->
-                    <separator colspan="4" string="Attributes" name="configurator_tree" />
                     <!-- ⚠️ L'ARBRE, tel que la maquette le demande (D-210) : étape en
                          bandeau, attribut, valeurs indentées. Une liste Odoo ne sait
                          ni s'imbriquer ni mêler deux modèles — d'où le composant.
@@ -205,7 +197,13 @@
                          un formulaire casse la sauvegarde (D-209, mesuré). L'arbre
                          remplace donc la liste — on règle une ligne en l'ouvrant, et
                          on ajoute par les liens du pied. -->
-                    <field name="configurator_line_ids" widget="configurator_tree" nolabel="1" />
+                    <field
+                        name="configurator_line_ids"
+                        widget="configurator_tree"
+                        nolabel="1"
+                        colspan="4"
+                        class="w-100"
+                    />
 
                 </page>
                 <!-- ══ LES RÉGLAGES QUI NE SONT PAS L'ARBRE — D-213 ═══════════════

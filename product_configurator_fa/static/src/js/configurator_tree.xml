@@ -2,7 +2,7 @@
 <templates xmlns:t="http://www.w3.org/1999/XSL/Transform">
 
     <t t-name="product_configurator_fa.ConfiguratorTree">
-        <table class="o_config_tree table table-sm" t-ref="root">
+        <table class="o_config_tree table table-sm w-100" t-ref="root">
             <thead>
                 <tr>
                     <th class="o_config_tree_handle"/>

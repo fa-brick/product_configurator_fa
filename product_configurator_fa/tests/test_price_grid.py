@@ -177,14 +177,27 @@ class PriceGrid(BaseCommon):
             "à signaler, pas à combler avec le tarif d'hier (D-083)",
         )
 
-    def test_06_a_missing_grid_is_flagged_on_arrival(self):
-        """On ne laisse pas configurer dix minutes pour annoncer ensuite qu'on
-        ne sait pas vendre (D-083)."""
+    def test_06_a_product_WITHOUT_a_grid_can_still_be_priced(self):
+        """⚠️ Le contraire de ce que ce test affirmait — et le contraire était FAUX.
+
+        Il vérifiait un bandeau annonçant *« ce produit ne peut pas être
+        chiffré tant qu'aucune grille n'est posée »*. Constat de Gerry
+        (2026-08-28) : *« on peut configurer un produit sans grille de prix »*.
+        Le code lui donne raison — `_get_config_grid_price` rend `None`, et
+        l'appelant retombe sur le `list_price` du modèle.
+
+        ⓘ Ce test tient désormais le comportement RÉEL, pour qu'on ne remette
+        pas le bandeau en croyant réparer quelque chose.
+        """
         bare = self.env["product.template"].create(
-            {"name": "Unpriced Door", "config_ok": True}
+            {"name": "Unpriced Door", "config_ok": True, "list_price": 250.0}
         )
-        self.assertTrue(bare.price_grid_warning)
-        self.assertFalse(self.template.price_grid_warning)
+        self.assertFalse(bare._get_price_grid())
+        session = self.env["product.config.session"].create(
+            {"product_tmpl_id": bare.id, "user_id": self.env.user.id}
+        )
+        self.assertIsNone(session._get_config_grid_price())
+        self.assertEqual(session.price, 250.0)
 
     def test_07_one_role_one_holder(self):
         with self.assertRaises(ValidationError):

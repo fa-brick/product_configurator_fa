@@ -88,6 +88,21 @@
                  Ils ne décident de rien par eux-mêmes (A4) : c'est la ligne, sur le
                  produit, qui est lue à la configuration. Mais ce sont les trois
                  réglages qu'on veut voir d'un coup d'œil en ouvrant un attribut. -->
+            <!-- ⚠️ LE NOM NE S'AFFICHE QU'UNE FOIS. Il est devenu le TITRE de la
+                 page ; le champ du cœur, resté dans son groupe, le répétait juste
+                 en dessous — « Marque » deux fois, à deux endroits de la même page.
+                 Constat de Gerry.
+
+                 ⓘ On MASQUE au lieu de supprimer : `name` est requis, et d'autres
+                 modules visent ce nœud. Le retirer casserait leurs `xpath` ; le
+                 masquer ne casse rien et suffit ([[L-167]]). -->
+            <xpath expr="//group[@name='sale_main_fields']/label[@for='name']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//group[@name='sale_main_fields']/field[@name='name']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
             <!-- ⓘ `active`, puis le filtre e-commerce, puis « recherchable » :
                  l'ordre demandé par Gerry. `search_ok` quitte « ce qu'une valeur
                  est » — il ne dit pas ce qu'une valeur EST, il dit si l'attribut
@@ -95,8 +110,21 @@
             <xpath expr="//group[@name='sale_main_fields']" position="inside">
                 <field name="active" />
             </xpath>
+            <!-- ⚠️ DANS UN SOUS-GROUPE, et non posé nu dans `main_fields`. Un champ
+                 placé directement entre deux sous-groupes n'est dans aucune colonne :
+                 Odoo le rend SANS ÉTIQUETTE, flottant à droite. Constat de Gerry :
+                 *« il manque son libellé »* — ce n'était pas un libellé absent, mais
+                 un champ hors de toute colonne.
+
+                 ⓘ Un sous-groupe de plus se range SOUS les deux colonnes, donc sous
+                 le filtre e-commerce — la place demandée. Et il ne dépend pas de
+                 `website_sale` : viser `ecommerce_main_fields` casserait la vue
+                 partout où ce module n'est pas installé (vérifié : il ne l'est pas
+                 sur la base de démo). -->
             <xpath expr="//group[@name='main_fields']" position="inside">
-                <field name="search_ok" />
+                <group name="attribute_search">
+                    <field name="search_ok" />
+                </group>
             </xpath>
 
             <xpath expr="//group[@name='main_fields']" position="after">

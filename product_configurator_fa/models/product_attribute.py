@@ -229,22 +229,67 @@ class ProductAttribute(models.Model):
                     )
                 )
 
+    # ─ UNE UNITÉ QUALIFIE UN NOMBRE, arbitrage de Gerry (2026-08-28) ────────
+    #
+    # *« l'unité de mesure est possible uniquement pour float et integer »*. Un
+    # millimètre qualifie une quantité ; accolé à un mot, il ne veut rien dire —
+    # « Chêne mm » n'est pas une lecture, c'est un accident de saisie.
+    #
+    # ⚠️ Deuxième barrière, comme ci-dessus : la vue masque l'unité hors des deux
+    # formats numériques, ceci la refuse quelle que soit l'interface.
+    @api.constrains("custom_type", "uom_id")
+    def _check_unit_needs_a_number(self):
+        for attribute in self:
+            if attribute.uom_id and attribute.custom_type not in self.NUMERIC_TYPES:
+                raise ValidationError(
+                    self.env._(
+                        "A unit of measure qualifies a number. Give this attribute "
+                        "the Integer or Float format, or drop the unit."
+                    )
+                )
+
     @api.onchange("value_type")
     def _onchange_value_type(self):
         if self.value_type != "value":
             self.custom_type = False
             self.uom_id = False
 
+    @api.onchange("custom_type")
+    def _onchange_custom_type_clears_uom(self):
+        # ⚠️ Même raison que pour la bascule de type : la vue masque l'unité dès
+        # que le format cesse d'être numérique. Sans ce nettoyage, elle resterait
+        # en base, hors du regard, et le refus désignerait un champ invisible.
+        if self.custom_type not in self.NUMERIC_TYPES:
+            self.uom_id = False
+
+    # ─ TROIS FORMATS, arbitrage de Gerry (2026-08-28) ───────────────────────
+    #
+    # ⚠️ Le catalogue héritié en proposait HUIT. Gerry : *« je ne vois pas l'intérêt
+    # des autres »*. Un format ne sert qu'à une chose ici : dire comment se LIT le
+    # libellé d'une valeur — un mot, un entier, un décimal. Les cinq autres
+    # décrivaient des WIDGETS de saisie, pas des façons de lire :
+    #
+    #   · `text` ne diffère de `char` que par la hauteur du champ ;
+    #   · `date`/`datetime` n'ont jamais désigné une caractéristique de produit ;
+    #   · `color` faisait double emploi avec le type « matière », qui porte une
+    #     vraie miniature — et une couleur de laquage n'est pas un code hexa ;
+    #   · `binary` (pièce jointe) n'est pas une valeur, c'est un document.
+    #
+    # ⓘ Mesuré avant de trancher : sur `fabk18`, un seul attribut portait un de ces
+    # formats — « Brand » en `color`, sans ajout client et sans une seule valeur.
+    # Rien d'utilisé ne disparaît ; une migration nettoie ce reliquat.
+    #
+    # ⚠️ Le CODE qui traite `binary` et `color` reste en place (`product_config.py`,
+    # wizard) : restreindre l'offre est réversible, arracher la plomberie ne l'est
+    # pas. Ces chemins deviennent inatteignables, ils ne deviennent pas faux.
     CUSTOM_TYPES = [
         ("char", "Char"),
         ("integer", "Integer"),
         ("float", "Float"),
-        ("text", "Textarea"),
-        ("color", "Color"),
-        ("binary", "Attachment"),
-        ("date", "Date"),
-        ("datetime", "DateTime"),
     ]
+
+    #: Les formats qui décrivent un NOMBRE — les seuls qu'une unité peut qualifier.
+    NUMERIC_TYPES = ("integer", "float")
 
     active = fields.Boolean(
         default=True,
@@ -335,7 +380,7 @@ class ProductAttribute(models.Model):
     def _is_numeric_custom(self):
         """Un attribut dont la valeur EST un nombre."""
         self.ensure_one()
-        return self.custom_type in ("integer", "float")
+        return self.custom_type in self.NUMERIC_TYPES
 
     def canonical_custom_value(self, value):
         """La forme STOCKÉE d'une valeur numérique : le nombre, et rien d'autre.

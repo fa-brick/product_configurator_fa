@@ -1,4 +1,7 @@
 from odoo.addons.base.tests.common import BaseCommon
+import importlib.util
+import os
+
 from odoo.tests.common import Form
 
 
@@ -140,3 +143,99 @@ class ValueType(BaseCommon):
             "uom_id": self.env.ref("uom.product_uom_millimeter").id,
         })
         self.assertEqual(attr.custom_type, "integer")
+
+    # ── ce que le FORMAT contraint à son tour ───────────────────────────────
+    def test_10_only_three_formats_are_offered(self):
+        """⚠️ Le catalogue hérité en proposait huit — Gerry n'en garde que trois.
+
+        Un format dit comment se LIT un libellé : un mot, un entier, un décimal.
+        Les cinq autres décrivaient des widgets de saisie (`text` n'est qu'un
+        `char` plus haut, `binary` est un document, `color` fait double emploi
+        avec le type « matière »).
+        """
+        offerts = dict(self.Attribute._fields["custom_type"].selection)
+        self.assertEqual(sorted(offerts), ["char", "float", "integer"])
+
+    def test_11_a_unit_qualifies_a_NUMBER(self):
+        """« Chêne mm » n'est pas une lecture, c'est un accident de saisie."""
+        from odoo.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.Attribute.create({
+                "name": "Species measured", "create_variant": "no_variant",
+                "custom_type": "char",
+                "uom_id": self.env.ref("uom.product_uom_millimeter").id,
+            })
+
+    def test_12_nor_does_a_unit_stand_ALONE(self):
+        """⚠️ Sans format du tout, l'unité ne qualifie rien non plus.
+
+        Le piège serait d'écrire la garde sur les seuls formats textuels et de
+        laisser passer le format vide, qui est le cas par DÉFAUT — donc le plus
+        fréquent.
+        """
+        from odoo.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.Attribute.create({
+                "name": "Nothing measured", "create_variant": "no_variant",
+                "uom_id": self.env.ref("uom.product_uom_millimeter").id,
+            })
+
+    def test_13_the_numeric_formats_keep_their_unit(self):
+        for fmt in ("integer", "float"):
+            attr = self.Attribute.create({
+                "name": f"Thickness {fmt}", "create_variant": "no_variant",
+                "custom_type": fmt,
+                "uom_id": self.env.ref("uom.product_uom_millimeter").id,
+            })
+            self.assertTrue(attr.uom_id)
+
+    def test_14_leaving_the_numeric_formats_CLEARS_the_unit(self):
+        """La vue masque l'unité dès que le format cesse d'être numérique.
+
+        ⚠️ Éprouvé par `Form`, seul chemin où un onchange existe ([[L-157]]).
+        """
+        attr = self.Attribute.create({
+            "name": "Was measured", "create_variant": "no_variant",
+            "custom_type": "integer",
+            "uom_id": self.env.ref("uom.product_uom_millimeter").id,
+        })
+        with Form(attr) as f:
+            f.custom_type = "char"
+        self.assertFalse(attr.uom_id)
+
+    def test_15_the_migration_CLEANS_what_the_selection_no_longer_accepts(self):
+        """⚠️ Une valeur retirée d'un `Selection` ne disparaît pas de la BASE.
+
+        La colonne reste un `varchar`. Une ligne en `color` s'afficherait vide,
+        s'effacerait au premier enregistrement, et une unité restée derrière
+        rendrait l'attribut inenregistrable sur un champ devenu invisible.
+
+        ⚠️ Ce test CHARGE LE FICHIER LIVRÉ et appelle son `migrate`. Recopier son
+        SQL ici n'éprouverait que la copie : la migration pourrait être vide, mal
+        nommée ou absente du paquet, et le test resterait vert.
+        """
+        chemin = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "migrations", "18.0.1.7.0", "post-migration.py",
+        )
+        self.assertTrue(os.path.exists(chemin), "la migration livrée est introuvable")
+        spec = importlib.util.spec_from_file_location("_pcfa_migration", chemin)
+        migration = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(migration)
+
+        attr = self.Attribute.create({
+            "name": "Legacy colour", "create_variant": "no_variant",
+        })
+        # Le format abandonné ne peut plus s'écrire par l'ORM — c'est tout l'objet
+        # de la migration. On le pose donc comme la base le porte : en SQL.
+        self.env.cr.execute(
+            "UPDATE product_attribute SET custom_type = 'color', uom_id = %s "
+            "WHERE id = %s",
+            (self.env.ref("uom.product_uom_millimeter").id, attr.id),
+        )
+
+        migration.migrate(self.env.cr, "18.0.1.6.0")
+
+        attr.invalidate_recordset()
+        self.assertFalse(attr.custom_type)
+        self.assertFalse(attr.uom_id)

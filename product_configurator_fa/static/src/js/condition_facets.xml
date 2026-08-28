@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xmlns:t="http://www.w3.org/1999/XSL/Transform">
+
+    <t t-name="product_configurator_fa.ConditionFacets">
+        <!-- ⚠️ SANS CONDITION, on rend le champ ORDINAIRE, et pas une zone vide :
+             c'est par lui qu'on en ajoute une, et c'est le cas le plus fréquent.
+             Remplacer le gabarit de bout en bout aurait fait disparaître
+             l'autocomplétion — donc le seul point d'entrée. -->
+        <t t-if="!hasCondition" t-call="web.Many2OneField" />
+        <div t-else="" class="o_config_condition_facets d-inline-flex flex-wrap align-items-center gap-1">
+            <span
+                t-foreach="facets"
+                t-as="facet"
+                t-key="facet_index"
+                class="o_config_facet badge rounded-pill"
+                t-esc="facet"
+            />
+        </div>
+    </t>
+
+</templates>

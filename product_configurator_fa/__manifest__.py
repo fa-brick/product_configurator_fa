@@ -37,6 +37,8 @@
             "/product_configurator_fa/static/src/js/boolean_button_widget.xml",
             "/product_configurator_fa/static/src/js/kanban_widgets.esm.js",
             "/product_configurator_fa/static/src/js/list_widgest.esm.js",
+            "/product_configurator_fa/static/src/js/condition_facets.esm.js",
+            "/product_configurator_fa/static/src/js/condition_facets.xml",
         ]
     },
     "demo": [

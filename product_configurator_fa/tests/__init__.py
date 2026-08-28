@@ -14,3 +14,4 @@ from . import test_visibility_conditions
 from . import test_wizard
 from . import test_exclusion_warning  # noqa: F401
 from . import test_config_step_separator  # noqa: F401
+from . import test_condition_facets  # noqa: F401

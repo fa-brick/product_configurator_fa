@@ -165,6 +165,76 @@ class ProductConfigDomain(models.Model):
         return True
 
     name = fields.Char(required=True)
+    # ─ LA CONDITION SE LIT COMME UNE BARRE DE RECHERCHE — B2, D-203 ─────────
+    #
+    # Constat de Gerry : *« regarde comment fonctionnent les pastilles avec la
+    # barre de recherche, je voudrais le même fonctionnement »*. Sa sémantique
+    # tombe juste sur le stockage existant (Q3) : **ET entre les pastilles, OU à
+    # l'intérieur d'une pastille** — c'est exactement ce que produit
+    # `compute_domain`, où le marqueur `|` ne marque qu'une ligne et où une ligne
+    # porte plusieurs valeurs.
+    #
+    # ⚠️ Ce champ est un RÉSUMÉ POUR L'ŒIL, pas un stockage. La condition reste
+    # faite d'enregistrements (D-080) ; ceci n'en est que la lecture. Le
+    # reconstruire à l'envers pour éditer serait revenir au texte que D-080 a
+    # écarté.
+    condition_summary = fields.Char(
+        compute="_compute_condition_summary",
+        help="The condition read as search facets: AND between facets, OR "
+             "inside one.",
+    )
+
+    #: Ce qui sépare deux pastilles, et ce qui sépare deux valeurs dans l'une.
+    FACET_SEPARATOR = " \u2022 "
+
+    @api.depends(
+        "domain_line_ids.attribute_id",
+        "domain_line_ids.condition",
+        "domain_line_ids.value_ids",
+        "domain_line_ids.operator",
+        "domain_line_ids.sequence",
+    )
+    def _compute_condition_summary(self):
+        for domain in self:
+            domain.condition_summary = domain.FACET_SEPARATOR.join(
+                domain._facet_labels()
+            )
+
+    def _facet_labels(self):
+        """Les pastilles, dans l'ordre — une par ligne de condition.
+
+        ⚠️ **L'OPÉRATEUR D'UNE LIGNE GOUVERNE SA JONCTION AVEC LA SUIVANTE**, et
+        c'est contre-intuitif. `to_odoo_domain` émet le `|` **avant** la ligne qui
+        le porte, en notation préfixe : trois lignes A, B, C dont A est en `or`
+        donnent `['|', A, B, C]`, soit **(A OU B) ET C**. Le lien annoncé devant
+        la pastille n° 2 est donc l'opérateur de la n° 1.
+
+        ⓘ Je l'avais écrit à l'envers en première intention. Lu ainsi, un `ou`
+        s'affichait sur la mauvaise jonction — et deux conditions différentes se
+        seraient lues pareil.
+        """
+        self.ensure_one()
+        labels = []
+        lignes = self.domain_line_ids.sorted()
+        for index, ligne in enumerate(lignes):
+            valeurs = " / ".join(ligne.value_ids.mapped("name"))
+            dedans = ligne.condition == "in"
+            libelle = "%s %s %s" % (
+                ligne.attribute_id.name or "?",
+                "=" if dedans else "\u2260",
+                valeurs or "?",
+            )
+            if index:
+                precedente = lignes[index - 1]
+                lien = (
+                    self.env._("or")
+                    if precedente.operator == "or"
+                    else self.env._("and")
+                )
+                libelle = "%s %s" % (lien, libelle)
+            labels.append(libelle)
+        return labels
+
     domain_line_ids = fields.One2many(
         comodel_name="product.config.domain.line",
         inverse_name="domain_id",
@@ -329,6 +399,11 @@ class ProductConfigLine(models.Model):
         comodel_name="product.config.domain",
         required=True,
         string="Restrictions",
+    )
+    # ⓘ Même raison que sur la ligne d'étape : un widget posé sur un Many2one ne
+    # reçoit que l'identifiant et le nom de la cible (B2, D-203).
+    domain_summary = fields.Char(
+        related="domain_id.condition_summary", readonly=True
     )
     sequence = fields.Integer(default=10)
 
@@ -497,6 +572,13 @@ class ProductConfigStepLine(models.Model):
             ).sorted()[:1]
             step_line.sequence = ouvreuse.sequence if ouvreuse else 9999
 
+    # ⓘ Le résumé du domaine, remonté sur la ligne pour que la vue puisse le
+    # lire : un widget posé sur un Many2one ne reçoit que l'identifiant et le nom
+    # de la cible — pas ses champs. Déclarer le résumé ici est ce qui permet aux
+    # pastilles de s'afficher (B2, D-203).
+    visibility_domain_summary = fields.Char(
+        related="visibility_domain_id.condition_summary", readonly=True
+    )
     visibility_domain_id = fields.Many2one(
         comodel_name="product.config.domain",
         string="Visibility Condition",

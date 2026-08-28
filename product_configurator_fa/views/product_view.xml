@@ -210,8 +210,16 @@
                                 options="{'no_create': True, 'no_create_edit': True}"
                                 context="{'show_attribute': False}"
                             />
+                            <!-- ⚠️ LA CONDITION SE LIT EN PASTILLES — B2, D-203.
+                                 « ET entre les pastilles, OU à l'intérieur d'une. »
+                                 Le widget LIT seulement : l'édition reste le
+                                 formulaire de condition, qui manipule des
+                                 enregistrements (D-080). -->
+                            <field name="domain_summary" column_invisible="True" />
                             <field
                                 name="domain_id"
+                                widget="condition_facets"
+                                options="{'summary_field': 'domain_summary'}"
                                 context="{'product_tmpl_id': product_tmpl_id or id or parent.id, 'product_attribute_ids': template_attribute_ids, 'form_view_ref': 'product_configurator_fa.product_config_domain_form_view_template'}"
                             />
                             <field name="product_tmpl_id" column_invisible="1" />
@@ -250,8 +258,11 @@
                                 readonly="1"
                                 widget="boolean_toggle"
                             />
+                            <field name="visibility_domain_summary" column_invisible="True" />
                             <field
                                 name="visibility_domain_id"
+                                widget="condition_facets"
+                                options="{'summary_field': 'visibility_domain_summary'}"
                                 context="{'product_tmpl_id': parent.id, 'form_view_ref': 'product_configurator_fa.product_config_domain_form_view_template'}"
                             />
                         </list>

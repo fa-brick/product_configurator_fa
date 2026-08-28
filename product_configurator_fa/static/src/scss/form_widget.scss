@@ -14,3 +14,19 @@
         min-height: 30px;
     }
 }
+
+// ══ LES PASTILLES D'UNE CONDITION — B2, D-203 ═══════════════════════════════
+//
+// ⚠️ `$o-brand-primary` et non `var(--bs-primary)` : Odoo 18 compile Bootstrap en
+// hexadécimaux statiques et ne génère AUCUNE propriété CSS `--bs-*` au runtime.
+// Un `color-mix(in srgb, var(--bs-primary) …)` serait inopérant, sans erreur.
+// C'est aussi pourquoi ce fichier est un `.scss` et pas un `.css`.
+.o_config_condition_facets {
+    .o_config_facet {
+        background-color: mix(white, $o-brand-primary, 88%);
+        color: darken($o-brand-primary, 10%);
+        border: 1px solid rgba($o-brand-primary, 0.15);
+        font-weight: 500;
+        white-space: normal;
+    }
+}

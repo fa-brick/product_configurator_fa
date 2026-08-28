@@ -1424,6 +1424,24 @@ class ProductAttributePrice(models.Model):
     price_mode = fields.Selection(
         related="attribute_line_id.price_mode", string="Extra Price Mode", readonly=True
     )
+    # ⚠️ LA MÊME RÈGLE SUR L'ÉCRAN DU PRODUIT (D-199). Une valeur qui désigne un
+    # produit y montrait son `price_extra` — un montant que le calcul IGNORE, le
+    # prix du produit prenant sa place. Masquer la colonne du catalogue sans faire
+    # ce geste ici n'aurait pas supprimé le mensonge : il se serait déplacé.
+    #
+    # ⓘ Miroirs nécessaires : une vue n'évalue que les champs qu'elle porte, jamais
+    # `attribute_id.value_type` (précédent du core, `display_type`).
+    value_type = fields.Selection(
+        related="attribute_id.value_type", string="Value Type", readonly=True
+    )
+    product_price = fields.Float(
+        related="product_attribute_value_id.product_price",
+        string="Product Price",
+        readonly=True,
+    )
+    currency_id = fields.Many2one(
+        related="product_attribute_value_id.currency_id", readonly=True
+    )
     price_extra_sqm = fields.Float(
         string="Extra Price per m²",
         digits="Product Price",

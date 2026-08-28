@@ -322,19 +322,28 @@
             </xpath>
             <xpath expr="//field[@name='value_ids']/list/field[@name='default_extra_price']" position="after">
                 <field name="currency_id" column_invisible="True" />
-                <!-- ⚠️ VISIBLE DANS LES DEUX MODES DE PRIX, et ce n'est pas un oubli : le
-                     prix du produit est facturé quel que soit le mode — le code qui le
-                     calcule ne le consulte pas. Le masquer en mode m² cacherait un
-                     montant réellement appliqué, le contraire de ce que D-197 cherche. -->
+                <!-- ⚠️ VISIBLE DANS LES DEUX MODES DE PRIX, et ce n'est pas un oubli :
+                     le prix du produit est facturé quel que soit le mode — le code qui
+                     le calcule ne le consulte pas. Il est donc le SEUL montant d'une
+                     valeur-produit, dans les deux modes. -->
                 <field
                     name="product_price"
                     widget="monetary"
                     column_invisible="parent.value_type != 'product'"
                     readonly="1"
                 />
+                <!-- ⚠️ LE TAUX AU m² NE CONCERNE PAS UN PRODUIT. Arbitrage de Gerry
+                     (2026-08-28) : « pour un produit, seule la ligne de plus-value
+                     unitaire remplacée par le prix du produit est visible ; c'est
+                     uniquement la matière qui peut appliquer un prix au mètre carré
+                     ou unitaire suivant le choix de l'attribut ».
+
+                     ⓘ Cela ferme la question laissée ouverte : un attribut de type
+                     produit sur une ligne au m² montrait DEUX montants. Il n'en montre
+                     plus qu'un — celui du produit, le seul qui vaille. -->
                 <field
                     name="default_extra_price_sqm"
-                    column_invisible="parent.price_mode != 'per_sqm'"
+                    column_invisible="parent.price_mode != 'per_sqm' or parent.value_type == 'product'"
                 />
             </xpath>
         </field>
@@ -410,16 +419,27 @@
                  de supplément », alors qu'il y en a un — et un champ modifiable
                  aurait invité à le remplir, ce qu'Odoo aurait facturé en plus. -->
             <xpath expr="//field[@name='price_extra']" position="attributes">
-                <attribute name="invisible">price_mode == 'per_sqm'</attribute>
+                <!-- ⚠️ Une valeur qui désigne un PRODUIT est facturée au prix de ce
+                     produit : son `price_extra` est ignoré par le calcul. Le montrer
+                     ici serait le même mensonge que dans le catalogue (D-199). -->
+                <attribute name="invisible">price_mode == 'per_sqm' or value_type == 'product'</attribute>
             </xpath>
             <xpath expr="//field[@name='price_extra']" position="after">
                 <field name="price_mode" column_invisible="True" />
+                <field name="value_type" column_invisible="True" />
+                <field name="currency_id" column_invisible="True" />
+                <field
+                    name="product_price"
+                    widget="monetary"
+                    invisible="value_type != 'product'"
+                    readonly="1"
+                />
                 <field
                     name="price_extra_sqm"
                     widget="monetary"
                     options="{'field_digits': True}"
                     column_invisible="context.get('hide_sqm', False)"
-                    invisible="price_mode != 'per_sqm'"
+                    invisible="price_mode != 'per_sqm' or value_type == 'product'"
                 />
             </xpath>
         </field>
@@ -460,10 +480,18 @@
             <!-- La même exclusivité que dans la liste : sur la fiche aussi, un seul
                  des deux montants a un sens, et le fixe se facturerait EN PLUS. -->
             <xpath expr="//field[@name='price_extra']" position="attributes">
-                <attribute name="invisible">price_mode == 'per_sqm'</attribute>
+                <attribute name="invisible">price_mode == 'per_sqm' or value_type == 'product'</attribute>
             </xpath>
             <xpath expr="//field[@name='price_extra']" position="after">
                 <field name="price_mode" invisible="1" />
+                <field name="value_type" invisible="1" />
+                <field name="currency_id" invisible="1" />
+                <field
+                    name="product_price"
+                    widget="monetary"
+                    invisible="value_type != 'product'"
+                    readonly="1"
+                />
                 <field
                     name="price_extra_sqm"
                     widget="monetary"

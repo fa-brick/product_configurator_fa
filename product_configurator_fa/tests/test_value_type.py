@@ -300,28 +300,27 @@ class ValueType(BaseCommon):
             conditions[m.group(1)] = garde.group(1) if garde else "False"
         return conditions
 
-    def test_18_no_two_price_columns_CONTRADICT_each_other(self):
+    def test_18_exactly_ONE_amount_shows_in_every_case(self):
         """⚠️ Ce n'est pas une question de place — c'est une question de FACTURE.
 
-        Constat de Gerry : *« default_extra_price ne peut pas être visible en même
-        temps que default_extra_price_sqm, c'est l'un ou l'autre en fin de
-        ligne »*. Le module dit lui-même pourquoi : *« Odoo somme `price_extra`
-        partout, et y ranger 25 €/m² le ferait facturer 25 € »*.
+        Trois constats de Gerry se rejoignent ici :
 
-        Et son arbitrage sur le produit, même raison : *« s'il est possible de
-        modifier et que seul un produit de la liste a son prix modifié, ça peut
-        être trompeur et fausser les prix »*. D'où deux invariants :
+          · *« default_extra_price ne peut pas être visible en même temps que
+            default_extra_price_sqm »* — le module dit lui-même pourquoi : « Odoo
+            somme `price_extra` partout, et y ranger 25 €/m² le ferait facturer
+            25 € » ;
+          · *« s'il est possible de modifier et que seul un produit de la liste a
+            son prix modifié, ça peut être trompeur et fausser les prix »* — d'où
+            le prix du produit, en lecture, à la place du montant saisissable ;
+          · *« pour un produit, seule la ligne de plus-value unitaire remplacée
+            par le prix du produit est visible ; c'est uniquement la matière qui
+            peut appliquer un prix au mètre carré ou unitaire »*.
 
-          · un seul MONTANT FORFAITAIRE — le saisissable ou celui du produit,
-            jamais les deux : deux sources pour un nombre, et le lecteur ne sait
-            plus laquelle s'applique ;
-          · jamais le forfait ET le taux au m² ensemble.
-
-        ⓘ Un attribut de type produit sur une ligne au m² montre bien DEUX
-        montants — le prix du produit et le taux. C'est exact : les deux sont
-        facturés, le calcul du prix produit ne consulte pas le mode. Les cacher
-        serait mentir ; cette combinaison est une question ouverte, pas un défaut
-        d'affichage.
+        ⓘ Les trois se résument en un invariant : quels que soient le type de
+        valeur et le mode de prix, **un montant et un seul** est à l'écran. La
+        garde l'éprouve sur les six combinaisons, en ÉVALUANT les conditions de
+        la vue assemblée — comparer des chaînes recopiées rougirait à la moindre
+        reformulation sans rien dire de la règle.
         """
         conditions = self._column_conditions("product.attribute", 'name="value_ids"')
 
@@ -330,28 +329,19 @@ class ValueType(BaseCommon):
                 self.value_type = value_type
                 self.price_mode = price_mode
 
-        def visible(nom, parent):
-            return not eval(  # noqa: S307
-                conditions[nom], {"__builtins__": {}}, {"parent": parent}
-            )
-
+        montants = ("default_extra_price", "product_price", "default_extra_price_sqm")
         for value_type in ("value", "product", "material"):
             for price_mode in ("fixed", "per_sqm"):
                 parent = _Parent(value_type, price_mode)
-                forfait = visible("default_extra_price", parent)
-                produit = visible("product_price", parent)
-                au_m2 = visible("default_extra_price_sqm", parent)
-                cas = f"{value_type}/{price_mode}"
-
-                self.assertFalse(
-                    forfait and produit,
-                    f"{cas} : deux sources pour le montant forfaitaire",
-                )
-                self.assertFalse(
-                    forfait and au_m2, f"{cas} : le forfait et le taux ensemble"
-                )
-                self.assertTrue(
-                    forfait or produit or au_m2, f"{cas} : aucun montant visible"
+                visibles = [
+                    nom for nom in montants
+                    if not eval(  # noqa: S307
+                        conditions[nom], {"__builtins__": {}}, {"parent": parent}
+                    )
+                ]
+                self.assertEqual(
+                    len(visibles), 1,
+                    f"{value_type}/{price_mode} : {visibles or 'aucun montant'}",
                 )
 
     def test_19_and_the_amounts_sit_at_the_END_of_the_line(self):

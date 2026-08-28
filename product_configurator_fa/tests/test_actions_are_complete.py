@@ -86,3 +86,73 @@ class ActionsAreComplete(BaseCommon):
                 "product_configurator_fa.product_config_domain_form_view_template"
             ).id,
         )
+
+
+class PriceGridPlacement(BaseCommon):
+    """La grille se range avec la liste de prix — D-214.
+
+    ⚠️ Elles ne décident pas la même chose : la grille **produit** le prix d'un
+    produit dimensionné, la liste de prix **l'ajuste**. Mais elles répondent à la
+    même question — *« où se règle le prix ? »* — et deux portes éloignées pour
+    une seule question, c'est une porte de trop.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.template = cls.env["product.template"].create(
+            {"name": "Dimensioned", "config_ok": True}
+        )
+
+    def test_01_the_button_opens_the_grids_of_THIS_product(self):
+        """⚠️ Les grilles sont par produit : sans domaine, on verrait celles de
+        tout le catalogue, et on éditerait la mauvaise."""
+        autre = self.env["product.template"].create(
+            {"name": "Another one", "config_ok": True}
+        )
+        grille = self.env["product.price.grid"].create(
+            {"name": "2026", "product_tmpl_id": self.template.id}
+        )
+        self.env["product.price.grid"].create(
+            {"name": "2026", "product_tmpl_id": autre.id}
+        )
+        action = self.template.action_open_price_grids()
+        trouvees = self.env["product.price.grid"].search(action["domain"])
+        self.assertEqual(trouvees, grille)
+
+    def test_02_and_it_carries_its_views(self):
+        """Même exigence que partout : une action autosuffisante (L-165)."""
+        action = self.template.action_open_price_grids()
+        self.assertTrue(action.get("views"))
+        self.assertEqual(
+            [genre for _identifiant, genre in action["views"]], ["list", "form"]
+        )
+
+    def test_03_the_count_says_how_many_there_are(self):
+        self.assertEqual(self.template.price_grid_count, 0)
+        self.env["product.price.grid"].create(
+            {"name": "2027", "product_tmpl_id": self.template.id}
+        )
+        self.template.invalidate_recordset()
+        self.assertEqual(self.template.price_grid_count, 1)
+
+    def test_04_the_configurator_tab_keeps_ONLY_the_tree(self):
+        """⚠️ C'est la maquette : l'onglet ne montre plus que l'arbre.
+
+        La grille en est partie pour le bouton d'en-tête, les restrictions et les
+        étapes pour l'arbre lui-même (D-213), les images et le nom de variante
+        pour un onglet à part.
+        """
+        import re
+
+        arch = self.env["product.template"].get_view(view_type="form")["arch"]
+        debut = arch.index('name="configurator"')
+        fin = arch.index("</page>", debut)
+        onglet = arch[debut:fin]
+        for absent in ("price_grid_ids", "config_line_ids",
+                       "config_step_line_ids", "config_image_ids"):
+            self.assertNotIn(
+                f'name="{absent}"', onglet,
+                f"{absent} est encore dans l'onglet configurateur",
+            )
+        self.assertIn('name="configurator_line_ids"', onglet)

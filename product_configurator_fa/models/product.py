@@ -802,6 +802,49 @@ class ProductTemplate(models.Model):
     )
     price_grid_warning = fields.Char(compute="_compute_price_grid_warning")
 
+    # ─ LA GRILLE SE RANGE AVEC LA LISTE DE PRIX — D-214 ─────────────────────
+    #
+    # Question de Gerry : *« la grille de prix et la liste de prix ne devraient
+    # pas être au même endroit ? »*
+    #
+    # ⓘ Elles ne décident PAS la même chose — la grille **produit** le prix d'un
+    # produit dimensionné (D-083, D-093), la liste de prix **l'ajuste** pour un
+    # client ou une quantité. Mais elles répondent à la même question de
+    # l'utilisateur : *« où se règle le prix ? »*. Deux portes éloignées pour une
+    # seule question, c'est une porte de trop.
+    #
+    # ⇒ La grille prend un bouton d'en-tête **à côté** de celui d'Odoo, et quitte
+    # l'onglet du configurateur — qui ne garde que l'arbre, comme la maquette.
+    price_grid_count = fields.Integer(compute="_compute_price_grid_count")
+
+    @api.depends("price_grid_ids", "price_grid_ids.active")
+    def _compute_price_grid_count(self):
+        for template in self:
+            template.price_grid_count = len(template.price_grid_ids)
+
+    def action_open_price_grids(self):
+        """Les grilles de CE produit.
+
+        ⚠️ `views` explicite : cette action part vers un bouton de vue, donc elle
+        serait complétée — mais la laisser incomplète ferait dépendre son bon
+        fonctionnement du chemin emprunté ([[L-165]]). On l'écrit autosuffisante.
+        """
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.env._("Price grids"),
+            "res_model": "product.price.grid",
+            "view_mode": "list,form",
+            "views": [
+                (self.env.ref(
+                    "product_configurator_fa.product_price_grid_list_view").id, "list"),
+                (self.env.ref(
+                    "product_configurator_fa.product_price_grid_form_view").id, "form"),
+            ],
+            "domain": [("product_tmpl_id", "=", self.id)],
+            "context": {"default_product_tmpl_id": self.id},
+        }
+
     @api.depends("config_ok", "price_grid_ids", "price_grid_ids.active")
     def _compute_price_grid_warning(self):
         """L'absence de grille se signale À L'ARRIVÉE dans le produit — D-083.

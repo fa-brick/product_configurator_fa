@@ -45,6 +45,38 @@
         <field name="priority">16</field>
         <field name="inherit_id" ref="product.product_template_only_form_view" />
         <field name="arch" type="xml">
+            <!-- ══ LA GRILLE SE RANGE AVEC LA LISTE DE PRIX — D-214 ═══════════
+                 Question de Gerry. Elles ne décident pas la même chose — la
+                 grille PRODUIT le prix d'un produit dimensionné, la liste de prix
+                 l'AJUSTE — mais elles répondent à la même question : « où se
+                 règle le prix ? ». Deux portes éloignées pour une seule question,
+                 c'est une porte de trop.
+
+                 ⚠️ **ET DANS LA VUE « ONLY », PAS DANS CELLE DU MODÈLE.**
+                 `product.product_normal_form_view` — le formulaire de la VARIANTE —
+                 **hérite** de `product_template_form_view` : tout ce qu'on y ajoute
+                 descend dans la variante, où `action_open_price_grids` n'existe pas.
+                 Odoo refuse alors la vue entière : *« action_open_price_grids is not
+                 a valid action on product.product »*. La vue « only » est justement
+                 celle que la variante ne reprend pas ([[L-166]]). -->
+            <xpath expr="//button[@name='open_pricelist_rules']" position="after">
+                <button
+                    class="oe_stat_button"
+                    name="action_open_price_grids"
+                    icon="fa-th"
+                    type="object"
+                    invisible="not config_ok"
+                    groups="product_configurator_fa.group_product_configurator_fa"
+                >
+                    <div class="o_field_widget o_stat_info">
+                        <span class="o_stat_value">
+                            <field name="price_grid_count" />
+                        </span>
+                        <span class="o_stat_text">Price grids</span>
+                    </div>
+                </button>
+            </xpath>
+
             <xpath expr='//header' position="inside">
                 <button
                     name="configure_product"
@@ -175,15 +207,6 @@
                          on ajoute par les liens du pied. -->
                     <field name="configurator_line_ids" widget="configurator_tree" nolabel="1" />
 
-                    <separator colspan="4" string="Price Grid" name="price_grid" />
-                    <field name="price_grid_ids" nolabel="1">
-                        <list>
-                            <field name="name" />
-                            <field name="date_start" />
-                            <field name="date_end" />
-                            <field name="currency_id" />
-                        </list>
-                    </field>
                 </page>
                 <!-- ══ LES RÉGLAGES QUI NE SONT PAS L'ARBRE — D-213 ═══════════════
                      Gerry : « dans l'onglet configurateur, peux-tu retirer

@@ -166,3 +166,55 @@ class ConditionDialog(BaseCommon):
         champs = self.env["product.config.condition.subject"].fields_get()
         self.assertTrue(champs)
         self.assertTrue(all(c.startswith("__") for c in champs), sorted(champs))
+
+    def test_10_REECRIRE_une_condition_qui_en_portait_deja_une(self):
+        """⚠️ **LE CAS QUI ÉCHOUAIT À L'ÉCRAN, ET QUE MES TESTS NE VOYAIENT PAS.**
+
+        Réécrire remplace les règles : le vidage du `one2many` DÉTACHAIT les
+        anciennes au lieu de les supprimer — `domain_id = NULL` sur une colonne
+        qui l'interdit. La cause est la politique par défaut d'un `many2one`
+        obligatoire sur un modèle ordinaire : `restrict`, pas `cascade`.
+
+        ⚠️ **Et le `flush_all` n'est pas décoratif** : une contrainte SQL se lève
+        au vidage, pas à l'écriture. Sans lui, ce test passait alors que
+        l'enregistrement échouait chez Gerry ([[L-161]]).
+        """
+        assistant = self._assistant()
+        assistant.condition_domain = str(
+            [(f"__attribute_{self.attr_montage.id}", "in", self.avant.ids)]
+        )
+        assistant.action_confirm()
+        self.env.flush_all()
+
+        second = self._assistant()
+        second.condition_domain = str(
+            [(f"__attribute_{self.attr_montage.id}", "in", self.arriere.ids)]
+        )
+        second.action_confirm()
+        self.env.flush_all()
+
+        regles = self.ligne.visibility_domain_id.domain_line_ids
+        self.assertEqual(len(regles), 1)
+        self.assertEqual(regles.value_ids, self.arriere)
+
+    def test_11_et_ses_REGLES_ne_bloquent_pas_sa_suppression(self):
+        """ⓘ Même politique, même piège : en `restrict`, les règles d'une
+
+        condition empêchaient de la supprimer.
+
+        ⚠️ Ce que la ligne du produit, elle, empêche toujours — et c'est
+        volontaire : on ne supprime pas une condition qu'un attribut emploie
+        encore. Elle est donc détachée d'abord, comme le ferait l'écran.
+        """
+        assistant = self._assistant()
+        assistant.condition_domain = str(
+            [(f"__attribute_{self.attr_montage.id}", "in", self.avant.ids)]
+        )
+        assistant.action_confirm()
+        self.env.flush_all()
+        condition = self.ligne.visibility_domain_id
+        self.assertTrue(condition.domain_line_ids)
+        self.ligne.visibility_domain_id = False
+        condition.unlink()
+        self.env.flush_all()
+        self.assertFalse(condition.exists())

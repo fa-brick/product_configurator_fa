@@ -411,7 +411,20 @@ class ProductConfigDomainLine(models.Model):
         domain=lambda self: self._compute_attribute_id_domain(),
     )
     domain_id = fields.Many2one(
-        comodel_name="product.config.domain", required=True, string="Rule"
+        comodel_name="product.config.domain",
+        required=True,
+        string="Rule",
+        # ⚠️ **SANS `cascade`, RÉÉCRIRE UNE CONDITION EST IMPOSSIBLE.** Un
+        # `many2one` OBLIGATOIRE sur un modèle ordinaire vaut `restrict` par
+        # défaut (`fields.py`, « 3 cases ») ; le côté `one2many` lit cette
+        # politique pour décider quoi faire d'une ligne retirée, et sans
+        # `cascade` il la DÉTACHE — `SET domain_id = NULL` sur une colonne qui
+        # l'interdit. Le vider (`Command.CLEAR`) échouait donc toujours, et
+        # supprimer une condition qui porte des règles aussi.
+        #
+        # ⓘ `cascade` dit ce qui est vrai : une règle appartient à sa condition
+        # et n'existe pas sans elle.
+        ondelete="cascade",
     )
     condition = fields.Selection(selection=_get_domain_conditions, required=True)
     value_ids = fields.Many2many(

@@ -282,7 +282,24 @@
         <field name="model">product.attribute</field>
         <field name="inherit_id" ref="product.product_attribute_view_form" />
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="after">
+            <!-- ⚠️ UN SEUL MONTANT, ET EN FIN DE LIGNE. Constat de Gerry :
+                 « default_extra_price ne peut pas être visible en même temps que
+                 default_extra_price_sqm, c'est l'un ou l'autre en fin de ligne ».
+
+                 ⚠️ Et ce n'est PAS cosmétique. Le module le dit lui-même à propos du
+                 taux : « Odoo somme `price_extra` partout, et y ranger 25 €/m² le
+                 ferait facturer 25 € ». Les deux champs côte à côte invitent à
+                 remplir les deux — et le montant fixe serait alors facturé EN PLUS
+                 du mètre carré, sans erreur et sans trace.
+
+                 ⓘ Le mode de l'attribut n'est qu'une SEMENCE (A4) : c'est la ligne
+                 du produit qui décide. Masquer par lui reste juste, parce qu'une
+                 ligne n'a qu'un seul mode — on sème donc le mode ET le montant qui
+                 lui correspond, jamais l'autre. -->
+            <xpath expr="//field[@name='value_ids']/list/field[@name='default_extra_price']" position="attributes">
+                <attribute name="column_invisible">parent.price_mode == 'per_sqm'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='value_ids']/list/field[@name='default_extra_price']" position="after">
                 <field
                     name="default_extra_price_sqm"
                     column_invisible="parent.price_mode != 'per_sqm'"
@@ -350,6 +367,19 @@
         <field name="model">product.template.attribute.value</field>
         <field name="inherit_id" ref="product.product_template_attribute_value_view_tree" />
         <field name="arch" type="xml">
+            <!-- ⚠️ MÊME RÈGLE QUE SUR LE CATALOGUE, mais PAR LIGNE et non par
+                 colonne : `price_mode` est lié à la ligne d'attribut, et cette liste
+                 peut mêler des lignes de modes différents. `column_invisible` ne
+                 s'évalue que sur le contexte parent — seul `invisible`, évalué par
+                 enregistrement, sait vider la bonne cellule.
+
+                 ⚠️ Le montant fixe DISPARAÎT en mode m², il ne devient pas seulement
+                 lecture seule : un zéro affiché à côté d'un taux se lit comme « pas
+                 de supplément », alors qu'il y en a un — et un champ modifiable
+                 aurait invité à le remplir, ce qu'Odoo aurait facturé en plus. -->
+            <xpath expr="//field[@name='price_extra']" position="attributes">
+                <attribute name="invisible">price_mode == 'per_sqm'</attribute>
+            </xpath>
             <xpath expr="//field[@name='price_extra']" position="after">
                 <field name="price_mode" column_invisible="True" />
                 <field
@@ -357,7 +387,7 @@
                     widget="monetary"
                     options="{'field_digits': True}"
                     column_invisible="context.get('hide_sqm', False)"
-                    readonly="price_mode != 'per_sqm'"
+                    invisible="price_mode != 'per_sqm'"
                 />
             </xpath>
         </field>
@@ -376,6 +406,9 @@
                     name="default_extra_price_sqm"
                     invisible="price_mode != 'per_sqm'"
                 />
+                <!-- ⓘ Le montant fixe n'est PAS sur cette fiche (le core ne l'y met
+                     pas) : il n'y a donc rien à masquer ici, et rien qui contredise
+                     le taux. Noté pour qu'un lecteur ne cherche pas la symétrie. -->
             </xpath>
             <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="after">
                 <field name="price_mode" column_invisible="True" />
@@ -392,6 +425,11 @@
         <field name="model">product.template.attribute.value</field>
         <field name="inherit_id" ref="product.product_template_attribute_value_view_form" />
         <field name="arch" type="xml">
+            <!-- La même exclusivité que dans la liste : sur la fiche aussi, un seul
+                 des deux montants a un sens, et le fixe se facturerait EN PLUS. -->
+            <xpath expr="//field[@name='price_extra']" position="attributes">
+                <attribute name="invisible">price_mode == 'per_sqm'</attribute>
+            </xpath>
             <xpath expr="//field[@name='price_extra']" position="after">
                 <field name="price_mode" invisible="1" />
                 <field

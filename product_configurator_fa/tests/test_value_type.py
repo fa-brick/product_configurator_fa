@@ -281,3 +281,68 @@ class ValueType(BaseCommon):
         self.assertEqual(type(champ).__name__, "Image")
         self.assertEqual(champ.max_width, 256)
         self.assertEqual(champ.max_height, 256)
+
+    # ── un seul montant à la fois (D-197) ───────────────────────────────────
+    def _column_conditions(self, model, sous):
+        """Les conditions de masquage des colonnes, lues dans la vue ASSEMBLÉE."""
+        import re
+        arch = self.env[model].get_view(view_type="form")["arch"]
+        arch = arch[arch.index(sous):]
+        arch = arch[: arch.index("</list>")]
+        conditions = {}
+        for m in re.finditer(r'<field name="([a-z_0-9]+)"([^>]*)', arch):
+            garde = re.search(r'column_invisible="([^"]*)"', m.group(2))
+            conditions[m.group(1)] = garde.group(1) if garde else "False"
+        return conditions
+
+    def test_18_exactly_ONE_price_column_shows_at_a_time(self):
+        """⚠️ Ce n'est pas une question de place — c'est une question de FACTURE.
+
+        Constat de Gerry : *« default_extra_price ne peut pas être visible en même
+        temps que default_extra_price_sqm, c'est l'un ou l'autre en fin de
+        ligne »*. Le module dit lui-même pourquoi : *« Odoo somme `price_extra`
+        partout, et y ranger 25 €/m² le ferait facturer 25 € »*. Deux champs
+        côte à côte invitent à remplir les deux, et le montant fixe serait alors
+        facturé EN PLUS du mètre carré — sans erreur et sans trace.
+
+        ⓘ La garde évalue les DEUX conditions pour chacun des deux modes, au lieu
+        de comparer des chaînes recopiées : elle éprouve la règle, pas l'écriture.
+        """
+        conditions = self._column_conditions("product.attribute", 'name="value_ids"')
+        fixe = conditions["default_extra_price"]
+        au_m2 = conditions["default_extra_price_sqm"]
+
+        class _Parent:
+            def __init__(self, price_mode):
+                self.price_mode = price_mode
+
+        for mode in ("fixed", "per_sqm"):
+            espace = {"parent": _Parent(mode)}
+            visibles = [
+                nom
+                for nom, garde in (("fixe", fixe), ("au m²", au_m2))
+                if not eval(garde, {"__builtins__": {}}, espace)  # noqa: S307
+            ]
+            self.assertEqual(
+                len(visibles), 1,
+                f"en mode {mode}, colonnes visibles : {visibles or 'aucune'}",
+            )
+
+    def test_19_and_they_sit_at_the_END_of_the_line(self):
+        """« c'est l'un ou l'autre EN FIN DE LIGNE ».
+
+        ⚠️ La colonne au m² était insérée juste après le nom, donc loin de son
+        alternative : les deux montants se lisaient à deux endroits différents de
+        la ligne selon le mode.
+        """
+        conditions = self._column_conditions("product.attribute", 'name="value_ids"')
+        ordre = list(conditions)
+        self.assertEqual(
+            ordre.index("default_extra_price_sqm"),
+            ordre.index("default_extra_price") + 1,
+            "les deux montants ne sont plus adjacents",
+        )
+        # Après eux, plus aucune colonne que l'utilisateur puisse voir.
+        apres = [n for n in ordre[ordre.index("default_extra_price_sqm") + 1:]
+                 if conditions[n] != "True"]
+        self.assertEqual(apres, [], f"des colonnes suivent encore : {apres}")

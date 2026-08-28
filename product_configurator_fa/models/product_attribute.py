@@ -543,6 +543,51 @@ class ProductAttributeLine(models.Model):
         if self.default_val and self.default_val not in self.value_ids:
             self.default_val = None
 
+    # ─ ON PRÉVIENT AVANT DE DÉSACTIVER — B4, QC, D-205 ──────────────────────
+    #
+    # ⚠️ *« Il faut que l'onglet DISE ce qu'il va faire avant de le faire. »* Le
+    # cœur archive une valeur qu'il ne peut pas supprimer, en silence : le même
+    # clic détruit ici et masque là. L'écart ne se voit qu'après coup, quand la
+    # valeur est toujours là, grisée.
+    #
+    # ⓘ Un `onchange` et non une contrainte : on ne REFUSE pas le geste — Gerry a
+    # tranché qu'il est légitime —, on annonce son effet réel.
+    @api.onchange("value_ids")
+    def _onchange_values_warns_about_deactivation(self):
+        if not self._origin:
+            return None
+        # ⚠️ COMPARER DES IDENTIFIANTS, PAS DES ENSEMBLES. Dans un `onchange`, la
+        # ligne est un enregistrement VIRTUEL : `self.value_ids` sort de son cache
+        # tandis que `self._origin.value_ids` sort de la base, et la soustraction
+        # de recordsets ne les annule pas toujours — mesuré, elle rendait « tout a
+        # été retiré » alors qu'on venait d'AJOUTER une valeur. L'avertissement se
+        # serait alors levé au moment d'enrichir la liste.
+        origine = set(self._origin.value_ids.ids)
+        saisies = set(self.value_ids._origin.ids)
+        retirees = origine - saisies
+        if not retirees:
+            return None
+        bloquees = self._origin.product_template_value_ids.filtered(
+            lambda ptav: ptav.product_attribute_value_id.id in retirees
+            and ptav.ptav_active
+            and ptav._removal_would_archive()
+        )
+        if not bloquees:
+            return None
+        return {
+            "warning": {
+                "title": self.env._("These values will be deactivated"),
+                "message": self.env._(
+                    "%(values)s cannot be deleted: variants already use them. "
+                    "They will be deactivated instead — past orders stay valid, "
+                    "and the choice disappears from future configurations.",
+                    values=", ".join(
+                        bloquees.mapped("product_attribute_value_id.name")
+                    ),
+                ),
+            }
+        }
+
     custom = fields.Boolean(help="Allow custom values for this attribute?")
     required = fields.Boolean(help="Is this attribute required?")
     required_condition = fields.Char(compute="_compute_attribute_condition", store=True)
@@ -591,7 +636,7 @@ class ProductAttributeLine(models.Model):
     )
     config_step_owner_id = fields.Many2one(
         comodel_name="product.config.step",
-        string="Step",
+        string="Belongs to step",
         compute="_compute_config_step_owner_id",
         help="The step this line belongs to — the last one opened at or above it.",
     )
@@ -1526,6 +1571,60 @@ class ProductAttributePrice(models.Model):
     price_mode = fields.Selection(
         related="attribute_line_id.price_mode", string="Extra Price Mode", readonly=True
     )
+    # ─ LA CORBEILLE A DEUX VISAGES — B4, QC, D-205 ──────────────────────────
+    #
+    # Arbitrage de Gerry : *« si aucun variant n'a été créé on peut supprimer ;
+    # s'il y a déjà eu des variants on désactive »*, et *« si on peut afficher une
+    # poubelle ou une icône d'archivage suivant l'état, ça reste le mieux »*.
+    #
+    # ⚠️ **LE CŒUR LE FAIT DÉJÀ.** `ProductTemplateAttributeValue.unlink()`
+    # supprime, et **archive quand il ne peut pas** — sa docstring le dit :
+    # *« Archive the value if unlink is not possible »*. Ce lot n'ajoute donc
+    # aucun comportement : il ajoute la seule chose qui manquait, **dire ce que le
+    # clic va faire avant qu'il le fasse**. Un bouton, deux effets, décidés par un
+    # état que l'utilisateur ne voit pas : sans cela, le même geste détruit ici et
+    # masque là.
+    #
+    # ⚠️ **C'est une PRÉVISION, pas une promesse.** Le cœur enveloppe sa
+    # suppression dans un `try/except Exception` large : une contrainte qu'on ne
+    # sait pas anticiper peut encore la faire basculer en archivage. On annonce
+    # donc l'archivage quand on le SAIT, jamais la suppression comme certaine.
+    removal_effect = fields.Selection(
+        selection=[("delete", "Delete"), ("archive", "Deactivate")],
+        compute="_compute_removal_effect",
+        string="On removal",
+        help="What removing this value would do. Deactivating keeps past orders "
+             "valid while taking the choice out of future configurations.",
+    )
+
+    def _removal_would_archive(self):
+        """Une variante empêche-t-elle la suppression ?
+
+        ⓘ `_filter_to_unlink` est le point d'extension où `sale` écarte les
+        variantes liées à une ligne de commande, et `stock` celles qui ont un
+        mouvement. L'interroger est la seule réponse vraie : la recopier ici
+        divergerait au premier module installé.
+
+        ⚠️ **APPELÉ SANS ARGUMENT, et ce n'est pas un détail.** Le cœur déclare
+        `_filter_to_unlink(self, check_access=True)`, mais `stock` le surcharge en
+        `_filter_to_unlink(self)` — sans le paramètre. Passer `check_access` lève
+        donc un `TypeError` dès que `stock` est installé, c'est-à-dire presque
+        partout. Le cœur lui-même l'appelle sans argument (`_unlink_or_archive`) :
+        c'est la seule forme que toute la chaîne accepte.
+        """
+        self.ensure_one()
+        variants = self.ptav_product_variant_ids
+        if not variants:
+            return False
+        return bool(variants - variants._filter_to_unlink())
+
+    @api.depends("ptav_product_variant_ids")
+    def _compute_removal_effect(self):
+        for value in self:
+            value.removal_effect = (
+                "archive" if value._removal_would_archive() else "delete"
+            )
+
     # ⚠️ LA MÊME RÈGLE SUR L'ÉCRAN DU PRODUIT (D-199). Une valeur qui désigne un
     # produit y montrait son `price_extra` — un montant que le calcul IGNORE, le
     # prix du produit prenant sa place. Masquer la colonne du catalogue sans faire

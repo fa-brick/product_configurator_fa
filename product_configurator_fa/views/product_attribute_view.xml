@@ -424,6 +424,14 @@
                      ici serait le même mensonge que dans le catalogue (D-199). -->
                 <attribute name="invisible">price_mode == 'per_sqm' or value_type == 'product'</attribute>
             </xpath>
+            <!-- ══ CE QUE LE RETRAIT FERA — B4, QC, D-205 ═══════════════════════
+                 « Si aucun variant n'a été créé on peut supprimer ; s'il y a déjà eu
+                 des variants on désactive. » Le cœur le fait déjà ; ce qui manquait
+                 était de le DIRE avant le clic — un bouton, deux effets, décidés par
+                 un état que l'utilisateur ne voit pas. -->
+            <xpath expr="//field[@name='price_extra']" position="before">
+                <field name="removal_effect" widget="badge" optional="show" />
+            </xpath>
             <xpath expr="//field[@name='price_extra']" position="after">
                 <field name="price_mode" column_invisible="True" />
                 <field name="value_type" column_invisible="True" />

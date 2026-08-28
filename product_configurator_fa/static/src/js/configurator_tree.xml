@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xmlns:t="http://www.w3.org/1999/XSL/Transform">
+
+    <t t-name="product_configurator_fa.ConfiguratorTree">
+        <table class="o_config_tree table table-sm">
+            <thead>
+                <tr>
+                    <th class="o_config_tree_name">Attributes</th>
+                    <th>Conditions</th>
+                    <th class="o_config_tree_view">3D view</th>
+                    <th class="o_config_tree_actions"/>
+                </tr>
+            </thead>
+            <tbody>
+                <t t-foreach="rows" t-as="row" t-key="row.kind + '-' + row.id + '-' + (row.line_id or 0)">
+                    <!-- ⚠️ LE BANDEAU D'ÉTAPE n'est pas un enregistrement : il est
+                         DÉDUIT du marqueur porté par la ligne qui l'ouvre (D-202). -->
+                    <tr t-if="row.kind === 'step'" class="o_config_step">
+                        <td colspan="4"><em t-esc="row.name"/></td>
+                    </tr>
+                    <tr t-else="" t-att-class="row.kind === 'value' ? 'o_config_value' : 'o_config_attribute'">
+                        <td class="o_config_tree_name">
+                            <span t-att-style="row.depth ? 'padding-left: 2rem;' : ''">
+                                <!-- ⓘ Le chevron n'apparaît que s'il y a quelque
+                                     chose à déplier : un attribut sans valeur ne
+                                     doit pas promettre un second niveau. -->
+                                <button
+                                    t-if="row.kind === 'attribute' and row.hasValues"
+                                    class="btn btn-link p-0 me-1"
+                                    t-on-click="() => this.toggle(row)"
+                                >
+                                    <i t-att-class="row.expanded ? 'fa fa-chevron-down' : 'fa fa-chevron-right'"/>
+                                </button>
+                                <t t-esc="row.name"/>
+                            </span>
+                        </td>
+                        <td>
+                            <span
+                                t-foreach="row.facets or []"
+                                t-as="facet"
+                                t-key="facet_index"
+                                class="o_config_facet badge rounded-pill me-1"
+                                t-esc="facet"
+                            />
+                        </td>
+                        <td class="o_config_tree_view"><t t-esc="row.camera or ''"/></td>
+                        <td class="o_config_tree_actions">
+                            <button
+                                t-if="row.kind === 'attribute'"
+                                class="btn btn-link p-0"
+                                title="Values"
+                                t-on-click="() => this.openValues(row)"
+                            >
+                                <i class="fa fa-list-ul"/>
+                            </button>
+                        </td>
+                    </tr>
+                </t>
+            </tbody>
+        </table>
+    </t>
+
+</templates>

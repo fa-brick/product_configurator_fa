@@ -30,3 +30,25 @@
         white-space: normal;
     }
 }
+
+// ══ L'ARBRE DU CONFIGURATEUR — D-210 ════════════════════════════════════════
+.o_config_tree {
+    .o_config_step > td {
+        // Le bandeau d'étape : il sépare, il ne se clique pas.
+        background-color: mix(white, $o-brand-primary, 92%);
+        font-weight: 600;
+    }
+    .o_config_value {
+        // ⓘ L'indentation seule ne suffit pas à dire « c'est un second niveau » :
+        // une valeur se lit plus discrètement que l'attribut qui la porte.
+        color: $o-main-text-color;
+        opacity: 0.85;
+    }
+    .o_config_tree_view {
+        width: 14rem;
+    }
+    .o_config_tree_actions {
+        width: 4rem;
+        text-align: right;
+    }
+}

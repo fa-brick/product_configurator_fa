@@ -165,42 +165,15 @@
                          d'étape en propre. Les deux demandent un composant sur mesure —
                          une liste Odoo ne sait pas mêler deux modèles ni s'imbriquer. -->
                     <separator colspan="4" string="Attributes" name="configurator_tree" />
-                    <field
-                        name="configurator_line_ids"
-                        nolabel="1"
-                        context="{'default_config_ok': True}"
-                    >
-                        <list editable="bottom">
-                            <field name="sequence" widget="handle" />
-                            <field
-                                name="attribute_id"
-                                options="{'no_create': True, 'no_create_edit': True}"
-                            />
-                            <field name="value_ids" widget="many2many_tags" optional="hide" />
-                            <field name="visibility_domain_summary" column_invisible="True" />
-                            <field
-                                name="visibility_domain_id"
-                                string="Conditions"
-                                widget="condition_facets"
-                                options="{'summary_field': 'visibility_domain_summary'}"
-                                context="{'product_tmpl_id': parent.id, 'form_view_ref': 'product_configurator_fa.product_config_domain_form_view_template'}"
-                            />
-                            <field
-                                name="config_step_id"
-                                string="Opens step"
-                                options="{'no_create_edit': True}"
-                            />
-                            <field name="config_step_owner_id" optional="hide" />
-                            <field name="required" optional="hide" />
-                            <button
-                                name="action_open_values"
-                                type="object"
-                                string="Values"
-                                icon="fa-list-ul"
-                                class="btn-link"
-                            />
-                        </list>
-                    </field>
+                    <!-- ⚠️ L'ARBRE, tel que la maquette le demande (D-210) : étape en
+                         bandeau, attribut, valeurs indentées. Une liste Odoo ne sait
+                         ni s'imbriquer ni mêler deux modèles — d'où le composant.
+
+                         ⚠️ ET IL EST SEUL : un même `One2many` déclaré deux fois dans
+                         un formulaire casse la sauvegarde (D-209, mesuré). L'arbre
+                         remplace donc la liste — on règle une ligne en l'ouvrant, et
+                         on ajoute par les liens du pied. -->
+                    <field name="configurator_line_ids" widget="configurator_tree" nolabel="1" />
 
                     <separator colspan="4" string="Price Grid" name="price_grid" />
                     <field name="price_grid_ids" nolabel="1">

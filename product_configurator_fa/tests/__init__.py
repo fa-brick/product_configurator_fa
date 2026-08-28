@@ -19,3 +19,4 @@ from . import test_configurator_columns  # noqa: F401
 from . import test_removal_effect  # noqa: F401
 from . import test_values_dialog  # noqa: F401
 from . import test_product_filter  # noqa: F401
+from . import test_configurator_tree  # noqa: F401

@@ -13,6 +13,11 @@ class ProductAttributeLine(models.Model):
 
     _inherit = "product.template.attribute.line"
 
+    def _configurator_camera_name(self):
+        """Le crochet du cœur, rempli ici — la caméra est une fiche de l'éditeur."""
+        self.ensure_one()
+        return self.view_camera_id.display_name or ""
+
     view_camera_id = fields.Many2one(
         comodel_name="product.model3d.camera",
         string="3D View",

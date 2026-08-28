@@ -1,6 +1,6 @@
 {
     "name": "Product Configurator (fa-brick)",
-    "version": "18.0.1.10.0",
+    "version": "18.0.1.11.0",
     "category": "Generic Modules/Base",
     "summary": "Base for product configuration interface modules",
     # Dérivé de OCA/product-configurator (AGPL-3) : l'attribution d'origine est
@@ -39,6 +39,8 @@
             "/product_configurator_fa/static/src/js/list_widgest.esm.js",
             "/product_configurator_fa/static/src/js/condition_facets.esm.js",
             "/product_configurator_fa/static/src/js/condition_facets.xml",
+            "/product_configurator_fa/static/src/js/configurator_tree.esm.js",
+            "/product_configurator_fa/static/src/js/configurator_tree.xml",
         ]
     },
     "demo": [

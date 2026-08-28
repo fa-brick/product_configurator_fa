@@ -98,6 +98,73 @@ class ProductTemplate(models.Model):
              "the configurator needs: conditions, steps, 3D view.",
     )
 
+    # ─ L'ARBRE DU CONFIGURATEUR, TEL QUE L'ÉCRAN LE LIT — D-210 ─────────────
+    #
+    # Maquette de Gerry : un arbre où l'étape est un bandeau, l'attribut une
+    # ligne, et ses valeurs des lignes indentées portant chacune leur condition.
+    #
+    # ⚠️ **UNE LISTE ODOO NE SAIT NI S'IMBRIQUER NI MÊLER DEUX MODÈLES.** L'arbre
+    # tient trois natures de lignes — étape, attribut, valeur — venues de trois
+    # modèles. D'où un composant, et d'où cette méthode : le composant lit UNE
+    # structure, au lieu de recomposer côté client une jointure que le serveur
+    # fait mieux.
+    #
+    # ⚠️ **L'ÉTAPE EST UN BANDEAU RENDU, PAS UN ENREGISTREMENT DE PLUS.** Le
+    # modèle n'a pas changé (D-202) : l'étape reste un marqueur porté par la ligne
+    # qui l'ouvre. C'est l'affichage qui en tire un bandeau — ce qui est
+    # exactement ce que la forme (A) promettait, *« le bandeau pourra venir plus
+    # tard sans toucher au modèle »*.
+    def get_configurator_tree(self):
+        """L'arbre à afficher — étapes, attributs, valeurs, conditions.
+
+        ⓘ Rendu dans l'ORDRE des lignes d'attribut : c'est lui qui porte
+        l'appartenance aux étapes, et c'est le même que celui de l'onglet
+        « Attributs & Variantes » (Q2).
+        """
+        self.ensure_one()
+        lignes = []
+        ouverte = False
+        # Les conditions POSÉES SUR DES VALEURS vivent sur un autre modèle : on
+        # les rassemble en une passe plutôt qu'une requête par valeur.
+        conditions_valeur = {}
+        for regle in self.config_line_ids:
+            for valeur in regle.value_ids:
+                conditions_valeur.setdefault(
+                    (regle.attribute_line_id.id, valeur.id), regle
+                )
+
+        for ligne in self.attribute_line_ids.sorted():
+            if ligne.config_step_id and ligne.config_step_id != ouverte:
+                ouverte = ligne.config_step_id
+                lignes.append({
+                    "kind": "step",
+                    "id": ligne.config_step_id.id,
+                    "line_id": ligne.id,
+                    "name": ligne.config_step_id.display_name,
+                })
+            lignes.append({
+                "kind": "attribute",
+                "id": ligne.id,
+                "name": ligne.attribute_id.display_name,
+                "facets": ligne.visibility_domain_id._facet_labels(),
+                "domain_id": ligne.visibility_domain_id.id,
+                "camera": ligne._configurator_camera_name(),
+                "values": [
+                    {
+                        "kind": "value",
+                        "id": valeur.id,
+                        "line_id": ligne.id,
+                        "name": valeur.name,
+                        "facets": conditions_valeur.get(
+                            (ligne.id, valeur.id),
+                            self.env["product.config.line"],
+                        ).domain_id._facet_labels(),
+                    }
+                    for valeur in ligne.value_ids
+                ],
+            })
+        return lignes
+
     config_line_ids = fields.One2many(
         comodel_name="product.config.line",
         inverse_name="product_tmpl_id",

@@ -213,6 +213,12 @@ class ProductConfigDomain(models.Model):
         s'affichait sur la mauvaise jonction — et deux conditions différentes se
         seraient lues pareil.
         """
+        # ⚠️ **PAS DE CONDITION, PAS DE PASTILLE — et surtout pas une erreur.**
+        # L'appelant le plus fréquent est une ligne qui n'en porte AUCUNE : un
+        # `ensure_one()` sec y levait « Expected singleton », et l'arbre entier
+        # tombait à cause des lignes ordinaires.
+        if not self:
+            return []
         self.ensure_one()
         labels = []
         lignes = self.domain_line_ids.sorted()

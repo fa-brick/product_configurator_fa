@@ -756,6 +756,18 @@ class ProductAttributeLine(models.Model):
         for line in self:
             line.too_many_values = line.value_count > self.VALUES_SHOWN_AS_TAGS
 
+    def _configurator_camera_name(self):
+        """Le nom de la vue 3D de cette ligne — vide si l'éditeur n'est pas là.
+
+        ⚠️ Le cœur du configurateur NE CONNAÎT PAS `view_camera_id` : le champ
+        vient du pont, et l'exposer ici ferait dépendre l'AGPL-3 de l'éditeur —
+        l'inverse du sens que D-075 protège. L'arbre a pourtant besoin d'une
+        colonne. Ce crochet la remplit quand le pont est installé, et rend une
+        chaîne vide sinon.
+        """
+        self.ensure_one()
+        return ""
+
     def action_open_values(self):
         """Ouvre les valeurs de CETTE ligne, dans un dialogue.
 

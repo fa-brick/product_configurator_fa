@@ -12,3 +12,4 @@ from . import test_session_identity
 from . import test_value_type
 from . import test_visibility_conditions
 from . import test_wizard
+from . import test_exclusion_warning  # noqa: F401

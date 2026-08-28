@@ -182,6 +182,55 @@ class ProductTemplate(models.Model):
                     % (exc.args[0])
                 ) from exc
 
+    # ─ QB : ON PRÉVIENT, ON NE CONVERTIT NI NE REFUSE — D-200 ───────────────
+    #
+    # Arbitrage de Gerry : *« lorsqu'un produit devient configurable on prévient si
+    # des exclusions sont dans le produit »*. Ni conversion automatique, ni refus de
+    # la bascule — un avertissement.
+    #
+    # ⚠️ **CES EXCLUSIONS SONT DÉJÀ SANS EFFET, et c'est tout le sujet.** Le
+    # configurateur ne les lit pas : aucune occurrence de `exclude_for`,
+    # `_is_combination_possible` ni `_get_attribute_exclusions` dans ce module. Et
+    # `_create_variant_ids` saute les produits configurables, ce qui prive les
+    # exclusions de leur seul autre consommateur. L'avertissement ne change donc
+    # aucun comportement : **il rend explicite un silence**. Aujourd'hui l'interface
+    # laisse croire qu'un réglage agit, ce qui est pire que de ne pas l'offrir.
+    #
+    # ⓘ Pourquoi un `onchange` et pas une contrainte : une contrainte ne sait que
+    # refuser, et Gerry a écarté le refus. Un avertissement se rend par
+    # `{"warning": ...}`, que seul un `onchange` peut retourner.
+    #
+    # ⚠️ Corollaire à connaître : `toggle_config()` — l'ancienne action, encore
+    # appelable — ne déclenche AUCUN onchange. La bascule par la case à cocher
+    # avertit, la bascule par le bouton non. C'est le prix de l'avertissement, et
+    # c'est aussi une raison de plus de ne garder que la case (D-186).
+    @api.onchange("config_ok")
+    def _onchange_config_ok_warns_about_exclusions(self):
+        if not self.config_ok or not self._origin:
+            return None
+        tmpl_id = self._origin.id
+        exclusions = self.env["product.template.attribute.exclusion"].search_count(
+            [
+                "|",
+                ("product_tmpl_id", "=", tmpl_id),
+                ("product_template_attribute_value_id.product_tmpl_id", "=", tmpl_id),
+            ]
+        )
+        if not exclusions:
+            return None
+        return {
+            "warning": {
+                "title": self.env._("Exclusions will no longer apply"),
+                "message": self.env._(
+                    "This product carries %s native exclusion(s). A configurable "
+                    "product does not read them: state these restrictions as "
+                    "configurator conditions instead. The exclusions are left "
+                    "untouched — nothing is deleted or converted.",
+                    exclusions,
+                ),
+            }
+        }
+
     def toggle_config(self):
         for record in self:
             record.config_ok = not record.config_ok

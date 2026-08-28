@@ -47,14 +47,6 @@
                 </div>
             </xpath>
 
-            <!-- ⚠️ ET L'IDENTITÉ DESCEND DANS L'ONGLET. Instruction de Gerry :
-                 *« insère toutes les informations dans informations générales »*, et
-                 sa maquette ne montre RIEN entre le titre et les défauts. Le groupe
-                 du cœur part donc en entier ; seuls le titre, l'image et les trois
-                 drapeaux restent en tête. -->
-            <xpath expr="//group[@name='main_fields']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
             <!-- ⚠️ `create_variant` N'EST PLUS CACHÉ DERRIÈRE LE MODE DÉVELOPPEUR.
                  Constat de Gerry (2026-08-28) : « je ne vois pas dans l'attribut la
                  gestion des variants ». Le `groups="base.group_no_one"` est arrivé avec
@@ -96,6 +88,17 @@
                  Ils ne décident de rien par eux-mêmes (A4) : c'est la ligne, sur le
                  produit, qui est lue à la configuration. Mais ce sont les trois
                  réglages qu'on veut voir d'un coup d'œil en ouvrant un attribut. -->
+            <!-- ⓘ `active`, puis le filtre e-commerce, puis « recherchable » :
+                 l'ordre demandé par Gerry. `search_ok` quitte « ce qu'une valeur
+                 est » — il ne dit pas ce qu'une valeur EST, il dit si l'attribut
+                 entre dans la recherche d'une variante identique. -->
+            <xpath expr="//group[@name='sale_main_fields']" position="inside">
+                <field name="active" />
+            </xpath>
+            <xpath expr="//group[@name='main_fields']" position="inside">
+                <field name="search_ok" />
+            </xpath>
+
             <xpath expr="//group[@name='main_fields']" position="after">
                 <group
                     string="Defaults for a new product line"
@@ -138,18 +141,21 @@
                  attribut EST avant d'énumérer ce qu'il propose. -->
             <xpath expr="//page[@name='attribute_values']" position="before">
                 <page string="General information" name="general_information">
-                    <!-- ⓘ Reposés ici depuis le groupe du cœur, devenu invisible :
-                         ils décrivent l'attribut, ils ne l'identifient pas. -->
-                    <group name="attribute_identity">
-                        <group>
-                            <field name="display_type" />
-                            <field name="create_variant" />
-                        </group>
-                        <group>
-                            <field name="active" />
-                        </group>
-                    </group>
+                    <!-- ⚠️ ON DÉPLACE LE GROUPE DU CŒUR, ON NE LE RECOPIE PAS.
+                         Premier essai : le cacher et réécrire ses champs ici. Le
+                         résultat était juste à l'écran et FAUX en profondeur —
+                         `website_sale` ajoute son filtre e-commerce **dans** ce
+                         groupe (`ecommerce_main_fields`), et la copie l'a fait
+                         disparaître. Constat de Gerry : *« tu as oublié le filtre
+                         e-commerce »*.
+
+                         ⓘ `position="move"` relocalise le nœud existant : tout ce
+                         que d'autres modules y ont greffé suit, aujourd'hui comme
+                         demain. Et le fork n'a pas à connaître `website_sale`, dont
+                         il ne dépend pas — il ne pourrait de toute façon pas nommer
+                         son champ ([[L-167]]). -->
                 <group
+                    name="attribute_description"
                     string="Description"
                     groups="product_configurator_fa.group_product_configurator_fa_manager"
                 >
@@ -194,7 +200,6 @@
                             name="uom_id"
                             invisible="value_type != 'value' or custom_type not in ['integer', 'float']"
                         />
-                        <field name="search_ok" />
                     </group>
                     <!-- ══ LA LISTE PROPOSÉE PAR UN FILTRE — C2, D-207 ═════════════
                          « Un filtre sur des produits, uniquement » (QI). Il ne fait
@@ -247,6 +252,19 @@
                      dit, faute de quoi la page ferait croire à des réglages actifs — ce
                      qu'elle a fait jusqu'ici. -->
                 </page>
+            </xpath>
+
+            <!-- ⚠️ LE DÉPLACEMENT EST UNE SPEC À PART, et ce n'est pas un détail de
+                 style : `position="move"` n'est traité que pour un ENFANT DIRECT de
+                 la spec qui le contient (`template_inheritance.py`). Niché dans la
+                 page créée juste au-dessus, il était petit-enfant — et Odoo l'a
+                 ignoré en silence, sans erreur ni avertissement. Le groupe restait
+                 en tête de page, et rien ne le disait.
+
+                 ⓘ Il vient donc APRÈS l'ajout de la page : les specs d'une même vue
+                 s'appliquent dans l'ordre du document, donc la page existe. -->
+            <xpath expr="//group[@name='attribute_description']" position="before">
+                <xpath expr="//group[@name='main_fields']" position="move" />
             </xpath>
 
         </field>

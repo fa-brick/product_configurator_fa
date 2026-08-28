@@ -608,6 +608,57 @@ class ProductAttributeLine(models.Model):
         related="visibility_domain_id.condition_summary", readonly=True
     )
 
+    # ─ LES VALEURS S'OUVRENT DANS UN DIALOGUE — B5, QE, D-206 ───────────────
+    #
+    # Arbitrage de Gerry : *« une ligne qui au clic ouvre la liste des valeurs »*,
+    # et *« dans un dialogue »*.
+    #
+    # ⓘ **C'est le geste que le cœur d'Odoo emploie déjà** pour le même problème :
+    # au-delà d'une poignée de valeurs, des pastilles `many2many_tags` deviennent
+    # illisibles, et le cœur bascule sur une liste. La convergence est un bon
+    # signe — ce n'est pas un contournement.
+    #
+    # ⚠️ **Un DIALOGUE et non une action pleine page**, à l'inverse du cœur : la
+    # pleine page perd le contexte de l'arbre, qui est justement ce que l'onglet
+    # apporte. On revient de la liste des valeurs là où on l'a ouverte.
+
+    #: Au-delà, les pastilles cessent d'être affichées — le nombre vient de Gerry
+    #: (*« à voir comment afficher les valeurs quand il y en a plus de 200 »*).
+    #: ⓘ Une seule constante : le jour où le seuil se révèle trop haut, c'est ici.
+    VALUES_SHOWN_AS_TAGS = 200
+
+    too_many_values = fields.Boolean(
+        compute="_compute_too_many_values",
+        help="True when the values are too many to be listed as tags; the row "
+             "then offers a dialog instead.",
+    )
+
+    @api.depends("value_count")
+    def _compute_too_many_values(self):
+        for line in self:
+            line.too_many_values = line.value_count > self.VALUES_SHOWN_AS_TAGS
+
+    def action_open_values(self):
+        """Ouvre les valeurs de CETTE ligne, dans un dialogue.
+
+        ⚠️ Le domaine porte sur `attribute_line_id`, pas sur l'attribut : deux
+        produits partagent un attribut mais jamais ses valeurs de produit, et
+        filtrer sur l'attribut montrerait celles de tout le catalogue.
+        """
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.attribute_id.display_name,
+            "res_model": "product.template.attribute.value",
+            "view_mode": "list",
+            "domain": [("attribute_line_id", "=", self.id)],
+            # ⓘ Sans `active_test=False`, une valeur DÉSACTIVÉE serait invisible —
+            # or c'est précisément l'état où l'on vient voir ce qui s'est passé
+            # (D-205), et le seul endroit d'où la réactiver.
+            "context": {"active_test": False},
+            "target": "new",
+        }
+
     # ─ L'ÉTAPE EST UN SÉPARATEUR — B1, D-202 ────────────────────────────────
     #
     # ⚠️ **CE CHAMP NE DIT PAS « J'APPARTIENS À », IL DIT « J'OUVRE ».** L'étape

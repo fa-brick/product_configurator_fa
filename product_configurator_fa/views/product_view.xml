@@ -104,6 +104,23 @@
                     readonly="1"
                     optional="show"
                 />
+                <!-- ══ LES VALEURS S'OUVRENT DANS UN DIALOGUE — B5, D-206 ═══════
+                     « Une ligne qui au clic ouvre la liste des valeurs », « dans un
+                     dialogue ». Le bouton est TOUJOURS là — c'est le seul endroit
+                     d'où l'on voit les prix, l'effet du retrait et les valeurs
+                     désactivées. Les pastilles, elles, s'effacent quand elles
+                     cessent d'être lisibles. -->
+                <field name="value_count" column_invisible="False" optional="hide" />
+                <field name="too_many_values" column_invisible="True" />
+                <button
+                    name="action_open_values"
+                    type="object"
+                    string="Values"
+                    icon="fa-list-ul"
+                    class="btn-link"
+                    column_invisible="not context.get('default_config_ok', False)"
+                />
+
                 <!-- ══ LA CONDITION SE LIT À CÔTÉ DE CE QU'ELLE RESTREINT — B3 ══
                      C'est tout le gain de l'unification : une restriction cesse
                      d'être une ligne dans une autre table. Le champ existait sur la
@@ -170,6 +187,11 @@
                 expr="//field[@name='attribute_line_ids']/list/field[@name='value_ids']"
                 position="attributes"
             >
+                <!-- ⚠️ PAR LIGNE et non par colonne : le seuil dépend du nombre de
+                     valeurs de CETTE ligne, et `column_invisible` ne s'évalue que
+                     sur le contexte parent. Une liste peut mêler un attribut à
+                     trois valeurs et un autre à trois cents. -->
+                <attribute name="invisible">too_many_values</attribute>
                 <attribute name="required">not custom</attribute>
             </xpath>
 

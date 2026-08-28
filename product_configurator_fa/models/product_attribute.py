@@ -332,6 +332,51 @@ class ProductAttribute(models.Model):
             "target": "new",
         }
 
+    def _materialise_proposed_values(self):
+        """Donne une VALEUR à chaque produit proposé — C3, D-221.
+
+        ⚠️ **QJ : la valeur choisie est MATÉRIALISÉE.** C'est ce qui rend la liste
+        dynamique tenable : ce que le client retient devient une
+        `product.attribute.value` ordinaire, portant son `product_id` — et **tout
+        ce qui pend à une valeur continue de fonctionner** : prix, archivage,
+        exclusions, historique des commandes, identité d'une variante.
+
+        ⚠️ **IDEMPOTENT, et c'est essentiel.** L'assistant appelle ceci à chaque
+        ouverture : sans réemploi par `product_id`, chaque visite créerait un
+        jumeau, et le catalogue enflerait d'une valeur par consultation.
+
+        ⓘ `configurator_generated` marque ces valeurs comme le fait la saisie
+        libre : le ménage existant archive celles que plus rien n'emploie. Une
+        valeur proposée mais jamais retenue finit donc par s'effacer d'elle-même.
+        """
+        self.ensure_one()
+        produits = self._proposed_products()
+        if not produits:
+            return self.env["product.attribute.value"]
+
+        value_obj = self.env["product.attribute.value"]
+        existantes = value_obj.with_context(active_test=False).search([
+            ("attribute_id", "=", self.id),
+            ("product_id", "in", produits.ids),
+        ])
+        par_produit = {v.product_id.id: v for v in existantes}
+
+        # ⓘ Une valeur ARCHIVÉE est ressuscitée plutôt que dupliquée — même geste
+        # que pour une saisie libre qui revient (D-082).
+        a_reveiller = existantes.filtered(lambda v: not v.active)
+        if a_reveiller:
+            a_reveiller.active = True
+
+        manquants = produits.filtered(lambda p: p.id not in par_produit)
+        for produit in manquants:
+            par_produit[produit.id] = value_obj.create({
+                "attribute_id": self.id,
+                "name": produit.display_name,
+                "product_id": produit.id,
+                "configurator_generated": True,
+            })
+        return value_obj.browse([par_produit[p.id].id for p in produits])
+
     def _proposed_products(self):
         """Les produits que ce filtre PROPOSE — rien de plus.
 
@@ -1375,8 +1420,26 @@ class ProductAttributeLine(models.Model):
         return True
 
     def _configurator_value_ids(self):
-        """Values accepted for template attribute lines in `self`."""
+        """Values accepted for template attribute lines in `self`.
+
+        ⚠️ **SUR UN ATTRIBUT DYNAMIQUE, C'EST LE FILTRE QUI ALIMENTE** — C3,
+        D-221. Arbitrage de Gerry : *« on part sur 1, le filtre qui alimente
+        l'assistant »*. La liste de la ligne cesse alors d'être un catalogue à
+        tenir pour devenir la **trace** de ce qui a été choisi (QJ).
+
+        ⓘ On rend l'UNION, jamais le seul filtre : une valeur déjà retenue doit
+        rester offerte même si le filtre a changé depuis — sinon une
+        configuration en cours perdrait son choix, et une reconfiguration
+        deviendrait impossible.
+
+        ⚠️ **CE CROCHET EXISTAIT, et j'avais commencé par en écrire un second.**
+        Deux méthodes pour « les valeurs offertes » auraient divergé au premier
+        appelant oublié — et c'est justement ce que le test a montré : le
+        domaine de l'assistant passe par ICI, pas par la construction de la vue.
+        """
         values = self.value_ids
+        for line in self.filtered(lambda l: l.attribute_id.dynamic_values):
+            values |= line.attribute_id._materialise_proposed_values()
         if any(self.mapped("custom")):
             values += self.env["product.config.session"].get_custom_value_id()
         return values

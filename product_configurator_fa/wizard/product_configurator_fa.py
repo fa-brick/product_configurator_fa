@@ -587,7 +587,12 @@ class ProductConfigurator(models.TransientModel):
 
         for line in attribute_lines:
             attribute = line.attribute_id
-            value_ids = line.value_ids.ids
+            # ⚠️ `_configurator_value_ids` ET NON `value_ids` — C3, D-221. Sur un
+            # attribut à valeurs dynamiques, c'est le FILTRE qui alimente
+            # l'assistant ; la liste de la ligne n'est plus que la trace de ce
+            # qui a déjà été choisi. Sur tous les autres, la méthode rend
+            # exactement `value_ids` : rien ne change.
+            value_ids = line._configurator_value_ids().ids
 
             value_ids = wiz.config_session_id.values_available(check_val_ids=value_ids)
 

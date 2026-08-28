@@ -23,3 +23,4 @@ from . import test_configurator_tree  # noqa: F401
 from . import test_configurator_add  # noqa: F401
 from . import test_actions_are_complete  # noqa: F401
 from . import test_multi_and_custom  # noqa: F401
+from . import test_dynamic_materialisation  # noqa: F401

@@ -85,61 +85,6 @@
                 expr="//field[@name='attribute_line_ids']/list/field[@name='value_ids']"
                 position="after"
             >
-                <!-- ══ L'ÉTAPE SE RÈGLE ICI, SUR LA LIGNE QUI L'OUVRE — B1, D-202 ══
-                     Arbitrage : l'étape est un SÉPARATEUR, et « ce qui suit lui
-                     appartient jusqu'au suivant ». Poser une étape sur une ligne, ce
-                     n'est donc pas dire « j'en fais partie » mais « j'en OUVRE une ».
-
-                     ⚠️ L'ORDRE DEVIENT UNE DONNÉE PORTEUSE : glisser une ligne change
-                     son étape. D'où la colonne « Étape », en lecture, juste à côté —
-                     elle montre l'effet à distance au lieu de le laisser deviner. -->
-                <field
-                    name="config_step_id"
-                    column_invisible="not context.get('default_config_ok', False)"
-                    options="{'no_create_edit': True}"
-                />
-                <field
-                    name="config_step_owner_id"
-                    column_invisible="not context.get('default_config_ok', False)"
-                    readonly="1"
-                    optional="show"
-                />
-                <!-- ══ LES VALEURS S'OUVRENT DANS UN DIALOGUE — B5, D-206 ═══════
-                     « Une ligne qui au clic ouvre la liste des valeurs », « dans un
-                     dialogue ». Le bouton est TOUJOURS là — c'est le seul endroit
-                     d'où l'on voit les prix, l'effet du retrait et les valeurs
-                     désactivées. Les pastilles, elles, s'effacent quand elles
-                     cessent d'être lisibles. -->
-                <field name="value_count" column_invisible="False" optional="hide" />
-                <field name="too_many_values" column_invisible="True" />
-                <button
-                    name="action_open_values"
-                    type="object"
-                    string="Values"
-                    icon="fa-list-ul"
-                    class="btn-link"
-                    column_invisible="not context.get('default_config_ok', False)"
-                />
-
-                <!-- ══ LA CONDITION SE LIT À CÔTÉ DE CE QU'ELLE RESTREINT — B3 ══
-                     C'est tout le gain de l'unification : une restriction cesse
-                     d'être une ligne dans une autre table. Le champ existait sur la
-                     ligne d'attribut et ne se voyait que dans son formulaire.
-
-                     ⓘ Même widget qu'ailleurs (B2, D-203) : il LIT la condition en
-                     pastilles ; l'édition reste le formulaire de condition. -->
-                <field
-                    name="visibility_domain_summary"
-                    column_invisible="True"
-                />
-                <field
-                    name="visibility_domain_id"
-                    widget="condition_facets"
-                    options="{'summary_field': 'visibility_domain_summary'}"
-                    context="{'product_tmpl_id': parent.id, 'form_view_ref': 'product_configurator_fa.product_config_domain_form_view_template'}"
-                    column_invisible="not context.get('default_config_ok', False)"
-                    optional="show"
-                />
                 <field
                     name="default_val"
                     domain="[('id', 'in', value_ids)]"
@@ -187,11 +132,6 @@
                 expr="//field[@name='attribute_line_ids']/list/field[@name='value_ids']"
                 position="attributes"
             >
-                <!-- ⚠️ PAR LIGNE et non par colonne : le seuil dépend du nombre de
-                     valeurs de CETTE ligne, et `column_invisible` ne s'évalue que
-                     sur le contexte parent. Une liste peut mêler un attribut à
-                     trois valeurs et un autre à trois cents. -->
-                <attribute name="invisible">too_many_values</attribute>
                 <attribute name="required">not custom</attribute>
             </xpath>
 
@@ -211,6 +151,57 @@
                     >
                         <field name="price_grid_warning" nolabel="1" readonly="1" />
                     </div>
+                    <!-- ══ L'ARBRE DU CONFIGURATEUR — la maquette de Gerry ═══════════
+                         ⚠️ **CES COLONNES VIVENT ICI, ET NULLE PART AILLEURS.** Je les
+                         avais d'abord posées dans « Attributs & Variantes » en lisant
+                         Q2 — *« un seul ordre, partagé »* — comme *« les mêmes
+                         colonnes ». Gerry l'a corrigé : *« l'onglet attribut et
+                         variant ne devait pas changer »*. Partager l'ORDRE n'est pas
+                         partager l'AFFICHAGE : c'est le même `attribute_line_ids`, donc
+                         la même séquence, montré autrement.
+
+                         ⓘ Ce qui manque encore à la maquette, et qui n'est pas natif :
+                         le second niveau (les VALEURS sous leur attribut) et la ligne
+                         d'étape en propre. Les deux demandent un composant sur mesure —
+                         une liste Odoo ne sait pas mêler deux modèles ni s'imbriquer. -->
+                    <separator colspan="4" string="Attributes" name="configurator_tree" />
+                    <field
+                        name="configurator_line_ids"
+                        nolabel="1"
+                        context="{'default_config_ok': True}"
+                    >
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle" />
+                            <field
+                                name="attribute_id"
+                                options="{'no_create': True, 'no_create_edit': True}"
+                            />
+                            <field name="value_ids" widget="many2many_tags" optional="hide" />
+                            <field name="visibility_domain_summary" column_invisible="True" />
+                            <field
+                                name="visibility_domain_id"
+                                string="Conditions"
+                                widget="condition_facets"
+                                options="{'summary_field': 'visibility_domain_summary'}"
+                                context="{'product_tmpl_id': parent.id, 'form_view_ref': 'product_configurator_fa.product_config_domain_form_view_template'}"
+                            />
+                            <field
+                                name="config_step_id"
+                                string="Opens step"
+                                options="{'no_create_edit': True}"
+                            />
+                            <field name="config_step_owner_id" optional="hide" />
+                            <field name="required" optional="hide" />
+                            <button
+                                name="action_open_values"
+                                type="object"
+                                string="Values"
+                                icon="fa-list-ul"
+                                class="btn-link"
+                            />
+                        </list>
+                    </field>
+
                     <separator colspan="4" string="Price Grid" name="price_grid" />
                     <field name="price_grid_ids" nolabel="1">
                         <list>

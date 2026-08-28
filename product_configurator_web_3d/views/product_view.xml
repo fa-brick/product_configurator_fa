@@ -46,8 +46,11 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product_configurator_fa.product_template_only_form_view_inherited" />
         <field name="arch" type="xml">
+            <!-- ⚠️ Le `xpath` vise la liste de l'ONGLET CONFIGURATEUR, reconnaissable
+                 à la colonne de condition qu'elle seule porte. La liste d'« Attributs
+                 & Variantes » ne doit pas changer (correction de Gerry, 2026-08-28). -->
             <xpath
-                expr="//field[@name='attribute_line_ids']/list/field[@name='visibility_domain_id']"
+                expr="//field[@name='configurator_line_ids']/list/field[@name='visibility_domain_id']"
                 position="after"
             >
                 <field

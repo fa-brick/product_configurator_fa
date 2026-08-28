@@ -12,22 +12,46 @@ from odoo.addons.base.tests.common import BaseCommon
 
 class ConfiguratorColumns(BaseCommon):
     def _columns(self):
-        """Les colonnes de la liste des lignes d'attribut, avec leur masquage.
+        """Les colonnes de la liste de l'ONGLET CONFIGURATEUR, avec leur masquage.
 
-        ⚠️ Le découpage doit viser la BALISE, pas le nom : `name="attribute_line_ids"`
-        apparaît aussi dans des `depends` et des domaines bien plus haut dans la
-        fiche produit. Coupé là, le test lisait quarante champs du formulaire et
-        aurait pu passer sans que la liste porte quoi que ce soit.
+        ⚠️ **Il y a DEUX listes de `attribute_line_ids` dans la fiche produit**, et
+        elles ne doivent pas se ressembler : celle d'« Attributs & Variantes »,
+        qui ne change pas, et celle du configurateur. Viser la première par sa
+        position ferait mesurer la mauvaise — c'est exactement l'erreur que Gerry
+        a relevée le 2026-08-28. On reconnaît donc la bonne à ce qu'elle SEULE
+        porte : la colonne de condition.
+
+        ⚠️ Et le découpage vise la BALISE, pas le nom : `name="attribute_line_ids"`
+        apparaît aussi dans des `depends` bien plus haut dans la fiche.
         """
         arch = self.env["product.template"].get_view(view_type="form")["arch"]
-        debut = arch.index('<field name="attribute_line_ids"')
-        arch = arch[debut:]
-        arch = arch[arch.index("<list"): arch.index("</list>")]
-        colonnes = {}
-        for match in re.finditer(r'<field name="([a-z_0-9]+)"([^>]*)', arch):
-            garde = re.search(r'column_invisible="([^"]*)"', match.group(2))
-            colonnes[match.group(1)] = garde.group(1) if garde else "False"
-        return colonnes
+        for match in re.finditer(r'<field name="configurator_line_ids"', arch):
+            bout = arch[match.start():]
+            if "<list" not in bout:
+                continue
+            liste = bout[bout.index("<list"): bout.index("</list>")]
+            if 'name="visibility_domain_id"' not in liste:
+                continue
+            colonnes = {}
+            for champ in re.finditer(r'<(?:field|button) name="([a-z_0-9]+)"([^>]*)', liste):
+                garde = re.search(r'column_invisible="([^"]*)"', champ.group(2))
+                colonnes[champ.group(1)] = garde.group(1) if garde else "False"
+            return colonnes
+        self.fail("la liste de l'onglet configurateur est introuvable")
+
+    def _core_columns(self):
+        """Les colonnes de la liste d'« Attributs & Variantes » — celle du cœur."""
+        arch = self.env["product.template"].get_view(view_type="form")["arch"]
+        for match in re.finditer(r'<field name="attribute_line_ids"', arch):
+            bout = arch[match.start():]
+            if "<list" not in bout:
+                continue
+            liste = bout[bout.index("<list"): bout.index("</list>")]
+            return {
+                m.group(1)
+                for m in re.finditer(r'<(?:field|button) name="([a-z_0-9]+)"', liste)
+            }
+        self.fail("la liste d'Attributs & Variantes est introuvable")
 
     def test_01_the_CONDITION_reads_next_to_what_it_restricts(self):
         """Le gain de l'unification : la restriction cesse d'être ailleurs.
@@ -42,7 +66,10 @@ class ConfiguratorColumns(BaseCommon):
         # par `column_invisible="True"` passerait un test de simple présence — et
         # l'écran n'aurait rien. La garde exige donc que le seul masquage soit
         # celui du configurateur.
-        self.assertIn("default_config_ok", colonnes["visibility_domain_id"])
+        # ⓘ Aucune garde de contexte n'est nécessaire : c'est l'onglet ENTIER
+        # qui est masqué hors d'un produit configurable (`invisible="not
+        # config_ok"`). Exiger `default_config_ok` ici serait exiger une ceinture
+        # par-dessus des bretelles — et faire échouer la garde sur du code juste.
         self.assertNotEqual(colonnes["visibility_domain_id"], "True")
 
     def test_02_and_it_carries_its_SUMMARY_so_the_facets_can_show(self):
@@ -55,15 +82,34 @@ class ConfiguratorColumns(BaseCommon):
         self.assertIn("visibility_domain_summary", colonnes)
         self.assertEqual(colonnes["visibility_domain_summary"], "True")
 
-    def test_03_the_configurator_columns_stay_OUT_of_an_ordinary_product(self):
-        """⚠️ Elles n'ont de sens que sur un produit configurable.
+    def test_03_the_ATTRIBUTES_tab_is_left_alone(self):
+        """⚠️ *« L'onglet attribut et variant ne devait pas changer. »*
 
-        Les afficher partout encombrerait la fiche de tous les autres produits
-        d'un vocabulaire qui ne les concerne pas.
+        Correction de Gerry (2026-08-28). J'avais lu Q2 — *« un seul ordre,
+        partagé »* — comme *« les mêmes colonnes »*. Partager l'ORDRE n'est pas
+        partager l'AFFICHAGE : c'est le même `attribute_line_ids`, donc la même
+        séquence, montré autrement.
+
+        ⓘ Cette garde ne fige pas la liste du cœur — le fork y ajoutait déjà ses
+        propres colonnes avant ce chantier. Elle interdit d'y reverser CELLES du
+        configurateur.
         """
+        du_configurateur = {
+            "visibility_domain_id", "visibility_domain_summary",
+            "config_step_id", "config_step_owner_id",
+            "view_camera_id", "action_open_values", "too_many_values",
+        }
+        intrus = du_configurateur & self._core_columns()
+        self.assertEqual(
+            intrus, set(),
+            f"des colonnes du configurateur sont revenues dans l'onglet : {intrus}",
+        )
+
+    def test_04_and_the_configurator_list_carries_them_ALL(self):
+        """Le pendant : ce qui a quitté l'onglet doit être arrivé quelque part."""
         colonnes = self._columns()
-        for nom in ("visibility_domain_id", "config_step_id", "required"):
-            self.assertIn(
-                "default_config_ok", colonnes[nom],
-                f"la colonne {nom} s'affiche hors du configurateur",
-            )
+        # ⚠️ `view_camera_id` N'EST PAS ICI : il vient du PONT, chargé APRÈS ce
+        # module. Une garde du cœur qui l'exigerait échouerait pendant sa propre
+        # mise à jour — elle vit donc dans les tests du pont.
+        for nom in ("visibility_domain_id", "config_step_id", "action_open_values"):
+            self.assertIn(nom, colonnes)

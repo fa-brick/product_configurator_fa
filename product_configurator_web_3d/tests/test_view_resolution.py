@@ -60,3 +60,22 @@ class ViewResolution(BaseCommon):
         annulerait le cadrage du client à chaque étape muette."""
         self.assertFalse(self.line._resolve_view_camera(self.step_line))
         self.assertFalse(self.line._resolve_view_camera())
+
+
+class ThreeDColumn(BaseCommon):
+    """La colonne « Vue 3d » dans l'onglet configurateur — B3, D-204.
+
+    ⚠️ Cette garde vit dans le PONT et non dans le cœur : le champ vient d'ici,
+    et une garde du cœur qui l'exigerait échouerait pendant sa propre mise à
+    jour, le pont n'étant pas encore chargé.
+    """
+
+    def test_01_the_3d_view_is_a_column_of_the_configurator_list(self):
+        import re
+
+        arch = self.env["product.template"].get_view(view_type="form")["arch"]
+        match = re.search(r'<field name="configurator_line_ids"', arch)
+        self.assertTrue(match, "la liste du configurateur est introuvable")
+        bout = arch[match.start():]
+        liste = bout[bout.index("<list"): bout.index("</list>")]
+        self.assertIn('name="view_camera_id"', liste)

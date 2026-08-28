@@ -77,6 +77,27 @@ class ProductTemplate(models.Model):
 
     config_ok = fields.Boolean(string="Can be Configured")
 
+    # ─ L'ONGLET A SON PROPRE CHAMP SUR LES MÊMES LIGNES — D-209 ─────────────
+    #
+    # ⚠️ **UN MÊME `One2many` DÉCLARÉ DEUX FOIS DANS UN FORMULAIRE CASSE LA
+    # SAUVEGARDE.** Mesuré : l'onglet configurateur montrant `attribute_line_ids`
+    # à côté de l'onglet « Attributs & Variantes » qui le montre déjà,
+    # l'enregistrement d'un produit levait *« Values must belong to the attribute
+    # of the corresponding attribute_line »* — deux jeux de commandes pour les
+    # mêmes lignes, envoyés dans un ordre que rien ne garantit.
+    #
+    # ⓘ Un second champ, MÊME modèle et MÊME inverse : ce sont exactement les
+    # mêmes enregistrements, donc le même ordre (Q2, *« un seul ordre partagé »*),
+    # mais deux affichages indépendants. C'est ce qui permet à l'onglet
+    # « Attributs & Variantes » de ne pas changer — correction de Gerry.
+    configurator_line_ids = fields.One2many(
+        comodel_name="product.template.attribute.line",
+        inverse_name="product_tmpl_id",
+        string="Configurator Attributes",
+        help="The same attribute lines as the Attributes tab, shown with what "
+             "the configurator needs: conditions, steps, 3D view.",
+    )
+
     config_line_ids = fields.One2many(
         comodel_name="product.config.line",
         inverse_name="product_tmpl_id",

@@ -24,6 +24,9 @@ class ProductFilter(BaseCommon):
         cls.attribute = cls.env["product.attribute"].create({
             "name": "Handle C2", "create_variant": "no_variant",
             "value_type": "product",
+            # ⓘ Le MODE, depuis D-218 : sans lui le filtre est inerte, et c'est
+            # précisément ce que `test_11` éprouve.
+            "dynamic_values": True,
         })
 
     def test_01_the_filter_PROPOSES_the_matching_products(self):
@@ -117,3 +120,72 @@ class ProductFilter(BaseCommon):
         self.assertEqual(action["res_model"], "product.product")
         trouves = self.env["product.product"].search(action["domain"])
         self.assertEqual(trouves, self.poignees)
+
+    # ── le MODE : liste tenue, ou liste proposée (D-218) ────────────────────
+    def test_11_a_filter_proposes_NOTHING_without_the_dynamic_mode(self):
+        """⚠️ Décocher « valeurs dynamiques » doit rendre le filtre INERTE.
+
+        Sans cela, un filtre resté en base agirait dans l'ombre : la liste
+        paraîtrait tenue à la main et serait alimentée en secret. Les deux
+        régimes coexistent — soit on tient la liste, soit un filtre la propose —
+        et un champ dit lequel.
+        """
+        self.attribute.dynamic_values = True
+        self.attribute.product_filter_domain = str(
+            [("categ_id", "=", self.categorie.id)]
+        )
+        self.assertEqual(self.attribute._proposed_products(), self.poignees)
+
+        # ⓘ En SQL : l'onchange nettoierait le filtre, or c'est justement le cas
+        # « un filtre reste en base » que la garde doit tenir.
+        #
+        # ⚠️ **VIDER LE TAMPON D'ABORD.** Les écritures ORM ci-dessus ne sont pas
+        # encore en base : sans `flush_all`, l'`UPDATE` passe, puis le flush les
+        # réécrit PAR-DESSUS — et la garde échoue sur un code juste. Mesuré.
+        self.env.flush_all()
+        self.env.cr.execute(
+            "UPDATE product_attribute SET dynamic_values = false WHERE id = %s",
+            (self.attribute.id,),
+        )
+        self.attribute.invalidate_recordset()
+        self.assertFalse(self.attribute._proposed_products())
+        self.assertEqual(self.attribute.product_filter_count, 0)
+
+    def test_12_the_dynamic_mode_belongs_to_the_PRODUCT_type(self):
+        """QK : une condition vérifie l'égalité sur des produits, et un filtre ne
+        sait proposer que cela."""
+        plain = self.env["product.attribute"].create({
+            "name": "Plain dyn", "create_variant": "no_variant", "value_type": "value",
+        })
+        with self.assertRaises(ValidationError):
+            plain.dynamic_values = True
+
+    def test_13_leaving_the_product_type_CLEARS_the_mode_and_its_filter(self):
+        """⚠️ Sinon la coche et son filtre restent en base, invisibles.
+
+        Le refus tomberait alors sur un champ que l'utilisateur ne voit plus —
+        le pire des messages d'erreur (D-194). Éprouvé par `Form`, seul chemin
+        où un onchange existe ([[L-157]]).
+        """
+        from odoo.tests.common import Form
+
+        self.attribute.dynamic_values = True
+        self.attribute.product_filter_domain = str(
+            [("categ_id", "=", self.categorie.id)]
+        )
+        with Form(self.attribute) as f:
+            f.value_type = "value"
+        self.assertFalse(self.attribute.dynamic_values)
+        self.assertEqual(self.attribute.product_filter_domain, "[]")
+
+    def test_14_and_unticking_the_mode_clears_the_filter_too(self):
+        """ⓘ Revenir à une liste tenue à la main : le filtre n'a plus d'objet."""
+        from odoo.tests.common import Form
+
+        self.attribute.dynamic_values = True
+        self.attribute.product_filter_domain = str(
+            [("categ_id", "=", self.categorie.id)]
+        )
+        with Form(self.attribute) as f:
+            f.dynamic_values = False
+        self.assertEqual(self.attribute.product_filter_domain, "[]")

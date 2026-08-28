@@ -198,66 +198,55 @@
                          demain. Et le fork n'a pas à connaître `website_sale`, dont
                          il ne dépend pas — il ne pourrait de toute façon pas nommer
                          son champ ([[L-167]]). -->
-                <group
-                    name="attribute_description"
-                    string="Description"
-                    groups="product_configurator_fa.group_product_configurator_fa_manager"
-                >
-                    <field name="description" nolabel="1" colspan="2" />
-                </group>
-
-                <!-- ─ NATURE : ce qu'une valeur EST ───────────────────────
-                     Trois notions distinctes, longtemps empilées dans deux champs :
-                     le TYPE (ce que la valeur désigne), le FORMAT (comment elle se
-                     lit), et l'UNITÉ.
+                <!-- ══ CE QU'UNE VALEUR EST — deux colonnes, D-218 ═══════════════
+                     Demande de Gerry : à gauche le type, le format et l'unité, plus
+                     une coche « valeurs dynamiques » quand la valeur désigne un
+                     produit ; à droite le filtre — et seulement si la coche est mise.
 
                      ⚠️ `custom_type` a QUITTÉ la page « Custom Values », où il était
-                     masqué tant que la saisie libre n'était pas cochée. Une épaisseur
-                     énumérée 10 / 15 / 18 n'avait donc AUCUN format déclaré, alors que
-                     la grille de prix et le moteur de géométrie lisent ces valeurs
-                     comme des nombres. ⓘ Le modèle était déjà juste — `_is_numeric_custom`
-                     lit `custom_type` et lui seul ; seule la vue empêchait de le saisir. -->
+                     masqué tant que la saisie libre n'était pas cochée : une épaisseur
+                     énumérée 10 / 15 / 18 n'avait AUCUN format déclaré, alors que la
+                     grille de prix et le moteur de géométrie lisent ces valeurs comme
+                     des nombres. -->
                 <group
+                    name="value_nature_block"
                     string="What a value is"
                     groups="product_configurator_fa.group_product_configurator_fa_manager"
                 >
-                    <group>
+                    <group name="value_nature">
                         <field name="value_type" />
                         <!-- ⚠️ LE FORMAT ET L'UNITÉ NE VALENT QUE POUR LE TYPE
-                             « VALEUR ». Constat de Gerry : « on peut choisir value type :
-                             product et format integer, ça n'a pas de sens ». Un format dit
-                             comment LIRE un libellé ; quand la valeur désigne un produit ou
-                             une fiche, l'objet EST la réponse et il n'y a rien à lire.
-                             ⓘ Le modèle refuse la combinaison de son côté — deux barrières,
-                             celle de l'interface et celle qui n'en dépend pas (D-080). -->
+                             « VALEUR » : un format dit comment LIRE un libellé, et
+                             quand la valeur désigne un produit, l'objet EST la
+                             réponse. Le modèle refuse aussi la combinaison (D-194). -->
                         <field
                             name="custom_type"
                             string="Format"
                             invisible="value_type != 'value'"
                         />
-                    </group>
-                    <group>
-                        <!-- ⚠️ L'UNITÉ QUALIFIE UN NOMBRE — elle suit donc le format, pas
-                             seulement le type. Un millimètre accolé à un mot ne veut rien
-                             dire. Le modèle refuse aussi la combinaison de son côté. -->
                         <field
                             name="uom_id"
                             invisible="value_type != 'value' or custom_type not in ['integer', 'float']"
                         />
+                        <!-- ⓘ Le MODE des valeurs : tenues à la main, ou proposées par
+                             un filtre. Réservé au type « produit » (QK) — une condition
+                             vérifie l'égalité sur des produits, et un filtre ne sait
+                             proposer que cela. -->
+                        <field
+                            name="dynamic_values"
+                            invisible="value_type != 'product'"
+                        />
                     </group>
-                    <!-- ══ LA LISTE PROPOSÉE PAR UN FILTRE — C2, D-207 ═════════════
-                         « Un filtre sur des produits, uniquement » (QI). Il ne fait
-                         que PROPOSER : ce que le client retient devient une valeur
-                         ordinaire (QJ), avec son prix et son historique.
 
-                         ⓘ Le `DomainSelector` standard convient ici, contrairement
-                         aux conditions du configurateur (D-203) : le modèle est réel
-                         et ses champs le sont aussi — rien à injecter par contexte. -->
+                    <!-- ⚠️ LE FILTRE N'APPARAÎT QUE SOUS LA COCHE. Sans elle, il
+                         laissait croire que toute liste de produits était dynamique,
+                         alors que les deux régimes coexistent : soit on TIENT la
+                         liste, soit un filtre la PROPOSE et la liste devient la trace
+                         de ce qui a été choisi (QJ). -->
                     <group
-                        string="Dynamic list"
+                        string="Dynamic values"
                         name="product_filter"
-                        invisible="value_type != 'product'"
-                        groups="product_configurator_fa.group_product_configurator_fa_manager"
+                        invisible="value_type != 'product' or not dynamic_values"
                     >
                         <field
                             name="product_filter_domain"
@@ -266,10 +255,9 @@
                             nolabel="1"
                             colspan="2"
                         />
-                        <!-- ⚠️ CE QUE LE FILTRE DONNE, AVANT DE S'EN SERVIR (D-208).
-                             Un domaine est une promesse tant qu'on ne l'a pas
-                             appliqué : sans retour, il se vérifie devant le client.
-                             Le compte le dit tout de suite, le bouton montre qui. -->
+                        <!-- ⚠️ CE QUE LE FILTRE DONNE, AVANT DE S'EN SERVIR (D-208) :
+                             un domaine est une promesse tant qu'on ne l'a pas appliqué,
+                             et sans retour il se vérifie devant le client. -->
                         <field name="product_filter_count" invisible="1" />
                         <button
                             name="action_open_proposed_products"
@@ -281,13 +269,17 @@
                             invisible="not product_filter_count"
                         />
                         <div colspan="2" class="text-muted" invisible="product_filter_count">
-                            <!-- ⓘ Zéro produit n'est pas une erreur — un filtre en
-                                 cours d'écriture en donne zéro la plupart du temps.
-                                 On le DIT plutôt que d'afficher un bouton qui
-                                 ouvrirait une liste vide. -->
                             No product matches this filter yet.
                         </div>
                     </group>
+                </group>
+
+                <group
+                    name="attribute_description"
+                    string="Description"
+                    groups="product_configurator_fa.group_product_configurator_fa_manager"
+                >
+                    <field name="description" nolabel="1" colspan="2" />
                 </group>
 
                 <!-- ─ DÉFAUTS : ce dont héritera la ligne d'un NOUVEAU produit ──
@@ -307,7 +299,12 @@
 
                  ⓘ Il vient donc APRÈS l'ajout de la page : les specs d'une même vue
                  s'appliquent dans l'ordre du document, donc la page existe. -->
-            <xpath expr="//group[@name='attribute_description']" position="before">
+            <!-- ⚠️ L'ANCRE DU DÉPLACEMENT A SUIVI LA MISE EN PAGE. Elle visait le
+                 bloc « Description », qui est passé TOUT EN BAS sur demande de
+                 Gerry : l'identité aurait donc atterri en fin de page, sous la
+                 description. Elle vise maintenant le bloc de nature, qui ouvre
+                 l'onglet. -->
+            <xpath expr="//group[@name='value_nature_block']" position="before">
                 <xpath expr="//group[@name='main_fields']" position="move" />
             </xpath>
 

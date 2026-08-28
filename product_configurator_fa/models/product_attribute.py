@@ -195,6 +195,55 @@ class ProductAttribute(models.Model):
     # ⚠️ **Ce que ça coûte quand même** : un champ supprimé rendrait le filtre
     # invalide, et on ne le saurait qu'à la configuration — devant le client. D'où
     # la garde ci-dessous, qui l'évalue à l'enregistrement.
+    # ─ LISTE FIXE OU LISTE DYNAMIQUE — le mode, D-218 ───────────────────────
+    #
+    # Demande de Gerry (2026-08-28) : une coche *« dynamic values »*, offerte
+    # seulement quand la valeur désigne un produit, et qui commande l'apparition
+    # du filtre.
+    #
+    # ⚠️ **CE N'EST PAS UN INTERRUPTEUR D'AFFICHAGE.** Il répond à la question que
+    # Gerry avait posée lui-même : *« si la liste de valeurs d'un attribut est
+    # dynamique, il n'y a plus d'intérêt à tenir une liste ? »*. Deux régimes
+    # existent donc, et il fallait un champ pour dire lequel : soit on **tient** la
+    # liste, soit un **filtre la propose** et la liste n'est plus qu'une trace de
+    # ce qui a été choisi (QJ).
+    #
+    # ⓘ Réservé au type « produit » (QK) : l'égalité d'une condition se vérifie sur
+    # des produits, et un filtre ne sait proposer que cela.
+    dynamic_values = fields.Boolean(
+        string="Dynamic values",
+        help="The values are proposed by a filter on products instead of being "
+             "listed by hand. What the customer picks becomes an ordinary value.",
+    )
+
+    @api.constrains("dynamic_values", "value_type")
+    def _check_dynamic_values(self):
+        for attribute in self:
+            if attribute.dynamic_values and attribute.value_type != "product":
+                raise ValidationError(
+                    self.env._(
+                        "Only an attribute whose values designate a Product can "
+                        "have dynamic values: a filter proposes products, and "
+                        "nothing else."
+                    )
+                )
+
+    @api.onchange("value_type")
+    def _onchange_value_type_clears_dynamic(self):
+        # ⚠️ Sans ce nettoyage, quitter le type « produit » laisserait la coche —
+        # et son filtre — en base, invisibles, et le refus tomberait sur un champ
+        # que l'utilisateur ne voit plus. Même geste qu'en D-194.
+        if self.value_type != "product":
+            self.dynamic_values = False
+            self.product_filter_domain = "[]"
+
+    @api.onchange("dynamic_values")
+    def _onchange_dynamic_values_clears_filter(self):
+        # ⓘ Décocher, c'est revenir à une liste tenue à la main : le filtre n'a
+        # plus d'objet, et le garder ferait croire qu'il agit encore.
+        if not self.dynamic_values:
+            self.product_filter_domain = "[]"
+
     product_filter_domain = fields.Char(
         string="Product Filter",
         default="[]",
@@ -250,7 +299,8 @@ class ProductAttribute(models.Model):
     def _compute_product_filter_count(self):
         for attribute in self:
             filtre = (attribute.product_filter_domain or "").strip()
-            if attribute.value_type != "product" or not filtre or filtre == "[]":
+            if (not attribute.dynamic_values or attribute.value_type != "product"
+                    or not filtre or filtre == "[]"):
                 attribute.product_filter_count = 0
                 continue
             # ⚠️ CE CALCUL NE DOIT PAS LEVER. Il tourne pendant la SAISIE, à chaque
@@ -290,6 +340,11 @@ class ProductAttribute(models.Model):
         """
         self.ensure_one()
         filtre = (self.product_filter_domain or "").strip()
+        # ⚠️ Le MODE d'abord : une liste tenue à la main ne propose rien, même si
+        # un filtre traîne en base — sinon décocher « valeurs dynamiques »
+        # laisserait le filtre agir dans l'ombre.
+        if not self.dynamic_values:
+            return self.env["product.product"]
         if self.value_type != "product" or not filtre or filtre == "[]":
             return self.env["product.product"]
         return self.env["product.product"].search(literal_eval(filtre))

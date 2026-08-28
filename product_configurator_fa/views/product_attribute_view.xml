@@ -103,10 +103,21 @@
                 >
                     <group>
                         <field name="value_type" />
-                        <field name="custom_type" string="Format" />
+                        <!-- ⚠️ LE FORMAT ET L'UNITÉ NE VALENT QUE POUR LE TYPE
+                             « VALEUR ». Constat de Gerry : « on peut choisir value type :
+                             product et format integer, ça n'a pas de sens ». Un format dit
+                             comment LIRE un libellé ; quand la valeur désigne un produit ou
+                             une fiche, l'objet EST la réponse et il n'y a rien à lire.
+                             ⓘ Le modèle refuse la combinaison de son côté — deux barrières,
+                             celle de l'interface et celle qui n'en dépend pas (D-080). -->
+                        <field
+                            name="custom_type"
+                            string="Format"
+                            invisible="value_type != 'value'"
+                        />
                     </group>
                     <group>
-                        <field name="uom_id" />
+                        <field name="uom_id" invisible="value_type != 'value'" />
                         <field name="search_ok" />
                     </group>
                 </group>

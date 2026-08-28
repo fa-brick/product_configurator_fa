@@ -1,4 +1,5 @@
 from odoo.addons.base.tests.common import BaseCommon
+from odoo.tests.common import Form
 
 
 class ValueType(BaseCommon):
@@ -83,3 +84,59 @@ class ValueType(BaseCommon):
                 dict(self.Attribute.VALUE_TYPES),
                 "« matière » a été déclaré dans le cœur du configurateur",
             )
+
+    # ── ce que le type CONTRAINT ────────────────────────────────────────────
+    def test_06_a_format_makes_no_sense_on_a_product(self):
+        """⚠️ Trois notions INDÉPENDANTES ne veulent pas dire aucune contrainte.
+
+        Constat de Gerry : *« on peut choisir value type : product et format
+        integer, ça n'a pas de sens »*. Un format dit comment LIRE un libellé ;
+        quand la valeur désigne un produit, l'objet EST la réponse.
+        """
+        from odoo.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.Attribute.create({
+                "name": "Handle typed", "create_variant": "no_variant",
+                "value_type": "product", "custom_type": "integer",
+            })
+
+    def test_07_nor_does_a_unit(self):
+        from odoo.exceptions import ValidationError
+        with self.assertRaises(ValidationError):
+            self.Attribute.create({
+                "name": "Handle measured", "create_variant": "no_variant",
+                "value_type": "product",
+                "uom_id": self.env.ref("uom.product_uom_millimeter").id,
+            })
+
+    def test_08_switching_type_CLEARS_the_format(self):
+        """⚠️ Sans ce nettoyage, le refus tomberait sur un champ devenu INVISIBLE.
+
+        La vue masque format et unité hors du type « valeur ». Un format saisi
+        avant la bascule resterait donc en base, invisible, et la contrainte
+        refuserait l'enregistrement en désignant un champ que l'utilisateur ne
+        voit plus — le pire des messages d'erreur.
+
+        ⚠️ Éprouvé par `Form`, et pas autrement : écrire `value_type` directement
+        sur l'enregistrement déclenche la contrainte AVANT tout onchange, et le
+        test échouait alors sur son propre raccourci. `Form` joue les onchanges
+        comme l'interface, donc il éprouve le chemin que l'utilisateur emprunte.
+        """
+        attr = self.Attribute.create({
+            "name": "Was a number", "create_variant": "no_variant",
+            "custom_type": "float",
+            "uom_id": self.env.ref("uom.product_uom_millimeter").id,
+        })
+        with Form(attr) as f:
+            f.value_type = "product"
+        self.assertFalse(attr.custom_type)
+        self.assertFalse(attr.uom_id)
+
+    def test_09_the_plain_type_keeps_its_format(self):
+        """Le cas courant n'est pas gêné : une épaisseur garde son format."""
+        attr = self.Attribute.create({
+            "name": "Thickness kept", "create_variant": "no_variant",
+            "value_type": "value", "custom_type": "integer",
+            "uom_id": self.env.ref("uom.product_uom_millimeter").id,
+        })
+        self.assertEqual(attr.custom_type, "integer")

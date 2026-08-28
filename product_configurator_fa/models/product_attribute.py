@@ -195,6 +195,46 @@ class ProductAttribute(models.Model):
              "picker, a material thumbnail, or a plain label.",
     )
 
+    # ⚠️ LE FORMAT ET L'UNITÉ N'ONT DE SENS QUE POUR LE TYPE « VALEUR ».
+    #
+    # Constat de Gerry (2026-08-28) : *« on peut choisir value type : product et
+    # format integer, ça n'a pas de sens »*. Il a raison, et le défaut est de moi :
+    # j'ai posé trois notions INDÉPENDANTES — type, format, ajout — ce qui est
+    # juste, et j'en ai conclu qu'aucune ne contraignait les autres, ce qui est
+    # faux. Un format dit comment LIRE un libellé ; quand la valeur désigne un
+    # produit ou une fiche matière, il n'y a pas de libellé à lire, l'objet EST la
+    # réponse. Idem pour l'unité, qui appartient alors au produit.
+    #
+    # DEUX BARRIÈRES, comme pour l'éditeur de conditions (D-080) : la vue masque
+    # ces deux champs hors du type « valeur », et cette contrainte refuse la
+    # combinaison quelle que soit l'interface — import, ORM, script.
+    #
+    # ⚠️ Et un `onchange` NETTOIE en basculant le type. Sans lui, un format saisi
+    # avant la bascule resterait, invisible, et le refus tomberait sur un champ
+    # que l'utilisateur ne voit plus : le pire des messages d'erreur.
+    @api.constrains("value_type", "custom_type", "uom_id")
+    def _check_format_only_for_plain_values(self):
+        for attribute in self:
+            if attribute.value_type == "value":
+                continue
+            if attribute.custom_type or attribute.uom_id:
+                raise ValidationError(
+                    self.env._(
+                        "A format and a unit only make sense when a value designates "
+                        "nothing but itself. Here a value designates a %s: the object "
+                        "is the answer, there is no label to read.",
+                        dict(self._fields["value_type"].selection).get(
+                            attribute.value_type, attribute.value_type
+                        ),
+                    )
+                )
+
+    @api.onchange("value_type")
+    def _onchange_value_type(self):
+        if self.value_type != "value":
+            self.custom_type = False
+            self.uom_id = False
+
     CUSTOM_TYPES = [
         ("char", "Char"),
         ("integer", "Integer"),

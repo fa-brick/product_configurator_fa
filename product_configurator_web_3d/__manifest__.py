@@ -12,6 +12,7 @@
     "depends": ["product_configurator_fa", "product_editor"],
     "data": [
         "views/product_view.xml",
+        "views/product_attribute_view.xml",
         "views/configurator_page.xml",
     ],
     "assets": {

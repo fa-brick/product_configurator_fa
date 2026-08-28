@@ -1048,11 +1048,53 @@ class ProductAttributeValue(models.Model):
         help="By unchecking the active field you can "
         "disable a attribute value without deleting it",
     )
-    product_id = fields.Many2one(comodel_name="product.product")
-    image = fields.Binary(
-        attachment=True,
-        help="Attribute value image (Display on website for radio buttons)",
+    # ─ CE QUE LA VALEUR DÉSIGNE, quand ce n'est pas elle-même (D-196) ───────
+    #
+    # ⚠️ Ce champ EXISTAIT et n'était sur AUCUN écran. Il est pourtant lu à
+    # l'exécution — `get_attribute_value_extra_prices` filtre sur
+    # `("product_id", "!=", False)` pour prendre le prix du produit pointé plutôt
+    # qu'un supplément saisi. Fonctionnalité complète et inatteignable, même
+    # famille que le taux au m² (D-162). La colonne le rend enfin saisissable,
+    # gouvernée par `value_type` comme les pastilles le sont par `display_type`.
+    product_id = fields.Many2one(
+        comodel_name="product.product",
+        string="Product",
+        help="The product this value stands for. Its price replaces the extra "
+             "price when set.",
     )
+    # ⚠️ REDEVENU UN `Image`, et ce n'est pas cosmétique. Le fork le redéfinissait
+    # en `Binary` : sondé au runtime, il n'avait plus ni `max_width` ni contrôle
+    # de résolution — une photo de plusieurs méga-octets partait telle quelle dans
+    # une liste qui l'affiche en vignette, et un PDF déposé là passait sans un mot.
+    #
+    # ⓘ 256 px et non les 70 du core : la vignette du core suffit à sa liste, mais
+    # le fork affiche cette image en `oe_avatar` sur sa propre fiche de valeur, où
+    # 70 px remonteraient flous. C'est aussi la borne de la miniature des matières
+    # (`preview_image`), ce qui garde une seule échelle dans le module.
+    #
+    # ⚠️ `Image` redimensionne à l'ÉCRITURE : les images déjà stockées gardent leur
+    # taille jusqu'à un nouvel envoi. Mesuré avant d'écrire — une seule image en
+    # base sur `fabk18`, 1,7 ko. Rien à reprendre.
+    image = fields.Image(
+        string="Image",
+        max_width=256,
+        max_height=256,
+        help="Thumbnail shown when the attribute is displayed as colour swatches "
+             "and no HTML colour is set.",
+    )
+
+    # ─ DEUX BARRIÈRES, encore (D-080, D-194, D-196) ─────────────────────────
+    @api.constrains("product_id")
+    def _check_product_only_for_product_type(self):
+        for value in self:
+            if value.product_id and value.attribute_id.value_type != "product":
+                raise ValidationError(
+                    self.env._(
+                        "Only an attribute whose values designate a Product can "
+                        "point at one. Change the attribute's value type, or "
+                        "clear the product."
+                    )
+                )
 
     @api.model
     def get_attribute_value_extra_prices(

@@ -239,3 +239,45 @@ class ValueType(BaseCommon):
         attr.invalidate_recordset()
         self.assertFalse(attr.custom_type)
         self.assertFalse(attr.uom_id)
+
+    # ── ce que la VALEUR peut désigner (D-196) ──────────────────────────────
+    def test_16_a_value_points_at_a_product_ONLY_when_the_type_says_so(self):
+        """⚠️ `product_id` existait et n'était sur aucun écran.
+
+        Il est pourtant lu à l'exécution — le prix du produit pointé remplace le
+        supplément. La colonne le rend saisissable ; cette garde l'empêche de
+        contredire le type de l'attribut.
+        """
+        from odoo.exceptions import ValidationError
+        produit = self.env["product.product"].create({"name": "Bracket"})
+        plain = self.Attribute.create({
+            "name": "Plain list", "create_variant": "no_variant",
+            "value_type": "value",
+        })
+        with self.assertRaises(ValidationError):
+            self.env["product.attribute.value"].create({
+                "name": "Bracket value", "attribute_id": plain.id,
+                "product_id": produit.id,
+            })
+
+        pointing = self.Attribute.create({
+            "name": "Bracket choice", "create_variant": "no_variant",
+            "value_type": "product",
+        })
+        value = self.env["product.attribute.value"].create({
+            "name": "Bracket value", "attribute_id": pointing.id,
+            "product_id": produit.id,
+        })
+        self.assertEqual(value.product_id, produit)
+
+    def test_17_the_value_image_RESIZES_again(self):
+        """⚠️ Le fork avait remplacé le `Image` du core par un `Binary`.
+
+        Sondé au runtime avant correction : plus de `max_width`, plus de contrôle
+        de résolution — une photo de plusieurs méga-octets partait telle quelle
+        dans une liste qui l'affiche en vignette, et un PDF déposé là passait.
+        """
+        champ = self.env["product.attribute.value"]._fields["image"]
+        self.assertEqual(type(champ).__name__, "Image")
+        self.assertEqual(champ.max_width, 256)
+        self.assertEqual(champ.max_height, 256)

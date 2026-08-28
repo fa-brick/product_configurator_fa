@@ -1,4 +1,5 @@
-from odoo import fields, models
+from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class ProductAttributeLine(models.Model):
@@ -85,3 +86,61 @@ class ProductAttribute(models.Model):
         selection_add=[("material", "Material")],
         ondelete={"material": "set default"},
     )
+
+
+class ProductAttributeValue(models.Model):
+    """Une valeur peut DÉSIGNER une matière — et c'est sa miniature qui la choisit.
+
+    ⚠️ **Le type « matière » ne désignait encore RIEN.** Il est arrivé comme un
+    libellé du `Selection` ci-dessus : aucune colonne de la valeur ne pointait une
+    fiche matière. Ce champ est le chaînon qui manquait.
+
+    **Pourquoi la MATIÈRE et non la teinte du nuancier.** Les deux modèles
+    existent — `product.model3d.color` porte un hexa et un code RAL,
+    `product.model3d.material` porte un rendu PBR. Arbitrage de Gerry
+    (2026-08-28) : *« il pointe la miniature pbr »*, ce qui prolonge ce qu'il
+    avait dit du nuancier — *« c'est plus que couleur : si on choisit du bois, un
+    métal ou une finition de laquage, cela se voit dans la miniature »*. Une
+    essence de chêne n'a pas de code hexadécimal.
+
+    ⚠️ **Et la miniature n'est pas RECOPIÉE.** `material_preview` est un champ
+    `related` en lecture seule : l'image reste celle du catalogue, régénérée à
+    chaque enregistrement de la matière. La copier ici la ferait diverger à la
+    première retouche, et le catalogue cesserait d'être la source. Arbitré :
+    *« celle de la matière en lecture seule »*.
+
+    ⓘ Le droit de lecture existe déjà : `product.model3d.material` est lisible par
+    `base.group_user`, donc par tout utilisateur interne qui ouvre un attribut.
+    """
+
+    _inherit = "product.attribute.value"
+
+    material_id = fields.Many2one(
+        comodel_name="product.model3d.material",
+        string="Material",
+        # `restrict` et non `cascade` : une matière encore désignée par une valeur
+        # de catalogue ne doit pas disparaître en silence — la valeur perdrait ce
+        # qu'elle désigne sans que rien ne le dise.
+        ondelete="restrict",
+        index=True,
+        help="The material this value stands for. Its preview is what the "
+             "customer picks from.",
+    )
+    material_preview = fields.Image(
+        related="material_id.preview_image",
+        string="Preview",
+        readonly=True,
+    )
+
+    # ─ DEUX BARRIÈRES, comme partout ailleurs (D-080, D-194, D-196) ─────────
+    @api.constrains("material_id")
+    def _check_material_only_for_material_type(self):
+        for value in self:
+            if value.material_id and value.attribute_id.value_type != "material":
+                raise ValidationError(
+                    self.env._(
+                        "Only an attribute whose values designate a Material can "
+                        "point at one. Change the attribute's value type, or "
+                        "clear the material."
+                    )
+                )

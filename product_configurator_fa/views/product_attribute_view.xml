@@ -291,6 +291,60 @@
         </field>
     </record>
 
+    <!-- ══ CE QUE `value_type` GOUVERNE DANS LA LISTE DES VALEURS (D-196) ══════
+         Constat de Gerry : « l'affichage des champs de liste des valeurs d'attribut
+         est influencé par le type d'affichage, mais il est influencé aussi par Value
+         type ». Deux axes commandaient cette liste, et un seul était câblé.
+
+         ⚠️ LES DEUX AXES RESTENT INDÉPENDANTS DANS LEUR CHOIX. `display_type` dit
+         comment on CHOISIT (pastilles, liste déroulante, cases) ; `value_type` dit ce
+         que la valeur DÉSIGNE. Un attribut de type « matière » affiché en `select` est
+         parfaitement légitime. Les coupler serait refaire l'erreur du format (D-194)
+         dans l'autre sens : ils gouvernent des colonnes différentes, pas les mêmes. -->
+    <record id="product_attribute_view_form_value_type" model="ir.ui.view">
+        <field name="name">product.attribute.form.value.type</field>
+        <field name="model">product.attribute</field>
+        <field name="inherit_id" ref="product.product_attribute_view_form" />
+        <field name="arch" type="xml">
+            <!-- La liste lit `parent.value_type` : il doit être dans la vue parente,
+                 et il y est (groupe « What a value is »). -->
+            <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="after">
+                <field
+                    name="product_id"
+                    column_invisible="parent.value_type != 'product'"
+                    options="{'no_create': True}"
+                />
+            </xpath>
+
+            <!-- ⚠️ « Texte libre » QUITTE LA COLONNE. Constat de Gerry : « il y a déjà
+                 Default: customer may add a value, donc texte libre n'a pas d'intérêt
+                 en colonne ».
+
+                 ⓘ Ce que la mesure a montré, et qu'il faut savoir : les deux drapeaux
+                 ne servent PAS le même configurateur. `val_custom` (attribut) est celui
+                 que NOTRE assistant lit — `self.custom = self.attribute_id.val_custom`.
+                 `is_custom` (valeur) n'est lu nulle part dans le fork : il n'est lu que
+                 par le configurateur NATIF d'Odoo et par `website_sale`. Le masquer ne
+                 retire donc rien à nos produits configurables ; il retire le seul écran
+                 où l'on réglait la saisie libre native, pour un produit qui n'est pas
+                 `config_ok`. Une ligne à remettre si le besoin s'en présente. -->
+            <xpath expr="//field[@name='value_ids']/list/field[@name='is_custom']" position="attributes">
+                <attribute name="column_invisible">True</attribute>
+            </xpath>
+
+            <!-- La pastille et la vignette ne valent que pour une valeur qui ne désigne
+                 QU'ELLE-MÊME : un produit a son image, une matière a sa miniature PBR.
+                 ⓘ La condition du core sur `display_type` est CONSERVÉE et complétée —
+                 les deux axes s'ajoutent, aucun ne remplace l'autre. -->
+            <xpath expr="//field[@name='value_ids']/list/field[@name='html_color']" position="attributes">
+                <attribute name="column_invisible">parent.display_type != 'color' or parent.value_type != 'value'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='value_ids']/list/field[@name='image']" position="attributes">
+                <attribute name="column_invisible">parent.display_type != 'color' or parent.value_type != 'value'</attribute>
+            </xpath>
+        </field>
+    </record>
+
     <record id="product_template_attribute_value_view_tree_sqm" model="ir.ui.view">
         <field name="name">product.template.attribute.value.list.sqm</field>
         <field name="model">product.template.attribute.value</field>

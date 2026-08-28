@@ -104,6 +104,25 @@
                     readonly="1"
                     optional="show"
                 />
+                <!-- ══ LA CONDITION SE LIT À CÔTÉ DE CE QU'ELLE RESTREINT — B3 ══
+                     C'est tout le gain de l'unification : une restriction cesse
+                     d'être une ligne dans une autre table. Le champ existait sur la
+                     ligne d'attribut et ne se voyait que dans son formulaire.
+
+                     ⓘ Même widget qu'ailleurs (B2, D-203) : il LIT la condition en
+                     pastilles ; l'édition reste le formulaire de condition. -->
+                <field
+                    name="visibility_domain_summary"
+                    column_invisible="True"
+                />
+                <field
+                    name="visibility_domain_id"
+                    widget="condition_facets"
+                    options="{'summary_field': 'visibility_domain_summary'}"
+                    context="{'product_tmpl_id': parent.id, 'form_view_ref': 'product_configurator_fa.product_config_domain_form_view_template'}"
+                    column_invisible="not context.get('default_config_ok', False)"
+                    optional="show"
+                />
                 <field
                     name="default_val"
                     domain="[('id', 'in', value_ids)]"

@@ -29,4 +29,35 @@
         </field>
     </record>
 
+    <!-- ══ LA COLONNE « VUE 3D » SUR LA LIGNE D'ATTRIBUT — B3 ══════════════════
+         Le champ existait et ne se voyait que dans le FORMULAIRE d'une ligne : il
+         fallait ouvrir chaque ligne pour savoir laquelle change la caméra. La
+         maquette le demande en colonne, à côté de l'attribut qu'il concerne.
+
+         ⚠️ Cette vue vit dans le PONT : le champ désigne une caméra de
+         `product_editor`, et l'exposer depuis le cœur ferait dépendre l'AGPL-3 de
+         l'éditeur — l'inverse du sens que D-075 protège.
+
+         ⓘ « La Vue 3d ne descend pas aux valeurs » (arbitré) : elle reste sur
+         l'attribut et sur l'étape. La résolution est *attribut → étape → rien ne
+         bouge* (D-163), et l'étape porte déjà la sienne, plus bas. -->
+    <record id="product_template_form_view_3d_column" model="ir.ui.view">
+        <field name="name">product.template.form.view3d.column</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product_configurator_fa.product_template_only_form_view_inherited" />
+        <field name="arch" type="xml">
+            <xpath
+                expr="//field[@name='attribute_line_ids']/list/field[@name='visibility_domain_id']"
+                position="after"
+            >
+                <field
+                    name="view_camera_id"
+                    column_invisible="not context.get('default_config_ok', False)"
+                    options="{'no_create': True, 'no_create_edit': True}"
+                    optional="show"
+                />
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

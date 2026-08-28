@@ -557,6 +557,12 @@ class ProductAttributeLine(models.Model):
 
     sequence = fields.Integer(default=10)
 
+    # ⓘ Le résumé de la condition, remonté sur la ligne — un widget posé sur un
+    # Many2one ne reçoit que l'identifiant et le nom de sa cible (B2, D-203).
+    visibility_domain_summary = fields.Char(
+        related="visibility_domain_id.condition_summary", readonly=True
+    )
+
     # ─ L'ÉTAPE EST UN SÉPARATEUR — B1, D-202 ────────────────────────────────
     #
     # ⚠️ **CE CHAMP NE DIT PAS « J'APPARTIENS À », IL DIT « J'OUVRE ».** L'étape

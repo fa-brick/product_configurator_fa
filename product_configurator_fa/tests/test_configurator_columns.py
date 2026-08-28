@@ -54,3 +54,44 @@ class ConfiguratorColumns(BaseCommon):
         occurrences = re.findall(r'<field name="configurator_line_ids"[^>]*', arch)
         self.assertEqual(len(occurrences), 1, "le champ de l'arbre est déclaré deux fois")
         self.assertIn('widget="configurator_tree"', occurrences[0])
+
+    def _core_list(self):
+        """La liste d'« Attributs & Variantes », telle qu'elle est assemblée."""
+        arch = self.env["product.template"].get_view(view_type="form")["arch"]
+        for match in re.finditer(r'<field name="attribute_line_ids"', arch):
+            bout = arch[match.start():]
+            if "<list" not in bout:
+                continue
+            return bout[bout.index("<list"): bout.index("</list>")]
+        self.fail("la liste d'Attributs & Variantes est introuvable")
+
+    def test_03_the_columns_say_what_they_DO(self):
+        """⚠️ « Custom » ne disait rien, et « Default Val » était tronqué.
+
+        Constat de Gerry : *« Custom n'a plus d'intérêt, c'est allow add »*. Le
+        drapeau autorise le client à AJOUTER une valeur — et cette saisie crée
+        une vraie valeur d'attribut (D-081), elle ne reste pas éphémère.
+        """
+        liste = self._core_list()
+        self.assertIn('string="Allow add"', liste)
+        self.assertIn('string="Default value"', liste)
+
+    def test_04_and_VALEURS_is_the_column_that_stretches(self):
+        """⚠️ Sans largeur déclarée, la liste répartit la place à parts égales.
+
+        Résultat constaté à l'écran : un grand vide au milieu, et la colonne des
+        valeurs — la seule qui grandit avec le contenu — serrée comme les autres.
+        On fixe donc celles de fin ; « Valeurs » prend le reste.
+        """
+        liste = self._core_list()
+        # Chaque colonne de fin porte une largeur…
+        for nom in ("default_val", "required", "multi", "custom"):
+            bloc = re.search(
+                r'<field\s+name="%s"[^>]*' % nom, liste, re.S
+            )
+            self.assertTrue(bloc, f"la colonne {nom} a disparu")
+            self.assertIn("width=", bloc.group(0), f"{nom} n'a pas de largeur")
+        # …et celle des valeurs, non : c'est elle qui s'étire.
+        valeurs = re.search(r'<field\s+name="value_ids"[^>]*', liste, re.S)
+        self.assertTrue(valeurs)
+        self.assertNotIn("width=", valeurs.group(0))

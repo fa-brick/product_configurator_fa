@@ -117,16 +117,25 @@
                 expr="//field[@name='attribute_line_ids']/list/field[@name='value_ids']"
                 position="after"
             >
+                <!-- ⚠️ LES COLONNES DE FIN PRENNENT UNE LARGEUR FIXE, pour que
+                     « Valeurs » prenne le reste. Constat de Gerry : c'est la colonne
+                     des valeurs qui doit s'étirer — c'est elle qui grandit avec le
+                     contenu, les autres portent une case ou un nom court. Sans
+                     largeur déclarée, la liste répartissait la place à parts égales
+                     et laissait un grand vide au milieu. -->
                 <field
                     name="default_val"
+                    string="Default value"
                     domain="[('id', 'in', value_ids)]"
                     context="{'show_attribute': False}"
                     options="{'no_create': True, 'no_create_edit': True}"
                     column_invisible="not context.get('default_config_ok', False)"
+                    width="150px"
                 />
                 <field
                     name="required"
                     column_invisible="not context.get('default_config_ok', False)"
+                    width="90px"
                 />
                 <field
                     name="required_condition"
@@ -151,12 +160,20 @@
                     column_invisible="not context.get('default_config_ok', False)"
                     readonly="custom"
                     force_save="1"
+                    width="90px"
                 />
+                <!-- ⚠️ « Custom » NE DISAIT RIEN. Constat de Gerry : *« Custom n'a
+                     plus d'intérêt, c'est allow add »*. Le drapeau autorise le client
+                     à AJOUTER une valeur — et cette saisie ne reste pas éphémère,
+                     elle crée une vraie valeur d'attribut (D-081). Le libellé rejoint
+                     celui de la semence, « customer may add a value ». -->
                 <field
                     name="custom"
+                    string="Allow add"
                     column_invisible="not context.get('default_config_ok', False)"
                     readonly="multi"
                     force_save="1"
+                    width="100px"
                 />
             </xpath>
 

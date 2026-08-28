@@ -41,9 +41,27 @@
             <xpath expr="//group[@name='sale_main_fields']" position="inside">
                 <field name="active" />
             </xpath>
-            <xpath expr="//field[@name='create_variant']" position="attributes">
-                <attribute name="groups">base.group_no_one</attribute>
-            </xpath>
+            <!-- ⚠️ `create_variant` N'EST PLUS CACHÉ DERRIÈRE LE MODE DÉVELOPPEUR.
+                 Constat de Gerry (2026-08-28) : « je ne vois pas dans l'attribut la
+                 gestion des variants ». Le `groups="base.group_no_one"` est arrivé avec
+                 le renommage en masse du fork OCA, sans raison consignée — et il
+                 contredit une règle que le fork a écrite depuis.
+
+                 ⓘ CE CHAMP N'EST PAS DÉCORATIF. `_resolves_to_values()` s'appuie sur lui :
+                 *« un nombre saisi sur cet attribut se range-t-il en valeur d'attribut ?
+                 La question n'a pas besoin d'un champ neuf : `create_variant` la porte
+                 déjà. En `no_variant`, la valeur ne peut pas entrer dans l'identité d'une
+                 variante […] et c'est tout l'objet de D-081 : le stock ne sait distinguer
+                 deux portes que par leurs valeurs d'attribut. »* Il décide donc si une
+                 saisie du client devient une valeur PERSISTÉE — un comportement majeur,
+                 réglable jusqu'ici seulement en mode développeur.
+
+                 Mesuré sur `fabk18` : 7 attributs en `always`, 3 en `no_variant`. Le
+                 réglage VARIE déjà, sans que personne puisse le voir.
+
+                 Il reste à sa place d'origine, auprès du type d'affichage : c'est une
+                 propriété du cœur, et le cœur la protège déjà d'un changement tardif
+                 (`readonly` dès qu'un produit emploie l'attribut). -->
             <!-- ─ A3 : DANS LE CORPS DE LA FICHE, PAS DANS UN ONGLET ────────────
                  Arbitrage de Gerry (2026-08-28) : *« je ne veux pas de l'onglet
                  configurator, je voudrais que les éléments viennent à la suite avant

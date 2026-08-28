@@ -315,8 +315,14 @@ class ProductAttribute(models.Model):
             except Exception:
                 attribute.product_filter_count = 0
 
-    def action_open_proposed_products(self):
-        """Montre les produits que ce filtre propose — dans un dialogue.
+    def action_open_proposed_values(self):
+        """Montre les VALEURS que ce filtre propose — dans un dialogue.
+
+        ⚠️ **DES VALEURS, PLUS DES PRODUITS** — demande de Gerry (2026-08-29) :
+        *« le clic renvoie sur valeurs d'attribut, rempli avec les résultats »*.
+        C'est ce que l'attribut porte réellement ; le produit n'était qu'une
+        étape. ⓘ Depuis D-222 elles existent déjà : poser le filtre les
+        matérialise, ce dialogue n'a donc rien à créer.
 
         ⓘ Un dialogue, comme pour les valeurs (D-206) : on revient là où on l'a
         ouvert, sans perdre la fiche d'attribut qu'on est en train de régler.
@@ -324,11 +330,14 @@ class ProductAttribute(models.Model):
         self.ensure_one()
         return {
             "type": "ir.actions.act_window",
-            "name": self.env._("Products proposed by the filter"),
-            "res_model": "product.product",
+            "name": self.env._("Values proposed by the filter"),
+            "res_model": "product.attribute.value",
             "view_mode": "list",
             "views": [(False, "list")],
-            "domain": literal_eval((self.product_filter_domain or "[]").strip() or "[]"),
+            "domain": [
+                ("attribute_id", "=", self.id),
+                ("product_id", "in", self._proposed_products().ids),
+            ],
             "target": "new",
         }
 

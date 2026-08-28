@@ -119,16 +119,26 @@ class ProductFilter(BaseCommon):
         self.attribute.invalidate_recordset()
         self.assertEqual(self.attribute.product_filter_count, 0)
 
-    def test_10_the_results_open_in_a_DIALOG(self):
-        """Comme les valeurs (D-206) : on revient là où on l'a ouvert."""
+    def test_10_le_compteur_ouvre_les_VALEURS_dans_un_dialogue(self):
+        """⚠️ **Des VALEURS, plus des produits** — demande de Gerry : *« le clic
+
+        renvoie sur valeurs d'attribut, rempli avec les résultats »*. C'est ce
+        que l'attribut porte réellement ; le produit n'était qu'une étape.
+
+        ⓘ Un dialogue, comme pour les valeurs (D-206) : on revient là où on l'a
+        ouvert. Et depuis D-222 elles existent déjà — poser le filtre les
+        matérialise, ce dialogue n'a rien à créer.
+        """
+        self.attribute.dynamic_values = True
         self.attribute.product_filter_domain = str(
             [("categ_id", "=", self.categorie.id)]
         )
-        action = self.attribute.action_open_proposed_products()
+        action = self.attribute.action_open_proposed_values()
         self.assertEqual(action["target"], "new")
-        self.assertEqual(action["res_model"], "product.product")
-        trouves = self.env["product.product"].search(action["domain"])
-        self.assertEqual(trouves, self.poignees)
+        self.assertEqual(action["res_model"], "product.attribute.value")
+        trouvees = self.env["product.attribute.value"].search(action["domain"])
+        self.assertEqual(trouvees.product_id, self.poignees)
+        self.assertEqual(trouvees.attribute_id, self.attribute)
 
     # ── le MODE : liste tenue, ou liste proposée (D-218) ────────────────────
     def test_11_a_filter_proposes_NOTHING_without_the_dynamic_mode(self):

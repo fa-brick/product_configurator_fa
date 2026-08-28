@@ -53,7 +53,7 @@ class ActionsAreComplete(BaseCommon):
             "étape": self.template.configurator_open_step(self.line.id),
             "ajouter un attribut": self.template.action_configurator_add_attribute(),
             "ajouter une étape": self.template.action_configurator_add_step(),
-            "produits du filtre": self.filtre.action_open_proposed_products(),
+            "valeurs du filtre": self.filtre.action_open_proposed_values(),
         }
 
     def test_01_every_action_carries_its_VIEWS(self):

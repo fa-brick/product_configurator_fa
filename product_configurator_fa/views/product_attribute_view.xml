@@ -283,16 +283,28 @@
                         <!-- ⚠️ CE QUE LE FILTRE DONNE, AVANT DE S'EN SERVIR (D-208) :
                              un domaine est une promesse tant qu'on ne l'a pas appliqué,
                              et sans retour il se vérifie devant le client. -->
-                        <field name="product_filter_count" invisible="1" />
+                        <!-- ⚠️ **LE COMPTEUR EST LE POINT D'ENTRÉE**, demande de
+                             Gerry : le clic mène aux VALEURS issues du filtre. Le
+                             bouton séparé « voir les produits » disparaît — le
+                             produit n'était qu'une étape, l'attribut porte des
+                             valeurs.
+
+                             ⓘ Celui du widget de domaine est masqué (feuille de
+                             style) : il ouvrait des produits, et deux compteurs
+                             côte à côte auraient dit la même chose de deux
+                             façons. Son avertissement « domaine invalide », lui,
+                             reste visible — c'est le seul qui le signale. -->
                         <button
-                            name="action_open_proposed_products"
+                            name="action_open_proposed_values"
                             type="object"
-                            icon="fa-search"
                             class="btn-link ps-0"
                             colspan="2"
-                            string="See the products found"
                             invisible="not product_filter_count"
-                        />
+                        >
+                            <i class="oi oi-arrow-right me-1" role="img" />
+                            <field name="product_filter_count" />
+                            <span> proposed value(s)</span>
+                        </button>
                         <div colspan="2" class="text-muted" invisible="product_filter_count">
                             No product matches this filter yet.
                         </div>

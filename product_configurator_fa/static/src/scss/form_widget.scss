@@ -113,3 +113,35 @@ div:has(> .o_config_tree) {
 .o_config_condition .o_field_domain_panel {
     display: none;
 }
+
+// ══ LE FILTRE DES VALEURS DYNAMIQUES TIENT DANS UNE COLONNE ═════════════════
+//
+// ⚠️ Constat de Gerry à l'écran : *« élargir pour voir tout le texte »*. Le
+// cœur donne à l'opérateur deux douzièmes de la rangée (`col-md-2`) — largement
+// assez pleine page, illisible dans une colonne : « n'est pas dans » y était
+// coupé.
+//
+// ⓘ On rend donc la rangée SOUPLE plutôt que de lui imposer d'autres largeurs
+// fixes : chaque partie prend ce qu'il lui faut et passe à la ligne quand la
+// colonne ne suffit plus. Une largeur fixe de plus aurait juste déplacé le
+// problème au prochain libellé.
+.o_config_filter_group .o_tree_editor_condition {
+    flex-wrap: wrap;
+
+    > .o_tree_editor_editor {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 9rem;
+    }
+}
+
+// ⓘ Le compteur du cœur ouvrait des PRODUITS ; le nôtre ouvre les valeurs
+// (D-227). Deux compteurs côte à côte auraient dit la même chose de deux
+// façons. ⚠️ On ne masque QUE le compteur et sa flèche : l'avertissement
+// « domaine invalide » du même bandeau reste, c'est le seul qui le signale.
+.o_config_filter_group .o_field_domain_panel {
+    > .o_domain_show_selection_button,
+    > .oi-arrow-right {
+        display: none;
+    }
+}

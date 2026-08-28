@@ -208,9 +208,18 @@
                      énumérée 10 / 15 / 18 n'avait AUCUN format déclaré, alors que la
                      grille de prix et le moteur de géométrie lisent ces valeurs comme
                      des nombres. -->
+                <!-- ⚠️ UN SÉPARATEUR, ET NON UN TITRE DE GROUPE. Constat de Gerry :
+                     *« arrête le sous-lignage à moitié pour que Dynamic values soit à
+                     la même hauteur »*. Un `<group string="…">` imbriqué souligne sa
+                     PROPRE colonne — d'où un trait à mi-page, et un décalage : le
+                     titre du groupe de droite descendait d'une ligne par rapport à la
+                     première du groupe de gauche.
+
+                     ⓘ Le séparateur, lui, traverse les deux colonnes ; les deux
+                     sous-groupes commencent alors à la même hauteur. -->
+                <separator name="value_types" string="Value types" colspan="2" />
                 <group
                     name="value_nature_block"
-                    string="What a value is"
                     groups="product_configurator_fa.group_product_configurator_fa_manager"
                 >
                     <group name="value_nature">
@@ -304,7 +313,11 @@
                  Gerry : l'identité aurait donc atterri en fin de page, sous la
                  description. Elle vise maintenant le bloc de nature, qui ouvre
                  l'onglet. -->
-            <xpath expr="//group[@name='value_nature_block']" position="before">
+            <!-- ⚠️ L'ANCRE VISE LE SÉPARATEUR, pas le groupe qui le suit. Elle a
+                 déjà dû suivre la mise en page une fois (le bloc « Description »
+                 est passé en bas) ; ici, viser le groupe plaçait l'identité APRÈS
+                 le titre « Value types », qui se retrouvait en tête d'onglet. -->
+            <xpath expr="//separator[@name='value_types']" position="before">
                 <xpath expr="//group[@name='main_fields']" position="move" />
             </xpath>
 

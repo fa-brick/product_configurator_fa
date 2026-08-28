@@ -107,22 +107,39 @@
                  l'ordre demandé par Gerry. `search_ok` quitte « ce qu'une valeur
                  est » — il ne dit pas ce qu'une valeur EST, il dit si l'attribut
                  entre dans la recherche d'une variante identique. -->
-            <xpath expr="//group[@name='sale_main_fields']" position="inside">
-                <field name="active" />
-            </xpath>
-            <!-- ⚠️ DANS UN SOUS-GROUPE, et non posé nu dans `main_fields`. Un champ
-                 placé directement entre deux sous-groupes n'est dans aucune colonne :
-                 Odoo le rend SANS ÉTIQUETTE, flottant à droite. Constat de Gerry :
-                 *« il manque son libellé »* — ce n'était pas un libellé absent, mais
-                 un champ hors de toute colonne.
+            <!-- ⚠️ LA COLONNE DE DROITE, autant qu'un module qui NE DÉPEND PAS de
+                 `website_sale` peut le faire. Gerry demande « actif, eCommerce,
+                 recherchable » empilés à droite. Les deux qui nous appartiennent y
+                 vont ; le **filtre e-commerce** vit dans `ecommerce_main_fields`, un
+                 groupe de `website_sale` — l'y rejoindre demanderait de viser ce
+                 groupe, et l'xpath échouerait partout où ce module n'est pas installé
+                 (vérifié : il ne l'est pas sur la base de démo).
 
-                 ⓘ Un sous-groupe de plus se range SOUS les deux colonnes, donc sous
-                 le filtre e-commerce — la place demandée. Et il ne dépend pas de
-                 `website_sale` : viser `ecommerce_main_fields` casserait la vue
-                 partout où ce module n'est pas installé (vérifié : il ne l'est pas
-                 sur la base de démo). -->
-            <xpath expr="//group[@name='main_fields']" position="inside">
-                <group name="attribute_search">
+                 ⓘ Le rangement strict des trois demanderait donc une dépendance à
+                 `website_sale` — toute la pile site web sur chaque base du
+                 configurateur. Signalé à Gerry plutôt que décidé seul.
+
+                 ⓘ `search_ok` quitte « ce qu'une valeur est » : il ne dit pas ce
+                 qu'une valeur EST, il dit si l'attribut entre dans la recherche
+                 d'une variante identique. -->
+            <!-- ══ LE MODE DE PRIX REJOINT L'IDENTITÉ — demande de Gerry ══════════
+                 ⚠️ **ET IL RESTE UNE SEMENCE, malgré ce que sa place suggère.**
+                 Gerry le déplace en le disant *« uniquement dans l'attribut »* ;
+                 mesuré, il existe sur QUATRE modèles, et ce qui est lu à l'exécution
+                 est `attribute_line_id.price_mode` — **la ligne** —, en trois
+                 endroits du code. Comme `required`, `multi` et `val_custom`, il est
+                 recopié sur la ligne à sa création et n'est plus consulté ensuite.
+
+                 ⓘ Le sortir du bloc « Defaults » et lui retirer le préfixe lui ôte
+                 les deux signaux qui le disaient. C'est le choix de Gerry, consigné
+                 avec la mesure ; le `help` du champ, lui, reste exact. -->
+            <xpath expr="//group[@name='sale_main_fields']/field[@name='create_variant']" position="after">
+                <field name="price_mode" string="Extra price mode" />
+            </xpath>
+
+            <xpath expr="//group[@name='sale_main_fields']" position="after">
+                <group name="attribute_flags">
+                    <field name="active" />
                     <field name="search_ok" />
                 </group>
             </xpath>
@@ -152,7 +169,6 @@
                             <label for="val_custom" string="Allow add" />
                         </span>
                     </div>
-                    <field name="price_mode" />
                 </group>
             </xpath>
 

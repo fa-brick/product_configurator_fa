@@ -210,6 +210,86 @@ class ProductTemplate(models.Model):
         self.env["product.template.attribute.line"].browse(line_id).config_step_id = False
         return True
 
+    def configurator_open_condition(self, line_id, value_id=False):
+        """Ouvre — et crée au besoin — la condition d'une ligne ou d'une valeur.
+
+        ⚠️ **SANS CECI, RETIRER « Configuration Restrictions » PERDRAIT UNE
+        CAPACITÉ.** C'était le seul endroit d'où l'on crée une condition PAR
+        VALEUR : l'arbre les affichait sans pouvoir en poser une. Question de
+        Gerry — *« Configuration Restrictions n'a plus d'utilité ? »* — et la
+        réponse était « si, jusqu'à ce que l'arbre sache le faire ».
+
+        ⚠️ **LA CONDITION EST CRÉÉE AU CLIC**, parce qu'elle EST le lien : on ne
+        peut pas ouvrir l'éditeur de quelque chose qui n'existe pas, et rattacher
+        après coup demanderait un rappel que l'action ne fournit pas. ⓘ Une
+        condition restée vide n'est pas un déchet : D-211 a déjà décidé qu'on ne
+        supprime pas une condition parce qu'elle n'a plus de règle — elle porte un
+        nom et peut être partagée.
+        """
+        self.ensure_one()
+        ligne = self.env["product.template.attribute.line"].browse(line_id)
+        if value_id:
+            valeur = self.env["product.attribute.value"].browse(value_id)
+            regle = self.config_line_ids.filtered(
+                lambda r: r.attribute_line_id == ligne and valeur in r.value_ids
+            )[:1]
+            if not regle:
+                domaine = self.env["product.config.domain"].create(
+                    {"name": "%s / %s" % (ligne.attribute_id.name, valeur.name)}
+                )
+                regle = self.env["product.config.line"].create({
+                    "product_tmpl_id": self.id,
+                    "attribute_line_id": ligne.id,
+                    "value_ids": [(6, 0, [valeur.id])],
+                    "domain_id": domaine.id,
+                })
+            cible = regle.domain_id
+        else:
+            if not ligne.visibility_domain_id:
+                ligne.visibility_domain_id = self.env["product.config.domain"].create(
+                    {"name": ligne.attribute_id.name}
+                )
+            cible = ligne.visibility_domain_id
+        return {
+            "type": "ir.actions.act_window",
+            "name": cible.display_name,
+            "res_model": "product.config.domain",
+            "res_id": cible.id,
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "product_tmpl_id": self.id,
+                "product_attribute_ids": self.attribute_line_ids.attribute_id.ids,
+                "form_view_ref":
+                    "product_configurator_fa.product_config_domain_form_view_template",
+            },
+        }
+
+    def configurator_open_step(self, line_id):
+        """Ouvre les réglages d'une étape — sa condition, et sa vue 3D.
+
+        ⚠️ Même raison : « Configuration Steps » était le seul endroit d'où l'on
+        règle la **condition de visibilité** d'une étape (D-086) et sa caméra.
+        L'ordre et l'appartenance, eux, sont déduits depuis D-202 — c'est tout ce
+        que cette section avait cessé de servir, pas le reste.
+        """
+        self.ensure_one()
+        ligne = self.env["product.template.attribute.line"].browse(line_id)
+        etape = self.config_step_line_ids.filtered(
+            lambda sl: sl.config_step_id == ligne.config_step_id
+        )[:1]
+        if not etape:
+            return False
+        return {
+            "type": "ir.actions.act_window",
+            "name": etape.display_name,
+            "res_model": "product.config.step.line",
+            "res_id": etape.id,
+            "view_mode": "form",
+            "target": "new",
+            "context": {"product_tmpl_id": self.id},
+        }
+
     def action_configurator_add_attribute(self):
         """Ajoute un attribut depuis l'arbre — D-212.
 

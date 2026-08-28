@@ -116,3 +116,81 @@ class ConfiguratorAdd(BaseCommon):
         })
         with self.assertRaises(UserError):
             assistant.action_apply()
+
+
+class ConfiguratorConditions(BaseCommon):
+    """Poser une condition depuis l'arbre — D-213.
+
+    ⚠️ Question de Gerry : *« Configuration Restrictions n'a plus d'utilité ? »*
+    La réponse était **si, jusqu'à ce que l'arbre sache le faire** : c'était le
+    seul endroit d'où l'on crée une condition PAR VALEUR. Ces gardes sont ce qui
+    a rendu son retrait possible sans rien perdre.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.step = cls.env["product.config.step"].create({"name": "Shape step"})
+        cls.attribute = cls.env["product.attribute"].create(
+            {"name": "Kind cond", "create_variant": "no_variant"}
+        )
+        cls.classic, cls.cine = cls.env["product.attribute.value"].create([
+            {"name": "Classic", "attribute_id": cls.attribute.id},
+            {"name": "Ciné", "attribute_id": cls.attribute.id},
+        ])
+        cls.template = cls.env["product.template"].create({
+            "name": "Panel cond", "config_ok": True,
+            "attribute_line_ids": [(0, 0, {
+                "attribute_id": cls.attribute.id,
+                "value_ids": [(6, 0, (cls.classic + cls.cine).ids)],
+            })],
+        })
+        cls.line = cls.template.attribute_line_ids
+
+    def test_01_opening_an_ATTRIBUTE_condition_creates_it_if_needed(self):
+        """⚠️ La condition EST le lien : on ne peut pas ouvrir ce qui n'existe pas."""
+        self.assertFalse(self.line.visibility_domain_id)
+        action = self.template.configurator_open_condition(self.line.id)
+        self.assertEqual(action["res_model"], "product.config.domain")
+        self.assertEqual(action["target"], "new")
+        self.assertTrue(self.line.visibility_domain_id)
+        self.assertEqual(action["res_id"], self.line.visibility_domain_id.id)
+
+    def test_02_and_reopens_the_SAME_one_afterwards(self):
+        """Sinon chaque clic laisserait une condition de plus derrière lui."""
+        premiere = self.template.configurator_open_condition(self.line.id)["res_id"]
+        seconde = self.template.configurator_open_condition(self.line.id)["res_id"]
+        self.assertEqual(premiere, seconde)
+
+    def test_03_opening_a_VALUE_condition_creates_the_RULE_too(self):
+        """⚠️ C'est ce que « Configuration Restrictions » faisait, et rien d'autre.
+
+        Une condition par valeur demande un `product.config.line` — attribut,
+        valeurs, condition. L'arbre l'affichait sans pouvoir en créer.
+        """
+        self.assertFalse(self.template.config_line_ids)
+        action = self.template.configurator_open_condition(self.line.id, self.cine.id)
+        self.assertEqual(len(self.template.config_line_ids), 1)
+        regle = self.template.config_line_ids
+        self.assertEqual(regle.value_ids, self.cine)
+        self.assertEqual(action["res_id"], regle.domain_id.id)
+
+    def test_04_and_it_does_not_touch_the_OTHER_value(self):
+        self.template.configurator_open_condition(self.line.id, self.cine.id)
+        rows = self.template.get_configurator_tree()
+        valeurs = {v["name"]: v for v in rows[0]["values"]}
+        self.assertFalse(valeurs["Classic"]["facets"])
+
+    def test_05_opening_a_STEP_gives_its_settings(self):
+        """⚠️ « Configuration Steps » portait AUSSI la condition de visibilité.
+
+        L'ordre et l'appartenance sont déduits depuis D-202 — c'est cela qui
+        avait cessé de servir, pas le reste.
+        """
+        self.line.config_step_id = self.step
+        action = self.template.configurator_open_step(self.line.id)
+        self.assertEqual(action["res_model"], "product.config.step.line")
+        self.assertEqual(action["target"], "new")
+
+    def test_06_and_says_nothing_when_the_row_opens_no_step(self):
+        self.assertFalse(self.template.configurator_open_step(self.line.id))

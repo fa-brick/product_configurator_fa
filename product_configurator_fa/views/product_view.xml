@@ -184,94 +184,20 @@
                             <field name="currency_id" />
                         </list>
                     </field>
-                    <separator
-                        colspan="4"
-                        string="Configuration Restrictions"
-                        name="configurator_restrictions"
-                    />
-                    <field
-                        name="config_line_ids"
-                        readonly="not attribute_line_ids"
-                        context="{'show_attribute': False}"
-                    >
-                        <list editable="bottom">
-                            <field name="sequence" widget="handle" />
-                            <field
-                                name="attribute_line_id"
-                                domain="[('product_tmpl_id','=',parent.id)]"
-                                options="{'no_create': True, 'no_create_edit': True}"
-                            />
-                            <!-- # TODO: Find a more elegant way to restrict the value_ids -->
-                            <field
-                                name="attr_line_val_ids"
-                                widget="many2many_tags"
-                                column_invisible="1"
-                            />
-                            <field
-                                name="value_ids"
-                                widget="many2many_tags"
-                                readonly="not attribute_line_id"
-                                domain="[('id','in',attr_line_val_ids)]"
-                                options="{'no_create': True, 'no_create_edit': True}"
-                                context="{'show_attribute': False}"
-                            />
-                            <!-- ⚠️ LA CONDITION SE LIT EN PASTILLES — B2, D-203.
-                                 « ET entre les pastilles, OU à l'intérieur d'une. »
-                                 Le widget LIT seulement : l'édition reste le
-                                 formulaire de condition, qui manipule des
-                                 enregistrements (D-080). -->
-                            <field name="domain_summary" column_invisible="True" />
-                            <field
-                                name="domain_id"
-                                widget="condition_facets"
-                                options="{'summary_field': 'domain_summary'}"
-                                context="{'product_tmpl_id': product_tmpl_id or id or parent.id, 'product_attribute_ids': template_attribute_ids, 'form_view_ref': 'product_configurator_fa.product_config_domain_form_view_template'}"
-                            />
-                            <field name="product_tmpl_id" column_invisible="1" />
-                            <field name="template_attribute_ids" column_invisible="1" />
-                        </list>
-                    </field>
-                    <separator
-                        colspan="4"
-                        string="Configuration Steps"
-                        name="configurator_steps"
-                    />
-                    <field
-                        name="config_step_line_ids"
-                        readonly="not attribute_line_ids"
-                    >
-                        <!-- ⚠️ CETTE LISTE NE SE SAISIT PLUS QU'À MOITIÉ — B1, D-202.
-                             L'étape est devenue un SÉPARATEUR : son rang et ses
-                             attributs se lisent dans l'ordre des lignes d'attribut,
-                             et se règlent LÀ-BAS, par la colonne « Ouvre l'étape ».
-                             Ici ne restent que les réglages propres à l'étape.
-
-                             ⓘ `attribute_line_ids` reste affiché, en lecture : c'est
-                             ce qui rend visible l'effet à distance du glisser-déposer.
-                             Le retirer aurait laissé l'utilisateur deviner ce qu'une
-                             étape contient. -->
-                        <list editable="bottom" create="false">
-                            <field name="sequence" column_invisible="True" />
-                            <field name="config_step_id" readonly="1" />
-                            <field
-                                name="attribute_line_ids"
-                                widget="many2many_tags"
-                                readonly="1"
-                            />
-                            <field
-                                name="required"
-                                readonly="1"
-                                widget="boolean_toggle"
-                            />
-                            <field name="visibility_domain_summary" column_invisible="True" />
-                            <field
-                                name="visibility_domain_id"
-                                widget="condition_facets"
-                                options="{'summary_field': 'visibility_domain_summary'}"
-                                context="{'product_tmpl_id': parent.id, 'form_view_ref': 'product_configurator_fa.product_config_domain_form_view_template'}"
-                            />
-                        </list>
-                    </field>
+                </page>
+                <!-- ══ LES RÉGLAGES QUI NE SONT PAS L'ARBRE — D-213 ═══════════════
+                     Gerry : « dans l'onglet configurateur, peux-tu retirer
+                     Configuration Images et Variant Name ». ⚠️ RETIRÉES DE
+                     L'ONGLET, PAS SUPPRIMÉES : ces réglages n'ont d'équivalent
+                     nulle part, et les effacer les rendrait injoignables. Ils
+                     prennent donc un onglet à eux, où ils ne gênent plus la
+                     lecture de l'arbre. -->
+                <page
+                    string="Configurator settings"
+                    name="configurator_settings"
+                    invisible="not config_ok"
+                    groups="product_configurator_fa.group_product_configurator_fa"
+                >
                     <separator
                         colspan="4"
                         string="Configuration Images"

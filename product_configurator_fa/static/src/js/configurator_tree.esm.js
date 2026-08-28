@@ -191,6 +191,29 @@ export class ConfiguratorTree extends Component {
         this.action.doAction(action, {onClose: () => this.load()});
     }
 
+    /**
+     * ⚠️ La cellule « Conditions » s'ouvre même VIDE : c'est par elle qu'on en
+     * pose une. Sans cela, retirer « Configuration Restrictions » aurait retiré
+     * le seul endroit d'où l'on crée une condition par valeur.
+     */
+    async openCondition(row) {
+        const action = await this.orm.call(
+            "product.template", "configurator_open_condition",
+            [[this.templateId], row.kind === "value" ? row.line_id : row.id,
+             row.kind === "value" ? row.id : false]
+        );
+        this.action.doAction(action, {onClose: () => this.load()});
+    }
+
+    async openStep(row) {
+        const action = await this.orm.call(
+            "product.template", "configurator_open_step", [[this.templateId], row.line_id]
+        );
+        if (action) {
+            this.action.doAction(action, {onClose: () => this.load()});
+        }
+    }
+
     async openValues(row) {
         const action = await this.orm.call(
             "product.template.attribute.line", "action_open_values", [[row.id]]

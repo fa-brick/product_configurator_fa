@@ -19,7 +19,14 @@
                          Sa corbeille efface donc le MARQUEUR, pas l'étape — qui est
                          partagée entre produits. -->
                     <tr t-if="row.kind === 'step'" class="o_config_step">
-                        <td colspan="4"><em t-esc="row.name"/></td>
+                        <td colspan="4">
+                            <!-- ⓘ Le bandeau s'ouvre : c'est là que vivent la
+                                 condition de visibilité de l'étape et sa vue 3D,
+                                 que la section retirée portait seule. -->
+                            <a href="#" class="text-reset" t-on-click.prevent="() => this.openStep(row)">
+                                <em t-esc="row.name"/>
+                            </a>
+                        </td>
                         <td class="o_config_tree_actions">
                             <button class="btn btn-link p-0 text-danger"
                                     title="Remove this step marker"
@@ -50,7 +57,14 @@
                                 <t t-esc="row.name"/>
                             </span>
                         </td>
-                        <td>
+                        <td class="o_config_conditions" t-on-click="() => this.openCondition(row)">
+                            <!-- ⚠️ La cellule s'ouvre même VIDE : c'est par elle
+                                 qu'on POSE une condition. Sans cela, retirer
+                                 « Configuration Restrictions » aurait retiré le
+                                 seul endroit d'où l'on en crée une par valeur. -->
+                            <span t-if="!(row.facets or []).length" class="text-muted fst-italic">
+                                Add a condition
+                            </span>
                             <!-- ⚠️ Le « × » retire UNE règle, pas la condition
                                  entière : sinon une condition à trois règles se
                                  perdrait pour en corriger une. -->
@@ -63,7 +77,7 @@
                                 <t t-esc="facet.label"/>
                                 <button class="btn btn-link p-0 ms-1 o_config_facet_remove"
                                         title="Remove this rule"
-                                        t-on-click="() => this.removeFacet(row, facet)">
+                                        t-on-click.stop="() => this.removeFacet(row, facet)">
                                     <i class="fa fa-times"/>
                                 </button>
                             </span>

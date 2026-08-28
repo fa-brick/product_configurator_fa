@@ -87,15 +87,19 @@ class ConfigurationRules(TransactionCase):
         # When the regular attribute has value 1,
         # the custom attribute must have the generic custom value.
         # The other custom attribute id not restricted.
-        with Form(product_template) as product_template_form:
-            with product_template_form.config_line_ids.new() as restriction:
-                restriction.attribute_line_id = (
-                    product_template.attribute_line_ids.filtered(
-                        lambda al: al.attribute_id == cls.custom_attribute
-                    )
-                )
-                restriction.value_ids.add(cls.generic_custom_attribute_value)
-                restriction.domain_id = regular_has_value_1_domain
+        # ⚠️ `config_line_ids` a QUITTÉ la fiche produit : la section
+        # « Configuration Restrictions » a été retirée de l'onglet configurateur
+        # (D-213), les conditions par valeur se posant désormais depuis l'arbre.
+        # Un `Form` ne peut donc plus l'atteindre — on crée l'enregistrement,
+        # c'est ce que l'arbre fait lui aussi.
+        cls.env["product.config.line"].create({
+            "product_tmpl_id": product_template.id,
+            "attribute_line_id": product_template.attribute_line_ids.filtered(
+                lambda al: al.attribute_id == cls.custom_attribute
+            ).id,
+            "value_ids": [(6, 0, [cls.generic_custom_attribute_value.id])],
+            "domain_id": regular_has_value_1_domain.id,
+        })
 
         cls.product_template = product_template
 

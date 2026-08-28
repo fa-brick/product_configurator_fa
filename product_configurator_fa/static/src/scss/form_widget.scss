@@ -70,3 +70,9 @@
         }
     }
 }
+
+.o_config_tree .o_config_conditions {
+    // ⓘ La cellule entière est cliquable — y compris vide, puisque c'est par elle
+    // qu'on pose une condition.
+    cursor: pointer;
+}

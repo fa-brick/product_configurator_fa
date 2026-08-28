@@ -15,16 +15,17 @@
         </field>
     </record>
 
-    <record id="product_template_form_view_3d" model="ir.ui.view">
-        <field name="name">product.template.form.view3d</field>
-        <field name="model">product.template</field>
-        <field name="inherit_id" ref="product_configurator_fa.product_template_only_form_view_inherited" />
+    <!-- La vue 3D d'une ÉTAPE, sur son formulaire (D-213). -->
+    <record id="product_config_step_line_form_3d" model="ir.ui.view">
+        <field name="name">product.config.step.line.form.3d</field>
+        <field name="model">product.config.step.line</field>
+        <field
+            name="inherit_id"
+            ref="product_configurator_fa.product_config_step_line_form"
+        />
         <field name="arch" type="xml">
-            <xpath
-                expr="//field[@name='config_step_line_ids']/list/field[@name='visibility_domain_id']"
-                position="after"
-            >
-                <field name="view_camera_id" />
+            <xpath expr="//field[@name='visibility_domain_id']" position="after">
+                <field name="view_camera_id" options="{'no_create': True}" />
             </xpath>
         </field>
     </record>

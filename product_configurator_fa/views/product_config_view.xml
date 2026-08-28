@@ -187,4 +187,29 @@
             </form>
         </field>
     </record>
+    <!-- ⚠️ LES RÉGLAGES D'UNE ÉTAPE, en FORMULAIRE — D-213.
+         L'arbre a remplacé la section « Configuration Steps », qui portait l'ordre
+         et l'appartenance (désormais déduits, D-202) MAIS aussi la condition de
+         visibilité et la vue 3D. Sans ce formulaire, les retirer perdrait les
+         deux dernières. -->
+    <record id="product_config_step_line_form" model="ir.ui.view">
+        <field name="name">product.config.step.line.form</field>
+        <field name="model">product.config.step.line</field>
+        <field name="arch" type="xml">
+            <form string="Configuration step">
+                <group>
+                    <field name="config_step_id" readonly="1" />
+                    <!-- ⓘ En lecture : l'appartenance vient de l'ORDRE des lignes
+                         d'attribut, et se règle dans l'arbre (D-202). -->
+                    <field name="attribute_line_ids" widget="many2many_tags" readonly="1" />
+                    <field name="required" readonly="1" widget="boolean_toggle" />
+                    <field
+                        name="visibility_domain_id"
+                        context="{'product_tmpl_id': context.get('product_tmpl_id'), 'form_view_ref': 'product_configurator_fa.product_config_domain_form_view_template'}"
+                    />
+                </group>
+            </form>
+        </field>
+    </record>
+
 </odoo>

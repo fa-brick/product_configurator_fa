@@ -54,7 +54,14 @@
                                 >
                                     <i t-att-class="row.expanded ? 'fa fa-chevron-down' : 'fa fa-chevron-right'"/>
                                 </button>
-                                <t t-esc="row.name"/>
+                                <!-- ⓘ Le nom d'un ATTRIBUT ouvre ses réglages ; celui
+                                     d'une valeur ne mène nulle part — une valeur se
+                                     règle dans le dialogue des valeurs. -->
+                                <a t-if="row.kind === 'attribute'" href="#" class="text-reset"
+                                   t-on-click.prevent="() => this.openLine(row)">
+                                    <t t-esc="row.name"/>
+                                </a>
+                                <t t-else="" t-esc="row.name"/>
                             </span>
                         </td>
                         <td class="o_config_conditions" t-on-click="() => this.openCondition(row)">

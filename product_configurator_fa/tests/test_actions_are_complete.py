@@ -43,6 +43,7 @@ class ActionsAreComplete(BaseCommon):
         """Toutes celles que l'arbre ou la fiche d'attribut appellent par l'ORM."""
         return {
             "values": self.line.action_open_values(),
+            "réglages de la ligne": self.line.action_open_configurator_line(),
             "condition (attribut)": self.template.configurator_open_condition(
                 self.line.id
             ),

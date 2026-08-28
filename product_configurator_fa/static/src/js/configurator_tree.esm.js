@@ -214,6 +214,20 @@ export class ConfiguratorTree extends Component {
         }
     }
 
+    /**
+     * ⚠️ Les réglages d'une ligne — mode de prix, bornes, rôle de dimension, vue
+     * 3D — n'étaient joignables NULLE PART depuis la fiche produit : le bouton
+     * « Configurer » du cœur ouvre les valeurs, pas la ligne. Le nom de
+     * l'attribut devient donc la porte de ses réglages.
+     */
+    async openLine(row) {
+        const action = await this.orm.call(
+            "product.template.attribute.line", "action_open_configurator_line",
+            [[row.id]]
+        );
+        this.action.doAction(action, {onClose: () => this.load()});
+    }
+
     async openValues(row) {
         const action = await this.orm.call(
             "product.template.attribute.line", "action_open_values", [[row.id]]

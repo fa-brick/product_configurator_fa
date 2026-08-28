@@ -218,3 +218,33 @@ class ConfiguratorTree(BaseCommon):
         self.template.configurator_reorder(list(reversed(lignes.ids)))
         genres = [r["kind"] for r in self._rows()]
         self.assertEqual(genres, ["step", "attribute", "attribute"])
+
+    def test_14_the_line_SETTINGS_have_a_door_at_last(self):
+        """⚠️ Ils n'étaient joignables NULLE PART depuis la fiche produit — D-217.
+
+        Constat de Gerry : *« je ne vois pas comment modifier price_mode dans la
+        fiche produit »*. Vérifié : le bouton « Configurer » du cœur ouvre les
+        VALEURS (`action_open_attribute_values`), pas la ligne. Or c'est la ligne
+        qui porte le mode de prix, le rôle de dimension, les bornes et la vue 3D
+        — et c'est **elle** qui est lue à l'exécution, pas la semence de
+        l'attribut.
+        """
+        ligne = self.template.attribute_line_ids[:1]
+        action = ligne.action_open_configurator_line()
+        self.assertEqual(action["res_model"], "product.template.attribute.line")
+        self.assertEqual(action["res_id"], ligne.id)
+        self.assertEqual(action["target"], "new")
+
+    def test_15_and_it_opens_the_CORE_view_so_every_module_is_there(self):
+        """⚠️ Nommer la vue héritée ignorerait les greffons des AUTRES modules.
+
+        La vue du cœur porte, par héritage, nos réglages ET ceux du pont 3D. La
+        désigner nommément — plutôt que notre vue dérivée — est ce qui garantit
+        que la caméra du pont s'affiche aussi ([[L-167]]).
+        """
+        ligne = self.template.attribute_line_ids[:1]
+        action = ligne.action_open_configurator_line()
+        self.assertEqual(
+            action["views"],
+            [(self.env.ref("product.product_template_attribute_line_form").id, "form")],
+        )

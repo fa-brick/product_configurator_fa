@@ -769,6 +769,36 @@ class ProductAttributeLine(models.Model):
         self.ensure_one()
         return ""
 
+    def action_open_configurator_line(self):
+        """Ouvre les réglages de CETTE ligne — D-217.
+
+        ⚠️ **ILS ÉTAIENT INJOIGNABLES DEPUIS LA FICHE PRODUIT.** Constat de Gerry :
+        *« je ne vois pas comment modifier price_mode dans la fiche produit »*.
+        Vérifié : le bouton « Configurer » du cœur ouvre les **valeurs**
+        (`action_open_attribute_values`), pas la ligne. Or c'est la ligne qui porte
+        le mode de prix, le rôle de dimension, les bornes et la vue 3D — et c'est
+        **elle** qui est lue à l'exécution, pas la semence de l'attribut.
+
+        ⓘ Une seule porte pour tous ces réglages : le formulaire de la ligne
+        existait déjà, complet ; il ne manquait qu'un chemin vers lui.
+        """
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": self.attribute_id.display_name,
+            "res_model": "product.template.attribute.line",
+            "res_id": self.id,
+            "view_mode": "form",
+            # ⚠️ La vue du CŒUR : nos ajouts y sont greffés par héritage, et
+            # nommer la vue héritée reviendrait à ignorer ceux des autres modules.
+            # ⓘ `views` explicite parce que l'action part vers un composant (L-165).
+            "views": [
+                (self.env.ref("product.product_template_attribute_line_form").id,
+                 "form"),
+            ],
+            "target": "new",
+        }
+
     def action_open_values(self):
         """Ouvre les valeurs de CETTE ligne, dans un dialogue.
 

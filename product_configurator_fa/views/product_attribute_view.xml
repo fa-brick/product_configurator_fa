@@ -126,6 +126,28 @@
                         />
                         <field name="search_ok" />
                     </group>
+                    <!-- ══ LA LISTE PROPOSÉE PAR UN FILTRE — C2, D-207 ═════════════
+                         « Un filtre sur des produits, uniquement » (QI). Il ne fait
+                         que PROPOSER : ce que le client retient devient une valeur
+                         ordinaire (QJ), avec son prix et son historique.
+
+                         ⓘ Le `DomainSelector` standard convient ici, contrairement
+                         aux conditions du configurateur (D-203) : le modèle est réel
+                         et ses champs le sont aussi — rien à injecter par contexte. -->
+                    <group
+                        string="Dynamic list"
+                        name="product_filter"
+                        invisible="value_type != 'product'"
+                        groups="product_configurator_fa.group_product_configurator_fa_manager"
+                    >
+                        <field
+                            name="product_filter_domain"
+                            widget="domain"
+                            options="{'model': 'product.product'}"
+                            nolabel="1"
+                            colspan="2"
+                        />
+                    </group>
                 </group>
 
                 <!-- ─ DÉFAUTS : ce dont héritera la ligne d'un NOUVEAU produit ──

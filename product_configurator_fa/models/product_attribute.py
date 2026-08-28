@@ -175,6 +175,74 @@ class ProductAttribute(models.Model):
     # de licence — D-075 autorise expressément le configurateur AGPL-3 à dépendre
     # de l'éditeur LGPL-3 — mais de MODULARITÉ : un configurateur sans éditeur 3D
     # doit continuer de fonctionner.
+    # ─ LA LISTE PROPOSÉE PAR UN FILTRE — C2, D-207 ──────────────────────────
+    #
+    # Arbitrages de Gerry (§12) : **QI** un filtre sur des PRODUITS uniquement,
+    # **QJ** la valeur choisie est matérialisée, **QK** la liste dynamique n'existe
+    # donc que pour les attributs de type produit. Les trois se referment l'une
+    # l'autre : le filtre ne sert qu'à **proposer**, et ce qui est retenu devient
+    # une valeur ordinaire — prix, archivage, historique continuent de marcher.
+    #
+    # ⚠️ **POURQUOI UNE CHAÎNE ICI, ALORS QUE D-080 REFUSE LE TEXTE.** D-080 porte
+    # sur une CONDITION du configurateur — `(attribut, opérateur, valeurs)` —, et
+    # sa raison est nommée : *« renommer une valeur, ou la traduire, ne casse
+    # rien »*. Ce champ-ci n'est pas une condition : c'est un filtre sur un
+    # **modèle réel**, `product.product`, dont les critères sont des champs Odoo
+    # et dont les enregistrements cités le sont **par identifiant**. Renommer un
+    # produit ne le casse pas davantage. Et c'est le mécanisme natif : `ir.filters`
+    # et `ir.actions.act_window.domain` stockent ainsi.
+    #
+    # ⚠️ **Ce que ça coûte quand même** : un champ supprimé rendrait le filtre
+    # invalide, et on ne le saurait qu'à la configuration — devant le client. D'où
+    # la garde ci-dessous, qui l'évalue à l'enregistrement.
+    product_filter_domain = fields.Char(
+        string="Product Filter",
+        default="[]",
+        help="Products proposed for this attribute. The filter only PROPOSES: "
+             "what the customer picks becomes an ordinary attribute value.",
+    )
+
+    @api.constrains("product_filter_domain", "value_type")
+    def _check_product_filter(self):
+        for attribute in self:
+            filtre = (attribute.product_filter_domain or "").strip()
+            if not filtre or filtre == "[]":
+                continue
+            # ⚠️ Première barrière : un filtre n'a de sens que si les valeurs
+            # désignent un produit. Ailleurs il ne proposerait rien à personne.
+            if attribute.value_type != "product":
+                raise ValidationError(
+                    self.env._(
+                        "A product filter only makes sense when the values of "
+                        "this attribute designate a Product."
+                    )
+                )
+            # ⚠️ Seconde barrière : le filtre doit s'ÉVALUER. Sans cela, un
+            # domaine invalide se découvre au moment de configurer — devant le
+            # client — et ressemble à une panne, pas à une saisie.
+            try:
+                self.env["product.product"].search(
+                    literal_eval(filtre), limit=1
+                )
+            except Exception as exc:
+                raise ValidationError(
+                    self.env._(
+                        "This product filter cannot be applied: %s", exc
+                    )
+                ) from exc
+
+    def _proposed_products(self):
+        """Les produits que ce filtre PROPOSE — rien de plus.
+
+        ⓘ Sans filtre, aucun produit n'est proposé : un attribut de type produit
+        dont on n'a rien dit ne doit pas offrir le catalogue entier.
+        """
+        self.ensure_one()
+        filtre = (self.product_filter_domain or "").strip()
+        if self.value_type != "product" or not filtre or filtre == "[]":
+            return self.env["product.product"]
+        return self.env["product.product"].search(literal_eval(filtre))
+
     VALUE_TYPES = [
         ("value", "Value"),
         ("product", "Product"),

@@ -127,6 +127,69 @@ class ProductConfigDomain(models.Model):
             line.value_ids.ids,
         )
 
+    def _parse_condition_groups(self, domain):
+        """Lit un domaine préfixé et rend des GROUPES de feuilles en OU.
+
+        Le stockage sait dire une chose et une seule : **un ET de groupes, dont
+        chacun est un OU de feuilles** (D-203 — ET entre les pastilles, OU à
+        l'intérieur d'une). Cette lecture accepte exactement cela, et refuse le
+        reste plutôt que de l'aplatir : `['|', A, '&', B, C]` dit *A OU (B ET C)*,
+        que les lignes ne savent pas garder.
+
+        ⓘ C'est la seconde barrière de D-080, celle qui ne dépend pas de
+        l'interface — mais elle refuse désormais sur la STRUCTURE, plus sur la
+        présence d'un jeton.
+        """
+        jetons = list(domain)
+        position = 0
+
+        def lire():
+            nonlocal position
+            if position >= len(jetons):
+                raise ValidationError(
+                    self.env._("This condition is truncated and cannot be read")
+                )
+            jeton = jetons[position]
+            position += 1
+            if jeton == "!":
+                raise ValidationError(
+                    self.env._("NOT is not supported in a configuration condition")
+                )
+            if jeton in ("&", "|"):
+                return (jeton, lire(), lire())
+            return ("leaf", jeton)
+
+        # ⓘ Un domaine peut être une SUITE d'expressions, implicitement liées
+        # par ET — c'est la forme la plus courante, et celle que nous écrivons.
+        expressions = []
+        while position < len(jetons):
+            expressions.append(lire())
+
+        def groupes_de(noeud):
+            """Les groupes d'un nœud : un ET en produit plusieurs, un OU un seul."""
+            genre = noeud[0]
+            if genre == "leaf":
+                return [[noeud[1]]]
+            if genre == "&":
+                return groupes_de(noeud[1]) + groupes_de(noeud[2])
+            # OU : les deux côtés doivent tenir dans UN seul groupe, sinon la
+            # condition mêle les deux liaisons et le stockage la perdrait.
+            gauche = groupes_de(noeud[1])
+            droite = groupes_de(noeud[2])
+            if len(gauche) > 1 or len(droite) > 1:
+                raise ValidationError(
+                    self.env._(
+                        "A configuration condition cannot mix AND inside OR; "
+                        "split it into several rules."
+                    )
+                )
+            return [gauche[0] + droite[0]]
+
+        groupes = []
+        for expression in expressions:
+            groupes.extend(groupes_de(expression))
+        return groupes
+
     def from_odoo_domain(self, domain):
         """Réécrit les lignes de la condition depuis un domaine d'éditeur.
 
@@ -139,71 +202,72 @@ class ProductConfigDomain(models.Model):
         """
         self.ensure_one()
         lines = []
-        pending_or = False
-        for leaf in domain:
-            if leaf in ("&", "!"):
-                raise ValidationError(
-                    self.env._(
-                        "Only OR and implicit AND are supported in a "
-                        "configuration condition"
+        # ⚠️ **LE ET EXPLICITE DOIT ÊTRE ACCEPTÉ.** L'éditeur écrit `['&', A, B]`
+        # dès qu'une condition porte DEUX règles — c'est le cas le plus banal, et
+        # il était refusé. Le `&` n'ajoute pourtant rien : une suite de feuilles
+        # juxtaposées est déjà un ET. Constaté à l'écran par Gerry.
+        #
+        # ⚠️ Mais il ne se RETIRE pas non plus à l'aveugle : `['|', A, '&', B, C]`
+        # dit *A OU (B ET C)*, quand `['|', A, B, C]` dit *(A OU B) ET C*. Deux
+        # conditions différentes. D'où une lecture de la structure, et non un
+        # filtrage de jetons.
+        for groupe in self._parse_condition_groups(domain):
+            for rang, leaf in enumerate(groupe):
+                field_name, operator, values = leaf
+                # ⓘ L'opérateur d'une ligne gouverne sa jonction avec la
+                # SUIVANTE : dans un groupe en OU, toutes sauf la dernière.
+                pending_or = rang < len(groupe) - 1
+                produits = str(field_name).startswith(self.PRODUCT_FIELD_PREFIX)
+                if not produits and not str(field_name).startswith(
+                    self.ATTRIBUTE_FIELD_PREFIX
+                ):
+                    raise ValidationError(
+                        self.env._(
+                            "A configuration condition can only test attributes, "
+                            "not '%(field)s'",
+                            field=field_name,
+                        )
+                    )
+                # ⚠️ **LE SÉLECTEUR ÉCRIT `=`, LE STOCKAGE NE CONNAÎT QUE `in`.**
+                # Choisir un champ dans l'éditeur de domaine produit `('champ', '=',
+                # id)` — c'est son défaut pour un `many2one`. Refuser sec rendait le
+                # dialogue hostile : on désigne un attribut, et l'enregistrement
+                # échoue sans qu'on ait rien fait de faux. `=` et `!=` disent
+                # exactement `in` et `not in` sur une valeur unique : on traduit.
+                if operator in ("=", "!="):
+                    # ⓘ `= False` (« n'est pas défini ») n'a PAS d'équivalent : une
+                    # valeur absente n'est pas une valeur à écarter. Une liste vide
+                    # tombe alors sur le refus de la ligne vide, qui le dit.
+                    if not isinstance(values, list | tuple):
+                        values = [values] if values else []
+                    values = [v for v in values if v]
+                    operator = "in" if operator == "=" else "not in"
+                if operator not in ("in", "not in"):
+                    raise ValidationError(
+                        self.env._(
+                            "A configuration condition only supports 'in' and "
+                            "'not in', not '%(operator)s'",
+                            operator=operator,
+                        )
+                    )
+                prefixe = (
+                    self.PRODUCT_FIELD_PREFIX if produits
+                    else self.ATTRIBUTE_FIELD_PREFIX
+                )
+                attribute_id = int(field_name[len(prefixe) :])
+                champ = "product_ids" if produits else "value_ids"
+                lines.append(
+                    (
+                        0,
+                        0,
+                        {
+                            "attribute_id": attribute_id,
+                            "condition": operator,
+                            "operator": "or" if pending_or else "and",
+                            champ: [(6, 0, list(values))],
+                        },
                     )
                 )
-            if leaf == "|":
-                pending_or = True
-                continue
-            field_name, operator, values = leaf
-            produits = str(field_name).startswith(self.PRODUCT_FIELD_PREFIX)
-            if not produits and not str(field_name).startswith(
-                self.ATTRIBUTE_FIELD_PREFIX
-            ):
-                raise ValidationError(
-                    self.env._(
-                        "A configuration condition can only test attributes, "
-                        "not '%(field)s'",
-                        field=field_name,
-                    )
-                )
-            # ⚠️ **LE SÉLECTEUR ÉCRIT `=`, LE STOCKAGE NE CONNAÎT QUE `in`.**
-            # Choisir un champ dans l'éditeur de domaine produit `('champ', '=',
-            # id)` — c'est son défaut pour un `many2one`. Refuser sec rendait le
-            # dialogue hostile : on désigne un attribut, et l'enregistrement
-            # échoue sans qu'on ait rien fait de faux. `=` et `!=` disent
-            # exactement `in` et `not in` sur une valeur unique : on traduit.
-            if operator in ("=", "!="):
-                # ⓘ `= False` (« n'est pas défini ») n'a PAS d'équivalent : une
-                # valeur absente n'est pas une valeur à écarter. Une liste vide
-                # tombe alors sur le refus de la ligne vide, qui le dit.
-                if not isinstance(values, list | tuple):
-                    values = [values] if values else []
-                values = [v for v in values if v]
-                operator = "in" if operator == "=" else "not in"
-            if operator not in ("in", "not in"):
-                raise ValidationError(
-                    self.env._(
-                        "A configuration condition only supports 'in' and "
-                        "'not in', not '%(operator)s'",
-                        operator=operator,
-                    )
-                )
-            prefixe = (
-                self.PRODUCT_FIELD_PREFIX if produits
-                else self.ATTRIBUTE_FIELD_PREFIX
-            )
-            attribute_id = int(field_name[len(prefixe) :])
-            champ = "product_ids" if produits else "value_ids"
-            lines.append(
-                (
-                    0,
-                    0,
-                    {
-                        "attribute_id": attribute_id,
-                        "condition": operator,
-                        "operator": "or" if pending_or else "and",
-                        champ: [(6, 0, list(values))],
-                    },
-                )
-            )
-            pending_or = False
         self.domain_line_ids = [(5, 0, 0)] + lines
         return True
 

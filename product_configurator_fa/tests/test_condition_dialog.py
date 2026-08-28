@@ -218,3 +218,74 @@ class ConditionDialog(BaseCommon):
         condition.unlink()
         self.env.flush_all()
         self.assertFalse(condition.exists())
+
+    def test_12_DEUX_regles_liees_par_ET_le_cas_le_plus_banal(self):
+        """⚠️ **Refusé jusqu'ici, et c'est le cas le plus courant.** L'éditeur
+
+        écrit `['&', A, B]` dès qu'une condition porte deux règles ; le `&`
+        explicite était rejeté avec « Only OR and implicit AND are supported ».
+        Constaté à l'écran par Gerry.
+
+        ⓘ Le `&` n'ajoute rien : une suite de feuilles juxtaposées est déjà un ET.
+        """
+        assistant = self._assistant()
+        assistant.condition_domain = str([
+            "&",
+            (f"__attribute_{self.attr_montage.id}", "in", self.avant.ids),
+            (f"__attribute_{self.etranger.id}", "in", self.etranger.value_ids.ids),
+        ])
+        self.env["product.template.attribute.line"].create({
+            "product_tmpl_id": self.template.id,
+            "attribute_id": self.etranger.id,
+            "value_ids": [(6, 0, self.etranger.value_ids.ids)],
+        })
+        assistant.action_confirm()
+        self.env.flush_all()
+        regles = self.ligne.visibility_domain_id.domain_line_ids.sorted()
+        self.assertEqual(len(regles), 2)
+        # ⓘ Le ET est la jonction par défaut : aucune ligne ne porte « or ».
+        self.assertEqual(set(regles.mapped("operator")), {"and"})
+
+    def test_13_et_l_aller_retour_reste_STABLE_sur_deux_regles(self):
+        """Sinon rouvrir une condition la réécrirait autrement à chaque fois."""
+        condition = self.env["product.config.domain"].create({
+            "name": "Two rules",
+            "domain_line_ids": [
+                (0, 0, {
+                    "attribute_id": self.attr_montage.id,
+                    "condition": "in",
+                    "value_ids": [(6, 0, self.avant.ids)],
+                    "sequence": 1,
+                }),
+                (0, 0, {
+                    "attribute_id": self.etranger.id,
+                    "condition": "in",
+                    "value_ids": [(6, 0, self.etranger.value_ids.ids)],
+                    "sequence": 2,
+                }),
+            ],
+        })
+        rendu = condition.to_odoo_domain()
+        condition.from_odoo_domain(["&"] + rendu)
+        self.env.flush_all()
+        self.assertEqual(condition.to_odoo_domain(), rendu)
+
+    def test_14_un_OU_dans_un_ET_est_REFUSE_plutot_qu_aplati(self):
+        """⚠️ `['|', A, '&', B, C]` dit « A OU (B ET C) » ; retirer le `&` en
+
+        ferait « (A OU B) ET C ». Deux conditions différentes — et le stockage ne
+        sait garder que la seconde forme. On refuse plutôt que de la perdre.
+        """
+        assistant = self._assistant()
+        # ⓘ Un seul attribut, celui du produit : sinon c'est la garde « attribut
+        # étranger » qui tire, et le test n'éprouverait pas la structure.
+        champ = f"__attribute_{self.attr_montage.id}"
+        assistant.condition_domain = str([
+            "|",
+            (champ, "in", self.avant.ids),
+            "&",
+            (champ, "in", self.arriere.ids),
+            (champ, "not in", self.avant.ids),
+        ])
+        with self.assertRaises(ValidationError):
+            assistant.action_confirm()

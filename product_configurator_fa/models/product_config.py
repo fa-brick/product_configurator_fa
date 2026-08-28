@@ -200,6 +200,23 @@ class ProductConfigDomain(models.Model):
                 domain._facet_labels()
             )
 
+    def _facet_data(self):
+        """Les pastilles AVEC l'identité de la règle que chacune porte — D-211.
+
+        ⚠️ Un « × » sur une pastille retire **une règle**, pas la condition
+        entière. Sans cet identifiant, le seul geste possible serait « tout
+        effacer » — et une condition à trois règles se perdrait pour en corriger
+        une. C'est le comportement de la barre de recherche, que Gerry a demandé.
+        """
+        if not self:
+            return []
+        self.ensure_one()
+        lignes = self.domain_line_ids.sorted()
+        return [
+            {"id": ligne.id, "label": label}
+            for ligne, label in zip(lignes, self._facet_labels())
+        ]
+
     def _facet_labels(self):
         """Les pastilles, dans l'ordre — une par ligne de condition.
 

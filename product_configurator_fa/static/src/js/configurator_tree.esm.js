@@ -13,10 +13,32 @@
  * C'est ce que la forme (A) promettait — *« le bandeau pourra venir plus tard
  * sans toucher au modèle »*.
  */
-import {Component, onWillStart, onWillUpdateProps, useState} from "@odoo/owl";
+import {Component, onWillStart, onWillUpdateProps, useRef, useState} from "@odoo/owl";
 import {registry} from "@web/core/registry";
 import {standardFieldProps} from "@web/views/fields/standard_field_props";
 import {useService} from "@web/core/utils/hooks";
+import {useSortable} from "@web/core/utils/sortable_owl";
+
+/**
+ * L'ordre des lignes d'attribut après un déplacement.
+ *
+ * ⚠️ **Seul un ATTRIBUT se déplace.** Un bandeau d'étape n'est pas un
+ * enregistrement (D-202) et une valeur appartient à son attribut : les glisser
+ * n'aurait rien à écrire. La fonction ne connaît donc que des identifiants de
+ * lignes, et rend l'ordre à enregistrer.
+ *
+ * ⓘ Fonction PURE — c'est la seule part du glisser-déposer qui décide quelque
+ * chose, donc la seule qui vaille d'être éprouvée hors du navigateur.
+ */
+export function reorder(lineIds, fromIndex, toIndex) {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
+        return [...lineIds];
+    }
+    const next = [...lineIds];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    return next;
+}
 
 /**
  * Met l'arbre à plat, dans l'ordre où il s'affiche.
@@ -55,6 +77,16 @@ export class ConfiguratorTree extends Component {
         this.orm = useService("orm");
         this.action = useService("action");
         this.state = useState({rows: [], expanded: new Set()});
+        this.rootRef = useRef("root");
+        useSortable({
+            ref: this.rootRef,
+            // ⚠️ Seules les lignes d'ATTRIBUT portent cette classe : un bandeau
+            // d'étape n'est pas un enregistrement, et une valeur suit le sien.
+            elements: ".o_config_attribute",
+            handle: ".o_config_handle",
+            cursor: "grabbing",
+            onDrop: ({element, previous}) => this.onDrop(element, previous),
+        });
         onWillStart(() => this.load());
         // ⚠️ L'arbre est lu du SERVEUR, pas du cache du formulaire : il joint
         // trois modèles. Il doit donc se relire quand l'enregistrement change,
@@ -88,6 +120,52 @@ export class ConfiguratorTree extends Component {
         }
         // `Set` n'est pas réactif par mutation : on le remplace pour que OWL voie.
         this.state.expanded = new Set(this.state.expanded);
+    }
+
+    /** Les identifiants de lignes d'attribut, dans l'ordre affiché. */
+    get lineIds() {
+        return (this.state.rows || [])
+            .filter((row) => row.kind === "attribute")
+            .map((row) => row.id);
+    }
+
+    async onDrop(element, previous) {
+        const moved = Number(element.dataset.lineId);
+        const ids = this.lineIds;
+        const from = ids.indexOf(moved);
+        // `previous` est la ligne au-dessus du point de dépôt ; sans elle, on
+        // dépose en tête.
+        const previousId = previous ? Number(previous.dataset.lineId) : null;
+        const to = previousId === null ? 0 : ids.indexOf(previousId) + (from < ids.indexOf(previousId) ? 0 : 1);
+        const ordonne = reorder(ids, from, to);
+        await this.orm.call(
+            "product.template", "configurator_reorder", [[this.templateId], ordonne]
+        );
+        await this.load();
+    }
+
+    async removeFacet(row, facet) {
+        await this.orm.call(
+            "product.template", "configurator_remove_facet", [[this.templateId], facet.id]
+        );
+        await this.load();
+    }
+
+    async removeRow(row) {
+        if (row.kind === "step") {
+            await this.orm.call(
+                "product.template", "configurator_clear_step",
+                [[this.templateId], row.line_id]
+            );
+        } else if (row.kind === "value") {
+            await this.orm.call(
+                "product.template", "configurator_remove_value",
+                [[this.templateId], row.line_id, row.id]
+            );
+        } else {
+            await this.orm.call("product.template.attribute.line", "unlink", [[row.id]]);
+        }
+        await this.load();
     }
 
     async openValues(row) {

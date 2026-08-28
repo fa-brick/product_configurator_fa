@@ -52,3 +52,21 @@
         text-align: right;
     }
 }
+
+.o_config_tree {
+    .o_config_tree_handle {
+        width: 1.5rem;
+    }
+    .o_config_handle {
+        cursor: grab;
+    }
+    // ⓘ Le « × » d'une pastille reprend sa couleur : un rouge d'alerte sur chaque
+    // condition ferait de l'écran une liste d'avertissements.
+    .o_config_facet_remove {
+        color: inherit;
+        opacity: 0.6;
+        &:hover {
+            opacity: 1;
+        }
+    }
+}

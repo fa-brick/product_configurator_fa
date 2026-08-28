@@ -2,9 +2,10 @@
 <templates xmlns:t="http://www.w3.org/1999/XSL/Transform">
 
     <t t-name="product_configurator_fa.ConfiguratorTree">
-        <table class="o_config_tree table table-sm">
+        <table class="o_config_tree table table-sm" t-ref="root">
             <thead>
                 <tr>
+                    <th class="o_config_tree_handle"/>
                     <th class="o_config_tree_name">Attributes</th>
                     <th>Conditions</th>
                     <th class="o_config_tree_view">3D view</th>
@@ -14,16 +15,31 @@
             <tbody>
                 <t t-foreach="rows" t-as="row" t-key="row.kind + '-' + row.id + '-' + (row.line_id or 0)">
                     <!-- ⚠️ LE BANDEAU D'ÉTAPE n'est pas un enregistrement : il est
-                         DÉDUIT du marqueur porté par la ligne qui l'ouvre (D-202). -->
+                         DÉDUIT du marqueur porté par la ligne qui l'ouvre (D-202).
+                         Sa corbeille efface donc le MARQUEUR, pas l'étape — qui est
+                         partagée entre produits. -->
                     <tr t-if="row.kind === 'step'" class="o_config_step">
                         <td colspan="4"><em t-esc="row.name"/></td>
+                        <td class="o_config_tree_actions">
+                            <button class="btn btn-link p-0 text-danger"
+                                    title="Remove this step marker"
+                                    t-on-click="() => this.removeRow(row)">
+                                <i class="fa fa-trash-o"/>
+                            </button>
+                        </td>
                     </tr>
-                    <tr t-else="" t-att-class="row.kind === 'value' ? 'o_config_value' : 'o_config_attribute'">
+                    <tr t-else=""
+                        t-att-class="row.kind === 'value' ? 'o_config_value' : 'o_config_attribute'"
+                        t-att-data-line-id="row.kind === 'attribute' ? row.id : row.line_id">
+                        <td class="o_config_tree_handle">
+                            <!-- ⓘ Seul un attribut se déplace : un bandeau n'est pas
+                                 un enregistrement, une valeur suit le sien. -->
+                            <span t-if="row.kind === 'attribute'" class="o_config_handle">
+                                <i class="fa fa-bars text-muted"/>
+                            </span>
+                        </td>
                         <td class="o_config_tree_name">
                             <span t-att-style="row.depth ? 'padding-left: 2rem;' : ''">
-                                <!-- ⓘ Le chevron n'apparaît que s'il y a quelque
-                                     chose à déplier : un attribut sans valeur ne
-                                     doit pas promettre un second niveau. -->
                                 <button
                                     t-if="row.kind === 'attribute' and row.hasValues"
                                     class="btn btn-link p-0 me-1"
@@ -35,23 +51,37 @@
                             </span>
                         </td>
                         <td>
+                            <!-- ⚠️ Le « × » retire UNE règle, pas la condition
+                                 entière : sinon une condition à trois règles se
+                                 perdrait pour en corriger une. -->
                             <span
                                 t-foreach="row.facets or []"
                                 t-as="facet"
-                                t-key="facet_index"
+                                t-key="facet.id"
                                 class="o_config_facet badge rounded-pill me-1"
-                                t-esc="facet"
-                            />
+                            >
+                                <t t-esc="facet.label"/>
+                                <button class="btn btn-link p-0 ms-1 o_config_facet_remove"
+                                        title="Remove this rule"
+                                        t-on-click="() => this.removeFacet(row, facet)">
+                                    <i class="fa fa-times"/>
+                                </button>
+                            </span>
                         </td>
                         <td class="o_config_tree_view"><t t-esc="row.camera or ''"/></td>
                         <td class="o_config_tree_actions">
                             <button
                                 t-if="row.kind === 'attribute'"
-                                class="btn btn-link p-0"
+                                class="btn btn-link p-0 me-1"
                                 title="Values"
                                 t-on-click="() => this.openValues(row)"
                             >
                                 <i class="fa fa-list-ul"/>
+                            </button>
+                            <button class="btn btn-link p-0 text-danger"
+                                    title="Remove"
+                                    t-on-click="() => this.removeRow(row)">
+                                <i class="fa fa-trash-o"/>
                             </button>
                         </td>
                     </tr>

@@ -5,7 +5,7 @@
  * cacher en CSS ferait payer un produit à trois cents valeurs pour rien — c'est
  * précisément le cas que le dialogue existe pour éviter (D-206).
  */
-import {flattenTree} from "../src/js/configurator_tree.esm.js";
+import {flattenTree, reorder} from "../src/js/configurator_tree.esm.js";
 
 const ARBRE = [
     {kind: "attribute", id: 1, name: "Type de Camplate", values: [
@@ -54,5 +54,33 @@ describe("L'arbre se met à plat dans l'ordre où il s'affiche", () => {
         // Le composant appelle `flattenTree` AVANT que le serveur ait répondu.
         expect(flattenTree(undefined, new Set())).toEqual([]);
         expect(flattenTree([], new Set())).toEqual([]);
+    });
+});
+
+describe("Réordonner ne concerne que les lignes d'attribut", () => {
+    const IDS = [10, 20, 30];
+
+    test("déplacer une ligne vers le bas la place APRÈS sa cible", () => {
+        expect(reorder(IDS, 0, 2)).toEqual([20, 30, 10]);
+    });
+
+    test("et vers le haut, avant", () => {
+        expect(reorder(IDS, 2, 0)).toEqual([30, 10, 20]);
+    });
+
+    test("⚠️ déposer une ligne sur elle-même ne change RIEN", () => {
+        // Sans ce cas, un simple clic maintenu réécrirait toutes les séquences —
+        // et, l'ordre portant l'appartenance aux étapes (D-202), une écriture
+        // inutile n'est jamais anodine ici.
+        expect(reorder(IDS, 1, 1)).toEqual(IDS);
+    });
+
+    test("⚠️ un dépôt hors de la liste ne perd aucune ligne", () => {
+        expect(reorder(IDS, -1, 2)).toEqual(IDS);
+        expect(reorder(IDS, 0, -1)).toEqual(IDS);
+    });
+
+    test("l'ordre rendu garde TOUTES les lignes", () => {
+        expect(reorder(IDS, 0, 2).sort()).toEqual(IDS.slice().sort());
     });
 });

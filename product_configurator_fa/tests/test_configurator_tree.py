@@ -116,3 +116,105 @@ class ConfiguratorTree(BaseCommon):
         """
         attributs = [r for r in self._rows() if r["kind"] == "attribute"]
         self.assertIsInstance(attributs[0]["camera"], str)
+
+    # ── ce que l'arbre peut FAIRE — D-211 ───────────────────────────────────
+    def _domaine(self, nom="Rule tree"):
+        domaine = self.env["product.config.domain"].create({"name": nom})
+        self.env["product.config.domain.line"].create([
+            {"domain_id": domaine.id, "attribute_id": self.shape.id,
+             "value_ids": [(6, 0, self.round.ids)], "condition": "in",
+             "operator": "and", "sequence": 10},
+            {"domain_id": domaine.id, "attribute_id": self.kind.id,
+             "value_ids": [(6, 0, self.cine.ids)], "condition": "in",
+             "operator": "and", "sequence": 20},
+        ])
+        return domaine
+
+    def test_07_a_facet_carries_the_RULE_it_would_remove(self):
+        """⚠️ Sans cet identifiant, le seul geste serait « tout effacer ».
+
+        Une condition à trois règles se perdrait pour en corriger une — alors
+        que le geste demandé est celui de la barre de recherche, où chaque
+        pastille s'enlève seule.
+        """
+        ligne = self.template.attribute_line_ids.filtered(
+            lambda l: l.attribute_id == self.kind
+        )
+        ligne.visibility_domain_id = self._domaine()
+        attributs = [r for r in self._rows() if r["kind"] == "attribute"]
+        facettes = attributs[0]["facets"]
+        self.assertEqual(len(facettes), 2)
+        self.assertTrue(all(f["id"] and f["label"] for f in facettes))
+
+    def test_08_the_cross_removes_ONE_rule_and_keeps_the_others(self):
+        ligne = self.template.attribute_line_ids.filtered(
+            lambda l: l.attribute_id == self.kind
+        )
+        domaine = self._domaine()
+        ligne.visibility_domain_id = domaine
+        premiere = self._rows()[0]["facets"][0]
+        self.template.configurator_remove_facet(premiere["id"])
+        restantes = self._rows()[0]["facets"]
+        self.assertEqual(len(restantes), 1)
+        self.assertNotIn(premiere["id"], [f["id"] for f in restantes])
+
+    def test_09_and_the_EMPTY_condition_stays(self):
+        """⚠️ Elle porte un nom et peut être partagée.
+
+        La supprimer parce qu'on a retiré sa dernière règle serait décider à la
+        place de l'utilisateur — et casser les autres produits qui l'emploient.
+        """
+        ligne = self.template.attribute_line_ids.filtered(
+            lambda l: l.attribute_id == self.kind
+        )
+        domaine = self._domaine()
+        ligne.visibility_domain_id = domaine
+        for facette in list(self._rows()[0]["facets"]):
+            self.template.configurator_remove_facet(facette["id"])
+        self.assertTrue(domaine.exists())
+        self.assertEqual(ligne.visibility_domain_id, domaine)
+
+    def test_10_removing_a_VALUE_goes_through_the_line(self):
+        """ⓘ C'est le chemin ordinaire, donc celui qui déclenche les deux visages.
+
+        Détruire la valeur du produit directement court-circuiterait le filet de
+        D-205 — supprimer si possible, désactiver sinon.
+        """
+        ligne = self.template.attribute_line_ids.filtered(
+            lambda l: l.attribute_id == self.kind
+        )
+        self.template.configurator_remove_value(ligne.id, self.cine.id)
+        self.assertNotIn(self.cine, ligne.value_ids)
+        self.assertIn(self.classic, ligne.value_ids)
+
+    def test_11_removing_a_STEP_clears_the_marker_not_the_step(self):
+        """⚠️ L'étape est partagée entre produits — on retire le MARQUEUR.
+
+        Et ce qui suivait rejoint l'étape précédente, ou aucune : c'est la
+        contrepartie du séparateur, visible tout de suite.
+        """
+        ligne = self.template.attribute_line_ids.filtered(
+            lambda l: l.attribute_id == self.shape
+        )
+        self.template.configurator_clear_step(ligne.id)
+        self.assertTrue(self.step.exists(), "l'étape elle-même a été détruite")
+        self.assertFalse(ligne.config_step_id)
+        self.assertNotIn("step", [r["kind"] for r in self._rows()])
+
+    def test_12_reordering_writes_the_sequences_in_the_given_order(self):
+        lignes = self.template.attribute_line_ids.sorted()
+        inverse = list(reversed(lignes.ids))
+        self.template.configurator_reorder(inverse)
+        self.assertEqual(self.template.attribute_line_ids.sorted().ids, inverse)
+
+    def test_13_and_moving_a_line_MOVES_ITS_STEP_TOO(self):
+        """⚠️ L'ordre porte l'appartenance : déplacer, c'est réaffecter.
+
+        La ligne qui ouvre l'étape passant en tête, le bandeau ouvre l'arbre et
+        l'autre attribut lui appartient désormais. C'est assumé (D-202), et
+        l'arbre le redessine tout de suite.
+        """
+        lignes = self.template.attribute_line_ids.sorted()
+        self.template.configurator_reorder(list(reversed(lignes.ids)))
+        genres = [r["kind"] for r in self._rows()]
+        self.assertEqual(genres, ["step", "attribute", "attribute"])

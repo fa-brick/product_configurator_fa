@@ -146,7 +146,7 @@ class ProductTemplate(models.Model):
                 "kind": "attribute",
                 "id": ligne.id,
                 "name": ligne.attribute_id.display_name,
-                "facets": ligne.visibility_domain_id._facet_labels(),
+                "facets": ligne.visibility_domain_id._facet_data(),
                 "domain_id": ligne.visibility_domain_id.id,
                 "camera": ligne._configurator_camera_name(),
                 "values": [
@@ -158,12 +158,70 @@ class ProductTemplate(models.Model):
                         "facets": conditions_valeur.get(
                             (ligne.id, valeur.id),
                             self.env["product.config.line"],
-                        ).domain_id._facet_labels(),
+                        ).domain_id._facet_data(),
                     }
                     for valeur in ligne.value_ids
                 ],
             })
         return lignes
+
+    # ─ CE QUE L'ARBRE PEUT FAIRE — D-211 ────────────────────────────────────
+    #
+    # ⚠️ **LES GESTES VIVENT ICI, PAS DANS LE COMPOSANT.** Chacun décide quelque
+    # chose — ce qu'une corbeille détruit, ce qu'un « × » retire — et ces
+    # décisions doivent tenir quelle que soit l'interface. Un composant qui
+    # écrirait directement les mettrait hors de portée des tests et des imports.
+
+    def configurator_remove_facet(self, domain_line_id):
+        """Retire UNE règle d'une condition, comme le « × » d'une pastille.
+
+        ⚠️ Une règle, pas la condition entière : une condition à trois règles se
+        perdrait pour en corriger une. ⓘ Et la condition VIDE reste en place —
+        elle porte un nom, elle est peut-être partagée, et la supprimer parce
+        qu'on a retiré sa dernière règle serait décider à la place de
+        l'utilisateur.
+        """
+        self.ensure_one()
+        self.env["product.config.domain.line"].browse(domain_line_id).unlink()
+        return True
+
+    def configurator_remove_value(self, line_id, value_id):
+        """Retire une valeur de l'attribut, sur CE produit.
+
+        ⓘ On écrit sur `value_ids` de la ligne : c'est le chemin ordinaire, donc
+        celui qui déclenche la règle des deux visages — supprimer si possible,
+        désactiver sinon (D-205). Détruire la valeur du produit directement
+        court-circuiterait ce filet.
+        """
+        self.ensure_one()
+        ligne = self.env["product.template.attribute.line"].browse(line_id)
+        ligne.value_ids = [(3, value_id)]
+        return True
+
+    def configurator_clear_step(self, line_id):
+        """L'étape cesse d'exister à cet endroit — le marqueur s'efface.
+
+        ⚠️ Ce n'est pas une suppression d'étape : l'étape est un enregistrement
+        partagé entre produits (`product.config.step`). On retire le MARQUEUR, et
+        ce qui suivait rejoint l'étape précédente — ou aucune. C'est la
+        contrepartie du séparateur, et elle est visible tout de suite.
+        """
+        self.ensure_one()
+        self.env["product.template.attribute.line"].browse(line_id).config_step_id = False
+        return True
+
+    def configurator_reorder(self, line_ids):
+        """Réordonne les lignes d'attribut — l'ordre PORTE l'appartenance.
+
+        ⚠️ Déplacer une ligne peut changer son étape (D-202), en silence. C'est
+        assumé ; c'est pourquoi l'arbre redessine ses bandeaux après chaque
+        déplacement, au lieu d'attendre un rechargement.
+        """
+        self.ensure_one()
+        lignes = self.env["product.template.attribute.line"].browse(line_ids)
+        for rang, ligne in enumerate(lignes, start=1):
+            ligne.sequence = rang * 10
+        return True
 
     config_line_ids = fields.One2many(
         comodel_name="product.config.line",

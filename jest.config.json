@@ -15,6 +15,7 @@
     "^@product_editor/(.*)$": "<rootDir>/product_configurator_web_3d/static/tests/__mocks__/product_editor_stub.js",
     "^@web/views/fields/many2one/many2one_field$": "<rootDir>/product_configurator_fa/static/tests/__mocks__/web_many2one_field.js",
     "^@web/views/fields/standard_field_props$": "<rootDir>/product_configurator_fa/static/tests/__mocks__/web_standard_field_props.js",
-    "^@web/core/utils/hooks$": "<rootDir>/product_configurator_fa/static/tests/__mocks__/web_hooks.js"
+    "^@web/core/utils/hooks$": "<rootDir>/product_configurator_fa/static/tests/__mocks__/web_hooks.js",
+    "^@web/core/utils/sortable_owl$": "<rootDir>/product_configurator_fa/static/tests/__mocks__/web_sortable.js"
   }
 }

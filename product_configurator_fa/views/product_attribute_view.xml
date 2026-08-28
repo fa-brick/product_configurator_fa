@@ -37,9 +37,23 @@
                 >
                     <field name="image" widget="image" class="oe_avatar oe_left" />
                 </field>
+                <!-- ══ LE NOM DEVIENT LE TITRE — maquette de Gerry ═════════════════
+                     ⓘ Il était un champ parmi d'autres dans le premier groupe. Sur sa
+                     maquette il ouvre la page, comme le nom d'un produit : c'est ce
+                     qu'on lit en arrivant, et ce dont tout le reste parle. -->
+                <div class="oe_title">
+                    <label for="name" string="Attribute" class="oe_edit_only" />
+                    <h1><field name="name" placeholder="e.g. Colour" /></h1>
+                </div>
             </xpath>
-            <xpath expr="//group[@name='sale_main_fields']" position="inside">
-                <field name="active" />
+
+            <!-- ⚠️ ET L'IDENTITÉ DESCEND DANS L'ONGLET. Instruction de Gerry :
+                 *« insère toutes les informations dans informations générales »*, et
+                 sa maquette ne montre RIEN entre le titre et les défauts. Le groupe
+                 du cœur part donc en entier ; seuls le titre, l'image et les trois
+                 drapeaux restent en tête. -->
+            <xpath expr="//group[@name='main_fields']" position="attributes">
+                <attribute name="invisible">1</attribute>
             </xpath>
             <!-- ⚠️ `create_variant` N'EST PLUS CACHÉ DERRIÈRE LE MODE DÉVELOPPEUR.
                  Constat de Gerry (2026-08-28) : « je ne vois pas dans l'attribut la
@@ -78,7 +92,63 @@
                  ⚠️ LE GROUPE DE DROITS DESCEND SUR CHAQUE BLOC. Il vivait sur la page ;
                  la page partie, l'oublier aurait montré ces réglages à tout le monde —
                  un élargissement de droits par déménagement. -->
+            <!-- ══ LES DÉFAUTS REMONTENT SOUS LE TITRE — maquette de Gerry ═════
+                 Ils ne décident de rien par eux-mêmes (A4) : c'est la ligne, sur le
+                 produit, qui est lue à la configuration. Mais ce sont les trois
+                 réglages qu'on veut voir d'un coup d'œil en ouvrant un attribut. -->
             <xpath expr="//group[@name='main_fields']" position="after">
+                <group
+                    string="Defaults for a new product line"
+                    groups="product_configurator_fa.group_product_configurator_fa_manager"
+                >
+                    <!-- ⚠️ EN CASES ALIGNÉES, comme la maquette : trois drapeaux
+                         courts se lisent d'un coup d'œil, là où deux colonnes de
+                         formulaire les faisaient ressembler à des réglages de fond.
+                         ⓘ Et leurs libellés perdent le préfixe « Default: » — le
+                         TITRE du bloc le dit maintenant, le répéter quatre fois
+                         alourdissait sans rien apprendre (A4). -->
+                    <div colspan="2" class="d-flex flex-wrap gap-4">
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <field name="required" string="Required" />
+                            <label for="required" string="Required" />
+                        </span>
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <field name="multi" readonly="val_custom" force_save="1" />
+                            <label for="multi" string="Multi" />
+                        </span>
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <field name="val_custom" readonly="multi" force_save="1" />
+                            <label for="val_custom" string="Allow add" />
+                        </span>
+                    </div>
+                    <field name="price_mode" />
+                </group>
+            </xpath>
+
+            <!-- ══ TOUT LE RESTE ENTRE DANS « INFORMATIONS GÉNÉRALES » ═════════
+                 Instruction de Gerry : *« insère toutes les informations dans
+                 informations générales »*. La page cesse d'être une pile de blocs
+                 de même rang — identité et nature d'un côté, valeurs de l'autre.
+
+                 ⚠️ LE GROUPE DE DROITS DESCEND SUR CHAQUE BLOC, et non sur la page :
+                 un droit posé sur l'onglet cacherait l'onglet entier, alors que
+                 certains de ses blocs doivent rester visibles.
+
+                 ⓘ La page est insérée AVANT celle des valeurs : on lit ce qu'un
+                 attribut EST avant d'énumérer ce qu'il propose. -->
+            <xpath expr="//page[@name='attribute_values']" position="before">
+                <page string="General information" name="general_information">
+                    <!-- ⓘ Reposés ici depuis le groupe du cœur, devenu invisible :
+                         ils décrivent l'attribut, ils ne l'identifient pas. -->
+                    <group name="attribute_identity">
+                        <group>
+                            <field name="display_type" />
+                            <field name="create_variant" />
+                        </group>
+                        <group>
+                            <field name="active" />
+                        </group>
+                    </group>
                 <group
                     string="Description"
                     groups="product_configurator_fa.group_product_configurator_fa_manager"
@@ -176,20 +246,9 @@
                      sur le produit, qui est lue à la configuration. Le titre du bloc le
                      dit, faute de quoi la page ferait croire à des réglages actifs — ce
                      qu'elle a fait jusqu'ici. -->
-                <group
-                    string="Defaults for a new product line"
-                    groups="product_configurator_fa.group_product_configurator_fa_manager"
-                >
-                    <group>
-                        <field name="required" />
-                        <field name="multi" readonly="val_custom" force_save="1" />
-                    </group>
-                    <group>
-                        <field name="price_mode" />
-                        <field name="val_custom" readonly="multi" force_save="1" />
-                    </group>
-                </group>
+                </page>
             </xpath>
+
         </field>
     </record>
 

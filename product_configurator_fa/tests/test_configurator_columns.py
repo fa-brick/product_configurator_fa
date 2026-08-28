@@ -95,3 +95,49 @@ class ConfiguratorColumns(BaseCommon):
         valeurs = re.search(r'<field\s+name="value_ids"[^>]*', liste, re.S)
         self.assertTrue(valeurs)
         self.assertNotIn("width=", valeurs.group(0))
+
+
+class AttributePageLayout(BaseCommon):
+    """L'agencement de la page d'attribut — maquette de Gerry (D-216).
+
+    ⚠️ *« Insère toutes les informations dans informations générales. »* La page
+    cesse d'être une pile de blocs de même rang : le titre et les trois drapeaux
+    en tête, tout le reste dans un onglet.
+    """
+
+    def _arch(self):
+        return self.env["product.attribute"].get_view(view_type="form")["arch"]
+
+    def test_01_the_NAME_opens_the_page(self):
+        """ⓘ Il était un champ parmi d'autres ; il ouvre désormais la page."""
+        self.assertIn('class="oe_title"', self._arch())
+
+    def test_02_the_three_flags_are_ABOVE_the_notebook(self):
+        """⚠️ Ce sont les réglages qu'on veut voir en ouvrant un attribut.
+
+        ⓘ Et leurs libellés perdent le préfixe « Default: » : le titre du bloc
+        le dit maintenant, le répéter quatre fois alourdissait sans rien
+        apprendre.
+        """
+        arch = self._arch()
+        defauts = arch.index("Defaults for a new product line")
+        carnet = arch.index("<notebook")
+        self.assertLess(defauts, carnet, "les défauts sont passés sous le carnet")
+
+    def test_03_everything_else_is_in_GENERAL_INFORMATION(self):
+        """La maquette ne montre rien entre le titre et les défauts."""
+        arch = self._arch()
+        debut = arch.index('name="general_information"')
+        fin = arch.index("</page>", debut)
+        page = arch[debut:fin]
+        for champ in ("display_type", "create_variant", "active",
+                      "description", "value_type", "search_ok"):
+            self.assertIn(f'name="{champ}"', page, f"{champ} n'est pas dans l'onglet")
+
+    def test_04_and_it_comes_BEFORE_the_values(self):
+        """⚠️ On lit ce qu'un attribut EST avant d'énumérer ce qu'il propose."""
+        arch = self._arch()
+        self.assertLess(
+            arch.index('name="general_information"'),
+            arch.index('name="attribute_values"'),
+        )

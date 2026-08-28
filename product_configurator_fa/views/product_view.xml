@@ -7,8 +7,35 @@
         <field name="inherit_id" ref="product.product_template_form_view" />
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
+                <!-- ⚠️ CONSERVÉ malgré la case ci-dessous. Ce champ caché sert au bouton
+                     « Configure Product », qui vit dans l'AUTRE vue (`product_template_only_
+                     form_view`) : l'y retirer parce qu'il fait doublon ICI casserait son
+                     `invisible="not config_ok"` là-bas. -->
                 <field name="config_ok" invisible="1" />
             </xpath>
+
+            <!-- « Peut être configuré », à la suite de « Peut être vendu » et « Peut être
+                 acheté » — demande de Gerry (2026-08-27), en remplacement du bouton
+                 d'action qui vivait dans la boîte à boutons.
+
+                 ⓘ Même patron que le cœur : `account` ajoute « Peut être acheté » par un
+                 `<div name="options" position="inside">` sur cette même vue. Sa priorité
+                 est 5, celle-ci 16 : l'ordre d'affichage suit donc les priorités, sans
+                 rien à coordonner.
+
+                 ⚠️ Le GROUPE est celui du bouton qu'on remplace. Sans lui, n'importe quel
+                 utilisateur rendrait un produit configurable — un droit que la boîte à
+                 boutons réservait au gestionnaire, et qu'une case ne doit pas élargir au
+                 passage. -->
+            <div name="options" position="inside">
+                <span
+                    class="d-inline-flex"
+                    groups="product_configurator_fa.group_product_configurator_fa_manager"
+                >
+                    <field name="config_ok" />
+                    <label for="config_ok" />
+                </span>
+            </div>
         </field>
     </record>
 
@@ -28,23 +55,15 @@
                     invisible="not config_ok"
                 />
             </xpath>
-            <div name="button_box" position="inside">
-                <button
-                    class="oe_stat_button"
-                    name="toggle_config"
-                    string="Configurable"
-                    type="object"
-                    icon="fa-wrench"
-                    groups="product_configurator_fa.group_product_configurator_fa_manager"
-                >
-                    <field
-                        name="config_ok"
-                        string="Configurable"
-                        options="{&quot;active&quot;: &quot;Configurable&quot;, &quot;inactive&quot;: &quot;Standard&quot;}"
-                        widget="boolean_button"
-                    />
-                </button>
-            </div>
+            <!-- ⓘ Le bouton d'action « Configurable » de la boîte à boutons a été RETIRÉ
+                 (Gerry, 2026-08-27) : la case à cocher de la vue commune le remplace, à côté
+                 de « Peut être vendu » et « Peut être acheté ». Un état booléen se lit mieux
+                 dans une case que dans un bouton qui dit tantôt « Configurable », tantôt
+                 « Standard ».
+
+                 ⚠️ La MÉTHODE `toggle_config`, elle, RESTE : elle est publique, couverte par
+                 `test_03_toggle_config`, et un autre module peut l'appeler. Retirer un bouton
+                 n'est pas retirer une API. -->
             <xpath
                 expr="//label[@for='purchase_ok' or @for='sale_ok']"
                 position="after"
@@ -116,14 +135,6 @@
                 <attribute name="required">not custom</attribute>
             </xpath>
 
-            <xpath
-                expr="//field[@name='attribute_line_ids']/list/field[@name='attribute_id']"
-                position="attributes"
-            >
-                <attribute
-                    name="context"
-                >{'flag_config_ok': context.get('default_config_ok', False)}</attribute>
-            </xpath>
 
             <!-- TODO: Apply domains so only values from template are available -->
             <xpath expr="//notebook/page[@name='variants']" position="after">

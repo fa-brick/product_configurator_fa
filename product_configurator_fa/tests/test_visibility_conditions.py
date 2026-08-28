@@ -121,14 +121,15 @@ class VisibilityConditions(BaseCommon):
 
     def test_05_a_step_hides_by_its_condition(self):
         step = self.env["product.config.step"].create({"name": "Reinforcement"})
-        step_line = self.env["product.config.step.line"].create(
-            {
-                "config_step_id": step.id,
-                "product_tmpl_id": self.template.id,
-                "attribute_line_ids": [(6, 0, [self.line_brace.id])],
-                "visibility_domain_id": self.domain_rear.id,
-            }
-        )
+        # ⚠️ L'appartenance ne se coche plus : l'étape est un SÉPARATEUR (D-202),
+        # et la ligne qui la porte l'OUVRE — ce qui suit lui appartient. Poser le
+        # marqueur déclare l'étape sur le produit, d'où la recherche ensuite.
+        self.line_brace.config_step_id = step
+        step_line = self.env["product.config.step.line"].search([
+            ("product_tmpl_id", "=", self.template.id),
+            ("config_step_id", "=", step.id),
+        ])
+        step_line.visibility_domain_id = self.domain_rear
         self.assertFalse(step_line._is_visible([self.value_front.id]))
         self.assertTrue(step_line._is_visible([self.value_rear.id]))
         self.assertNotIn(

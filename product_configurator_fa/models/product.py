@@ -288,19 +288,26 @@ class ProductTemplate(models.Model):
             config_line_default.update({"attribute_line_id": new_attribute_line_id})
             line.copy(config_line_default)
 
-        # Config steps
-        config_step_line_default = {"product_tmpl_id": res.id}
+        # ─ Config steps ────────────────────────────────────────────────────
+        #
+        # ⚠️ L'APPARTENANCE N'EST PLUS À RECOPIER (D-202) : elle est déduite de
+        # l'ordre, et les lignes d'attribut de la copie portent déjà leurs
+        # marqueurs — donc les étapes de la copie sont déjà DÉCLARÉES quand on
+        # arrive ici. Recopier la ligne d'étape violerait l'unicité
+        # `(produit, étape)`. Ce qui reste à reporter, c'est ce que la ligne
+        # d'étape porte EN PROPRE : sa condition de visibilité.
+        step_line_obj = self.env["product.config.step.line"]
         for line in self.config_step_line_ids:
-            new_attribute_line_ids = [
-                attribute_line_dict.get(old_attr_line.attribute_id.id)
-                for old_attr_line in line.attribute_line_ids
-                if old_attr_line.attribute_id.id in attribute_line_dict
-            ]
-            if new_attribute_line_ids:
-                config_step_line_default.update(
-                    {"attribute_line_ids": [(6, 0, new_attribute_line_ids)]}
-                )
-            line.copy(config_step_line_default)
+            jumelle = step_line_obj.search([
+                ("product_tmpl_id", "=", res.id),
+                ("config_step_id", "=", line.config_step_id.id),
+            ], limit=1)
+            if jumelle:
+                jumelle.visibility_domain_id = line.visibility_domain_id
+            else:
+                # Une étape que plus aucune ligne n'ouvre sur la copie : on la
+                # garde tout de même, pour ne pas perdre ses réglages.
+                line.copy({"product_tmpl_id": res.id})
         return res
 
     def configure_product(self):

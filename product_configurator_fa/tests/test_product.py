@@ -203,31 +203,20 @@ class TestProduct(ProductConfiguratorTestCases):
             "Error: If get diffrent State\
             Method: action_previous_step()",
         )
-        # create config_step_line 1
-        self.configStepLine1 = self.productConfigStepLine.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-                "config_step_id": self.config_step_engine.id,
-                "attribute_line_ids": [
-                    (6, 0, [self.attributeLine1.id, self.attributeLine2.id])
-                ],
-            }
-        )
-        # create config_step_line 2
-        self.configStepLine2 = self.productConfigStepLine.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-                "config_step_id": self.config_step_body.id,
-                "attribute_line_ids": [(6, 0, [self.attributeLine3.id])],
-            }
-        )
-        self.product_tmpl_id.write(
-            {
-                "config_step_line_ids": [
-                    (6, 0, [self.configStepLine1.id, self.configStepLine2.id])
-                ],
-            }
-        )
+        # ⚠️ L'étape est un SÉPARATEUR (D-202) : on ne coche plus ses attributs,
+        # on marque la ligne qui l'OUVRE, et ce qui suit lui appartient. Poser le
+        # marqueur déclare l'étape sur le produit — d'où la recherche ensuite.
+        self.attributeLine1.write({"sequence": 10, "config_step_id": self.config_step_engine.id})
+        self.attributeLine2.write({"sequence": 20})
+        self.attributeLine3.write({"sequence": 30, "config_step_id": self.config_step_body.id})
+        self.configStepLine1 = self.productConfigStepLine.search([
+            ("product_tmpl_id", "=", self.product_tmpl_id.id),
+            ("config_step_id", "=", self.config_step_engine.id),
+        ])
+        self.configStepLine2 = self.productConfigStepLine.search([
+            ("product_tmpl_id", "=", self.product_tmpl_id.id),
+            ("config_step_id", "=", self.config_step_body.id),
+        ])
 
         # configure product
         self.product_tmpl_id.configure_product()

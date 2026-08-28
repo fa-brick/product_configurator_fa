@@ -27,53 +27,73 @@
     <record id="2_series_config_step_body" model="product.config.step.line">
         <field name="product_tmpl_id" ref="bmw_2_series" />
         <field name="config_step_id" ref="config_step_body" />
-        <field
-            name="attribute_line_ids"
-            eval="[(6, 0, [
-            ref('product_attribute_line_2_series_color'),
-            ref('product_attribute_line_2_series_rims')])]"
-        />
     </record>
 
     <record id="2_series_config_step_lines" model="product.config.step.line">
         <field name="product_tmpl_id" ref="bmw_2_series" />
         <field name="config_step_id" ref="config_step_lines" />
-        <field
-            name="attribute_line_ids"
-            eval="[(6, 0, [
-            ref('product_attribute_line_2_series_model_line')])]"
-        />
     </record>
 
     <record id="2_series_config_step_interior" model="product.config.step.line">
         <field name="product_tmpl_id" ref="bmw_2_series" />
         <field name="config_step_id" ref="config_step_interior" />
-        <field
-            name="attribute_line_ids"
-            eval="[(6, 0, [
-            ref('product_attribute_line_2_series_tapistry')])]"
-        />
     </record>
 
     <record id="2_series_config_step_engine" model="product.config.step.line">
         <field name="product_tmpl_id" ref="bmw_2_series" />
         <field name="config_step_id" ref="config_step_engine" />
-        <field
-            name="attribute_line_ids"
-            eval="[(6, 0, [
-            ref('product_attribute_line_2_series_engine'),
-            ref('product_attribute_line_2_series_fuel')])]"
-        />
     </record>
 
     <record id="2_series_config_step_extras" model="product.config.step.line">
         <field name="product_tmpl_id" ref="bmw_2_series" />
         <field name="config_step_id" ref="config_step_extras" />
-        <field
-            name="attribute_line_ids"
-            eval="[(6, 0, [
-            ref('product_attribute_line_2_series_transmission'),
-            ref('product_attribute_line_2_series_options')])]"
-        />
     </record>
+
+    <!-- ══ L'ORDRE PORTE L'APPARTENANCE — B1, D-202 ════════════════════════════
+         L'étape est un SÉPARATEUR : « ce qui suit lui appartient, jusqu'au
+         suivant ». Les lignes ci-dessous ne déclarent donc plus à quelle étape
+         elles appartiennent — elles se rangent, et celle qui OUVRE une étape la
+         porte.
+
+         ⚠️ Ces mises à jour vivent dans CE fichier et non dans
+         `product_attribute.xml` : celui-ci se charge avant que les étapes
+         existent, et un `ref` vers une étape inexistante casserait la démo. -->
+
+    <record id="product_attribute_line_2_series_fuel" model="product.template.attribute.line">
+        <field name="sequence">10</field>
+        <field name="config_step_id" ref="config_step_engine" />
+    </record>
+
+    <record id="product_attribute_line_2_series_engine" model="product.template.attribute.line">
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="product_attribute_line_2_series_color" model="product.template.attribute.line">
+        <field name="sequence">30</field>
+        <field name="config_step_id" ref="config_step_body" />
+    </record>
+
+    <record id="product_attribute_line_2_series_rims" model="product.template.attribute.line">
+        <field name="sequence">40</field>
+    </record>
+
+    <record id="product_attribute_line_2_series_model_line" model="product.template.attribute.line">
+        <field name="sequence">50</field>
+        <field name="config_step_id" ref="config_step_lines" />
+    </record>
+
+    <record id="product_attribute_line_2_series_tapistry" model="product.template.attribute.line">
+        <field name="sequence">60</field>
+        <field name="config_step_id" ref="config_step_interior" />
+    </record>
+
+    <record id="product_attribute_line_2_series_transmission" model="product.template.attribute.line">
+        <field name="sequence">70</field>
+        <field name="config_step_id" ref="config_step_extras" />
+    </record>
+
+    <record id="product_attribute_line_2_series_options" model="product.template.attribute.line">
+        <field name="sequence">80</field>
+    </record>
+
 </odoo>

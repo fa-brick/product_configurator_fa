@@ -85,6 +85,25 @@
                 expr="//field[@name='attribute_line_ids']/list/field[@name='value_ids']"
                 position="after"
             >
+                <!-- ══ L'ÉTAPE SE RÈGLE ICI, SUR LA LIGNE QUI L'OUVRE — B1, D-202 ══
+                     Arbitrage : l'étape est un SÉPARATEUR, et « ce qui suit lui
+                     appartient jusqu'au suivant ». Poser une étape sur une ligne, ce
+                     n'est donc pas dire « j'en fais partie » mais « j'en OUVRE une ».
+
+                     ⚠️ L'ORDRE DEVIENT UNE DONNÉE PORTEUSE : glisser une ligne change
+                     son étape. D'où la colonne « Étape », en lecture, juste à côté —
+                     elle montre l'effet à distance au lieu de le laisser deviner. -->
+                <field
+                    name="config_step_id"
+                    column_invisible="not context.get('default_config_ok', False)"
+                    options="{'no_create_edit': True}"
+                />
+                <field
+                    name="config_step_owner_id"
+                    column_invisible="not context.get('default_config_ok', False)"
+                    readonly="1"
+                    optional="show"
+                />
                 <field
                     name="default_val"
                     domain="[('id', 'in', value_ids)]"
@@ -208,15 +227,28 @@
                         name="config_step_line_ids"
                         readonly="not attribute_line_ids"
                     >
-                        <list editable="bottom">
-                            <field name="sequence" widget="handle" />
-                            <field name="config_step_id" />
+                        <!-- ⚠️ CETTE LISTE NE SE SAISIT PLUS QU'À MOITIÉ — B1, D-202.
+                             L'étape est devenue un SÉPARATEUR : son rang et ses
+                             attributs se lisent dans l'ordre des lignes d'attribut,
+                             et se règlent LÀ-BAS, par la colonne « Ouvre l'étape ».
+                             Ici ne restent que les réglages propres à l'étape.
+
+                             ⓘ `attribute_line_ids` reste affiché, en lecture : c'est
+                             ce qui rend visible l'effet à distance du glisser-déposer.
+                             Le retirer aurait laissé l'utilisateur deviner ce qu'une
+                             étape contient. -->
+                        <list editable="bottom" create="false">
+                            <field name="sequence" column_invisible="True" />
+                            <field name="config_step_id" readonly="1" />
                             <field
                                 name="attribute_line_ids"
-                                required="1"
-                                domain="[('product_tmpl_id', '=', parent.id)]"
-                                options="{'no_create': True, 'no_create_edit': True}"
                                 widget="many2many_tags"
+                                readonly="1"
+                            />
+                            <field
+                                name="required"
+                                readonly="1"
+                                widget="boolean_toggle"
                             />
                             <field
                                 name="visibility_domain_id"

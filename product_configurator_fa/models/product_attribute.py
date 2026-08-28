@@ -557,6 +557,102 @@ class ProductAttributeLine(models.Model):
 
     sequence = fields.Integer(default=10)
 
+    # ─ L'ÉTAPE EST UN SÉPARATEUR — B1, D-202 ────────────────────────────────
+    #
+    # ⚠️ **CE CHAMP NE DIT PAS « J'APPARTIENS À », IL DIT « J'OUVRE ».** L'étape
+    # cesse d'être un contenant qui liste ses attributs : elle devient un
+    # séparateur, et **ce qui suit lui appartient jusqu'au suivant**. Une ligne
+    # sans marqueur hérite donc de l'étape ouverte au-dessus d'elle.
+    #
+    # ⓘ Pourquoi porté par la LIGNE et non par une ligne-séparateur à part, comme
+    # les sections d'un devis : `product_template_attribute_line.attribute_id` est
+    # **NOT NULL en base** (vérifié : `is_nullable = NO`). Aucune règle d'interface
+    # ne lève ce plancher — une ligne sans attribut ne peut pas exister. Arbitré
+    # avec Gerry le 2026-08-28, forme (A) ; le bandeau pourra venir plus tard SANS
+    # toucher au modèle, l'appartenance restant déduite de la position.
+    #
+    # ⚠️ L'ORDRE DEVIENT UNE DONNÉE PORTEUSE. Glisser une ligne change son étape,
+    # en silence. C'est le prix du séparateur, et c'est pourquoi l'étape à laquelle
+    # une ligne appartient est CALCULÉE et montrée (`config_step_owner_id`) plutôt
+    # que laissée à deviner.
+    config_step_id = fields.Many2one(
+        comodel_name="product.config.step",
+        string="Opens Step",
+        ondelete="restrict",
+        help="When set, this line OPENS that configuration step: it and every "
+             "line below belong to the step, until another line opens the next "
+             "one.",
+    )
+    config_step_owner_id = fields.Many2one(
+        comodel_name="product.config.step",
+        string="Step",
+        compute="_compute_config_step_owner_id",
+        help="The step this line belongs to — the last one opened at or above it.",
+    )
+
+    @api.depends("sequence", "config_step_id", "product_tmpl_id",
+                 "product_tmpl_id.attribute_line_ids.sequence",
+                 "product_tmpl_id.attribute_line_ids.config_step_id")
+    def _compute_config_step_owner_id(self):
+        # ⓘ Groupé par produit : la réponse d'une ligne dépend de TOUTES celles du
+        # même produit, et les relire une par une ferait une requête par ligne.
+        par_produit = {}
+        for line in self:
+            par_produit.setdefault(line.product_tmpl_id, self.browse())
+            par_produit[line.product_tmpl_id] |= line
+        for template, lines in par_produit.items():
+            # `_order` range déjà par `product_tmpl_id, sequence, id` — c'est
+            # exactement l'ordre que l'utilisateur voit et déplace.
+            ouverte = False
+            for line in template.attribute_line_ids.sorted():
+                if line.config_step_id:
+                    ouverte = line.config_step_id
+                if line in lines:
+                    line.config_step_owner_id = ouverte
+            # Une ligne sans produit (création en cours) n'appartient à rien.
+            for line in lines.filtered(lambda l: not l.product_tmpl_id):
+                line.config_step_owner_id = False
+
+    # ⚠️ MARQUER UNE ÉTAPE, C'EST LA DÉCLARER SUR LE PRODUIT. Les réglages d'une
+    # étape — sa condition de visibilité (D-086) — vivent sur
+    # `product.config.step.line`, un enregistrement par produit et par étape.
+    # Poser le marqueur sans cet enregistrement donnerait une étape sans réglages
+    # possibles, et l'assistant, qui itère sur `config_step_line_ids`, ne la
+    # verrait même pas.
+    #
+    # ⓘ Ce n'est PAS un mirroir : cet enregistrement ne porte plus ni l'ordre ni
+    # l'appartenance — les deux sont déduits. Il ne porte que ce qui appartient
+    # en propre à l'étape sur ce produit.
+    def _ensure_config_step_lines(self):
+        step_line_obj = self.env["product.config.step.line"].sudo()
+        for line in self.filtered(lambda l: l.config_step_id and l.product_tmpl_id):
+            domaine = [
+                ("product_tmpl_id", "=", line.product_tmpl_id.id),
+                ("config_step_id", "=", line.config_step_id.id),
+            ]
+            if step_line_obj.search_count(domaine):
+                continue
+            # ⓘ `search_count` vide le tampon d'écriture du modèle avant de
+            # chercher : une ligne d'étape créée plus tôt dans la même transaction
+            # est donc vue. Et si un doublon passait quand même, `_check_config_step`
+            # le refuse déjà, avec ses mots — inutile d'en ajouter d'autres.
+            step_line_obj.create({
+                "product_tmpl_id": line.product_tmpl_id.id,
+                "config_step_id": line.config_step_id.id,
+            })
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        lines._ensure_config_step_lines()
+        return lines
+
+    def write(self, vals):
+        res = super().write(vals)
+        if "config_step_id" in vals:
+            self._ensure_config_step_lines()
+        return res
+
     dimension_role = fields.Selection(
         selection=[
             ("axis_x", "Grid axis X (columns)"),

@@ -68,6 +68,10 @@ class ConfigurationWizard(ProductConfiguratorTestCases):
                 "attribute_id": self.attr_fuel.id,
                 "value_ids": [(6, 0, [self.value_gasoline.id, self.value_diesel.id])],
                 "required": True,
+                # ⚠️ L'étape est un SÉPARATEUR (D-202) : cette ligne l'OUVRE, et
+                # ce qui suit lui appartient. L'appartenance ne se coche plus.
+                "sequence": 10,
+                "config_step_id": self.config_step_engine.id,
             }
         )
         # create attribute line 2
@@ -77,6 +81,7 @@ class ConfigurationWizard(ProductConfiguratorTestCases):
                 "attribute_id": self.attr_engine.id,
                 "value_ids": [(6, 0, [self.value_218i.id, self.value_220i.id])],
                 "required": True,
+                "sequence": 20,
             }
         )
         # create attribute line 2
@@ -86,26 +91,20 @@ class ConfigurationWizard(ProductConfiguratorTestCases):
                 "attribute_id": self.attr_engine.id,
                 "value_ids": [(6, 0, [self.value_218d.id, self.value_220d.id])],
                 "required": True,
-            }
-        )
-        # configure product creating config step
-        self.configStepLine1 = self.productConfigStepLine.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-                "config_step_id": self.config_step_engine.id,
-                "attribute_line_ids": [
-                    (6, 0, [self.attributeLine1.id, self.attributeLine2.id])
-                ],
-            }
-        )
-        # create config_step_line 2
-        self.configStepLine2 = self.productConfigStepLine.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
+                "sequence": 30,
                 "config_step_id": self.config_step_body.id,
-                "attribute_line_ids": [(6, 0, [self.attributeLine3.id])],
             }
         )
+        # ⓘ Les lignes d'étape ne se créent plus à la main : poser le marqueur
+        # sur la ligne d'attribut DÉCLARE l'étape sur le produit (D-202).
+        self.configStepLine1 = self.productConfigStepLine.search([
+            ("product_tmpl_id", "=", self.product_tmpl_id.id),
+            ("config_step_id", "=", self.config_step_engine.id),
+        ])
+        self.configStepLine2 = self.productConfigStepLine.search([
+            ("product_tmpl_id", "=", self.product_tmpl_id.id),
+            ("config_step_id", "=", self.config_step_body.id),
+        ])
         self.product_tmpl_id.write(
             {
                 "config_step_line_ids": [
@@ -438,6 +437,10 @@ class ConfigurationWizard(ProductConfiguratorTestCases):
                 "attribute_id": self.attr_fuel.id,
                 "value_ids": [(6, 0, [self.value_gasoline.id, self.value_diesel.id])],
                 "required": True,
+                # ⚠️ L'étape est un SÉPARATEUR (D-202) : cette ligne l'OUVRE, et
+                # ce qui suit lui appartient. L'appartenance ne se coche plus.
+                "sequence": 10,
+                "config_step_id": self.config_step_engine.id,
                 "custom": True,
             }
         )
@@ -448,6 +451,7 @@ class ConfigurationWizard(ProductConfiguratorTestCases):
                 "attribute_id": self.attr_engine.id,
                 "value_ids": [(6, 0, [self.value_218i.id, self.value_220i.id])],
                 "required": True,
+                "sequence": 20,
                 "custom": True,
             }
         )
@@ -458,26 +462,20 @@ class ConfigurationWizard(ProductConfiguratorTestCases):
                 "attribute_id": self.attr_engine.id,
                 "value_ids": [(6, 0, [self.value_218d.id, self.value_220d.id])],
                 "required": True,
-            }
-        )
-        # configure product creating config step
-        self.configStepLine1 = self.productConfigStepLine.create(
-            {
-                "product_tmpl_id": product_tmpl.id,
-                "config_step_id": self.config_step_engine.id,
-                "attribute_line_ids": [
-                    (6, 0, [self.attributeLine1.id, self.attributeLine2.id])
-                ],
-            }
-        )
-        # create config_step_line 2
-        self.configStepLine2 = self.productConfigStepLine.create(
-            {
-                "product_tmpl_id": product_tmpl.id,
+                "sequence": 30,
                 "config_step_id": self.config_step_body.id,
-                "attribute_line_ids": [(6, 0, [self.attributeLine3.id])],
             }
         )
+        # ⓘ Les lignes d'étape ne se créent plus à la main : poser le marqueur
+        # sur la ligne d'attribut DÉCLARE l'étape sur le produit (D-202).
+        self.configStepLine1 = self.productConfigStepLine.search([
+            ("product_tmpl_id", "=", self.product_tmpl_id.id),
+            ("config_step_id", "=", self.config_step_engine.id),
+        ])
+        self.configStepLine2 = self.productConfigStepLine.search([
+            ("product_tmpl_id", "=", self.product_tmpl_id.id),
+            ("config_step_id", "=", self.config_step_body.id),
+        ])
         product_tmpl.write(
             {
                 "config_step_line_ids": [

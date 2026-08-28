@@ -156,6 +156,45 @@ class ProductAttribute(models.Model):
         if not self.val_custom:
             self.custom_type = False
 
+    # ─ CE QU'UNE VALEUR DÉSIGNE — A2, arbitré par Gerry le 2026-08-28 ────────
+    #
+    # ⚠️ TROIS notions, et non une. La première tentative en proposait cinq —
+    # « liste, nombre, texte, produit, matière » — et mélangeait deux axes. Gerry
+    # a tranché : *« pour moi liste et texte sont la même chose, et même nombre,
+    # la saisie libre est possible »*. Ce qui distingue réellement les attributs :
+    #
+    #   · le TYPE, ici          — ce que la valeur DÉSIGNE ;
+    #   · le FORMAT             — comment elle se LIT (`custom_type`, plus bas) ;
+    #   · l'AJOUT par le client — un drapeau (`val_custom`).
+    #
+    # Les trois sont indépendants : une épaisseur est de type « valeur », de
+    # format « entier », et peut être ouverte ou non à l'ajout.
+    #
+    # ⓘ « matière » n'est PAS ici : elle pointe une fiche de `product_editor`, et
+    # c'est le module pont qui l'ajoute par `selection_add`. Pas pour une raison
+    # de licence — D-075 autorise expressément le configurateur AGPL-3 à dépendre
+    # de l'éditeur LGPL-3 — mais de MODULARITÉ : un configurateur sans éditeur 3D
+    # doit continuer de fonctionner.
+    VALUE_TYPES = [
+        ("value", "Value"),
+        ("product", "Product"),
+    ]
+
+    value_type = fields.Selection(
+        selection=VALUE_TYPES,
+        string="Value type",
+        default="value",
+        required=True,
+        help="What a value of this attribute DESIGNATES.\n\n"
+             "- Value: nothing but itself — a label chosen from a list. How that "
+             "label is read (text, number, date) is the FORMAT, and whether the "
+             "customer may add one is a separate flag.\n"
+             "- Product: the value designates a product, and its list may be "
+             "proposed by a filter.\n\n"
+             "It is the type that lets a screen know what to show: a product "
+             "picker, a material thumbnail, or a plain label.",
+    )
+
     CUSTOM_TYPES = [
         ("char", "Char"),
         ("integer", "Integer"),

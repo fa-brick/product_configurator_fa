@@ -214,7 +214,16 @@ class ProductAttribute(models.Model):
 
     # TODO: Exclude self from result-set of dependency
     val_custom = fields.Boolean(
-        string="Custom Value", help="Allow custom value for this attribute?"
+        # ⚠️ « Valeur personnalisée » décrivait mal ce que ce drapeau DÉCLENCHE.
+        # Une saisie libre ne reste pas éphémère : elle crée une vraie
+        # `product.attribute.value`, marquée `configurator_generated`, avec une
+        # unicité `(attribut, nom)` garantie en base (D-081). Gerry l'a relu
+        # ainsi le 2026-08-27 — « custom, qui est ajout par l'utilisateur
+        # possible finalement » —, et c'est exactement ce que le code fait.
+        string="Default: customer may add a value",
+        help="Default applied to a NEW product line. A value typed by the "
+             "customer becomes a real attribute value, kept and reusable — not "
+             "a throwaway entry.",
     )
     custom_type = fields.Selection(
         selection=CUSTOM_TYPES,
@@ -228,14 +237,34 @@ class ProductAttribute(models.Model):
         "the same configuration, do we "
         "include this field in the search?",
     )
+    # ─ LES QUATRE SEMENCES — A4, arbitrage Gerry (2026-08-28) ───────────────
+    #
+    # ⚠️ `required`, `multi`, `val_custom` et `price_mode` existent AUSSI sur la
+    # ligne d'attribut d'un produit, et c'est la LIGNE que tout le monde lit — le
+    # wizard (`line.multi or not line.required`), la session, les grilles de prix
+    # (`ptav.attribute_line_id.price_mode`). Ceux-ci ne sont donc jamais consultés
+    # à l'exécution : `onchange_attribute` les recopie sur la ligne à sa création,
+    # et c'est tout.
+    #
+    # Mesuré sur `fabk18` avant de trancher : 10 attributs sur 10 portent
+    # `required`, mais 2 lignes sur 12 seulement — les autres ont été créées sans
+    # que l'onchange joue. Elles ne sont pas obligatoires, et personne ne s'en est
+    # plaint : la preuve que ces champs ne décident de rien.
+    #
+    # Gerry a choisi de les GARDER — la semence est un confort réel, déclarer
+    # « Couleur » obligatoire par nature évite de la cocher produit par produit —
+    # à condition que leur libellé cesse de faire croire à un réglage actif. D'où
+    # le « Default: » qui ouvre chacun d'eux.
     required = fields.Boolean(
         default=True,
-        help="Determines the required value of this "
-        "attribute though it can be change on "
-        "the template level",
+        string="Default: required",
+        help="Default applied to a NEW product line. It decides nothing by "
+             "itself: what is read at configuration time is the line's own "
+             "setting, on the product.",
     )
     multi = fields.Boolean(
-        help="Allow selection of multiple values for this attribute?",
+        string="Default: multiple values",
+        help="Default applied to a NEW product line — see 'Default: required'.",
     )
     uom_id = fields.Many2one(comodel_name="uom.uom", string="Unit of Measure")
     image = fields.Binary()
@@ -243,7 +272,7 @@ class ProductAttribute(models.Model):
         selection=[("fixed", "Fixed amount"), ("per_sqm", "Per square meter")],
         default="fixed",
         required=True,
-        string="Extra Price Mode",
+        string="Default: extra price mode",
         help="Default mode for the extra price of this attribute's values. "
         "Set on each product line, which is what actually applies.",
     )

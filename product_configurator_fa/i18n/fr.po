@@ -1,6 +1,3 @@
-# Translation of Odoo Server.
-# This file contains the translation of the following modules:
-# 	* product_configurator_fa
 #
 msgid ""
 msgstr ""
@@ -14,12 +11,59 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. module: product_configurator_fa
+# « Configurable » et non « Peut être configuré » : ce libellé s'affiche à la
+# suite de
+# « Ventes » et « Achats », qui sont eux-mêmes les formes COURTES retenues par
+# Odoo pour
+# `sale_ok` et `purchase_ok`. Un intitulé long y détonnerait — et c'est le mot
+# que Gerry a
+# employé en demandant cette case (2026-08-27).
 #: model:ir.model.fields,field_description:product_configurator_fa.field_product_product__config_ok
 #: model:ir.model.fields,field_description:product_configurator_fa.field_product_template__config_ok
-#
-# « Configurable » et non « Peut être configuré » : ce libellé s'affiche à la suite de
-# « Ventes » et « Achats », qui sont eux-mêmes les formes COURTES retenues par Odoo pour
-# `sale_ok` et `purchase_ok`. Un intitulé long y détonnerait — et c'est le mot que Gerry a
-# employé en demandant cette case (2026-08-27).
 msgid "Can be Configured"
 msgstr "Configurable"
+
+#. module: product_configurator_fa
+#: model:ir.model.fields,field_description:product_configurator_fa.field_product_attribute__value_type
+msgid "Value type"
+msgstr "Type de valeur"
+
+#. module: product_configurator_fa
+#: model:ir.model.fields,field_description:product_configurator_fa.field_product_attribute__required
+msgid "Default: required"
+msgstr "Défaut : obligatoire"
+
+#. module: product_configurator_fa
+#: model:ir.model.fields,field_description:product_configurator_fa.field_product_attribute__multi
+msgid "Default: multiple values"
+msgstr "Défaut : valeurs multiples"
+
+#. module: product_configurator_fa
+#: model:ir.model.fields,field_description:product_configurator_fa.field_product_attribute__val_custom
+msgid "Default: customer may add a value"
+msgstr "Défaut : le client peut ajouter une valeur"
+
+#. module: product_configurator_fa
+#: model:ir.model.fields,field_description:product_configurator_fa.field_product_attribute__price_mode
+msgid "Default: extra price mode"
+msgstr "Défaut : mode de prix supplémentaire"
+
+#. module: product_configurator_fa
+#: model_terms:ir.ui.view,arch_db:product_configurator_fa.product_attribute_form_view
+msgid "What a value is"
+msgstr "Ce qu'une valeur est"
+
+#. module: product_configurator_fa
+#: model_terms:ir.ui.view,arch_db:product_configurator_fa.product_attribute_form_view
+msgid "Defaults for a new product line"
+msgstr "Défauts pour une nouvelle ligne de produit"
+
+#. module: product_configurator_fa
+#: model_terms:ir.ui.view,arch_db:product_configurator_fa.product_attribute_form_view
+msgid "Format"
+msgstr "Format"
+
+#. module: product_configurator_fa
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__value_type__material
+msgid "Material"
+msgstr "Matière"

@@ -45,39 +45,62 @@
                 <attribute name="groups">base.group_no_one</attribute>
             </xpath>
             <xpath expr="//notebook//page" position="after">
+                <!-- ─ A3 : DU COMMUN AU SPÉCIFIQUE (agencement arbitré par Gerry) ────
+                     « On part des infos communes pour finir par les spécifiques. »
+                     Quatre blocs, dans cet ordre : identité · nature · défauts · ajout.
+
+                     ⚠️ `custom_type` a QUITTÉ la page « Custom Values » — c'était le
+                     défaut de fond de l'ancienne page. Il y était masqué tant que la
+                     saisie libre n'était pas cochée, si bien qu'une épaisseur énumérée
+                     10 / 15 / 18 n'avait AUCUN format déclaré — alors que la grille de
+                     prix et le moteur de géométrie lisent ces valeurs comme des nombres.
+                     ⓘ Le modèle, lui, était déjà juste : `_is_numeric_custom` lit
+                     `custom_type` et lui seul, jamais `val_custom`. Seule la vue
+                     empêchait de le renseigner. -->
                 <page
                     string="Configurator"
                     groups="product_configurator_fa.group_product_configurator_fa_manager"
                 >
-                    <group>
+                    <!-- ⓘ L'IDENTITÉ commence plus haut : le nom, le type d'affichage
+                         et l'image vivent dans l'en-tête de la fiche, là où le cœur les
+                         met. Coiffer une simple description d'un titre « Identité »
+                         annoncerait un bloc qui n'existe pas — et `colspan="4"` sur un
+                         champ seul dans son groupe le faisait en plus flotter hors du
+                         cadre (vu à l'écran). -->
+                    <group string="Description">
+                        <field name="description" nolabel="1" colspan="2" />
+                    </group>
+
+                    <!-- ─ NATURE : ce qu'une valeur EST ───────────────────────
+                         Trois notions distinctes, longtemps empilées dans deux champs :
+                         le TYPE (ce que la valeur désigne), le FORMAT (comment elle se
+                         lit), et l'UNITÉ. ⓘ Le format vaut pour TOUTES les valeurs,
+                         énumérées comme saisies — c'est pour cela qu'il est ici et non
+                         sous l'ajout. -->
+                    <group string="What a value is">
                         <group>
-                            <field name="required" />
-                            <field name="multi" readonly="val_custom" force_save="1" />
-                            <field name="val_custom" readonly="multi" force_save="1" />
+                            <field name="value_type" />
+                            <field name="custom_type" string="Format" />
                         </group>
                         <group>
                             <field name="uom_id" />
-                            <field name="price_mode" />
-                        </group>
-                        <field name="description" colspan="4" />
-                    </group>
-                </page>
-                <page
-                    string="Custom Values"
-                    invisible="not val_custom"
-                    groups="product_configurator_fa.group_product_configurator_fa_manager"
-                >
-                    <group>
-                        <group>
-                            <field name="custom_type" />
-                            <!-- Les bornes ne sont plus ici : elles vivent sur la
-                                 ligne d'attribut du PRODUIT (D-089). « Largeur »
-                                 est partagée par un portail et une porte de
-                                 garage — une borne globale ne peut être juste
-                                 pour personne. -->
-                        </group>
-                        <group>
                             <field name="search_ok" />
+                        </group>
+                    </group>
+
+                    <!-- ─ DÉFAUTS : ce que la ligne d'un NOUVEAU produit héritera ──
+                         ⚠️ Ces quatre-là ne décident de rien par eux-mêmes : c'est la
+                         ligne, sur le produit, qui est lue à la configuration. Le titre
+                         du bloc le dit, faute de quoi la page ferait croire à des
+                         réglages actifs — ce qu'elle a fait jusqu'ici. -->
+                    <group string="Defaults for a new product line">
+                        <group>
+                            <field name="required" />
+                            <field name="multi" readonly="val_custom" force_save="1" />
+                        </group>
+                        <group>
+                            <field name="price_mode" />
+                            <field name="val_custom" readonly="multi" force_save="1" />
                         </group>
                     </group>
                 </page>

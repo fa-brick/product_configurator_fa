@@ -277,6 +277,7 @@ class ProductAttribute(models.Model):
             "name": self.env._("Products proposed by the filter"),
             "res_model": "product.product",
             "view_mode": "list",
+            "views": [(False, "list")],
             "domain": literal_eval((self.product_filter_domain or "[]").strip() or "[]"),
             "target": "new",
         }
@@ -781,6 +782,10 @@ class ProductAttributeLine(models.Model):
             "name": self.attribute_id.display_name,
             "res_model": "product.template.attribute.value",
             "view_mode": "list",
+            # ⚠️ Voir le commentaire de `configurator_open_condition` : hors
+            # `call_button`, personne ne complète l'action, et le client lève
+            # « Cannot read properties of undefined (reading 'map') ».
+            "views": [(False, "list")],
             "domain": [("attribute_line_id", "=", self.id)],
             # ⓘ Sans `active_test=False`, une valeur DÉSACTIVÉE serait invisible —
             # or c'est précisément l'état où l'on vient voir ce qui s'est passé

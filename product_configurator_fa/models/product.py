@@ -250,18 +250,28 @@ class ProductTemplate(models.Model):
                     {"name": ligne.attribute_id.name}
                 )
             cible = ligne.visibility_domain_id
+        # ⚠️ `views` EST OBLIGATOIRE ICI, et son absence casse l'écran. Une action
+        # déclenchée par un bouton passe par `/web/dataset/call_button`, où le
+        # serveur la complète (`clean_action` déduit `views` de `view_mode`).
+        # Rendue à un composant par un simple appel ORM, elle n'est complétée par
+        # PERSONNE : le client fait `action.views.map(...)` et lève
+        # « Cannot read properties of undefined (reading 'map') ». Constaté à
+        # l'écran par Gerry. Une action rendue hors `call_button` doit être
+        # AUTOSUFFISANTE ([[L-165]]).
+        formulaire = self.env.ref(
+            "product_configurator_fa.product_config_domain_form_view_template"
+        )
         return {
             "type": "ir.actions.act_window",
             "name": cible.display_name,
             "res_model": "product.config.domain",
             "res_id": cible.id,
             "view_mode": "form",
+            "views": [(formulaire.id, "form")],
             "target": "new",
             "context": {
                 "product_tmpl_id": self.id,
                 "product_attribute_ids": self.attribute_line_ids.attribute_id.ids,
-                "form_view_ref":
-                    "product_configurator_fa.product_config_domain_form_view_template",
             },
         }
 
@@ -286,6 +296,11 @@ class ProductTemplate(models.Model):
             "res_model": "product.config.step.line",
             "res_id": etape.id,
             "view_mode": "form",
+            "views": [
+                (self.env.ref(
+                    "product_configurator_fa.product_config_step_line_form").id,
+                 "form"),
+            ],
             "target": "new",
             "context": {"product_tmpl_id": self.id},
         }
@@ -303,6 +318,7 @@ class ProductTemplate(models.Model):
             "name": self.env._("Add an attribute"),
             "res_model": "product.template.attribute.line",
             "view_mode": "form",
+            "views": [(False, "form")],
             "target": "new",
             "context": {"default_product_tmpl_id": self.id},
         }
@@ -328,6 +344,7 @@ class ProductTemplate(models.Model):
             "name": self.env._("Add a step"),
             "res_model": "product.configurator.add.step",
             "view_mode": "form",
+            "views": [(False, "form")],
             "target": "new",
             "context": {"default_product_tmpl_id": self.id},
         }

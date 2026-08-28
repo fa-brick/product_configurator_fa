@@ -256,10 +256,37 @@ class ProductConfigDomain(models.Model):
             return []
         self.ensure_one()
         lignes = self.domain_line_ids.sorted()
-        return [
-            {"id": ligne.id, "label": label}
-            for ligne, label in zip(lignes, self._facet_labels())
-        ]
+        facettes = []
+        for index, (ligne, label) in enumerate(zip(lignes, self._facet_labels())):
+            # ⚠️ **LA PASTILLE EST STRUCTURÉE, pas une phrase.** Gerry : *« ça ne
+            # reprend pas les étiquettes et la mécanique de celles du champ de
+            # recherche »*. Une facette du cœur a un segment d'entête, des
+            # valeurs séparées par un mot, et sa propre croix — un unique texte
+            # ne peut pas rendre ça, et se lisait comme une ligne de tableau.
+            designes = ligne.product_ids or ligne.value_ids
+            facettes.append({
+                "id": ligne.id,
+                # ⓘ Le texte plat reste rendu : c'est l'infobulle de la pastille,
+                # et ce que lisent les tests d'ordre de lecture.
+                "label": label,
+                "title": ligne.attribute_id.name or "?",
+                "negated": ligne.condition == "not in",
+                "values": designes.mapped(
+                    "display_name" if ligne.product_ids else "name"
+                ),
+                # ⚠️ **OU À L'INTÉRIEUR D'UNE PASTILLE** (D-203) — c'est ce que
+                # produit `compute_domain`, où une ligne porte plusieurs valeurs.
+                "separator": self.env._("or"),
+                # ⓘ ET entre pastilles est IMPLICITE, comme dans la barre de
+                # recherche : seul un « ou » se dit. Et c'est l'opérateur de la
+                # ligne PRÉCÉDENTE qui gouverne la jonction (cf. `_facet_labels`).
+                "link": (
+                    self.env._("or")
+                    if index and lignes[index - 1].operator == "or"
+                    else False
+                ),
+            })
+        return facettes
 
     def _facet_labels(self):
         """Les pastilles, dans l'ordre — une par ligne de condition.

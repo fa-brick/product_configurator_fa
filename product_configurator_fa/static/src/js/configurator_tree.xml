@@ -72,22 +72,42 @@
                             <span t-if="!(row.facets or []).length" class="text-muted fst-italic">
                                 Add a condition
                             </span>
-                            <!-- ⚠️ Le « × » retire UNE règle, pas la condition
-                                 entière : sinon une condition à trois règles se
-                                 perdrait pour en corriger une. -->
-                            <span
-                                t-foreach="row.facets or []"
-                                t-as="facet"
-                                t-key="facet.id"
-                                class="o_config_facet badge rounded-pill me-1"
-                            >
-                                <t t-esc="facet.label"/>
-                                <button class="btn btn-link p-0 ms-1 o_config_facet_remove"
-                                        title="Remove this rule"
-                                        t-on-click.stop="() => this.removeFacet(row, facet)">
-                                    <i class="fa fa-times"/>
-                                </button>
-                            </span>
+            <!-- ⚠️ **LA PASTILLE EST CELLE DE LA BARRE DE RECHERCHE**, demandée
+                 par Gerry : mêmes classes, même découpe — un segment d'entête
+                 coloré, les valeurs, la croix. Un simple `badge` se lisait comme
+                 du texte nu (constaté à l'écran).
+
+                 ⓘ `o_searchview_facet` porte l'animation d'apparition et la
+                 largeur maximale d'une valeur ; sa feuille de style du cœur
+                 n'est PAS imbriquée dans la barre de recherche, elle s'applique
+                 donc ici telle quelle. -->
+                            <t t-foreach="row.facets or []" t-as="facet" t-key="facet.id">
+                                <!-- ⓘ Le ET est IMPLICITE, comme dans la barre de
+                                     recherche : seul un « ou » se dit. -->
+                                <em t-if="facet.link" class="mx-1 small opacity-75" t-esc="facet.link"/>
+                                <div class="o_searchview_facet o_config_facet position-relative d-inline-flex align-items-stretch rounded-2 bg-200 text-nowrap mw-100 me-1"
+                                     role="listitem"
+                                     t-att-title="facet.label">
+                                    <div class="o_searchview_facet_label position-relative rounded-start-2 px-1 rounded-end-0 p-0 btn btn-primary">
+                                        <i class="small fa-fw fa fa-filter" role="img"/>
+                                    </div>
+                                    <div class="o_facet_values position-relative d-flex flex-wrap align-items-center ps-2 rounded-end-2 text-wrap overflow-hidden">
+                                        <small class="o_config_facet_title fw-bold me-1" t-esc="facet.title"/>
+                                        <small class="o_config_facet_operator me-1" t-esc="facet.negated ? '≠' : '='"/>
+                                        <t t-foreach="facet.values" t-as="valeur" t-key="valeur_index">
+                                            <em t-if="!valeur_first" class="o_facet_values_sep small fw-bold mx-1 opacity-50" t-esc="facet.separator"/>
+                                            <small class="o_facet_value text-truncate" t-esc="valeur" t-att-title="valeur"/>
+                                        </t>
+                                        <!-- ⚠️ Le « × » retire UNE règle, pas la
+                                             condition entière : sinon une condition à
+                                             trois règles se perdrait pour en corriger
+                                             une. -->
+                                        <button class="o_facet_remove o_config_facet_remove oi oi-close btn btn-link py-0 px-2 text-danger"
+                                                title="Remove this rule"
+                                                t-on-click.stop="() => this.removeFacet(row, facet)"/>
+                                    </div>
+                                </div>
+                            </t>
                         </td>
                         <td class="o_config_tree_view"><t t-esc="row.camera or ''"/></td>
                         <td class="o_config_tree_actions">

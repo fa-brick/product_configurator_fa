@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <!-- ÉCRIRE UNE CONDITION DANS LE DIALOGUE DE LA BARRE DE RECHERCHE
+         Demande de Gerry (2026-08-29) : « je voulais retrouver la même fenêtre
+         que pour les filtres de la barre de recherche ». C'est l'éditeur de
+         domaine du cœur, posé sur un modèle-sujet dont les champs sont les
+         attributs configurables (voir configurator_condition.py). -->
+    <record id="product_configurator_condition_form_view" model="ir.ui.view">
+        <field name="name">product.configurator.condition.form</field>
+        <field name="model">product.configurator.condition</field>
+        <field name="arch" type="xml">
+            <form string="Condition">
+                <field name="product_tmpl_id" invisible="1" />
+                <field name="domain_id" invisible="1" />
+                <div class="o_config_condition">
+                    <field
+                        name="condition_domain"
+                        widget="domain"
+                        options="{'model': 'product.config.condition.subject'}"
+                        nolabel="1"
+                    />
+                </div>
+                <footer>
+                    <button
+                        name="action_confirm"
+                        type="object"
+                        string="Confirm"
+                        class="btn-primary"
+                    />
+                    <button string="Discard" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

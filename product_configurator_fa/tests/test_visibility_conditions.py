@@ -196,26 +196,50 @@ class VisibilityConditions(BaseCommon):
 
     # ── la liste de champs du dialogue ───────────────────────────────────────
 
-    def test_10_fields_get_offers_the_attributes_not_image_1024(self):
-        fields = self.template.with_context(
-            configurator_domain_tmpl_id=self.template.id
-        ).fields_get()
+    def test_10_le_MODELE_SUJET_offre_les_attributs_pas_image_1024(self):
+        """⚠️ **Ces champs vivent sur un modèle DÉDIÉ, et pas sur le produit.**
+
+        Ils étaient d'abord déclarés par `product.template.fields_get` sous un
+        contexte portant l'identifiant du produit. Ces tests passaient — et la
+        fonctionnalité était **inatteignable à l'écran** : l'éditeur de domaine
+        charge ses champs par le service `field`, qui appelle `fields_get` SANS
+        contexte et met le résultat en cache PAR MODÈLE. Aucun contexte
+        n'arrivait, et le cache aurait de toute façon fait fuir les champs d'un
+        produit vers l'éditeur d'un autre.
+
+        ⓘ Ils prouvaient la méthode, pas l'écran. C'est la même famille de piège
+        que [[L-159]] : ce qui n'est pas exercé là où ça sert ne dit rien.
+        """
+        fields = self.env["product.config.condition.subject"].fields_get()
         name = f"__attribute_{self.attr_mounting.id}"
         self.assertIn(name, fields)
         self.assertEqual(fields[name]["string"], "Mounting")
         self.assertEqual(fields[name]["relation"], "product.attribute.value")
 
     def test_11_the_fake_fields_never_leak_outside_the_dialog(self):
-        """⚠️ Ces champs n'existent pas : partout ailleurs, ils casseraient les
-        vues, les exports et les filtres."""
+        """⚠️ Ces champs n'existent pas : ailleurs, ils casseraient les
+        vues, les exports et les filtres — d'où un modèle qui ne sert QU'À ça."""
         fields = self.template.fields_get()
         self.assertNotIn(f"__attribute_{self.attr_mounting.id}", fields)
 
     def test_12_even_a_numeric_attribute_is_offered_by_its_VALUES(self):
         """Décrire une dimension en `float` laisserait construire
         « largeur > 4000 », que le stockage perdrait (D-080)."""
-        fields = self.template.with_context(
-            configurator_domain_tmpl_id=self.template.id
-        ).fields_get()
+        fields = self.env["product.config.condition.subject"].fields_get()
         name = f"__attribute_{self.attr_width.id}"
         self.assertEqual(fields[name]["type"], "many2one")
+
+    def test_12b_le_COMPTEUR_de_l_editeur_ne_fait_pas_echouer_la_saisie(self):
+        """⚠️ L'éditeur compte les enregistrements à chaque frappe. Sur des
+
+        champs qui n'existent pas en base, ce décompte lève — et le widget
+        affiche « Domaine invalide » puis refuse la saisie. Les feuilles fictives
+        sont donc neutralisées dans une recherche, pas interprétées.
+        """
+        sujet = self.env["product.config.condition.subject"]
+        self.assertEqual(
+            sujet.search_count(
+                [(f"__attribute_{self.attr_mounting.id}", "in", [self.value_rear.id])]
+            ),
+            0,
+        )

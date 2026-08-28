@@ -105,3 +105,11 @@ div:has(> .o_config_tree) {
 .o_config_filter_group .o_horizontal_separator:first-child {
     margin-top: 0;
 }
+
+// ⓘ Le compteur d'enregistrements de l'éditeur de domaine n'a AUCUN sens ici :
+// le modèle-sujet d'une condition ne porte pas de données — ses champs
+// décrivent des attributs, pas des lignes à compter. Affiché, il annoncerait
+// « 0 enregistrement » sous chaque condition, ce qui se lit comme une panne.
+.o_config_condition .o_field_domain_panel {
+    display: none;
+}

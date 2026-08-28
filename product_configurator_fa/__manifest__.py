@@ -1,6 +1,6 @@
 {
     "name": "Product Configurator (fa-brick)",
-    "version": "18.0.1.13.0",
+    "version": "18.0.1.14.0",
     "category": "Generic Modules/Base",
     "summary": "Base for product configuration interface modules",
     # Dérivé de OCA/product-configurator (AGPL-3) : l'attribution d'origine est
@@ -24,6 +24,7 @@
         "data/ir_config_parameter_data.xml",
         "data/ir_cron_data.xml",
         "wizard/configurator_add_step_view.xml",
+        "wizard/configurator_condition_view.xml",
         "views/product_view.xml",
         "views/product_attribute_view.xml",
         "views/product_config_view.xml",

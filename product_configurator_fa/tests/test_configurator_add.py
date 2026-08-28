@@ -182,16 +182,22 @@ class ConfiguratorConditions(BaseCommon):
         """⚠️ La condition EST le lien : on ne peut pas ouvrir ce qui n'existe pas."""
         self.assertFalse(self.line.visibility_domain_id)
         action = self.template.configurator_open_condition(self.line.id)
-        self.assertEqual(action["res_model"], "product.config.domain")
+        # ⓘ Le dialogue est celui de la barre de recherche, demandé par Gerry :
+        # l'action ouvre l'ASSISTANT, qui traduit dans les deux sens. La
+        # condition, elle, reste faite d'enregistrements (D-080).
+        self.assertEqual(action["res_model"], "product.configurator.condition")
         self.assertEqual(action["target"], "new")
         self.assertTrue(self.line.visibility_domain_id)
-        self.assertEqual(action["res_id"], self.line.visibility_domain_id.id)
+        assistant = self.env[action["res_model"]].browse(action["res_id"])
+        self.assertEqual(assistant.domain_id, self.line.visibility_domain_id)
 
     def test_02_and_reopens_the_SAME_one_afterwards(self):
         """Sinon chaque clic laisserait une condition de plus derrière lui."""
-        premiere = self.template.configurator_open_condition(self.line.id)["res_id"]
-        seconde = self.template.configurator_open_condition(self.line.id)["res_id"]
-        self.assertEqual(premiere, seconde)
+        def condition_ouverte():
+            action = self.template.configurator_open_condition(self.line.id)
+            return self.env[action["res_model"]].browse(action["res_id"]).domain_id
+
+        self.assertEqual(condition_ouverte(), condition_ouverte())
 
     def test_03_opening_a_VALUE_condition_creates_the_RULE_too(self):
         """⚠️ C'est ce que « Configuration Restrictions » faisait, et rien d'autre.
@@ -204,7 +210,8 @@ class ConfiguratorConditions(BaseCommon):
         self.assertEqual(len(self.template.config_line_ids), 1)
         regle = self.template.config_line_ids
         self.assertEqual(regle.value_ids, self.cine)
-        self.assertEqual(action["res_id"], regle.domain_id.id)
+        assistant = self.env[action["res_model"]].browse(action["res_id"])
+        self.assertEqual(assistant.domain_id, regle.domain_id)
 
     def test_04_and_it_does_not_touch_the_OTHER_value(self):
         self.template.configurator_open_condition(self.line.id, self.cine.id)

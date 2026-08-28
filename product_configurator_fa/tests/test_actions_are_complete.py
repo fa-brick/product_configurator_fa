@@ -84,7 +84,7 @@ class ActionsAreComplete(BaseCommon):
         self.assertEqual(
             identifiant,
             self.env.ref(
-                "product_configurator_fa.product_config_domain_form_view_template"
+                "product_configurator_fa.product_configurator_condition_form_view"
             ).id,
         )
 

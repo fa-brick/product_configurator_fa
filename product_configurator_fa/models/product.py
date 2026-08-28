@@ -250,30 +250,16 @@ class ProductTemplate(models.Model):
                     {"name": ligne.attribute_id.name}
                 )
             cible = ligne.visibility_domain_id
-        # ⚠️ `views` EST OBLIGATOIRE ICI, et son absence casse l'écran. Une action
-        # déclenchée par un bouton passe par `/web/dataset/call_button`, où le
-        # serveur la complète (`clean_action` déduit `views` de `view_mode`).
-        # Rendue à un composant par un simple appel ORM, elle n'est complétée par
-        # PERSONNE : le client fait `action.views.map(...)` et lève
-        # « Cannot read properties of undefined (reading 'map') ». Constaté à
-        # l'écran par Gerry. Une action rendue hors `call_button` doit être
-        # AUTOSUFFISANTE ([[L-165]]).
-        formulaire = self.env.ref(
-            "product_configurator_fa.product_config_domain_form_view_template"
-        )
-        return {
-            "type": "ir.actions.act_window",
-            "name": cible.display_name,
-            "res_model": "product.config.domain",
-            "res_id": cible.id,
-            "view_mode": "form",
-            "views": [(formulaire.id, "form")],
-            "target": "new",
-            "context": {
-                "product_tmpl_id": self.id,
-                "product_attribute_ids": self.attribute_line_ids.attribute_id.ids,
-            },
-        }
+        # ⚠️ **LE DIALOGUE EST CELUI DE LA BARRE DE RECHERCHE**, demandé par
+        # Gerry : *« je voulais retrouver la même fenêtre que pour les filtres de
+        # la barre de recherche »*. La liste éditable d'OCA — attribut, condition,
+        # valeurs, opérateur en colonnes — disait la même chose, mais dans un
+        # vocabulaire que personne d'autre dans Odoo n'emploie.
+        #
+        # ⓘ Le stockage ne bouge pas : l'assistant traduit dans les deux sens
+        # (`to_odoo_domain` / `from_odoo_domain`), et une condition reste faite
+        # d'ENREGISTREMENTS (D-080).
+        return self.env["product.configurator.condition"].open_for(self, cible)
 
     def configurator_open_step(self, line_id):
         """Ouvre les réglages d'une étape — sa condition, et sa vue 3D.
@@ -755,30 +741,6 @@ class ProductTemplate(models.Model):
             prices[template.id] = price
         return prices
 
-    @api.model
-    def fields_get(self, allfields=None, attributes=None):
-        """Décrit les ATTRIBUTS d'un produit comme des champs — D-097.
-
-        C'est tout ce dont le `DomainSelector` a besoin : il n'appelle qu'une
-        chose, `fields_get` (`web/static/src/core/field_service.js:17`). Sans
-        cela il propose les champs techniques de `product.template` — « Image
-        1024 », « Estimation par Lot/Numéro de série » — et un utilisateur
-        métier n'en fait rien.
-
-        ⚠️ **Sous CONTEXTE, jamais partout.** Ces champs n'existent pas : les
-        exposer à tout appel de `fields_get` les ferait apparaître dans les
-        vues, les exports et les filtres, où plus rien ne saurait les lire.
-
-        ⚠️ Tous les attributs sont décrits en `many2one` vers une VALEUR, y
-        compris les numériques — parce que le stockage d'OCA ne connaît que
-        `in` / `not in` sur des valeurs (D-080). Décrire une dimension en
-        `float` laisserait construire `largeur > 4000`, que l'enregistrement
-        perdrait en silence.
-        """
-        fields = super().fields_get(allfields=allfields, attributes=attributes)
-        template_id = self.env.context.get("configurator_domain_tmpl_id")
-        if not template_id:
-            return fields
         domain_obj = self.env["product.config.domain"]
         template = self.browse(template_id)
         for line in template.attribute_line_ids:

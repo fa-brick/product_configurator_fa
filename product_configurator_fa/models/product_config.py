@@ -163,6 +163,20 @@ class ProductConfigDomain(models.Model):
                         field=field_name,
                     )
                 )
+            # ⚠️ **LE SÉLECTEUR ÉCRIT `=`, LE STOCKAGE NE CONNAÎT QUE `in`.**
+            # Choisir un champ dans l'éditeur de domaine produit `('champ', '=',
+            # id)` — c'est son défaut pour un `many2one`. Refuser sec rendait le
+            # dialogue hostile : on désigne un attribut, et l'enregistrement
+            # échoue sans qu'on ait rien fait de faux. `=` et `!=` disent
+            # exactement `in` et `not in` sur une valeur unique : on traduit.
+            if operator in ("=", "!="):
+                # ⓘ `= False` (« n'est pas défini ») n'a PAS d'équivalent : une
+                # valeur absente n'est pas une valeur à écarter. Une liste vide
+                # tombe alors sur le refus de la ligne vide, qui le dit.
+                if not isinstance(values, list | tuple):
+                    values = [values] if values else []
+                values = [v for v in values if v]
+                operator = "in" if operator == "=" else "not in"
             if operator not in ("in", "not in"):
                 raise ValidationError(
                     self.env._(

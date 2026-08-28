@@ -136,3 +136,33 @@ class ConditionDialog(BaseCommon):
         )
         champs = self.env["product.config.condition.subject"].fields_get()
         self.assertNotIn(f"__attribute_{orphelin.id}", champs)
+
+    def test_08_chaque_champ_offert_porte_sa_cle_name(self):
+        """⚠️ **La couture qui manquait, et qui a coûté un aller-retour.**
+
+        Le sélecteur de champ compose le chemin retenu avec `fieldDef.name`, pas
+        avec la clé du dictionnaire (`model_field_selector_popover.js`). Sans
+        cette clé, choisir un attribut posait un chemin `undefined` — *« Chaîne
+        de champs invalide »*, puis *« Domaine invalide »*. Le dialogue
+        s'ouvrait, listait bien les attributs, et refusait toute saisie.
+
+        ⓘ Un `fields_get` fabriqué à la main doit rendre les MÊMES clés que le
+        vrai : c'est un contrat, pas une commodité.
+        """
+        champs = self.env["product.config.condition.subject"].fields_get()
+        obligatoires = set(
+            self.env["product.product"].fields_get(["id"])["id"].keys()
+        ) & {"name", "string", "type", "searchable", "store"}
+        for cle, definition in champs.items():
+            self.assertEqual(definition.get("name"), cle, cle)
+            self.assertFalse(obligatoires - set(definition), cle)
+
+    def test_09_seuls_les_ATTRIBUTS_sont_offerts(self):
+        """Le sujet d'une condition est un attribut — pas « créé le », pas « ID ».
+
+        ⓘ Laissés là, les champs techniques encombraient la liste et
+        fournissaient même la règle par défaut (« ID = 1 »).
+        """
+        champs = self.env["product.config.condition.subject"].fields_get()
+        self.assertTrue(champs)
+        self.assertTrue(all(c.startswith("__") for c in champs), sorted(champs))

@@ -1,6 +1,6 @@
 {
     "name": "Product Configurator (fa-brick)",
-    "version": "18.0.1.14.0",
+    "version": "18.0.1.15.0",
     "category": "Generic Modules/Base",
     "summary": "Base for product configuration interface modules",
     # Dérivé de OCA/product-configurator (AGPL-3) : l'attribution d'origine est

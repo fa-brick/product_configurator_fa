@@ -72,7 +72,8 @@ class ProductConfigConditionSubject(models.TransientModel):
 
     @api.model
     def fields_get(self, allfields=None, attributes=None):
-        champs = super().fields_get(allfields=allfields, attributes=attributes)
+        reels = super().fields_get(allfields=allfields, attributes=attributes)
+        champs = {}
         domaine_obj = self.env["product.config.domain"]
         for attribut in self._condition_attributes():
             # ⚠️ TOUT attribut est décrit en `many2one` vers une VALEUR, y
@@ -80,7 +81,15 @@ class ProductConfigConditionSubject(models.TransientModel):
             # sur des valeurs (D-080). Décrire une dimension en `float`
             # laisserait écrire `largeur > 4000`, que l'enregistrement perdrait
             # en silence.
-            champs[domaine_obj._attribute_field_name(attribut)] = {
+            nom = domaine_obj._attribute_field_name(attribut)
+            champs[nom] = {
+                # ⚠️ **`name` EST INDISPENSABLE, et son absence casse tout.** Le
+                # sélecteur de champ compose le chemin retenu avec
+                # `fieldDef.name` (`model_field_selector_popover.js`), pas avec
+                # la clé du dictionnaire. Sans cette clé, choisir un attribut
+                # posait un chemin `undefined` : *« Chaîne de champs invalide »*,
+                # puis *« Domaine invalide »*. Constaté à l'écran par Gerry.
+                "name": nom,
                 "string": attribut.name,
                 "type": "many2one",
                 "relation": "product.attribute.value",
@@ -93,7 +102,9 @@ class ProductConfigConditionSubject(models.TransientModel):
             # C4, D-201 — un attribut de type produit se teste aussi par ses
             # produits. En PLUS, jamais à la place.
             if attribut.value_type == "product":
-                champs[domaine_obj._product_field_name(attribut)] = {
+                nom_produit = domaine_obj._product_field_name(attribut)
+                champs[nom_produit] = {
+                    "name": nom_produit,
                     "string": self.env._(
                         "%(attribute)s (products)", attribute=attribut.name
                     ),
@@ -104,7 +115,16 @@ class ProductConfigConditionSubject(models.TransientModel):
                     "store": False,
                     "readonly": False,
                 }
-        return champs
+        # ⚠️ **ET RIEN D'AUTRE QUE LES ATTRIBUTS.** Les champs techniques du
+        # modèle — identifiant, créé par, dernière modification — n'ont aucun
+        # sens dans une condition de configuration : le sujet d'une condition est
+        # un attribut (D-080). Laissés là, ils encombraient la liste et
+        # fournissaient même la règle par défaut (« ID = 1 »).
+        #
+        # ⓘ Sauf s'il n'y a aucun attribut configurable : l'éditeur lève « No
+        # field found » sur un modèle sans champ. On rend alors les vrais — la
+        # liste est inutile, mais le dialogue s'ouvre au lieu de casser.
+        return champs or reels
 
 
 class ProductConfiguratorCondition(models.TransientModel):

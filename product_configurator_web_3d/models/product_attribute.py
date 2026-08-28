@@ -152,6 +152,17 @@ class ProductAttributeValue(models.Model):
         if not self.name or self.name == ancien:
             self.name = self.material_id.display_name
 
+    def _purge_designation(self, value_type):
+        """Le crochet du cœur, complété : la matière s'efface aussi — D-219.
+
+        ⓘ Chaque module efface ce qu'il a posé. Le cœur ne peut pas nommer
+        `material_id` : il pointe une fiche de l'éditeur, et le nommer ferait
+        dépendre l'AGPL-3 de celui-ci (D-075).
+        """
+        super()._purge_designation(value_type)
+        if value_type != "material":
+            self.filtered("material_id").material_id = False
+
     # ─ DEUX BARRIÈRES, comme partout ailleurs (D-080, D-194, D-196) ─────────
     @api.constrains("material_id")
     def _check_material_only_for_material_type(self):

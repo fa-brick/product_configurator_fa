@@ -451,3 +451,60 @@ class ValueType(BaseCommon):
                 "value_type": "product", "custom_type": "binary",
                 "uom_id": self.env.ref("uom.product_uom_millimeter").id,
             })
+
+    # ── changer de type PURGE ce que les valeurs désignaient (D-219) ────────
+    def test_25_switching_AWAY_from_product_clears_the_products(self):
+        """⚠️ Constat de Gerry : la purge ne se faisait pas.
+
+        Basculer un attribut de « produit » à « matière » gardait les
+        `product_id` sur ses valeurs, et la garde de D-196 refusait alors
+        l'enregistrement — sur des champs devenus invisibles, et pour une
+        contradiction que l'utilisateur n'avait pas écrite.
+        """
+        produit = self.env["product.product"].create({"name": "Handle purge"})
+        attribute = self.Attribute.create({
+            "name": "Handle switch", "create_variant": "no_variant",
+            "value_type": "product",
+        })
+        valeur = self.env["product.attribute.value"].create({
+            "name": "A handle", "attribute_id": attribute.id,
+            "product_id": produit.id,
+        })
+        attribute.value_type = "value"
+        self.assertFalse(valeur.product_id)
+
+    def test_26_and_the_purge_holds_outside_any_interface(self):
+        """⚠️ Un `onchange` ne joue que dans le dialogue vue↔serveur.
+
+        Un import ou un script laisserait les valeurs incohérentes, et tout
+        enregistrement ultérieur serait refusé. La purge vit donc dans `write` —
+        la barrière qui ne dépend pas de l'interface (D-080).
+        """
+        produit = self.env["product.product"].create({"name": "Handle script"})
+        attribute = self.Attribute.create({
+            "name": "Handle by script", "create_variant": "no_variant",
+            "value_type": "product",
+        })
+        valeur = self.env["product.attribute.value"].create({
+            "name": "A handle", "attribute_id": attribute.id,
+            "product_id": produit.id,
+        })
+        # Écriture directe, sans passer par aucune vue.
+        attribute.write({"value_type": "value"})
+        self.assertFalse(valeur.product_id)
+        # Et l'attribut s'enregistre à nouveau sans rien refuser.
+        attribute.write({"name": "Renamed"})
+
+    def test_27_rewriting_the_SAME_type_erases_nothing(self):
+        """ⓘ On n'agit que si le type change vraiment."""
+        produit = self.env["product.product"].create({"name": "Handle kept"})
+        attribute = self.Attribute.create({
+            "name": "Handle kept", "create_variant": "no_variant",
+            "value_type": "product",
+        })
+        valeur = self.env["product.attribute.value"].create({
+            "name": "A handle", "attribute_id": attribute.id,
+            "product_id": produit.id,
+        })
+        attribute.write({"value_type": "product"})
+        self.assertEqual(valeur.product_id, produit)

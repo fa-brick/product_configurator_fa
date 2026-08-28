@@ -397,6 +397,23 @@ class ProductAttribute(models.Model):
     # ils posaient un `binary` sur un attribut devenu « produit ». Contorsionner des
     # tests amont pour les faire entrer dans une garde, c'est le signe que la garde
     # est mal posée — pas que les tests le sont ([[L-160]]).
+    def write(self, vals):
+        """⚠️ LA PURGE SE FAIT ICI, et non dans un `onchange`.
+
+        Un `onchange` ne joue que dans le dialogue vue↔serveur : un import, un
+        script ou une écriture ORM laisseraient les valeurs incohérentes, et la
+        garde de D-196 refuserait tout enregistrement ultérieur. C'est la seconde
+        barrière, celle qui ne dépend pas de l'interface (D-080).
+
+        ⓘ On n'agit que si le type CHANGE VRAIMENT : réécrire la même valeur ne
+        doit rien effacer.
+        """
+        nouveau = vals.get("value_type")
+        if nouveau:
+            concernes = self.filtered(lambda a: a.value_type != nouveau)
+            concernes.value_ids._purge_designation(nouveau)
+        return super().write(vals)
+
     @api.constrains("value_type", "custom_type", "uom_id")
     def _check_format_only_for_plain_values(self):
         for attribute in self:
@@ -1509,6 +1526,23 @@ class ProductAttributeValue(models.Model):
     value_type = fields.Selection(
         related="attribute_id.value_type", string="Value Type", readonly=True
     )
+
+    def _purge_designation(self, value_type):
+        """Efface ce que la valeur désignait, si le nouveau type l'interdit — D-219.
+
+        ⚠️ **CHANGER LE TYPE D'UN ATTRIBUT LAISSAIT SES VALEURS INCOHÉRENTES.**
+        Constat de Gerry : basculer de « produit » à « matière » gardait les
+        `product_id` sur les valeurs, et la garde de D-196 refusait alors
+        l'enregistrement — sur des champs devenus invisibles, et pour une
+        contradiction que l'utilisateur n'avait pas écrite. C'est la même faute
+        que D-194 corrigeait sur l'attribut, restée un étage plus bas.
+
+        ⓘ Un crochet, parce que `material_id` vit dans le PONT : le cœur ne peut
+        pas nommer un champ de l'éditeur (D-075). Chaque module efface ce qu'il a
+        posé.
+        """
+        if value_type != "product":
+            self.filtered("product_id").product_id = False
 
     # ─ CE QUE LA VALEUR DÉSIGNE, quand ce n'est pas elle-même (D-196) ───────
     #

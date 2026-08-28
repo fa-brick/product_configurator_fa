@@ -116,3 +116,40 @@ class MaterialValue(BaseCommon):
         with Form(value) as f:
             f.material_id = self.other
         self.assertEqual(value.name, "Chêne premier choix")
+
+    def test_07_switching_AWAY_from_material_clears_the_materials(self):
+        """Le pendant, côté pont — D-219.
+
+        ⓘ Chaque module efface ce qu'il a posé : le cœur ne peut pas nommer
+        `material_id`, qui pointe une fiche de l'éditeur (D-075).
+        """
+        attribute = self.env["product.attribute"].create({
+            "name": "Finish switch", "create_variant": "no_variant",
+            "value_type": "material",
+        })
+        valeur = self.env["product.attribute.value"].create({
+            "name": "Oak", "attribute_id": attribute.id,
+            "material_id": self.material.id,
+        })
+        attribute.value_type = "product"
+        self.assertFalse(valeur.material_id)
+
+    def test_08_and_the_two_purges_do_not_step_on_each_other(self):
+        """⚠️ Basculer product → material efface le produit, PAS la matière.
+
+        Un crochet qui effacerait tout viderait la désignation qu'on vient de
+        rendre licite.
+        """
+        produit = self.env["product.product"].create({"name": "Handle both"})
+        attribute = self.env["product.attribute"].create({
+            "name": "Both ways", "create_variant": "no_variant",
+            "value_type": "product",
+        })
+        valeur = self.env["product.attribute.value"].create({
+            "name": "A handle", "attribute_id": attribute.id,
+            "product_id": produit.id,
+        })
+        attribute.value_type = "material"
+        self.assertFalse(valeur.product_id)
+        valeur.material_id = self.material
+        self.assertEqual(valeur.material_id, self.material)

@@ -90,22 +90,36 @@
 // retaillent sur leur contenu. `display: flex` leur rend une disposition en
 // rangée — les largeurs, elles, sont figées en JS depuis l'en-tête
 // (`freezeCellWidths`), car le CSS ne connaît pas la mise en page du tableau.
-// Même remède que le cœur pour ses listes (`.o_data_row.o_dragged`).
 //
-// ⓘ Le fond est EXPLICITE : la rangée flotte au-dessus de la page, et une
-// rangée transparente laisserait lire le formulaire au travers.
+// ⚠️ **ET C'EST TOUT** — la règle du cœur pour ses listes se réduit exactement à
+// cela (`.o_data_row.o_dragged`). J'y avais ajouté une ombre portée et un fond :
+// Gerry les a écartés, *« que l'esthétisme et le comportement soient comme fait
+// par le core »*. Le fond vient d'ailleurs, et de la bonne façon — voir
+// `--table-bg` ci-dessous.
 .o_config_tree tr.o_dragged {
     display: flex;
     align-items: center;
-    background-color: $o-view-background-color;
-    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
 
     > td {
-        // ⓘ Une cellule de flexbox se laisse comprimer par défaut : sans ceci,
-        // la largeur figée depuis l'en-tête ne tiendrait pas.
+        // ⓘ Une cellule de flexbox se laisse comprimer par défaut. Le cœur s'en
+        // dispense parce que ses colonnes ont des largeurs posées en dur ; ici
+        // la somme des largeurs figées égale AU PIXEL PRÈS celle de la rangée,
+        // et un arrondi suffirait à déclencher la compression.
         flex: 0 0 auto;
-        overflow: hidden;
     }
+}
+
+// ⚠️ **LE FOND VIENT DE LA VARIABLE DE TABLEAU, PAS DE LA RANGÉE TIRÉE.**
+// Odoo pose `$table-bg: transparent` (`bootstrap_overridden.scss`) : les
+// cellules de tout tableau sont transparentes, et une rangée en
+// `position: fixed` laisserait donc lire le formulaire au travers. Le cœur
+// règle cela en amont sur la liste entière — `.o_list_table { --table-bg: … }`
+// (`list_renderer.scss`) — et non sur la rangée tirée. On fait pareil.
+//
+// ⓘ `--table-bg` SANS préfixe : Odoo compile Bootstrap avec
+// `$variable-prefix: ''`, d'où l'absence des `--bs-*` que `CLAUDE.md` rappelle.
+.o_config_tree {
+    --table-bg: #{$o-view-background-color};
 }
 
 .o_config_tree .o_config_conditions {

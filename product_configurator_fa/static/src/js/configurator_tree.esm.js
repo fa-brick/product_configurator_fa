@@ -234,7 +234,12 @@ export class ConfiguratorTree extends Component {
         // Le refus d'un dépôt hors de son attribut, lui, se joue au dépôt.
         useSortable({
             ref: this.rootRef,
-            elements: ".o_config_value",
+            // ⚠️ **UNE CLASSE DE TRI, DISTINCTE DE CELLE DE STYLE.** C'est elle
+            // qu'on retire aux valeurs des AUTRES attributs le temps d'un
+            // glisser (`confineValues`) : retirer `o_config_value` aurait
+            // emporté avec elle la teinte et l'opacité du second niveau, et fait
+            // clignoter la moitié du tableau.
+            elements: ".o_config_value_sortable",
             handle: ".o_config_value_handle",
             cursor: "grabbing",
             placeholderClasses: ["d-table-row"],
@@ -359,6 +364,64 @@ export class ConfiguratorTree extends Component {
      * AVANT d'appeler `onDragStart` (`draggable_hook_builder.js`) : mesurer
      * là-bas, ce serait déjà mesurer le tableau d'après.
      */
+    /**
+     * Ce qu'il faut préparer AVANT qu'un glisser ne démarre.
+     *
+     * ⓘ Au `pointerdown`, donc : le cœur a déjà tout mis en place quand il
+     * appelle `onDragStart` — la rangée est fixée, et les écouteurs des voisins
+     * sont posés. Trop tard pour l'un comme pour l'autre.
+     */
+    onHandlePointerDown(row) {
+        this.freezeColumns();
+        if (row.kind === "value") {
+            this.confineValues(row.line_id);
+        }
+    }
+
+    /**
+     * Une valeur ne sort pas du bloc de son attribut — même en glissant.
+     *
+     * ⚠️ **LE REFUS AU DÉPÔT NE SUFFISAIT PAS.** Il empêchait bien l'écriture,
+     * mais l'écart s'ouvrait quand même sous les valeurs d'un autre attribut :
+     * l'écran promettait un déplacement qui ne se ferait jamais. Demande de
+     * Gerry — *« empêcher le drag au-delà de leur zone enfants »*.
+     *
+     * ⚠️ **ET `groups` NE POUVAIT PAS SERVIR.** L'option du cœur veut un élément
+     * PARENT par groupe ; nos valeurs sont toutes sœurs dans un seul `<tbody>`,
+     * et un tableau n'admet pas d'autre conteneur de rangées. On retire donc la
+     * classe de tri aux étrangères : le cœur ne pose ses écouteurs de survol que
+     * sur ce qui répond à `elements` (`sortable.js`, `onDragStart`), et l'écart
+     * ne s'ouvre plus que dans le bloc d'origine.
+     *
+     * ⓘ Une classe qu'OWL réécrirait au prochain rendu — mais aucun rendu n'a
+     * lieu pendant un glisser, et la remise en place précède le suivant. Et si
+     * un rendu survenait quand même, il RÉTABLIRAIT la bonne valeur : la panne
+     * serait un élargissement, pas une corruption.
+     */
+    confineValues(lineId) {
+        const etrangeres = this.rootRef.el.querySelectorAll(
+            `.o_config_value_sortable:not([data-line-id="${lineId}"])`
+        );
+        for (const rangee of etrangeres) {
+            rangee.classList.remove("o_config_value_sortable");
+            rangee.classList.add("o_config_value_confined");
+        }
+        // ⚠️ Un simple CLIC ne démarre aucun glisser : `onDragEnd` ne viendrait
+        // jamais, et la moitié des valeurs resteraient inertes.
+        window.addEventListener("pointerup", () => this.releaseValues(), {once: true});
+    }
+
+    /** Les valeurs des autres attributs redeviennent déplaçables. */
+    releaseValues() {
+        if (!this.rootRef.el) {
+            return;
+        }
+        for (const rangee of this.rootRef.el.querySelectorAll(".o_config_value_confined")) {
+            rangee.classList.add("o_config_value_sortable");
+            rangee.classList.remove("o_config_value_confined");
+        }
+    }
+
     freezeColumns() {
         const table = this.rootRef.el;
         if (!table || table.dataset.frozenColumns) {
@@ -430,6 +493,7 @@ export class ConfiguratorTree extends Component {
             cellule.style.width = null;
         }
         this.releaseColumns();
+        this.releaseValues();
     }
 
     /** Les identifiants des valeurs d'un attribut, dans l'ordre affiché. */

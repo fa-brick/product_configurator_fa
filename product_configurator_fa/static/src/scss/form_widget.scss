@@ -57,16 +57,17 @@
     .o_config_tree_handle {
         width: 1.5rem;
     }
-    .o_config_handle,
+    // ⓘ Les poignées portent `o_row_handle oi oi-draggable`, le marquage du cœur :
+    // le curseur en main ouverte, la teinte et son survol viennent donc de
+    // `.o_field_widget .o_row_handle` (`views/fields/fields.scss`), et l'arbre
+    // suit d'office toute retouche d'Odoo. Rien à redéclarer ici.
+    //
+    // ⓘ Seule nuance : la poignée d'une VALEUR se voit un peu moins que celle de
+    // son attribut. Deux poignées de même poids dans la même colonne se liraient
+    // comme un seul ordre, alors qu'elles en portent deux — celui des attributs
+    // appartient au produit, celui des valeurs à l'attribut tout entier.
     .o_config_value_handle {
-        cursor: grab;
-    }
-    // ⓘ La poignée d'une VALEUR se voit moins que celle de son attribut : deux
-    // poignées de même poids dans la même colonne se liraient comme un seul
-    // ordre, alors qu'elles en portent deux — l'un propre au produit, l'autre
-    // partagé par tout l'attribut.
-    .o_config_value_handle {
-        opacity: 0.5;
+        opacity: 0.6;
         &:hover {
             opacity: 1;
         }

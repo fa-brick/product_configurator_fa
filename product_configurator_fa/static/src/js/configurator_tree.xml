@@ -49,13 +49,19 @@
                                  l'ouvre. Un attribut et une valeur, si — mais
                                  chacun dans son ordre, d'où deux poignées
                                  distinctes (voir `configurator_tree.esm.js`). -->
-                            <span t-if="row.kind === 'attribute'" class="o_config_handle">
-                                <i class="fa fa-bars text-muted"/>
-                            </span>
-                            <span t-else="" class="o_config_value_handle"
-                                  title="Reorder this value — the order belongs to the attribute, so it applies to every product using it">
-                                <i class="fa fa-bars text-muted small"/>
-                            </span>
+                            <!-- ⚠️ `o_row_handle oi oi-draggable` — LE MARQUAGE DU
+                                 CŒUR, à la lettre (`handle_field.xml`). Un
+                                 `fa fa-bars` dessinait un autre pictogramme que
+                                 celui de toutes les autres poignées d'Odoo, et
+                                 se privait du style que le cœur pose déjà sur
+                                 `.o_field_widget .o_row_handle` : la main
+                                 ouverte en curseur, la teinte et son survol. -->
+                            <span t-if="row.kind === 'attribute'"
+                                  class="o_config_handle o_row_handle oi oi-draggable"
+                                  title="Reorder this attribute"/>
+                            <span t-else=""
+                                  class="o_config_value_handle o_row_handle oi oi-draggable"
+                                  title="Reorder this value — the order belongs to the attribute, so it applies to every product using it"/>
                         </td>
                         <td class="o_config_tree_name">
                             <span t-att-style="row.depth ? 'padding-left: 2rem;' : ''">

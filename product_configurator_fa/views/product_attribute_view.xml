@@ -296,7 +296,16 @@
                              reste visible — c'est le seul qui le signale. -->
                         <!-- ⓘ `d-inline-flex` : un champ posé DANS un bouton se rend
                              en BLOC, et le compteur tombait sur trois lignes
-                             (« → / 1 / proposed value(s) »). -->
+                             (« → / 1 / proposed value(s) »).
+
+                             ⚠️ **UNE LOUPE, PAS UNE FLÈCHE.** Constat de Gerry :
+                             *« l'action du bouton obligatoire pour mettre à jour
+                             la liste n'est pas compréhensible »*. Elle ne l'était
+                             pas parce qu'elle n'existe pas : la liste se met à
+                             jour à l'ENREGISTREMENT, comme tout le reste d'Odoo
+                             (mesuré — `web_save` renvoie déjà les valeurs
+                             fraîches). Ce bouton ne fait que MONTRER. La flèche
+                             se lisait « appliquer » ; la loupe dit « voir ». -->
                         <button
                             name="action_open_proposed_values"
                             type="object"
@@ -304,7 +313,8 @@
                             colspan="2"
                             invisible="not product_filter_count"
                         >
-                            <i class="oi oi-arrow-right me-1" role="img" />
+                            <i class="fa fa-search me-1" role="img" />
+                            <span>See the </span>
                             <field name="product_filter_count" />
                             <span> proposed value(s)</span>
                         </button>

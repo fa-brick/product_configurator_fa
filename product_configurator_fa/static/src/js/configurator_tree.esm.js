@@ -13,7 +13,7 @@
  * C'est ce que la forme (A) promettait — *« le bandeau pourra venir plus tard
  * sans toucher au modèle »*.
  */
-import {Component, onWillStart, onWillUpdateProps, useRef, useState} from "@odoo/owl";
+import {Component, onWillStart, onWillUpdateProps, useEffect, useRef, useState} from "@odoo/owl";
 import {registry} from "@web/core/registry";
 import {standardFieldProps} from "@web/views/fields/standard_field_props";
 import {useService} from "@web/core/utils/hooks";
@@ -101,8 +101,24 @@ export class ConfiguratorTree extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
-        this.state = useState({rows: [], expanded: new Set()});
+        // ⓘ `editingStep` porte l'étape dont le nom est en cours de saisie — une
+        // seule à la fois, comme une section fraîche dans un bon de commande.
+        this.state = useState({rows: [], expanded: new Set(), editingStep: null});
         this.rootRef = useRef("root");
+        this.stepInputRef = useRef("stepInput");
+        // ⚠️ Une saisie qui n'a pas le FOCUS n'est pas une saisie : le cœur donne
+        // le focus à la section qu'il vient de créer, sans quoi il faudrait
+        // cliquer dedans pour la nommer. `useEffect` plutôt qu'`onPatched` : il
+        // ne se déclenche que si l'étape en édition a changé.
+        useEffect(
+            (input) => {
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            },
+            () => [this.stepInputRef.el]
+        );
         useSortable({
             ref: this.rootRef,
             // ⚠️ Seules les lignes d'ATTRIBUT portent cette classe : un bandeau
@@ -138,6 +154,20 @@ export class ConfiguratorTree extends Component {
             onDragEnd: ({element}) => this.releaseCellWidths(element),
             onDrop: ({element, previous}) => this.onDropValue(element, previous),
         });
+        // ⚠️ **UN BANDEAU SE DÉPLACE PAR SON `next`, PAS PAR SON `previous`.**
+        // L'étape s'ouvre SUR la ligne qui la suit (D-202) : c'est donc le
+        // premier attribut SOUS le point de dépôt qui reçoit le marqueur, pas
+        // celui du dessus.
+        useSortable({
+            ref: this.rootRef,
+            elements: ".o_config_step",
+            handle: ".o_config_step_handle",
+            cursor: "grabbing",
+            placeholderClasses: ["d-table-row"],
+            onDragStart: ({element}) => this.freezeCellWidths(element),
+            onDragEnd: ({element}) => this.releaseCellWidths(element),
+            onDrop: ({element, next}) => this.onDropStep(element, next),
+        });
         onWillStart(() => this.load());
         // ⚠️ L'arbre est lu du SERVEUR, pas du cache du formulaire : il joint
         // trois modèles. Il doit donc se relire quand l'enregistrement change,
@@ -157,6 +187,38 @@ export class ConfiguratorTree extends Component {
         this.state.rows = await this.orm.call(
             "product.template", "get_configurator_tree", [[this.templateId]]
         );
+    }
+
+    /**
+     * Écrire côté SERVEUR, puis remettre le FORMULAIRE d'accord avec lui.
+     *
+     * ⚠️ **L'ARBRE ÉCRIT EN BASE, LE FORMULAIRE LIT SON CACHE — et les deux
+     * divergeaient.** Constat de Gerry : *« l'ordre des attributs doit être
+     * identique entre l'onglet attribut et l'onglet configurator »*. Déplacer un
+     * attribut ici écrivait la séquence en base sans que le formulaire en sache
+     * rien : « Attributs & Variantes » gardait l'ordre d'avant jusqu'au prochain
+     * rechargement de la fiche. Et dans l'autre sens, déplacer là-bas ne
+     * touchait que le cache : l'arbre, qui relit le SERVEUR, montrait l'ordre
+     * d'avant.
+     *
+     * ⚠️ **SAUVER D'ABORD, ET PAS SEULEMENT RECHARGER.** Recharger jetterait les
+     * modifications en cours du formulaire — y compris un déplacement fait dans
+     * l'autre onglet et pas encore enregistré. Un `save()` qui échoue (champ
+     * requis vide, contrainte) rend `false` : on renonce alors à écrire, plutôt
+     * que d'agir sur un état que l'utilisateur n'a pas pu valider.
+     */
+    async writeAndReload(model, method, args) {
+        const record = this.props.record;
+        if ((await record.save()) === false) {
+            return false;
+        }
+        await this.orm.call(model, method, args);
+        // ⓘ `load` du RECORD, puis celui de l'arbre : le premier rafraîchit
+        // `attribute_line_ids` pour l'onglet voisin, le second l'arbre lui-même,
+        // qui ne lit pas ce champ mais sa propre structure jointe.
+        await record.load();
+        await this.load();
+        return true;
     }
 
     get rows() {
@@ -277,20 +339,30 @@ export class ConfiguratorTree extends Component {
     /**
      * La ligne d'attribut au-dessus du point de dépôt.
      *
-     * ⚠️ **LE VOISIN N'EST PAS FORCÉMENT UN ATTRIBUT.** Il peut être un bandeau
-     * d'étape — qui ne porte aucun identifiant, puisqu'il n'est pas un
-     * enregistrement (D-202) — ou une VALEUR, qui porte l'identifiant de son
-     * attribut : déposer sous la dernière valeur de X, c'est bien déposer
-     * sous X. On remonte donc jusqu'à la première ligne qui dise quelque chose.
+     * ⚠️ **LE VOISIN N'EST PAS FORCÉMENT UN ATTRIBUT.** Il peut être une VALEUR,
+     * qui porte l'identifiant de son attribut : déposer sous la dernière valeur
+     * de X, c'est bien déposer sous X. On remonte donc jusqu'à la première ligne
+     * qui dise quelque chose.
+     *
+     * ⚠️ **ET LE BANDEAU D'ÉTAPE SE SAUTE.** Il porte lui aussi un
+     * `data-line-id` depuis qu'il se déplace — mais celui de la ligne qu'il
+     * OUVRE, c'est-à-dire celle qui le suit. S'y arrêter renverrait une ligne
+     * située EN DESSOUS du point de dépôt : l'attribut déposé sous un bandeau
+     * aurait sauté d'un cran de trop.
      *
      * ⓘ `null` veut dire « rien au-dessus » : dépôt en tête.
      */
     previousLineId(node) {
         let curseur = node;
-        while (curseur && !curseur.dataset.lineId) {
+        while (curseur && (this.isStepRow(curseur) || !curseur.dataset.lineId)) {
             curseur = curseur.previousElementSibling;
         }
         return curseur ? Number(curseur.dataset.lineId) : null;
+    }
+
+    /** ⓘ Un bandeau d'étape : il porte un `data-line-id` qui n'est pas le sien. */
+    isStepRow(node) {
+        return node.classList.contains("o_config_step");
     }
 
     /**
@@ -306,7 +378,7 @@ export class ConfiguratorTree extends Component {
      * passe en tête de son bloc.
      */
     previousValueId(node, lineId) {
-        if (!node || Number(node.dataset.lineId) !== lineId) {
+        if (!node || this.isStepRow(node) || Number(node.dataset.lineId) !== lineId) {
             return -1;
         }
         return node.dataset.valueId ? Number(node.dataset.valueId) : null;
@@ -317,10 +389,9 @@ export class ConfiguratorTree extends Component {
         const ids = this.lineIds;
         const from = ids.indexOf(moved);
         const ordonne = reorder(ids, from, dropIndex(ids, from, this.previousLineId(previous)));
-        await this.orm.call(
+        await this.writeAndReload(
             "product.template", "configurator_reorder", [[this.templateId], ordonne]
         );
-        await this.load();
     }
 
     /**
@@ -342,35 +413,34 @@ export class ConfiguratorTree extends Component {
             // (`applyChangeOnDrop` est faux), la ligne est déjà revenue seule.
             return;
         }
-        await this.orm.call(
+        await this.writeAndReload(
             "product.template", "configurator_reorder_values",
             [[this.templateId], lineId, reorder(ids, from, to)]
         );
-        await this.load();
     }
 
     async removeFacet(row, facet) {
-        await this.orm.call(
+        await this.writeAndReload(
             "product.template", "configurator_remove_facet", [[this.templateId], facet.id]
         );
-        await this.load();
     }
 
     async removeRow(row) {
         if (row.kind === "step") {
-            await this.orm.call(
+            await this.writeAndReload(
                 "product.template", "configurator_clear_step",
                 [[this.templateId], row.line_id]
             );
         } else if (row.kind === "value") {
-            await this.orm.call(
+            await this.writeAndReload(
                 "product.template", "configurator_remove_value",
                 [[this.templateId], row.line_id, row.id]
             );
         } else {
-            await this.orm.call("product.template.attribute.line", "unlink", [[row.id]]);
+            await this.writeAndReload(
+                "product.template.attribute.line", "unlink", [[row.id]]
+            );
         }
-        await this.load();
     }
 
     /**
@@ -382,18 +452,107 @@ export class ConfiguratorTree extends Component {
         return !(this.state.rows || []).length;
     }
 
-    async addAttribute() {
-        const action = await this.orm.call(
-            "product.template", "action_configurator_add_attribute", [[this.templateId]]
+    /**
+     * Pose une étape — le geste d'« Ajouter une section », pas un dialogue.
+     *
+     * ⚠️ **UNE ÉTAPE NE SE POSE PAS « EN BAS ».** C'est un marqueur porté par la
+     * ligne qui l'ouvre (D-202) : il n'y a aucune ligne sous la dernière. Le
+     * serveur la pose donc sur la dernière ligne LIBRE — au plus bas qu'un
+     * marqueur puisse aller — et le glisser fait le reste.
+     *
+     * ⓘ Elle s'ouvre en SAISIE : comme une section fraîche, elle attend son nom.
+     */
+    async addStep() {
+        const record = this.props.record;
+        if ((await record.save()) === false) {
+            return;
+        }
+        const stepId = await this.orm.call(
+            "product.template", "configurator_add_step", [[this.templateId]]
         );
-        this.action.doAction(action, {onClose: () => this.load()});
+        await record.load();
+        await this.load();
+        this.state.editingStep = stepId;
     }
 
-    async addStep() {
-        const action = await this.orm.call(
-            "product.template", "action_configurator_add_step", [[this.templateId]]
+    /** Le nom du bandeau devient une saisie. */
+    editStep(row) {
+        this.state.editingStep = row.id;
+    }
+
+    /**
+     * Enregistre le nom saisi — et referme la saisie.
+     *
+     * ⚠️ **CE NOM EST CELUI D'UN ENREGISTREMENT PARTAGÉ.** `product.config.step`
+     * est une fiche de catalogue : renommer une étape qu'un autre produit
+     * emploie le renomme là-bas aussi. En pratique le cas est rare — « Ajouter
+     * une étape » en crée une NEUVE à chaque fois, donc celle qu'on nomme vient
+     * d'être créée pour ce produit-ci.
+     *
+     * ⓘ Un nom inchangé n'écrit rien : le `blur` qui suit une touche Entrée
+     * repasserait ici, et deux écritures pour une frappe.
+     */
+    async commitStepName(row, name) {
+        this.state.editingStep = null;
+        const nom = (name || "").trim();
+        if (!nom || nom === row.name) {
+            return;
+        }
+        await this.writeAndReload(
+            "product.template", "configurator_rename_step",
+            [[this.templateId], row.id, nom]
         );
-        this.action.doAction(action, {onClose: () => this.load()});
+    }
+
+    /**
+     * ⓘ Entrée valide, Échap renonce — les deux touches que le cœur donne à
+     * toute saisie en ligne. `blur` fait le reste : cliquer ailleurs valide.
+     */
+    onStepKeydown(ev, row) {
+        if (ev.key === "Enter") {
+            ev.preventDefault();
+            ev.target.blur();
+        } else if (ev.key === "Escape") {
+            ev.preventDefault();
+            // ⚠️ On referme AVANT de rendre la main : sans cela le `blur` qui
+            // suit enregistrerait la valeur qu'on vient de refuser.
+            ev.target.value = row.name;
+            ev.target.blur();
+        }
+    }
+
+    /**
+     * La première ligne d'ATTRIBUT sous le point de dépôt.
+     *
+     * ⚠️ **UN BANDEAU S'OUVRE SUR CE QUI LE SUIT**, pas sur ce qui le précède —
+     * c'est toute la forme (A) de D-202. On regarde donc vers le bas, et on ne
+     * s'arrête que sur un attribut : une VALEUR porte l'identifiant de sa ligne,
+     * qui est AU-DESSUS d'elle, et poser le marqueur là ferait remonter le
+     * bandeau par-dessus les valeurs qu'on venait de dépasser.
+     *
+     * ⓘ `null` : rien en dessous — une étape qui n'ouvre rien n'existe pas.
+     */
+    nextAttributeLineId(node) {
+        let curseur = node;
+        while (curseur && !curseur.classList.contains("o_config_attribute")) {
+            curseur = curseur.nextElementSibling;
+        }
+        return curseur ? Number(curseur.dataset.lineId) : null;
+    }
+
+    async onDropStep(element, next) {
+        const stepId = Number(element.dataset.stepId);
+        const lineId = this.nextAttributeLineId(next);
+        if (!lineId) {
+            // Déposé sous la dernière ligne : il n'y a rien à ouvrir. Le cœur
+            // n'a pas touché au DOM (`applyChangeOnDrop` est faux), le bandeau
+            // est déjà revenu seul.
+            return;
+        }
+        await this.writeAndReload(
+            "product.template", "configurator_move_step",
+            [[this.templateId], stepId, lineId]
+        );
     }
 
     /**

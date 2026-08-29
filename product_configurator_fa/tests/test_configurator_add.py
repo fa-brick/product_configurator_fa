@@ -1,8 +1,15 @@
-"""Ajouter depuis l'arbre — D-212.
+"""Poser une étape depuis l'arbre — 2026-08-29, en remplacement de D-212.
 
-⚠️ *« Une liste vide sans point d'entrée se lit comme une panne. »* Constaté par
-Gerry à l'écran : l'arbre s'affichait vide sur un produit sans attribut, et rien
-ne disait quoi faire.
+⚠️ **LE DIALOGUE A DISPARU, PAS LA CONTRAINTE.** Gerry : *« quand on ajoute une
+étape, le comportement doit être identique à ajouter une section : une ligne se
+crée, on la nomme, puis on la déplace à sa position »*. C'est le geste des lignes
+de commande — on ne choisit plus À L'AVANCE une chose qu'on saura mieux en la
+voyant.
+
+⚠️ Mais une étape reste un MARQUEUR porté par la ligne qui l'ouvre (D-202) : elle
+ne peut pas se poser « en bas » comme une section, faute de ligne sous la
+dernière. Elle se pose donc sur la dernière ligne LIBRE, et le glisser fait le
+reste.
 """
 
 from odoo.exceptions import UserError
@@ -21,214 +28,156 @@ class ConfiguratorAdd(BaseCommon):
         cls.value = cls.env["product.attribute.value"].create(
             {"name": "Matt", "attribute_id": cls.attribute.id}
         )
+        cls.second = cls.env["product.attribute"].create(
+            {"name": "Second add", "create_variant": "no_variant"}
+        )
+        cls.gloss = cls.env["product.attribute.value"].create(
+            {"name": "Gloss", "attribute_id": cls.second.id}
+        )
         cls.empty = cls.env["product.template"].create(
             {"name": "Empty product", "config_ok": True}
         )
         cls.filled = cls.env["product.template"].create({
             "name": "Filled product", "config_ok": True,
-            "attribute_line_ids": [(0, 0, {
-                "attribute_id": cls.attribute.id,
-                "value_ids": [(6, 0, cls.value.ids)],
-            })],
+            "attribute_line_ids": [
+                (0, 0, {"attribute_id": cls.attribute.id,
+                        "value_ids": [(6, 0, cls.value.ids)], "sequence": 10}),
+                (0, 0, {"attribute_id": cls.second.id,
+                        "value_ids": [(6, 0, cls.gloss.ids)], "sequence": 20}),
+            ],
         })
 
-    def test_01_adding_an_attribute_opens_the_LINE_form(self):
-        """ⓘ La ligne, pas une liste d'attributs : un attribut sans valeur ne
-        serait pas une ligne valide pour le cœur — on choisit les deux d'un coup.
-        """
-        action = self.empty.action_configurator_add_attribute()
-        self.assertEqual(action["res_model"], "product.template.attribute.line")
-        self.assertEqual(action["target"], "new")
-        self.assertEqual(action["context"]["default_product_tmpl_id"], self.empty.id)
-
-    def test_10_l_assistant_est_utilisable_par_un_GESTIONNAIRE_pas_seulement_admin(self):
-        """⚠️ Le modèle n'avait AUCUNE règle d'accès — Odoo le disait à chaque
-
-        démarrage, et je l'avais laissé passer. Un `TransientModel` sans droits
-        est ouvert au superutilisateur seul : tous les tests passaient, et le
-        bouton aurait levé « accès refusé » chez le premier gestionnaire à s'en
-        servir. Cette couture s'exécute SOUS un utilisateur réel — c'est tout
-        l'objet.
-        """
-        gestionnaire = self.env["res.users"].create({
-            "name": "Config manager",
-            "login": "cfg_manager_acl",
-            "groups_id": [(6, 0, [
-                self.env.ref("base.group_user").id,
-                self.env.ref(
-                    "product_configurator_fa"
-                    ".group_product_configurator_fa_manager"
-                ).id,
-            ])],
-        })
-        assistant = (
-            self.env["product.configurator.add.step"]
-            .with_user(gestionnaire)
-            .create({
-                "product_tmpl_id": self.filled.id,
-                "config_step_id": self.step.id,
-                "attribute_line_id": self.filled.attribute_line_ids[0].id,
-            })
+    def _line(self, attribute):
+        return self.filled.attribute_line_ids.filtered(
+            lambda ligne, a=attribute: ligne.attribute_id == a
         )
-        self.assertTrue(assistant.id)
 
-    def test_02_adding_a_step_on_an_EMPTY_product_explains_why_it_cannot(self):
+    # ─ AJOUTER ──────────────────────────────────────────────────────────────
+
+    def test_01_adding_a_step_needs_NO_dialog_and_marks_the_last_free_line(self):
+        """ⓘ La dernière libre, en remontant : c'est le plus bas qu'un marqueur
+        puisse aller, donc l'équivalent du « en bas » d'une section."""
+        step_id = self.filled.configurator_add_step()
+        self.assertTrue(step_id, "aucune étape créée")
+        self.assertEqual(self._line(self.second).config_step_id.id, step_id)
+        self.assertFalse(self._line(self.attribute).config_step_id)
+
+    def test_02_and_it_renders_a_BAND_the_tree_can_name(self):
+        self.filled.configurator_add_step()
+        genres = [r["kind"] for r in self.filled.get_configurator_tree()]
+        self.assertEqual(genres, ["attribute", "step", "attribute"])
+
+    def test_03_a_step_is_NEW_every_time_so_renaming_hurts_nobody(self):
+        """⚠️ Jamais une étape du catalogue réemployée : c'est ce qui rend le
+        renommage sans conséquence pour les autres produits."""
+        premier = self.filled.configurator_add_step()
+        self._line(self.second).config_step_id = False
+        second = self.filled.configurator_add_step()
+        self.assertNotEqual(premier, second)
+
+    def test_04_adding_a_step_on_an_EMPTY_product_explains_why_it_cannot(self):
         """⚠️ C'est la contrepartie de la forme (A) : une étape ne flotte pas.
 
         Elle s'ouvre SUR un attribut. Sans attribut, il n'y a rien à ouvrir — et
         il vaut mieux le dire que rendre un bouton inerte.
         """
         with self.assertRaises(UserError):
-            self.empty.action_configurator_add_step()
+            self.empty.configurator_add_step()
 
-    def test_03_and_opens_an_assistant_when_there_is_something_to_open_on(self):
-        action = self.filled.action_configurator_add_step()
-        self.assertEqual(action["res_model"], "product.configurator.add.step")
-        self.assertEqual(action["target"], "new")
-
-    def test_04_the_assistant_proposes_the_first_FREE_line(self):
-        """⚠️ LIBRE, et pas simplement « la première ».
-
-        Proposer une ligne qui porte déjà une étape couperait cette étape en
-        deux par inadvertance. ⓘ Le produit de ce test porte donc DEUX lignes,
-        la première déjà marquée : avec un seul attribut, « la première » et
-        « la première libre » se confondent, et la garde ne prouverait rien.
-        """
-        second = self.env["product.attribute"].create(
-            {"name": "Second add", "create_variant": "no_variant"}
-        )
-        valeur = self.env["product.attribute.value"].create(
-            {"name": "Gloss", "attribute_id": second.id}
-        )
-        deuxieme = self.env["product.template.attribute.line"].create({
-            "product_tmpl_id": self.filled.id,
-            "attribute_id": second.id,
-            "value_ids": [(6, 0, valeur.ids)],
-            "sequence": 20,
-        })
-        premiere = self.filled.attribute_line_ids.filtered(
-            lambda l: l.attribute_id == self.attribute
-        )
-        premiere.write({"sequence": 10, "config_step_id": self.step.id})
-
-        assistant = self.env["product.configurator.add.step"].with_context(
-            default_product_tmpl_id=self.filled.id
-        ).create({"config_step_id": self.step.id})
-        self.assertEqual(
-            assistant.attribute_line_id, deuxieme,
-            "l'assistant propose une ligne qui porte déjà une étape",
-        )
-
-    def test_05_applying_it_marks_the_line_and_the_tree_shows_the_band(self):
-        assistant = self.env["product.configurator.add.step"].with_context(
-            default_product_tmpl_id=self.filled.id
-        ).create({
-            "config_step_id": self.step.id,
-            "attribute_line_id": self.filled.attribute_line_ids.id,
-        })
-        assistant.action_apply()
-        self.assertEqual(
-            self.filled.attribute_line_ids.config_step_id, self.step
-        )
-        self.assertIn("step", [r["kind"] for r in self.filled.get_configurator_tree()])
-
-    def test_06_a_line_of_ANOTHER_product_is_refused(self):
-        """⚠️ Le domaine de la vue le filtre déjà ; ceci est la seconde barrière.
-
-        Celle qui ne dépend pas de l'interface (D-080) — un import ou un script
-        ne passe pas par la vue.
-        """
-        assistant = self.env["product.configurator.add.step"].with_context(
-            default_product_tmpl_id=self.empty.id
-        ).create({
-            "product_tmpl_id": self.empty.id,
-            "config_step_id": self.step.id,
-            "attribute_line_id": self.filled.attribute_line_ids.id,
-        })
+    def test_05_and_when_EVERY_line_already_opens_a_step_it_says_so(self):
+        """⚠️ Sans cette garde, le marqueur neuf écraserait une étape existante —
+        silencieusement, et sans que rien ne l'ait demandé."""
+        self._line(self.attribute).config_step_id = self.step
+        self.filled.configurator_add_step()
         with self.assertRaises(UserError):
-            assistant.action_apply()
+            self.filled.configurator_add_step()
 
+    # ─ NOMMER ───────────────────────────────────────────────────────────────
 
-class ConfiguratorConditions(BaseCommon):
-    """Poser une condition depuis l'arbre — D-213.
-
-    ⚠️ Question de Gerry : *« Configuration Restrictions n'a plus d'utilité ? »*
-    La réponse était **si, jusqu'à ce que l'arbre sache le faire** : c'était le
-    seul endroit d'où l'on crée une condition PAR VALEUR. Ces gardes sont ce qui
-    a rendu son retrait possible sans rien perdre.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.step = cls.env["product.config.step"].create({"name": "Shape step"})
-        cls.attribute = cls.env["product.attribute"].create(
-            {"name": "Kind cond", "create_variant": "no_variant"}
+    def test_06_naming_the_band_names_the_step(self):
+        step_id = self.filled.configurator_add_step()
+        self.filled.configurator_rename_step(step_id, "  Dimensions  ")
+        self.assertEqual(
+            self.env["product.config.step"].browse(step_id).name, "Dimensions"
         )
-        cls.classic, cls.cine = cls.env["product.attribute.value"].create([
-            {"name": "Classic", "attribute_id": cls.attribute.id},
-            {"name": "Ciné", "attribute_id": cls.attribute.id},
-        ])
-        cls.template = cls.env["product.template"].create({
-            "name": "Panel cond", "config_ok": True,
+
+    def test_07_an_EMPTY_name_is_ignored_rather_than_written(self):
+        """ⓘ `name` est obligatoire : un nom vidé ne s'écrit pas, il s'ignore.
+        Le bandeau garde le sien, et rien ne se perd."""
+        step_id = self.filled.configurator_add_step()
+        avant = self.env["product.config.step"].browse(step_id).name
+        self.assertFalse(self.filled.configurator_rename_step(step_id, "   "))
+        self.assertEqual(
+            self.env["product.config.step"].browse(step_id).name, avant
+        )
+
+    def test_08_a_step_this_product_does_NOT_declare_cannot_be_renamed(self):
+        """⚠️ Sans cette garde, l'arbre d'un produit renommerait n'importe quelle
+        étape du catalogue."""
+        with self.assertRaises(UserError):
+            self.filled.configurator_rename_step(self.step.id, "Hijacked")
+
+    # ─ DÉPLACER ─────────────────────────────────────────────────────────────
+
+    def test_09_moving_the_band_moves_the_MARKER_not_a_line(self):
+        """⚠️ L'étape n'a pas de rang à elle : son rang est celui de la ligne qui
+        l'ouvre (D-202)."""
+        step_id = self.filled.configurator_add_step()
+        self.filled.configurator_move_step(step_id, self._line(self.attribute).id)
+        self.assertEqual(self._line(self.attribute).config_step_id.id, step_id)
+        self.assertFalse(self._line(self.second).config_step_id)
+        genres = [r["kind"] for r in self.filled.get_configurator_tree()]
+        self.assertEqual(genres, ["step", "attribute", "attribute"])
+
+    def test_10_a_line_that_already_opens_ANOTHER_step_refuses_the_drop(self):
+        """⚠️ Une ligne n'ouvre qu'UNE étape : accepter écraserait l'autre."""
+        self._line(self.attribute).config_step_id = self.step
+        step_id = self.filled.configurator_add_step()
+        with self.assertRaises(UserError):
+            self.filled.configurator_move_step(
+                step_id, self._line(self.attribute).id
+            )
+
+    def test_11_a_line_of_ANOTHER_product_is_refused(self):
+        """⚠️ La seconde barrière, celle qui ne dépend pas de l'interface (D-080)
+        — un import ou un script ne passe pas par l'écran."""
+        autre = self.env["product.template"].create({
+            "name": "Other product", "config_ok": True,
             "attribute_line_ids": [(0, 0, {
-                "attribute_id": cls.attribute.id,
-                "value_ids": [(6, 0, (cls.classic + cls.cine).ids)],
+                "attribute_id": self.attribute.id,
+                "value_ids": [(6, 0, self.value.ids)],
             })],
         })
-        cls.line = cls.template.attribute_line_ids
+        step_id = self.filled.configurator_add_step()
+        with self.assertRaises(UserError):
+            self.filled.configurator_move_step(
+                step_id, autre.attribute_line_ids.id
+            )
 
-    def test_01_opening_an_ATTRIBUTE_condition_creates_it_if_needed(self):
-        """⚠️ La condition EST le lien : on ne peut pas ouvrir ce qui n'existe pas."""
-        self.assertFalse(self.line.visibility_domain_id)
-        action = self.template.configurator_open_condition(self.line.id)
-        # ⓘ Le dialogue est celui de la barre de recherche, demandé par Gerry :
-        # l'action ouvre l'ASSISTANT, qui traduit dans les deux sens. La
-        # condition, elle, reste faite d'enregistrements (D-080).
-        self.assertEqual(action["res_model"], "product.configurator.condition")
-        self.assertEqual(action["target"], "new")
-        self.assertTrue(self.line.visibility_domain_id)
-        assistant = self.env[action["res_model"]].browse(action["res_id"])
-        self.assertEqual(assistant.domain_id, self.line.visibility_domain_id)
-
-    def test_02_and_reopens_the_SAME_one_afterwards(self):
-        """Sinon chaque clic laisserait une condition de plus derrière lui."""
-        def condition_ouverte():
-            action = self.template.configurator_open_condition(self.line.id)
-            return self.env[action["res_model"]].browse(action["res_id"]).domain_id
-
-        self.assertEqual(condition_ouverte(), condition_ouverte())
-
-    def test_03_opening_a_VALUE_condition_creates_the_RULE_too(self):
-        """⚠️ C'est ce que « Configuration Restrictions » faisait, et rien d'autre.
-
-        Une condition par valeur demande un `product.config.line` — attribut,
-        valeurs, condition. L'arbre l'affichait sans pouvoir en créer.
-        """
-        self.assertFalse(self.template.config_line_ids)
-        action = self.template.configurator_open_condition(self.line.id, self.cine.id)
-        self.assertEqual(len(self.template.config_line_ids), 1)
-        regle = self.template.config_line_ids
-        self.assertEqual(regle.value_ids, self.cine)
-        assistant = self.env[action["res_model"]].browse(action["res_id"])
-        self.assertEqual(assistant.domain_id, regle.domain_id)
-
-    def test_04_and_it_does_not_touch_the_OTHER_value(self):
-        self.template.configurator_open_condition(self.line.id, self.cine.id)
-        rows = self.template.get_configurator_tree()
-        valeurs = {v["name"]: v for v in rows[0]["values"]}
-        self.assertFalse(valeurs["Classic"]["facets"])
-
-    def test_05_opening_a_STEP_gives_its_settings(self):
-        """⚠️ « Configuration Steps » portait AUSSI la condition de visibilité.
-
-        L'ordre et l'appartenance sont déduits depuis D-202 — c'est cela qui
-        avait cessé de servir, pas le reste.
-        """
-        self.line.config_step_id = self.step
-        action = self.template.configurator_open_step(self.line.id)
-        self.assertEqual(action["res_model"], "product.config.step.line")
-        self.assertEqual(action["target"], "new")
-
-    def test_06_and_says_nothing_when_the_row_opens_no_step(self):
-        self.assertFalse(self.template.configurator_open_step(self.line.id))
+    def test_12_the_gestures_are_usable_by_a_MANAGER_not_only_by_admin(self):
+        """⚠️ Ces coutures s'exécutent SOUS un utilisateur réel — c'est tout leur
+        objet. L'assistant retiré portait sa propre règle d'accès ([[L-169]]) ;
+        les méthodes qui le remplacent écrivent sur des modèles ordinaires, et
+        c'est CETTE chaîne de droits qu'il faut éprouver."""
+        gestionnaire = self.env["res.users"].create({
+            "name": "Config manager",
+            "login": "cfg_manager_acl",
+            "groups_id": [(6, 0, [
+                self.env.ref("base.group_user").id,
+                self.env.ref("product.group_product_manager").id,
+                self.env.ref(
+                    "product_configurator_fa"
+                    ".group_product_configurator_fa_manager"
+                ).id,
+            ])],
+        })
+        produit = self.filled.with_user(gestionnaire)
+        step_id = produit.configurator_add_step()
+        produit.configurator_rename_step(step_id, "Dimensions")
+        produit.configurator_move_step(
+            step_id,
+            produit.attribute_line_ids.sorted()[0].id,
+        )
+        self.assertEqual(
+            produit.attribute_line_ids.sorted()[0].config_step_id.id, step_id
+        )

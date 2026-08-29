@@ -51,8 +51,10 @@ class ActionsAreComplete(BaseCommon):
                 self.line.id, self.value.id
             ),
             "étape": self.template.configurator_open_step(self.line.id),
-            "ajouter un attribut": self.template.action_configurator_add_attribute(),
-            "ajouter une étape": self.template.action_configurator_add_step(),
+            # ⓘ « Ajouter un attribut » et « Ajouter une étape » ne rendent plus
+            # d'action : le premier a disparu — il faisait doublon avec l'onglet
+            # « Attributs & Variantes » — et le second pose désormais l'étape
+            # directement, comme « Ajouter une section » pose une section.
             "valeurs du filtre": self.filtre.action_open_proposed_values(),
         }
 

@@ -18,16 +18,46 @@
                          DÉDUIT du marqueur porté par la ligne qui l'ouvre (D-202).
                          Sa corbeille efface donc le MARQUEUR, pas l'étape — qui est
                          partagée entre produits. -->
-                    <tr t-if="row.kind === 'step'" class="o_config_step">
-                        <td colspan="4">
-                            <!-- ⓘ Le bandeau s'ouvre : c'est là que vivent la
-                                 condition de visibilité de l'étape et sa vue 3D,
-                                 que la section retirée portait seule. -->
-                            <a href="#" class="text-reset" t-on-click.prevent="() => this.openStep(row)">
+                    <tr t-if="row.kind === 'step'" class="o_config_step"
+                        t-att-data-step-id="row.id"
+                        t-att-data-line-id="row.line_id">
+                        <td class="o_config_tree_handle" t-on-pointerdown="() => this.freezeColumns()">
+                            <!-- ⓘ Le bandeau se déplace comme une section de bon de
+                                 commande. ⚠️ Mais ce qui bouge est le MARQUEUR, pas
+                                 une ligne : l'étape n'a pas de rang à elle (D-202),
+                                 son rang est celui de la ligne qui l'ouvre. -->
+                            <span class="o_config_step_handle o_row_handle oi oi-draggable"
+                                  title="Move this step — everything below it belongs to it"/>
+                        </td>
+                        <td colspan="3">
+                            <!-- ⚠️ **LE NOM SE SAISIT ICI, PAS DANS UN DIALOGUE.**
+                                 Gerry : le geste doit être celui d'« Ajouter une
+                                 section » — une ligne se crée, on la nomme, on la
+                                 déplace. Un dialogue à chaque étape faisait trois
+                                 gestes là où le cœur en demande un. -->
+                            <input t-if="state.editingStep === row.id"
+                                   type="text"
+                                   class="o_input fw-bold"
+                                   t-ref="stepInput"
+                                   t-att-value="row.name"
+                                   t-on-blur="(ev) => this.commitStepName(row, ev.target.value)"
+                                   t-on-keydown="(ev) => this.onStepKeydown(ev, row)"/>
+                            <a t-else="" href="#" class="text-reset"
+                               title="Rename this step"
+                               t-on-click.prevent="() => this.editStep(row)">
                                 <em t-esc="row.name"/>
                             </a>
                         </td>
                         <td class="o_config_tree_actions">
+                            <!-- ⓘ Le nom sert désormais à RENOMMER : les réglages de
+                                 l'étape — sa condition de visibilité (D-086), sa vue
+                                 3D — prennent leur propre porte. Sans elle, retirer
+                                 le dialogue les aurait rendus injoignables. -->
+                            <button class="btn btn-link p-0 me-1"
+                                    title="Step settings"
+                                    t-on-click="() => this.openStep(row)">
+                                <i class="fa fa-cog"/>
+                            </button>
                             <button class="btn btn-link p-0 text-danger"
                                     title="Remove this step marker"
                                     t-on-click="() => this.removeRow(row)">
@@ -156,19 +186,28 @@
                      Le pied ci-dessous existe toujours ; ceci ne fait que le dire. -->
                 <tr t-if="isEmpty">
                     <td colspan="5" class="text-muted fst-italic">
-                        No attribute yet — a configurable product needs at least one.
+                        No attribute yet — add one in the “Attributes &amp; Variants” tab.
                     </td>
                 </tr>
             </tbody>
             <tfoot>
+                <!-- ⚠️ **LE MARQUAGE DU CŒUR, À LA LETTRE** — `list_renderer.xml`,
+                     le pied de toute liste `one2many` : une cellule vide sous la
+                     colonne des poignées, puis `o_field_x2many_list_row_add` et de
+                     simples `<a>`. Demandé par Gerry : *« l'esthétisme des boutons
+                     doit être identique à Ajouter un produit / Ajouter une
+                     section »*. Un `btn btn-link` n'en avait ni la graisse ni le
+                     retrait.
+
+                     ⓘ « Ajouter un attribut » a disparu : il faisait doublon avec
+                     l'onglet « Attributs & Variantes », qui porte la même liste et
+                     la même séquence. -->
                 <tr>
-                    <td colspan="5">
-                        <button class="btn btn-link ps-0" t-on-click="() => this.addAttribute()">
-                            Add an attribute
-                        </button>
-                        <button class="btn btn-link" t-on-click="() => this.addStep()">
+                    <td class="o_config_tree_handle"/>
+                    <td colspan="4" class="o_field_x2many_list_row_add">
+                        <a href="#" role="button" t-on-click.prevent="() => this.addStep()">
                             Add a step
-                        </button>
+                        </a>
                     </td>
                 </tr>
             </tfoot>

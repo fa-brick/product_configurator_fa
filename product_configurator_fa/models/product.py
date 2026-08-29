@@ -291,31 +291,29 @@ class ProductTemplate(models.Model):
             "context": {"product_tmpl_id": self.id},
         }
 
-    def action_configurator_add_attribute(self):
-        """Ajoute un attribut depuis l'arbre — D-212.
+    # ─ POSER UNE ÉTAPE COMME ON POSE UNE SECTION — 2026-08-29 ───────────────
+    #
+    # ⚠️ **LE DIALOGUE A DISPARU, PAS LA CONTRAINTE.** Gerry : *« quand on ajoute
+    # une étape, le comportement doit être identique à ajouter une section : une
+    # ligne se crée, on la nomme, puis on la déplace à sa position »*. C'est le
+    # geste des lignes de commande, et il vaut mieux que l'assistant : on ne
+    # choisit plus À L'AVANCE une chose qu'on saura mieux en la voyant.
+    #
+    # ⚠️ Mais une étape reste un MARQUEUR porté par la ligne qui l'ouvre (D-202) :
+    # elle ne peut pas se poser « en bas » comme une section, puisqu'il n'y a
+    # aucune ligne sous la dernière. On la pose donc sur la DERNIÈRE LIGNE LIBRE
+    # — au plus bas qu'un marqueur puisse aller —, et le glisser fait le reste.
 
-        ⓘ Le formulaire de LIGNE, pas une liste d'attributs : on y choisit
-        l'attribut ET ses valeurs, et un attribut sans valeur ne serait pas une
-        ligne valide pour le cœur.
-        """
-        self.ensure_one()
-        return {
-            "type": "ir.actions.act_window",
-            "name": self.env._("Add an attribute"),
-            "res_model": "product.template.attribute.line",
-            "view_mode": "form",
-            "views": [(False, "form")],
-            "target": "new",
-            "context": {"default_product_tmpl_id": self.id},
-        }
+    def configurator_add_step(self):
+        """Crée une étape NEUVE et la pose au plus bas — elle attend son nom.
 
-    def action_configurator_add_step(self):
-        """Pose une étape — en demandant SUR QUELLE LIGNE elle s'ouvre.
+        ⓘ Une étape neuve à chaque clic, jamais une étape existante réemployée :
+        c'est ce qui rend le renommage sans conséquence pour les autres produits.
+        Réemployer une étape du catalogue reste possible en la désignant depuis
+        ses propres écrans.
 
-        ⚠️ Une étape ne flotte pas : c'est un marqueur porté par la ligne qui
-        l'ouvre (D-202). Il faut donc deux informations, d'où l'assistant. Un
-        bouton qui devinerait « la dernière ligne » serait juste une fois sur
-        deux.
+        :return: l'identifiant de l'étape créée — l'arbre s'en sert pour ouvrir
+            sa saisie de nom, comme une section fraîche.
         """
         self.ensure_one()
         if not self.attribute_line_ids:
@@ -325,15 +323,81 @@ class ProductTemplate(models.Model):
                     "and everything below belong to it."
                 )
             )
-        return {
-            "type": "ir.actions.act_window",
-            "name": self.env._("Add a step"),
-            "res_model": "product.configurator.add.step",
-            "view_mode": "form",
-            "views": [(False, "form")],
-            "target": "new",
-            "context": {"default_product_tmpl_id": self.id},
-        }
+        # ⚠️ La DERNIÈRE ligne libre, en remontant. Poser le marqueur sur une
+        # ligne qui en porte déjà un remplacerait une étape par une autre —
+        # silencieusement, et sans que rien ne l'ait demandé.
+        libre = self.attribute_line_ids.sorted().filtered(
+            lambda ligne: not ligne.config_step_id
+        )[-1:]
+        if not libre:
+            raise UserError(
+                self.env._(
+                    "Every attribute already opens a step. Move one out of the "
+                    "way before adding another."
+                )
+            )
+        etape = self.env["product.config.step"].create(
+            {"name": self.env._("New Step")}
+        )
+        libre.config_step_id = etape
+        return etape.id
+
+    def configurator_rename_step(self, step_id, name):
+        """Renomme une étape depuis son bandeau.
+
+        ⚠️ **LE NOM EST CELUI DE L'ENREGISTREMENT, DONC PARTAGÉ.**
+        `product.config.step` est une fiche de catalogue : renommer une étape que
+        d'autres produits emploient les renomme aussi. En pratique le cas est
+        rare — `configurator_add_step` crée une étape NEUVE à chaque fois, donc
+        celle qu'on renomme vient d'être créée pour ce produit-ci.
+
+        ⓘ La garde ci-dessous n'est pas décorative : sans elle, l'arbre d'un
+        produit pourrait renommer n'importe quelle étape du catalogue.
+        """
+        self.ensure_one()
+        etape = self.env["product.config.step"].browse(step_id)
+        if etape not in self.config_step_line_ids.config_step_id:
+            raise UserError(
+                self.env._("This step is not declared on this product.")
+            )
+        nom = (name or "").strip()
+        if not nom:
+            # ⓘ `name` est obligatoire : un nom vidé ne s'écrit pas, il s'ignore.
+            # Le bandeau garde le sien, et rien ne se perd.
+            return False
+        etape.name = nom
+        return True
+
+    def configurator_move_step(self, step_id, line_id):
+        """Déplace le bandeau : l'étape s'ouvre désormais SUR cette ligne.
+
+        ⚠️ **DÉPLACER UN BANDEAU N'EST PAS DÉPLACER UNE LIGNE.** L'étape n'a pas
+        de rang à elle (D-202) : son rang est celui de la ligne qui l'ouvre. On
+        efface donc le marqueur là où il était, et on le pose ici — après quoi
+        tout ce qui suit lui appartient, jusqu'à l'étape suivante.
+        """
+        self.ensure_one()
+        etape = self.env["product.config.step"].browse(step_id)
+        cible = self.env["product.template.attribute.line"].browse(line_id)
+        if cible not in self.attribute_line_ids:
+            raise UserError(
+                self.env._("This attribute line does not belong to this product.")
+            )
+        # ⚠️ Une ligne n'ouvre qu'UNE étape. Déposer un bandeau sur une ligne qui
+        # en porte déjà un écraserait l'autre étape sans le dire.
+        if cible.config_step_id and cible.config_step_id != etape:
+            raise UserError(
+                self.env._(
+                    "“%(other)s” already opens on this attribute. Move it first.",
+                    other=cible.config_step_id.name,
+                )
+            )
+        ancienne = self.attribute_line_ids.filtered(
+            lambda ligne: ligne.config_step_id == etape
+        )
+        (ancienne - cible).config_step_id = False
+        cible.config_step_id = etape
+        return True
 
     def configurator_reorder(self, line_ids):
         """Réordonne les lignes d'attribut — l'ordre PORTE l'appartenance.

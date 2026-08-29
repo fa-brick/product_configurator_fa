@@ -359,7 +359,71 @@ class ProductAttribute(models.Model):
         valeur proposée mais jamais retenue finit donc par s'effacer d'elle-même.
         """
         self.ensure_one()
-        return self._materialise_products(self._proposed_products())
+        proposees = self._materialise_products(self._proposed_products())
+        self._retract_stale_values(proposees)
+        return proposees
+
+    def _retract_stale_values(self, proposees):
+        """Retire ce qu'un filtre PRÉCÉDENT proposait et que celui-ci ne propose plus.
+
+        ⚠️ **LE MANQUE DE D-222, constaté par Gerry :** *« j'ai un résultat, et
+        plusieurs produits dans la liste »*. La matérialisation était idempotente
+        mais ne se **rétractait** jamais : chaque essai de filtre laissait ses
+        valeurs derrière lui, et la liste finissait par contredire le compteur
+        qui l'annonçait. Le ménage existant ne passe qu'après 90 jours — bien
+        trop tard pour un réglage qu'on ajuste en direct.
+
+        **⚠️ CE QUI EST ÉPARGNÉ, et pourquoi chaque exception compte :**
+
+        · **une valeur écrite à la main** — elle n'a jamais été proposée par un
+          filtre, ce n'est pas à lui de la reprendre ;
+        · **une valeur RETENUE sur un produit** — QJ pose que la valeur choisie
+          est matérialisée : la retirer parce que le filtre a changé casserait la
+          ligne d'un produit en service, en silence ;
+        · **un produit désigné par une CONDITION** (C4, D-201) — la règle se
+          résout par cette valeur ; l'effacer rendrait la condition vide, donc
+          toujours fausse, sans un mot.
+
+        ⓘ On **supprime** ce qui peut l'être et on **archive** le reste, selon la
+        même prévision que la colonne « à la suppression » (`removal_effect`) :
+        une valeur déjà portée par une variante vendue doit rester lisible.
+        """
+        self.ensure_one()
+        # ⚠️ Hors du régime dynamique, on ne retire RIEN : la liste est alors
+        # tenue à la main, et le filtre n'a plus voix au chapitre (D-218).
+        if not self.dynamic_values or self.value_type != "product":
+            return self.env["product.attribute.value"]
+
+        designes = self.env["product.config.domain.line"].search(
+            [("attribute_id", "=", self.id)]
+        ).product_ids
+        retenues = self.env["product.template.attribute.line"].search(
+            [("attribute_id", "=", self.id)]
+        ).value_ids
+
+        obsoletes = self.value_ids.filtered(
+            lambda v: v.configurator_generated
+            and v.product_id
+            and v not in proposees
+            and v not in retenues
+            and v.product_id not in designes
+        )
+        if not obsoletes:
+            return obsoletes
+        # ⚠️ **ON N'EFFACE PAS CE QUI EST RÉFÉRENCÉ.** Une valeur portée par une
+        # `product.template.attribute.value` — même archivée — est protégée en
+        # base par un `ondelete='restrict'` : la supprimer lèverait. C'est le
+        # même raisonnement que le ménage de fond (`_gc_configurator_values`),
+        # et la même conclusion : archiver garde l'historique lisible.
+        portees = (
+            self.env["product.template.attribute.value"]
+            .with_context(active_test=False)
+            .search([("product_attribute_value_id", "in", obsoletes.ids)])
+            .product_attribute_value_id
+        )
+        (obsoletes - portees).unlink()
+        portees.active = False
+        return obsoletes
 
     def _materialise_products(self, produits):
         """Donne une valeur à CHAQUE produit fourni — le geste, sans la source.
@@ -462,6 +526,20 @@ class ProductAttribute(models.Model):
     # ils posaient un `binary` sur un attribut devenu « produit ». Contorsionner des
     # tests amont pour les faire entrer dans une garde, c'est le signe que la garde
     # est mal posée — pas que les tests le sont ([[L-160]]).
+    @api.model_create_multi
+    def create(self, vals_list):
+        """⚠️ **UN ATTRIBUT CRÉÉ AVEC SON FILTRE MATÉRIALISE AUSSI.**
+
+        La matérialisation ne vivait que dans `write` : poser le filtre à la
+        CRÉATION ne proposait rien, et la liste restait vide jusqu'à la première
+        modification. ⓘ Trouvé par la couture de la rétractation — pas à
+        l'écran, cette fois.
+        """
+        attributs = super().create(vals_list)
+        for attribut in attributs.filtered("dynamic_values"):
+            attribut._materialise_proposed_values()
+        return attributs
+
     def write(self, vals):
         """⚠️ LA PURGE SE FAIT ICI, et non dans un `onchange`.
 

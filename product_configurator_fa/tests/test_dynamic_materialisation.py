@@ -187,3 +187,97 @@ class DynamicMaterialisation(BaseCommon):
             })],
         })
         self.assertEqual(gabarit.attribute_line_ids.value_ids, valeur)
+
+
+class RetractionDuFiltre(BaseCommon):
+    """⚠️ **Ce qu'un filtre PRÉCÉDENT a proposé s'en va** — constat de Gerry :
+
+    *« j'ai un résultat, et plusieurs produits dans la liste »*. La
+    matérialisation (D-222) était idempotente mais ne se **rétractait** jamais :
+    chaque essai laissait ses valeurs derrière lui, et la liste finissait par
+    contredire le compteur qui l'annonçait.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.categ_a = cls.env["product.category"].create({"name": "Retract A"})
+        cls.categ_b = cls.env["product.category"].create({"name": "Retract B"})
+        cls.produit_a = cls.env["product.product"].create(
+            {"name": "Only in A", "categ_id": cls.categ_a.id}
+        )
+        cls.produit_b = cls.env["product.product"].create(
+            {"name": "Only in B", "categ_id": cls.categ_b.id}
+        )
+        cls.attribut = cls.env["product.attribute"].create({
+            "name": "Retracting attribute",
+            "value_type": "product",
+            "dynamic_values": True,
+            "create_variant": "no_variant",
+            "product_filter_domain": str([("categ_id", "=", cls.categ_a.id)]),
+        })
+
+    def _basculer_sur_b(self):
+        self.attribut.product_filter_domain = str(
+            [("categ_id", "=", self.categ_b.id)]
+        )
+
+    def test_01_changer_de_filtre_RETIRE_ce_qu_il_ne_propose_plus(self):
+        self.assertEqual(self.attribut.value_ids.product_id, self.produit_a)
+        self._basculer_sur_b()
+        self.assertEqual(self.attribut.value_ids.product_id, self.produit_b)
+
+    def test_02_une_valeur_ECRITE_A_LA_MAIN_survit(self):
+        """Elle n'a jamais été proposée par un filtre : ce n'est pas à lui de la
+
+        reprendre.
+        """
+        main = self.env["product.attribute.value"].create(
+            {"name": "Written by hand", "attribute_id": self.attribut.id}
+        )
+        self._basculer_sur_b()
+        self.assertIn(main, self.attribut.value_ids)
+
+    def test_03_une_valeur_RETENUE_sur_un_produit_survit(self):
+        """⚠️ QJ pose que la valeur choisie est matérialisée. La retirer parce
+
+        que le filtre a changé casserait la ligne d'un produit en service, en
+        silence.
+        """
+        valeur_a = self.attribut.value_ids
+        self.env["product.template.attribute.line"].create({
+            "product_tmpl_id": self.env["product.template"].create(
+                {"name": "Uses A", "config_ok": True}
+            ).id,
+            "attribute_id": self.attribut.id,
+            "value_ids": [(6, 0, valeur_a.ids)],
+        })
+        self._basculer_sur_b()
+        self.assertIn(valeur_a, self.attribut.value_ids)
+
+    def test_04_un_produit_DESIGNE_par_une_condition_survit(self):
+        """⚠️ La règle se résout par cette valeur (C4) : l'effacer rendrait la
+
+        condition vide — donc toujours fausse — sans un mot.
+        """
+        valeur_a = self.attribut.value_ids
+        self.env["product.config.domain"].create({
+            "name": "Uses A",
+            "domain_line_ids": [(0, 0, {
+                "attribute_id": self.attribut.id,
+                "condition": "in",
+                "product_ids": [(6, 0, self.produit_a.ids)],
+            })],
+        })
+        self._basculer_sur_b()
+        self.assertIn(valeur_a, self.attribut.value_ids)
+
+    def test_05_hors_du_regime_dynamique_on_ne_retire_RIEN(self):
+        """La liste est alors tenue à la main, et le filtre n'a plus voix au
+
+        chapitre (D-218) — décocher le mode ne doit pas la vider.
+        """
+        valeur_a = self.attribut.value_ids
+        self.attribut.dynamic_values = False
+        self.attribut._materialise_proposed_values()
+        self.assertIn(valeur_a, self.attribut.value_ids)

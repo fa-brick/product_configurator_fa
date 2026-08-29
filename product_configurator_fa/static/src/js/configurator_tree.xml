@@ -37,12 +37,24 @@
                     </tr>
                     <tr t-else=""
                         t-att-class="row.kind === 'value' ? 'o_config_value' : 'o_config_attribute'"
-                        t-att-data-line-id="row.kind === 'attribute' ? row.id : row.line_id">
-                        <td class="o_config_tree_handle">
-                            <!-- ⓘ Seul un attribut se déplace : un bandeau n'est pas
-                                 un enregistrement, une valeur suit le sien. -->
+                        t-att-data-line-id="row.kind === 'attribute' ? row.id : row.line_id"
+                        t-att-data-value-id="row.kind === 'value' ? row.id : false">
+                        <!-- ⚠️ Le figeage des colonnes se déclenche au POINTERDOWN,
+                             pas au départ du glisser : le cœur passe la ligne en
+                             `position: fixed` AVANT d'appeler `onDragStart`, et le
+                             tableau a donc déjà reflué quand on mesure. -->
+                        <td class="o_config_tree_handle" t-on-pointerdown="() => this.freezeColumns()">
+                            <!-- ⓘ Un bandeau d'étape ne se déplace pas : ce n'est pas
+                                 un enregistrement, il est déduit de la ligne qui
+                                 l'ouvre. Un attribut et une valeur, si — mais
+                                 chacun dans son ordre, d'où deux poignées
+                                 distinctes (voir `configurator_tree.esm.js`). -->
                             <span t-if="row.kind === 'attribute'" class="o_config_handle">
                                 <i class="fa fa-bars text-muted"/>
+                            </span>
+                            <span t-else="" class="o_config_value_handle"
+                                  title="Reorder this value — the order belongs to the attribute, so it applies to every product using it">
+                                <i class="fa fa-bars text-muted small"/>
                             </span>
                         </td>
                         <td class="o_config_tree_name">

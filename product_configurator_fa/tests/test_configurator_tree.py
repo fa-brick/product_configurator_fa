@@ -5,6 +5,8 @@ et ses VALEURS indentées. Une liste Odoo ne sait ni s'imbriquer ni mêler deux
 modèles — d'où un composant, et d'où cette structure rendue par le serveur.
 """
 
+from odoo.exceptions import UserError
+
 from odoo.addons.base.tests.common import BaseCommon
 
 
@@ -248,3 +250,82 @@ class ConfiguratorTree(BaseCommon):
             action["views"],
             [(self.env.ref("product.product_template_attribute_line_form").id, "form")],
         )
+
+    # ─ RÉORDONNER LES VALEURS D'UN ATTRIBUT — 2026-08-29 ────────────────────
+    #
+    # ⚠️ **CET ORDRE EST GLOBAL, ET C'EST ASSUMÉ.** Le rang d'une valeur vit
+    # dans `product.attribute.value.sequence`, qui appartient à l'ATTRIBUT et
+    # non au produit. Arbitré par Gerry : c'est le seul ordre qui existe, et en
+    # inventer un par produit obligerait tout ce qui affiche des valeurs à le
+    # relire (assistant, arbre, éditeur 3D).
+
+    def test_16_reordering_VALUES_rewrites_the_order_the_tree_shows(self):
+        ligne = self.template.attribute_line_ids.filtered(
+            lambda ligne: ligne.attribute_id == self.kind
+        )
+        self.template.configurator_reorder_values(
+            ligne.id, [self.cine.id, self.classic.id]
+        )
+        attribut = [r for r in self._rows() if r["kind"] == "attribute"][0]
+        self.assertEqual([v["name"] for v in attribut["values"]], ["Ciné", "Classic"])
+
+    def test_17_and_it_reorders_the_ATTRIBUTE_so_every_product_follows(self):
+        """⚠️ Le prix de la simplicité : un seul ordre, partagé.
+
+        Déplacer une valeur depuis un produit la déplace partout où l'attribut
+        sert. C'est ce que Gerry a choisi le 2026-08-29 ; le test existe pour que
+        personne ne « corrige » ce comportement en le prenant pour un bug.
+        """
+        autre = self.env["product.template"].create({
+            "name": "Second panel", "config_ok": True,
+            "attribute_line_ids": [
+                (0, 0, {"attribute_id": self.kind.id,
+                        "value_ids": [(6, 0, (self.classic + self.cine).ids)]}),
+            ],
+        })
+        ligne = self.template.attribute_line_ids.filtered(
+            lambda ligne: ligne.attribute_id == self.kind
+        )
+        self.template.configurator_reorder_values(
+            ligne.id, [self.cine.id, self.classic.id]
+        )
+        self.assertEqual(
+            [v["name"] for v in autre.get_configurator_tree()[0]["values"]],
+            ["Ciné", "Classic"],
+        )
+
+    def test_18_a_value_the_product_does_NOT_carry_keeps_its_rank(self):
+        """⚠️ Un produit ne porte souvent qu'une PART des valeurs de l'attribut.
+
+        Renuméroter les seules valeurs du produit (10, 20, 30) les jetterait
+        devant celles qu'il n'emploie pas, restées à leur propre séquence. On
+        renumérote donc l'attribut entier, en ne permutant les valeurs demandées
+        qu'entre les RANGS qu'elles occupaient déjà.
+        """
+        # « Freestyle » se glisse ENTRE Classic et Ciné, et n'est pas sur le
+        # produit : il doit rester au milieu, quoi qu'on fasse des deux autres.
+        self.classic.sequence, self.cine.sequence = 10, 30
+        freestyle = self.env["product.attribute.value"].create(
+            {"name": "Freestyle", "attribute_id": self.kind.id, "sequence": 20}
+        )
+        ligne = self.template.attribute_line_ids.filtered(
+            lambda ligne: ligne.attribute_id == self.kind
+        )
+        self.template.configurator_reorder_values(
+            ligne.id, [self.cine.id, self.classic.id]
+        )
+        self.assertEqual(
+            self.kind.value_ids.mapped("name"), ["Ciné", "Freestyle", "Classic"]
+        )
+        self.assertEqual(freestyle.sequence, 20)
+
+    def test_19_a_value_that_is_NOT_on_the_line_is_REFUSED(self):
+        """⚠️ Sans ce garde-fou, un identifiant venu d'ailleurs réordonnerait un
+        attribut que l'écran ne montrait même pas."""
+        ligne = self.template.attribute_line_ids.filtered(
+            lambda ligne: ligne.attribute_id == self.kind
+        )
+        with self.assertRaises(UserError):
+            self.template.configurator_reorder_values(
+                ligne.id, [self.cine.id, self.classic.id, self.round.id]
+            )

@@ -5,7 +5,7 @@
  * cacher en CSS ferait payer un produit à trois cents valeurs pour rien — c'est
  * précisément le cas que le dialogue existe pour éviter (D-206).
  */
-import {flattenTree, reorder} from "../src/js/configurator_tree.esm.js";
+import {dropIndex, flattenTree, reorder} from "../src/js/configurator_tree.esm.js";
 
 const ARBRE = [
     {kind: "attribute", id: 1, name: "Type de Camplate", values: [
@@ -82,5 +82,33 @@ describe("Réordonner ne concerne que les lignes d'attribut", () => {
 
     test("l'ordre rendu garde TOUTES les lignes", () => {
         expect(reorder(IDS, 0, 2).sort()).toEqual(IDS.slice().sort());
+    });
+});
+
+describe("Le point de dépôt se lit sur le VOISIN, pas sur un index", () => {
+    // ⚠️ Le cœur ne sait dire que « quelle ligne est restée au-dessus » : il
+    // promène un fantôme dans le DOM, il ne compte pas.
+    const IDS = [10, 20, 30];
+
+    test("sans voisin, on dépose en TÊTE", () => {
+        expect(dropIndex(IDS, 2, null)).toBe(0);
+    });
+
+    test("descendre après une ligne mène à SA place — la ligne partie libère un cran", () => {
+        // 10 descend sous 20 : il ne devient pas 2ᵉ après 20, il PREND sa place.
+        expect(dropIndex(IDS, 0, 20)).toBe(1);
+        expect(reorder(IDS, 0, dropIndex(IDS, 0, 20))).toEqual([20, 10, 30]);
+    });
+
+    test("remonter après une ligne mène JUSTE APRÈS elle", () => {
+        expect(dropIndex(IDS, 2, 10)).toBe(1);
+        expect(reorder(IDS, 2, dropIndex(IDS, 2, 10))).toEqual([10, 30, 20]);
+    });
+
+    test("⚠️ un voisin INCONNU refuse le dépôt — et rien ne bouge", () => {
+        // C'est ce qui empêche une valeur de changer d'attribut en glissant :
+        // aucun élément du DOM ne les regroupe, le refus se joue ici.
+        expect(dropIndex(IDS, 0, 999)).toBe(-1);
+        expect(reorder(IDS, 0, dropIndex(IDS, 0, 999))).toEqual(IDS);
     });
 });

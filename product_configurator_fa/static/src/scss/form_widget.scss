@@ -57,8 +57,19 @@
     .o_config_tree_handle {
         width: 1.5rem;
     }
-    .o_config_handle {
+    .o_config_handle,
+    .o_config_value_handle {
         cursor: grab;
+    }
+    // ⓘ La poignée d'une VALEUR se voit moins que celle de son attribut : deux
+    // poignées de même poids dans la même colonne se liraient comme un seul
+    // ordre, alors qu'elles en portent deux — l'un propre au produit, l'autre
+    // partagé par tout l'attribut.
+    .o_config_value_handle {
+        opacity: 0.5;
+        &:hover {
+            opacity: 1;
+        }
     }
     // ⓘ Le « × » d'une pastille reprend sa couleur : un rouge d'alerte sur chaque
     // condition ferait de l'écran une liste d'avertissements.
@@ -68,6 +79,31 @@
         &:hover {
             opacity: 1;
         }
+    }
+}
+
+// ══ LA LIGNE QU'ON EMPORTE RESTE UNE LIGNE ═════════════════════════════════
+//
+// ⚠️ Le cœur pose `position: fixed` sur la rangée tirée : elle sort du tableau,
+// et un `<tr>` hors tableau redevient une boîte anonyme dont les cellules se
+// retaillent sur leur contenu. `display: flex` leur rend une disposition en
+// rangée — les largeurs, elles, sont figées en JS depuis l'en-tête
+// (`freezeCellWidths`), car le CSS ne connaît pas la mise en page du tableau.
+// Même remède que le cœur pour ses listes (`.o_data_row.o_dragged`).
+//
+// ⓘ Le fond est EXPLICITE : la rangée flotte au-dessus de la page, et une
+// rangée transparente laisserait lire le formulaire au travers.
+.o_config_tree tr.o_dragged {
+    display: flex;
+    align-items: center;
+    background-color: $o-view-background-color;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
+
+    > td {
+        // ⓘ Une cellule de flexbox se laisse comprimer par défaut : sans ceci,
+        // la largeur figée depuis l'en-tête ne tiendrait pas.
+        flex: 0 0 auto;
+        overflow: hidden;
     }
 }
 

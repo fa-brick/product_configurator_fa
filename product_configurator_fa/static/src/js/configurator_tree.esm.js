@@ -41,6 +41,31 @@ export function reorder(lineIds, fromIndex, toIndex) {
 }
 
 /**
+ * Où atterrit la ligne déposée, d'après la ligne restée AU-DESSUS d'elle.
+ *
+ * ⚠️ Le cœur ne dit pas un index, il dit un VOISIN (`previous`) : c'est la seule
+ * chose qu'il sache après avoir promené un fantôme dans le DOM. Le décalage de
+ * un vient de ce que la ligne emportée occupe encore sa place dans `ids` —
+ * descendre après le voisin n° 3 mène au rang 3, pas 4, si l'on venait d'avant.
+ *
+ * ⓘ `previousId === null` veut dire « déposé en tête ». Un voisin INCONNU rend
+ * −1 : `reorder` traite un index négatif comme un refus, et rien ne bouge.
+ *
+ * ⓘ Fonction PURE, partagée par les deux ordres — celui des attributs et celui
+ * des valeurs.
+ */
+export function dropIndex(ids, fromIndex, previousId) {
+    if (previousId === null) {
+        return 0;
+    }
+    const at = ids.indexOf(previousId);
+    if (at < 0) {
+        return -1;
+    }
+    return fromIndex < at ? at : at + 1;
+}
+
+/**
  * Met l'arbre à plat, dans l'ordre où il s'affiche.
  *
  * ⚠️ Une valeur ne s'affiche QUE si son attribut est déplié. Rendre toutes les
@@ -85,7 +110,33 @@ export class ConfiguratorTree extends Component {
             elements: ".o_config_attribute",
             handle: ".o_config_handle",
             cursor: "grabbing",
+            // ⚠️ **LE FANTÔME LAISSÉ EN PLACE EST UN `<tr>` MIS EN BLOC.** Le
+            // cœur clone la ligne emportée et lui pose `display: block` en
+            // style en ligne (`sortable.js`) : dans un tableau, une rangée en
+            // bloc quitte la grille des colonnes, et le tableau se retaille
+            // sans elle. `d-table-row` est un utilitaire Bootstrap, donc
+            // `!important` : c'est ce qui lui reprend la main. Le cœur fait
+            // exactement cela pour ses listes (`list_renderer.js`).
+            placeholderClasses: ["d-table-row"],
+            onDragStart: ({element}) => this.freezeCellWidths(element),
+            onDragEnd: ({element}) => this.releaseCellWidths(element),
             onDrop: ({element, previous}) => this.onDrop(element, previous),
+        });
+        // ⚠️ **DEUX ORDRES, DONC DEUX POIGNÉES.** Les valeurs vivent dans le même
+        // `<tbody>` que leurs attributs : aucun élément du DOM ne les regroupe,
+        // et l'option `groups` du cœur en réclamerait un. C'est donc la POIGNÉE
+        // qui sépare les deux glissers — le cœur ne démarre une séquence que si
+        // le clic tombe dans `elements handle` (`draggable_hook_builder.js`).
+        // Le refus d'un dépôt hors de son attribut, lui, se joue au dépôt.
+        useSortable({
+            ref: this.rootRef,
+            elements: ".o_config_value",
+            handle: ".o_config_value_handle",
+            cursor: "grabbing",
+            placeholderClasses: ["d-table-row"],
+            onDragStart: ({element}) => this.freezeCellWidths(element),
+            onDragEnd: ({element}) => this.releaseCellWidths(element),
+            onDrop: ({element, previous}) => this.onDropValue(element, previous),
         });
         onWillStart(() => this.load());
         // ⚠️ L'arbre est lu du SERVEUR, pas du cache du formulaire : il joint
@@ -129,17 +180,171 @@ export class ConfiguratorTree extends Component {
             .map((row) => row.id);
     }
 
+    /**
+     * Fige les COLONNES du tableau, le temps d'un glisser.
+     *
+     * ⚠️ **LE TABLEAU SE REDESSINE DÈS QU'ON LUI RETIRE UNE RANGÉE.** Il est en
+     * `table-layout: auto` : ses colonnes se mesurent sur leur contenu, et la
+     * rangée emportée — passée en `position: fixed` — n'en fait plus partie. Ce
+     * sont donc TOUTES les lignes restantes qui glissent latéralement, pas
+     * seulement celle qu'on tire. C'est ce que Gerry a vu sur le JeNo 5".
+     *
+     * ⚠️ **AU POINTERDOWN, ET PAS PLUS TARD.** Le cœur pose `position: fixed`
+     * AVANT d'appeler `onDragStart` (`draggable_hook_builder.js`) : mesurer
+     * là-bas, ce serait déjà mesurer le tableau d'après.
+     */
+    freezeColumns() {
+        const table = this.rootRef.el;
+        if (!table || table.dataset.frozenColumns) {
+            return;
+        }
+        for (const entete of table.querySelectorAll("thead th")) {
+            entete.style.width = `${entete.getBoundingClientRect().width}px`;
+        }
+        table.style.tableLayout = "fixed";
+        table.dataset.frozenColumns = "1";
+        // ⚠️ Un simple CLIC sur la poignée ne démarre aucun glisser : `onDragEnd`
+        // ne viendrait jamais, et le tableau resterait figé sur des largeurs
+        // périmées dès le prochain redimensionnement de la fenêtre.
+        window.addEventListener("pointerup", () => this.releaseColumns(), {once: true});
+    }
+
+    /** Rend le tableau à sa mise en page souple. */
+    releaseColumns() {
+        const table = this.rootRef.el;
+        if (!table) {
+            return;
+        }
+        for (const entete of table.querySelectorAll("thead th")) {
+            entete.style.width = "";
+        }
+        table.style.tableLayout = "";
+        delete table.dataset.frozenColumns;
+    }
+
+    /**
+     * Fige la largeur des cellules de la ligne qu'on emporte.
+     *
+     * ⚠️ **UNE RANGÉE TIRÉE QUITTE SON TABLEAU.** Le cœur lui pose
+     * `position: fixed` : ses cellules n'ont plus de colonnes auxquelles
+     * s'aligner et se retaillent sur leur contenu. Le texte de la ligne tirée
+     * glisserait alors, même une fois les colonnes du tableau figées.
+     *
+     * ⓘ La mesure vient de l'EN-TÊTE, pas de la cellule : c'est l'en-tête qui
+     * porte la largeur de colonne — et il est FIGÉ depuis `freezeColumns`, donc
+     * il dit encore la largeur d'avant le glisser. Même remède que le cœur pour
+     * ses listes (`list_renderer.js`, `sortStart`).
+     */
+    freezeCellWidths(element) {
+        const entetes = [...this.rootRef.el.querySelectorAll("thead th")];
+        let colonne = 0;
+        for (const cellule of element.querySelectorAll("td")) {
+            let largeur = 0;
+            // ⓘ Une cellule peut couvrir plusieurs colonnes : on additionne.
+            for (let i = 0; i < cellule.colSpan; i++) {
+                const entete = entetes[colonne + i];
+                if (entete) {
+                    largeur += parseFloat(getComputedStyle(entete).width);
+                }
+            }
+            cellule.style.width = `${largeur}px`;
+            colonne += cellule.colSpan;
+        }
+    }
+
+    /**
+     * Rend les cellules à la mise en page du tableau.
+     *
+     * ⚠️ Sur `onDragEnd`, pas sur `onDrop` : un déplacement ABANDONNÉ ne passe
+     * pas par `onDrop`, et la ligne resterait figée sur des largeurs qui ne
+     * valent plus rien dès que la fenêtre change.
+     */
+    releaseCellWidths(element) {
+        for (const cellule of element.querySelectorAll("td")) {
+            cellule.style.width = null;
+        }
+        this.releaseColumns();
+    }
+
+    /** Les identifiants des valeurs d'un attribut, dans l'ordre affiché. */
+    valueIds(lineId) {
+        const ligne = (this.state.rows || []).find(
+            (row) => row.kind === "attribute" && row.id === lineId
+        );
+        return ((ligne && ligne.values) || []).map((valeur) => valeur.id);
+    }
+
+    /**
+     * La ligne d'attribut au-dessus du point de dépôt.
+     *
+     * ⚠️ **LE VOISIN N'EST PAS FORCÉMENT UN ATTRIBUT.** Il peut être un bandeau
+     * d'étape — qui ne porte aucun identifiant, puisqu'il n'est pas un
+     * enregistrement (D-202) — ou une VALEUR, qui porte l'identifiant de son
+     * attribut : déposer sous la dernière valeur de X, c'est bien déposer
+     * sous X. On remonte donc jusqu'à la première ligne qui dise quelque chose.
+     *
+     * ⓘ `null` veut dire « rien au-dessus » : dépôt en tête.
+     */
+    previousLineId(node) {
+        let curseur = node;
+        while (curseur && !curseur.dataset.lineId) {
+            curseur = curseur.previousElementSibling;
+        }
+        return curseur ? Number(curseur.dataset.lineId) : null;
+    }
+
+    /**
+     * La valeur au-dessus du point de dépôt — DANS le même attribut.
+     *
+     * ⚠️ **UNE VALEUR NE CHANGE PAS D'ATTRIBUT EN GLISSANT.** Rien dans le DOM
+     * ne l'en empêche : toutes les lignes partagent un `<tbody>`, et l'option
+     * `groups` du cœur réclamerait un élément parent par groupe. Le refus se
+     * joue donc ici — `-1`, que `dropIndex` puis `reorder` traitent comme un
+     * non-mouvement.
+     *
+     * ⓘ `null` quand le voisin est la ligne d'ATTRIBUT elle-même : la valeur
+     * passe en tête de son bloc.
+     */
+    previousValueId(node, lineId) {
+        if (!node || Number(node.dataset.lineId) !== lineId) {
+            return -1;
+        }
+        return node.dataset.valueId ? Number(node.dataset.valueId) : null;
+    }
+
     async onDrop(element, previous) {
         const moved = Number(element.dataset.lineId);
         const ids = this.lineIds;
         const from = ids.indexOf(moved);
-        // `previous` est la ligne au-dessus du point de dépôt ; sans elle, on
-        // dépose en tête.
-        const previousId = previous ? Number(previous.dataset.lineId) : null;
-        const to = previousId === null ? 0 : ids.indexOf(previousId) + (from < ids.indexOf(previousId) ? 0 : 1);
-        const ordonne = reorder(ids, from, to);
+        const ordonne = reorder(ids, from, dropIndex(ids, from, this.previousLineId(previous)));
         await this.orm.call(
             "product.template", "configurator_reorder", [[this.templateId], ordonne]
+        );
+        await this.load();
+    }
+
+    /**
+     * ⚠️ **CET ORDRE APPARTIENT À L'ATTRIBUT, PAS AU PRODUIT** — arbitré par
+     * Gerry le 2026-08-29. Une valeur est un `product.attribute.value` et son
+     * rang vit dans sa `sequence` : la déplacer ici la déplace sur tous les
+     * produits qui emploient cet attribut. C'est le seul ordre qui existe — en
+     * inventer un par produit obligerait tout ce qui affiche des valeurs à le
+     * relire.
+     */
+    async onDropValue(element, previous) {
+        const lineId = Number(element.dataset.lineId);
+        const moved = Number(element.dataset.valueId);
+        const ids = this.valueIds(lineId);
+        const from = ids.indexOf(moved);
+        const to = dropIndex(ids, from, this.previousValueId(previous, lineId));
+        if (to < 0) {
+            // Dépôt hors de son attribut : le cœur n'a rien touché au DOM
+            // (`applyChangeOnDrop` est faux), la ligne est déjà revenue seule.
+            return;
+        }
+        await this.orm.call(
+            "product.template", "configurator_reorder_values",
+            [[this.templateId], lineId, reorder(ids, from, to)]
         );
         await this.load();
     }

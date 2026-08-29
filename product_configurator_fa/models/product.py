@@ -348,6 +348,46 @@ class ProductTemplate(models.Model):
             ligne.sequence = rang * 10
         return True
 
+    def configurator_reorder_values(self, line_id, value_ids):
+        """Réordonne les VALEURS d'un attribut — l'ordre est celui de l'attribut.
+
+        ⚠️ **CET ORDRE EST GLOBAL, ET C'EST ASSUMÉ.** Une valeur est un
+        `product.attribute.value` : son rang vit dans sa `sequence`, qui
+        appartient à l'ATTRIBUT et non au produit (`_order` du cœur :
+        *attribute_id, sequence, id*). Déplacer « brut » depuis un produit le
+        déplace donc partout où l'attribut sert — dans les autres produits comme
+        dans Configuration → Attributs. Arbitré par Gerry le 2026-08-29 : c'est
+        le seul ordre qui existe, et en inventer un par produit obligerait tout
+        ce qui affiche des valeurs à le relire.
+
+        ⚠️ **ON NE RENUMÉROTE PAS QUE LES VALEURS DU PRODUIT.** Un produit ne
+        porte souvent qu'une PART des valeurs de l'attribut ; leur donner
+        10, 20, 30 les jetterait devant celles qu'il n'emploie pas, qui gardent
+        leur propre séquence. On renumérote donc l'attribut ENTIER, en ne
+        permutant les valeurs demandées qu'entre les RANGS qu'elles occupaient
+        déjà : les autres ne bougent pas d'un cran.
+        """
+        self.ensure_one()
+        ligne = self.env["product.template.attribute.line"].browse(line_id)
+        demandees = self.env["product.attribute.value"].browse(value_ids)
+        # ⚠️ Garde-fou : on n'ordonne QUE ce que cette ligne porte. Un
+        # identifiant venu d'ailleurs réordonnerait un attribut que l'écran ne
+        # montrait même pas.
+        if demandees != ligne.value_ids:
+            raise UserError(
+                self.env._(
+                    "The values to reorder must be exactly the ones this "
+                    "attribute carries on this product."
+                )
+            )
+        toutes = list(ligne.attribute_id.value_ids)
+        rangs = [i for i, valeur in enumerate(toutes) if valeur in demandees]
+        for rang, valeur in zip(rangs, demandees):
+            toutes[rang] = valeur
+        for rang, valeur in enumerate(toutes, start=1):
+            valeur.sequence = rang * 10
+        return True
+
     config_line_ids = fields.One2many(
         comodel_name="product.config.line",
         inverse_name="product_tmpl_id",

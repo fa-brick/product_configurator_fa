@@ -6,8 +6,11 @@
  * précisément le cas que le dialogue existe pour éviter (D-206).
  */
 import {
+    attributeLineIdBelow,
     dropIndex,
     flattenTree,
+    groupRows,
+    lineIdAbove,
     moveStepRow,
     reorder,
     reorderRowValues,
@@ -183,5 +186,89 @@ describe("Le dépôt s'affiche AVANT que le serveur l'ait confirmé", () => {
 
     test("⚠️ un bandeau inconnu ne mutile pas l'arbre", () => {
         expect(moveStepRow(ARBRE_ETAPE, 999, 3)).toEqual(ARBRE_ETAPE);
+    });
+});
+
+describe("L'arbre se découpe en blocs — un conteneur par attribut", () => {
+    // ⚠️ Le découpage n'est pas cosmétique : `groups` du cœur veut un élément
+    // PARENT par groupe pour borner le fantôme, et un tableau n'admet qu'un seul
+    // genre de conteneur de rangées.
+    const PLAT = [
+        {kind: "attribute", id: 1, name: "Camplate"},
+        {kind: "value", id: 11, line_id: 1},
+        {kind: "value", id: 12, line_id: 1},
+        {kind: "step", id: 9, line_id: 2, name: "Formes"},
+        {kind: "attribute", id: 2, name: "Forme"},
+    ];
+
+    test("chaque attribut fait un bloc, et ses valeurs y sont", () => {
+        const blocs = groupRows(PLAT);
+        expect(blocs).toHaveLength(2);
+        expect(blocs[0].lineId).toBe(1);
+        expect(blocs[0].values.map((v) => v.id)).toEqual([11, 12]);
+    });
+
+    test("⚠️ le BANDEAU rejoint la tête de l'attribut qu'il ouvre", () => {
+        // Il le précède toujours (D-202) : les séparer donnerait un bloc sans
+        // attribut, donc un conteneur de valeurs sans valeurs à borner.
+        const blocs = groupRows(PLAT);
+        expect(blocs[1].head.map((r) => r.kind)).toEqual(["step", "attribute"]);
+        expect(blocs[1].lineId).toBe(2);
+    });
+
+    test("un attribut REPLIÉ n'a pas de conteneur de valeurs", () => {
+        const blocs = groupRows([{kind: "attribute", id: 1}]);
+        expect(blocs[0].values).toEqual([]);
+    });
+
+    test("⚠️ un arbre vide ou absent ne casse rien", () => {
+        expect(groupRows(undefined)).toEqual([]);
+        expect(groupRows([])).toEqual([]);
+    });
+});
+
+describe("Le point de dépôt se calcule sur la liste PLATE, pas sur les voisins", () => {
+    // ⚠️ Depuis le découpage, `previousElementSibling` s'arrête au bord d'un
+    // <tbody> : une rangée déposée en tête d'un bloc n'aurait plus aucun voisin
+    // au-dessus, et serait remontée en tête de l'arbre.
+    const RANGEES = [
+        {kind: "attribute", lineId: 1, transient: false},
+        {kind: "value", lineId: 1, transient: false},
+        {kind: "step", lineId: 2, transient: false},
+        {kind: "attribute", lineId: 2, transient: false},
+    ];
+
+    test("au-dessus d'un bord de bloc, on trouve quand même l'attribut précédent", () => {
+        // Index 1 = la dernière valeur du bloc 1 ; elle porte l'identifiant de
+        // SA ligne, et c'est bien sous l'attribut 1 qu'on dépose.
+        expect(lineIdAbove(RANGEES, 1)).toBe(1);
+    });
+
+    test("⚠️ le BANDEAU se saute — il porte l'identifiant d'une ligne EN DESSOUS", () => {
+        // S'y arrêter renverrait la ligne 2, située sous le point de dépôt :
+        // l'attribut déposé aurait sauté d'un cran de trop.
+        expect(lineIdAbove(RANGEES, 2)).toBe(1);
+    });
+
+    test("les rangées TRANSITOIRES ne désignent rien", () => {
+        const avecFantome = [
+            {kind: "attribute", lineId: 1, transient: false},
+            {kind: "attribute", lineId: 2, transient: true},
+        ];
+        expect(lineIdAbove(avecFantome, 1)).toBe(1);
+    });
+
+    test("rien au-dessus : dépôt en tête", () => {
+        expect(lineIdAbove(RANGEES, -1)).toBe(null);
+        expect(lineIdAbove(RANGEES, 0)).toBe(1);
+    });
+
+    test("un bandeau s'ouvre sur le premier ATTRIBUT en dessous, pas sur une valeur", () => {
+        expect(attributeLineIdBelow(RANGEES, 1)).toBe(2);
+        expect(attributeLineIdBelow(RANGEES, 0)).toBe(1);
+    });
+
+    test("⚠️ rien en dessous : une étape qui n'ouvre rien n'existe pas", () => {
+        expect(attributeLineIdBelow(RANGEES, 4)).toBe(null);
     });
 });

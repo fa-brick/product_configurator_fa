@@ -12,181 +12,44 @@
                     <th class="o_config_tree_actions"/>
                 </tr>
             </thead>
-            <tbody>
-                <t t-foreach="rows" t-as="row" t-key="row.kind + '-' + row.id + '-' + (row.line_id or 0)">
-                    <!-- ⚠️ LE BANDEAU D'ÉTAPE n'est pas un enregistrement : il est
-                         DÉDUIT du marqueur porté par la ligne qui l'ouvre (D-202).
-                         Sa corbeille efface donc le MARQUEUR, pas l'étape — qui est
-                         partagée entre produits. -->
-                    <tr t-if="row.kind === 'step'" class="o_config_step"
-                        t-att-data-step-id="row.id"
-                        t-att-data-line-id="row.line_id">
-                        <td class="o_config_tree_handle" t-on-pointerdown="() => this.freezeColumns()">
-                            <!-- ⓘ Le bandeau se déplace comme une section de bon de
-                                 commande. ⚠️ Mais ce qui bouge est le MARQUEUR, pas
-                                 une ligne : l'étape n'a pas de rang à elle (D-202),
-                                 son rang est celui de la ligne qui l'ouvre. -->
-                            <span class="o_config_step_handle o_row_handle oi oi-draggable"
-                                  title="Move this step — everything below it belongs to it"/>
-                        </td>
-                        <td colspan="3">
-                            <!-- ⚠️ **LE NOM SE SAISIT ICI, PAS DANS UN DIALOGUE.**
-                                 Gerry : le geste doit être celui d'« Ajouter une
-                                 section » — une ligne se crée, on la nomme, on la
-                                 déplace. Un dialogue à chaque étape faisait trois
-                                 gestes là où le cœur en demande un. -->
-                            <input t-if="state.editingStep === row.id"
-                                   type="text"
-                                   class="o_input fw-bold"
-                                   t-ref="stepInput"
-                                   t-att-value="row.name"
-                                   t-on-blur="(ev) => this.commitStepName(row, ev.target.value)"
-                                   t-on-keydown="(ev) => this.onStepKeydown(ev, row)"/>
-                            <a t-else="" href="#" class="text-reset"
-                               title="Rename this step"
-                               t-on-click.prevent="() => this.editStep(row)">
-                                <em t-esc="row.name"/>
-                            </a>
-                        </td>
-                        <td class="o_config_tree_actions">
-                            <!-- ⓘ Le nom sert désormais à RENOMMER : les réglages de
-                                 l'étape — sa condition de visibilité (D-086), sa vue
-                                 3D — prennent leur propre porte. Sans elle, retirer
-                                 le dialogue les aurait rendus injoignables. -->
-                            <button class="btn btn-link p-0 me-1"
-                                    title="Step settings"
-                                    t-on-click="() => this.openStep(row)">
-                                <i class="fa fa-cog"/>
-                            </button>
-                            <button class="btn btn-link p-0 text-danger"
-                                    title="Remove this step marker"
-                                    t-on-click="() => this.removeRow(row)">
-                                <i class="fa fa-trash-o"/>
-                            </button>
-                        </td>
-                    </tr>
-                    <tr t-else=""
-                        t-att-class="row.kind === 'value' ? 'o_config_value o_config_value_sortable' : 'o_config_attribute'"
-                        t-att-data-line-id="row.kind === 'attribute' ? row.id : row.line_id"
-                        t-att-data-value-id="row.kind === 'value' ? row.id : false">
-                        <!-- ⚠️ Le figeage des colonnes se déclenche au POINTERDOWN,
-                             pas au départ du glisser : le cœur passe la ligne en
-                             `position: fixed` AVANT d'appeler `onDragStart`, et le
-                             tableau a donc déjà reflué quand on mesure. -->
-                        <td class="o_config_tree_handle" t-on-pointerdown="() => this.onHandlePointerDown(row)">
-                            <!-- ⓘ Un bandeau d'étape ne se déplace pas : ce n'est pas
-                                 un enregistrement, il est déduit de la ligne qui
-                                 l'ouvre. Un attribut et une valeur, si — mais
-                                 chacun dans son ordre, d'où deux poignées
-                                 distinctes (voir `configurator_tree.esm.js`). -->
-                            <!-- ⚠️ `o_row_handle oi oi-draggable` — LE MARQUAGE DU
-                                 CŒUR, à la lettre (`handle_field.xml`). Un
-                                 `fa fa-bars` dessinait un autre pictogramme que
-                                 celui de toutes les autres poignées d'Odoo, et
-                                 se privait du style que le cœur pose déjà sur
-                                 `.o_field_widget .o_row_handle` : la main
-                                 ouverte en curseur, la teinte et son survol. -->
-                            <span t-if="row.kind === 'attribute'"
-                                  class="o_config_handle o_row_handle oi oi-draggable"
-                                  title="Reorder this attribute"/>
-                            <span t-else=""
-                                  class="o_config_value_handle o_row_handle oi oi-draggable"
-                                  title="Reorder this value — the order belongs to the attribute, so it applies to every product using it"/>
-                        </td>
-                        <td class="o_config_tree_name">
-                            <span t-att-style="row.depth ? 'padding-left: 2rem;' : ''">
-                                <button
-                                    t-if="row.kind === 'attribute' and row.hasValues"
-                                    class="btn btn-link p-0 me-1"
-                                    t-on-click="() => this.toggle(row)"
-                                >
-                                    <i t-att-class="row.expanded ? 'fa fa-chevron-down' : 'fa fa-chevron-right'"/>
-                                </button>
-                                <!-- ⓘ Le nom d'un ATTRIBUT ouvre ses réglages ; celui
-                                     d'une valeur ne mène nulle part — une valeur se
-                                     règle dans le dialogue des valeurs. -->
-                                <a t-if="row.kind === 'attribute'" href="#" class="text-reset"
-                                   t-on-click.prevent="() => this.openLine(row)">
-                                    <t t-esc="row.name"/>
-                                </a>
-                                <t t-else="" t-esc="row.name"/>
-                            </span>
-                        </td>
-                        <td class="o_config_conditions" t-on-click="() => this.openCondition(row)">
-                            <!-- ⚠️ La cellule s'ouvre même VIDE : c'est par elle
-                                 qu'on POSE une condition. Sans cela, retirer
-                                 « Configuration Restrictions » aurait retiré le
-                                 seul endroit d'où l'on en crée une par valeur. -->
-                            <span t-if="!(row.facets or []).length" class="text-muted fst-italic">
-                                Add a condition
-                            </span>
-            <!-- ⚠️ **LA PASTILLE EST CELLE DE LA BARRE DE RECHERCHE**, demandée
-                 par Gerry : mêmes classes, même découpe — un segment d'entête
-                 coloré, les valeurs, la croix. Un simple `badge` se lisait comme
-                 du texte nu (constaté à l'écran).
+            <!-- ⚠️ **UN `<tbody>` PAR BLOC, ET C'EST LE FANTÔME QUI L'EXIGE.**
+                 Demande de Gerry : *« borner le fantôme pour qu'il représente
+                 l'emplacement du relâcher »*. Le cœur sait le faire — `groups` +
+                 `connectGroups: false` fait du groupe le CONTENEUR de la rangée
+                 tirée —, mais il lui faut un élément PARENT par groupe. Un
+                 tableau n'admet qu'un seul genre de conteneur de rangées, d'où
+                 ce découpage : la tête du bloc d'un côté, ses valeurs de l'autre.
 
-                 ⓘ `o_searchview_facet` porte l'animation d'apparition et la
-                 largeur maximale d'une valeur ; sa feuille de style du cœur
-                 n'est PAS imbriquée dans la barre de recherche, elle s'applique
-                 donc ici telle quelle. -->
-                            <t t-foreach="row.facets or []" t-as="facet" t-key="facet.id">
-                                <!-- ⓘ Le ET est IMPLICITE, comme dans la barre de
-                                     recherche : seul un « ou » se dit. -->
-                                <em t-if="facet.link" class="mx-1 small opacity-75" t-esc="facet.link"/>
-                                <div class="o_searchview_facet o_config_facet position-relative d-inline-flex align-items-stretch rounded-2 bg-200 text-nowrap mw-100 me-1"
-                                     role="listitem"
-                                     t-att-title="facet.label">
-                                    <div class="o_searchview_facet_label position-relative rounded-start-2 px-1 rounded-end-0 p-0 btn btn-primary">
-                                        <i class="small fa-fw fa fa-filter" role="img"/>
-                                    </div>
-                                    <div class="o_facet_values position-relative d-flex flex-wrap align-items-center ps-2 rounded-end-2 text-wrap overflow-hidden">
-                                        <small class="o_config_facet_title fw-bold me-1" t-esc="facet.title"/>
-                                        <small class="o_config_facet_operator me-1" t-esc="facet.negated ? '≠' : '='"/>
-                                        <!-- ⓘ `or []` : une pastille sans valeurs
-                                             DÉGRADE au lieu de tuer l'onglet. Le cas
-                                             se produit quand les assets sont à jour
-                                             et le serveur non — voir [[L-171]]. Ce
-                                             n'est PAS un correctif, c'est un
-                                             amortisseur : le remède est le
-                                             redémarrage. -->
-                                        <t t-foreach="facet.values or []" t-as="valeur" t-key="valeur_index">
-                                            <em t-if="!valeur_first" class="o_facet_values_sep small fw-bold mx-1 opacity-50" t-esc="facet.separator"/>
-                                            <small class="o_facet_value text-truncate" t-esc="valeur" t-att-title="valeur"/>
-                                        </t>
-                                        <!-- ⚠️ Le « × » retire UNE règle, pas la
-                                             condition entière : sinon une condition à
-                                             trois règles se perdrait pour en corriger
-                                             une. -->
-                                        <button class="o_facet_remove o_config_facet_remove oi oi-close btn btn-link py-0 px-2 text-danger"
-                                                title="Remove this rule"
-                                                t-on-click.stop="() => this.removeFacet(row, facet)"/>
-                                    </div>
-                                </div>
-                            </t>
-                        </td>
-                        <td class="o_config_tree_view"><t t-esc="row.camera or ''"/></td>
-                        <td class="o_config_tree_actions">
-                            <button
-                                t-if="row.kind === 'attribute'"
-                                class="btn btn-link p-0 me-1"
-                                title="Values"
-                                t-on-click="() => this.openValues(row)"
-                            >
-                                <i class="fa fa-list-ul"/>
-                            </button>
-                            <button class="btn btn-link p-0 text-danger"
-                                    title="Remove"
-                                    t-on-click="() => this.removeRow(row)">
-                                <i class="fa fa-trash-o"/>
-                            </button>
-                        </td>
-                    </tr>
-                </t>
-                <!-- ⚠️ Une liste vide SANS point d'entrée se lit comme une panne.
-                     Le pied ci-dessous existe toujours ; ceci ne fait que le dire. -->
-                <tr t-if="isEmpty">
+                 ⓘ Bootstrap 5.3 ne pose AUCUNE bordure entre deux `<tbody>` —
+                 c'est `.table-group-divider` qui le fait, et on ne l'emploie
+                 pas. La découpe est donc invisible. -->
+            <t t-foreach="blocks" t-as="bloc" t-key="'b-' + bloc.lineId">
+                <tbody class="o_config_head">
+                    <t t-foreach="bloc.head" t-as="row" t-key="row.kind + '-' + row.id">
+                        <t t-if="row.kind === 'step'">
+                            <t t-call="product_configurator_fa.ConfiguratorTree.StepRow"/>
+                        </t>
+                        <t t-else="">
+                            <t t-call="product_configurator_fa.ConfiguratorTree.Row"/>
+                        </t>
+                    </t>
+                </tbody>
+                <!-- ⓘ Le conteneur des valeurs n'existe QUE dépliées : une
+                     valeur cachée ne borne rien, et un `<tbody>` vide bornerait
+                     le fantôme sur une zone de hauteur nulle. -->
+                <tbody t-if="bloc.values.length" class="o_config_values"
+                       t-att-data-line-id="bloc.lineId">
+                    <t t-foreach="bloc.values" t-as="row" t-key="'v-' + row.id">
+                        <t t-call="product_configurator_fa.ConfiguratorTree.Row"/>
+                    </t>
+                </tbody>
+            </t>
+            <!-- ⚠️ Une liste vide SANS point d'entrée se lit comme une panne.
+                 Le pied ci-dessous existe toujours ; ceci ne fait que le dire. -->
+            <tbody t-if="isEmpty">
+                <tr>
                     <td colspan="5" class="text-muted fst-italic">
-                        No attribute yet — add one in the “Attributes &amp; Variants” tab.
+                        No attribute yet — add one in the &#8220;Attributes &amp; Variants&#8221; tab.
                     </td>
                 </tr>
             </tbody>
@@ -212,6 +75,177 @@
                 </tr>
             </tfoot>
         </table>
+    </t>
+
+    <!-- ⓘ Les rangées deviennent des sous-gabarits : elles sont désormais
+         appelées depuis DEUX conteneurs — la tête du bloc et ses valeurs. -->
+    <t t-name="product_configurator_fa.ConfiguratorTree.StepRow">
+        <tr class="o_config_step"
+            t-att-data-step-id="row.id"
+            t-att-data-line-id="row.line_id">
+            <td class="o_config_tree_handle" t-on-pointerdown="() => this.freezeColumns()">
+                <!-- ⓘ Le bandeau se déplace comme une section de bon de
+                     commande. ⚠️ Mais ce qui bouge est le MARQUEUR, pas
+                     une ligne : l'étape n'a pas de rang à elle (D-202),
+                     son rang est celui de la ligne qui l'ouvre. -->
+                <span class="o_config_step_handle o_row_handle oi oi-draggable"
+                      title="Move this step — everything below it belongs to it"/>
+            </td>
+            <td colspan="3">
+                <!-- ⚠️ **LE NOM SE SAISIT ICI, PAS DANS UN DIALOGUE.**
+                     Gerry : le geste doit être celui d'« Ajouter une
+                     section » — une ligne se crée, on la nomme, on la
+                     déplace. Un dialogue à chaque étape faisait trois
+                     gestes là où le cœur en demande un. -->
+                <input t-if="state.editingStep === row.id"
+                       type="text"
+                       class="o_input fw-bold"
+                       t-ref="stepInput"
+                       t-att-value="row.name"
+                       t-on-blur="(ev) => this.commitStepName(row, ev.target.value)"
+                       t-on-keydown="(ev) => this.onStepKeydown(ev, row)"/>
+                <a t-else="" href="#" class="text-reset"
+                   title="Rename this step"
+                   t-on-click.prevent="() => this.editStep(row)">
+                    <em t-esc="row.name"/>
+                </a>
+            </td>
+            <td class="o_config_tree_actions">
+                <!-- ⓘ Le nom sert désormais à RENOMMER : les réglages de
+                     l'étape — sa condition de visibilité (D-086), sa vue
+                     3D — prennent leur propre porte. Sans elle, retirer
+                     le dialogue les aurait rendus injoignables. -->
+                <button class="btn btn-link p-0 me-1"
+                        title="Step settings"
+                        t-on-click="() => this.openStep(row)">
+                    <i class="fa fa-cog"/>
+                </button>
+                <button class="btn btn-link p-0 text-danger"
+                        title="Remove this step marker"
+                        t-on-click="() => this.removeRow(row)">
+                    <i class="fa fa-trash-o"/>
+                </button>
+            </td>
+        </tr>
+    </t>
+
+    <t t-name="product_configurator_fa.ConfiguratorTree.Row">
+        <tr
+            t-att-class="row.kind === 'value' ? 'o_config_value' : 'o_config_attribute'"
+            t-att-data-line-id="row.kind === 'attribute' ? row.id : row.line_id"
+            t-att-data-value-id="row.kind === 'value' ? row.id : false">
+            <!-- ⚠️ Le figeage des colonnes se déclenche au POINTERDOWN,
+                 pas au départ du glisser : le cœur passe la ligne en
+                 `position: fixed` AVANT d'appeler `onDragStart`, et le
+                 tableau a donc déjà reflué quand on mesure. -->
+            <td class="o_config_tree_handle" t-on-pointerdown="() => this.freezeColumns()">
+                <!-- ⓘ Un bandeau d'étape ne se déplace pas : ce n'est pas
+                     un enregistrement, il est déduit de la ligne qui
+                     l'ouvre. Un attribut et une valeur, si — mais
+                     chacun dans son ordre, d'où deux poignées
+                     distinctes (voir `configurator_tree.esm.js`). -->
+                <!-- ⚠️ `o_row_handle oi oi-draggable` — LE MARQUAGE DU
+                     CŒUR, à la lettre (`handle_field.xml`). Un
+                     `fa fa-bars` dessinait un autre pictogramme que
+                     celui de toutes les autres poignées d'Odoo, et
+                     se privait du style que le cœur pose déjà sur
+                     `.o_field_widget .o_row_handle` : la main
+                     ouverte en curseur, la teinte et son survol. -->
+                <span t-if="row.kind === 'attribute'"
+                      class="o_config_handle o_row_handle oi oi-draggable"
+                      title="Reorder this attribute"/>
+                <span t-else=""
+                      class="o_config_value_handle o_row_handle oi oi-draggable"
+                      title="Reorder this value — the order belongs to the attribute, so it applies to every product using it"/>
+            </td>
+            <td class="o_config_tree_name">
+                <span t-att-style="row.depth ? 'padding-left: 2rem;' : ''">
+                    <button
+                        t-if="row.kind === 'attribute' and row.hasValues"
+                        class="btn btn-link p-0 me-1"
+                        t-on-click="() => this.toggle(row)"
+                    >
+                        <i t-att-class="row.expanded ? 'fa fa-chevron-down' : 'fa fa-chevron-right'"/>
+                    </button>
+                    <!-- ⓘ Le nom d'un ATTRIBUT ouvre ses réglages ; celui
+                         d'une valeur ne mène nulle part — une valeur se
+                         règle dans le dialogue des valeurs. -->
+                    <a t-if="row.kind === 'attribute'" href="#" class="text-reset"
+                       t-on-click.prevent="() => this.openLine(row)">
+                        <t t-esc="row.name"/>
+                    </a>
+                    <t t-else="" t-esc="row.name"/>
+                </span>
+            </td>
+            <td class="o_config_conditions" t-on-click="() => this.openCondition(row)">
+                <!-- ⚠️ La cellule s'ouvre même VIDE : c'est par elle
+                     qu'on POSE une condition. Sans cela, retirer
+                     « Configuration Restrictions » aurait retiré le
+                     seul endroit d'où l'on en crée une par valeur. -->
+                <span t-if="!(row.facets or []).length" class="text-muted fst-italic">
+                    Add a condition
+                </span>
+<!-- ⚠️ **LA PASTILLE EST CELLE DE LA BARRE DE RECHERCHE**, demandée
+     par Gerry : mêmes classes, même découpe — un segment d'entête
+     coloré, les valeurs, la croix. Un simple `badge` se lisait comme
+     du texte nu (constaté à l'écran).
+
+     ⓘ `o_searchview_facet` porte l'animation d'apparition et la
+     largeur maximale d'une valeur ; sa feuille de style du cœur
+     n'est PAS imbriquée dans la barre de recherche, elle s'applique
+     donc ici telle quelle. -->
+                <t t-foreach="row.facets or []" t-as="facet" t-key="facet.id">
+                    <!-- ⓘ Le ET est IMPLICITE, comme dans la barre de
+                         recherche : seul un « ou » se dit. -->
+                    <em t-if="facet.link" class="mx-1 small opacity-75" t-esc="facet.link"/>
+                    <div class="o_searchview_facet o_config_facet position-relative d-inline-flex align-items-stretch rounded-2 bg-200 text-nowrap mw-100 me-1"
+                         role="listitem"
+                         t-att-title="facet.label">
+                        <div class="o_searchview_facet_label position-relative rounded-start-2 px-1 rounded-end-0 p-0 btn btn-primary">
+                            <i class="small fa-fw fa fa-filter" role="img"/>
+                        </div>
+                        <div class="o_facet_values position-relative d-flex flex-wrap align-items-center ps-2 rounded-end-2 text-wrap overflow-hidden">
+                            <small class="o_config_facet_title fw-bold me-1" t-esc="facet.title"/>
+                            <small class="o_config_facet_operator me-1" t-esc="facet.negated ? '≠' : '='"/>
+                            <!-- ⓘ `or []` : une pastille sans valeurs
+                                 DÉGRADE au lieu de tuer l'onglet. Le cas
+                                 se produit quand les assets sont à jour
+                                 et le serveur non — voir [[L-171]]. Ce
+                                 n'est PAS un correctif, c'est un
+                                 amortisseur : le remède est le
+                                 redémarrage. -->
+                            <t t-foreach="facet.values or []" t-as="valeur" t-key="valeur_index">
+                                <em t-if="!valeur_first" class="o_facet_values_sep small fw-bold mx-1 opacity-50" t-esc="facet.separator"/>
+                                <small class="o_facet_value text-truncate" t-esc="valeur" t-att-title="valeur"/>
+                            </t>
+                            <!-- ⚠️ Le « × » retire UNE règle, pas la
+                                 condition entière : sinon une condition à
+                                 trois règles se perdrait pour en corriger
+                                 une. -->
+                            <button class="o_facet_remove o_config_facet_remove oi oi-close btn btn-link py-0 px-2 text-danger"
+                                    title="Remove this rule"
+                                    t-on-click.stop="() => this.removeFacet(row, facet)"/>
+                        </div>
+                    </div>
+                </t>
+            </td>
+            <td class="o_config_tree_view"><t t-esc="row.camera or ''"/></td>
+            <td class="o_config_tree_actions">
+                <button
+                    t-if="row.kind === 'attribute'"
+                    class="btn btn-link p-0 me-1"
+                    title="Values"
+                    t-on-click="() => this.openValues(row)"
+                >
+                    <i class="fa fa-list-ul"/>
+                </button>
+                <button class="btn btn-link p-0 text-danger"
+                        title="Remove"
+                        t-on-click="() => this.removeRow(row)">
+                    <i class="fa fa-trash-o"/>
+                </button>
+            </td>
+        </tr>
     </t>
 
 </templates>

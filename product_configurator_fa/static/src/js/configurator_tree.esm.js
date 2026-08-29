@@ -95,6 +95,97 @@ export function flattenTree(rows, expanded) {
 }
 
 /**
+ * L'arbre découpé en BLOCS — un par attribut.
+ *
+ * ⚠️ **LE FANTÔME D'UNE VALEUR DOIT ÊTRE BORNÉ, ET SEUL UN CONTENEUR BORNE.**
+ * Demande de Gerry : *« borner le fantôme pour qu'il représente l'emplacement du
+ * relâcher »*. Le cœur sait le faire — `groups` + `connectGroups: false` fait de
+ * l'élément de groupe le CONTENEUR de la rangée tirée, et `updateElementPosition`
+ * l'y enferme (`draggable_hook_builder.js`). Mais il lui faut un élément PARENT
+ * par groupe, et un tableau n'admet qu'un seul genre de conteneur de rangées :
+ * le `<tbody>`. D'où ce découpage — la tête du bloc (bandeau d'étape éventuel et
+ * rangée d'attribut) dans un `<tbody>`, ses valeurs dans un autre.
+ *
+ * ⓘ Le bandeau précède TOUJOURS l'attribut qu'il ouvre (D-202) : ils font une
+ * seule tête. Fonction PURE.
+ */
+export function groupRows(flat) {
+    const blocs = [];
+    for (const row of flat || []) {
+        const dernier = blocs[blocs.length - 1];
+        if (row.kind === "value") {
+            if (dernier) {
+                dernier.values.push(row);
+            }
+            continue;
+        }
+        if (
+            row.kind === "attribute" &&
+            dernier &&
+            dernier.openedByStep &&
+            dernier.head.length === 1 &&
+            dernier.lineId === row.id
+        ) {
+            dernier.head.push(row);
+            continue;
+        }
+        blocs.push({
+            lineId: row.kind === "step" ? row.line_id : row.id,
+            head: [row],
+            values: [],
+            openedByStep: row.kind === "step",
+        });
+    }
+    return blocs;
+}
+
+/**
+ * La ligne d'ATTRIBUT au-dessus du point de dépôt, dans la liste plate.
+ *
+ * ⚠️ **LA LISTE EST PLATE, LES `<tbody>` NE LE SONT PAS.** Depuis le découpage en
+ * blocs, `previousElementSibling` s'arrête au bord d'un `<tbody>` : une rangée
+ * déposée en tête d'un bloc n'aurait plus AUCUN voisin au-dessus, et serait
+ * remontée en tête de l'arbre. On raisonne donc sur toutes les rangées du corps.
+ *
+ * ⚠️ On saute le BANDEAU d'étape : il porte l'identifiant de la ligne qu'il
+ * ouvre, donc d'une ligne située EN DESSOUS de lui. Et les rangées TRANSITOIRES
+ * — celle qu'on emporte, et le fantôme laissé en place — qui sont encore là.
+ *
+ * ⓘ Fonction PURE, sur des descripteurs `{kind, lineId, transient}`.
+ */
+export function lineIdAbove(rows, at) {
+    for (let i = Math.min(at, rows.length - 1); i >= 0; i--) {
+        const row = rows[i];
+        if (row.transient || row.kind === "step" || !row.lineId) {
+            continue;
+        }
+        return row.lineId;
+    }
+    return null;
+}
+
+/**
+ * La première ligne d'ATTRIBUT sous le point de dépôt.
+ *
+ * ⚠️ Un bandeau s'ouvre sur ce qui le SUIT — c'est toute la forme (A) de D-202.
+ * Et l'on ne s'arrête que sur un attribut : une valeur porte l'identifiant de sa
+ * ligne, qui est au-dessus d'elle.
+ *
+ * ⓘ Fonction PURE. `null` : rien en dessous — une étape qui n'ouvre rien
+ * n'existe pas.
+ */
+export function attributeLineIdBelow(rows, at) {
+    for (let i = Math.max(at, 0); i < rows.length; i++) {
+        const row = rows[i];
+        if (row.transient || row.kind !== "attribute") {
+            continue;
+        }
+        return row.lineId;
+    }
+    return null;
+}
+
+/**
  * L'arbre tel qu'il sera, AVANT que le serveur l'ait confirmé.
  *
  * ⚠️ **SANS ANTICIPATION, LE DÉPÔT CLIGNOTE.** Constaté à l'écran par Gerry :
@@ -221,10 +312,10 @@ export class ConfiguratorTree extends Component {
             // sans elle. `d-table-row` est un utilitaire Bootstrap, donc
             // `!important` : c'est ce qui lui reprend la main. Le cœur fait
             // exactement cela pour ses listes (`list_renderer.js`).
-            placeholderClasses: ["d-table-row"],
+            placeholderClasses: ["d-table-row", "o_config_ghost"],
             onDragStart: ({element}) => this.freezeCellWidths(element),
             onDragEnd: ({element}) => this.releaseCellWidths(element),
-            onDrop: ({element, previous}) => this.onDrop(element, previous),
+            onDrop: ({element, previous, next}) => this.onDrop(element, previous, next),
         });
         // ⚠️ **DEUX ORDRES, DONC DEUX POIGNÉES.** Les valeurs vivent dans le même
         // `<tbody>` que leurs attributs : aucun élément du DOM ne les regroupe,
@@ -234,15 +325,19 @@ export class ConfiguratorTree extends Component {
         // Le refus d'un dépôt hors de son attribut, lui, se joue au dépôt.
         useSortable({
             ref: this.rootRef,
-            // ⚠️ **UNE CLASSE DE TRI, DISTINCTE DE CELLE DE STYLE.** C'est elle
-            // qu'on retire aux valeurs des AUTRES attributs le temps d'un
-            // glisser (`confineValues`) : retirer `o_config_value` aurait
-            // emporté avec elle la teinte et l'opacité du second niveau, et fait
-            // clignoter la moitié du tableau.
-            elements: ".o_config_value_sortable",
+            elements: ".o_config_value",
             handle: ".o_config_value_handle",
             cursor: "grabbing",
-            placeholderClasses: ["d-table-row"],
+            // ⚠️ **C'EST `groups` QUI BORNE LE FANTÔME.** Avec
+            // `connectGroups: false`, le cœur fait du groupe le CONTENEUR de la
+            // rangée tirée et l'y enferme (`draggable_hook_builder.js`,
+            // `updateElementPosition`) : la valeur ne peut plus se promener sous
+            // un autre attribut, et son fantôme montre donc toujours où elle
+            // retombera. C'est pour cela — et pour cela seul — que l'arbre est
+            // découpé en `<tbody>`.
+            groups: "tbody.o_config_values",
+            connectGroups: false,
+            placeholderClasses: ["d-table-row", "o_config_ghost"],
             onDragStart: ({element}) => this.freezeCellWidths(element),
             onDragEnd: ({element}) => this.releaseCellWidths(element),
             onDrop: ({element, previous}) => this.onDropValue(element, previous),
@@ -256,10 +351,10 @@ export class ConfiguratorTree extends Component {
             elements: ".o_config_step",
             handle: ".o_config_step_handle",
             cursor: "grabbing",
-            placeholderClasses: ["d-table-row"],
+            placeholderClasses: ["d-table-row", "o_config_ghost"],
             onDragStart: ({element}) => this.freezeCellWidths(element),
             onDragEnd: ({element}) => this.releaseCellWidths(element),
-            onDrop: ({element, next}) => this.onDropStep(element, next),
+            onDrop: ({element, previous, next}) => this.onDropStep(element, previous, next),
         });
         onWillStart(() => this.load());
         // ⚠️ L'arbre est lu du SERVEUR, pas du cache du formulaire : il joint
@@ -334,6 +429,11 @@ export class ConfiguratorTree extends Component {
         return flattenTree(this.state.rows, this.state.expanded);
     }
 
+    /** L'arbre découpé en blocs — c'est ce que le gabarit parcourt. */
+    get blocks() {
+        return groupRows(this.rows);
+    }
+
     toggle(row) {
         if (this.state.expanded.has(row.id)) {
             this.state.expanded.delete(row.id);
@@ -352,6 +452,52 @@ export class ConfiguratorTree extends Component {
     }
 
     /**
+     * Toutes les rangées du corps, décrites pour les calculs de dépôt.
+     *
+     * ⚠️ **UNE SEULE LISTE, PLUSIEURS `<tbody>`.** Depuis que chaque attribut a
+     * son conteneur, `previousElementSibling` s'arrête au bord d'un bloc : une
+     * rangée déposée en tête d'un bloc n'aurait plus aucun voisin au-dessus.
+     * `querySelectorAll` traverse, lui.
+     *
+     * ⓘ `transient` : la rangée qu'on emporte et le fantôme laissé en place sont
+     * encore dans le DOM au moment du dépôt. Ils ne désignent rien.
+     */
+    bodyRows() {
+        return [...this.rootRef.el.querySelectorAll("tbody > tr")].map((el) => ({
+            el,
+            kind: el.classList.contains("o_config_step")
+                ? "step"
+                : el.classList.contains("o_config_attribute")
+                ? "attribute"
+                : el.classList.contains("o_config_value")
+                ? "value"
+                : "other",
+            lineId: el.dataset.lineId ? Number(el.dataset.lineId) : null,
+            transient:
+                el.classList.contains("o_dragged") ||
+                el.classList.contains("o_config_ghost"),
+        }));
+    }
+
+    /**
+     * L'index du point de dépôt dans la liste plate.
+     *
+     * ⓘ Le cœur ne nomme que des VOISINS. `previous` d'abord — c'est la rangée
+     * juste au-dessus. À défaut, on se repère sur `next` : ce qui le précède est
+     * le fantôme, que les fonctions de parcours sauteront. `-1` : ni l'un ni
+     * l'autre, donc rien à calculer.
+     */
+    dropAt(rows, previous, next) {
+        if (previous) {
+            return rows.findIndex((row) => row.el === previous);
+        }
+        if (next) {
+            return rows.findIndex((row) => row.el === next) - 1;
+        }
+        return -1;
+    }
+
+    /**
      * Fige les COLONNES du tableau, le temps d'un glisser.
      *
      * ⚠️ **LE TABLEAU SE REDESSINE DÈS QU'ON LUI RETIRE UNE RANGÉE.** Il est en
@@ -364,64 +510,6 @@ export class ConfiguratorTree extends Component {
      * AVANT d'appeler `onDragStart` (`draggable_hook_builder.js`) : mesurer
      * là-bas, ce serait déjà mesurer le tableau d'après.
      */
-    /**
-     * Ce qu'il faut préparer AVANT qu'un glisser ne démarre.
-     *
-     * ⓘ Au `pointerdown`, donc : le cœur a déjà tout mis en place quand il
-     * appelle `onDragStart` — la rangée est fixée, et les écouteurs des voisins
-     * sont posés. Trop tard pour l'un comme pour l'autre.
-     */
-    onHandlePointerDown(row) {
-        this.freezeColumns();
-        if (row.kind === "value") {
-            this.confineValues(row.line_id);
-        }
-    }
-
-    /**
-     * Une valeur ne sort pas du bloc de son attribut — même en glissant.
-     *
-     * ⚠️ **LE REFUS AU DÉPÔT NE SUFFISAIT PAS.** Il empêchait bien l'écriture,
-     * mais l'écart s'ouvrait quand même sous les valeurs d'un autre attribut :
-     * l'écran promettait un déplacement qui ne se ferait jamais. Demande de
-     * Gerry — *« empêcher le drag au-delà de leur zone enfants »*.
-     *
-     * ⚠️ **ET `groups` NE POUVAIT PAS SERVIR.** L'option du cœur veut un élément
-     * PARENT par groupe ; nos valeurs sont toutes sœurs dans un seul `<tbody>`,
-     * et un tableau n'admet pas d'autre conteneur de rangées. On retire donc la
-     * classe de tri aux étrangères : le cœur ne pose ses écouteurs de survol que
-     * sur ce qui répond à `elements` (`sortable.js`, `onDragStart`), et l'écart
-     * ne s'ouvre plus que dans le bloc d'origine.
-     *
-     * ⓘ Une classe qu'OWL réécrirait au prochain rendu — mais aucun rendu n'a
-     * lieu pendant un glisser, et la remise en place précède le suivant. Et si
-     * un rendu survenait quand même, il RÉTABLIRAIT la bonne valeur : la panne
-     * serait un élargissement, pas une corruption.
-     */
-    confineValues(lineId) {
-        const etrangeres = this.rootRef.el.querySelectorAll(
-            `.o_config_value_sortable:not([data-line-id="${lineId}"])`
-        );
-        for (const rangee of etrangeres) {
-            rangee.classList.remove("o_config_value_sortable");
-            rangee.classList.add("o_config_value_confined");
-        }
-        // ⚠️ Un simple CLIC ne démarre aucun glisser : `onDragEnd` ne viendrait
-        // jamais, et la moitié des valeurs resteraient inertes.
-        window.addEventListener("pointerup", () => this.releaseValues(), {once: true});
-    }
-
-    /** Les valeurs des autres attributs redeviennent déplaçables. */
-    releaseValues() {
-        if (!this.rootRef.el) {
-            return;
-        }
-        for (const rangee of this.rootRef.el.querySelectorAll(".o_config_value_confined")) {
-            rangee.classList.add("o_config_value_sortable");
-            rangee.classList.remove("o_config_value_confined");
-        }
-    }
-
     freezeColumns() {
         const table = this.rootRef.el;
         if (!table || table.dataset.frozenColumns) {
@@ -493,7 +581,6 @@ export class ConfiguratorTree extends Component {
             cellule.style.width = null;
         }
         this.releaseColumns();
-        this.releaseValues();
     }
 
     /** Les identifiants des valeurs d'un attribut, dans l'ordre affiché. */
@@ -505,58 +592,34 @@ export class ConfiguratorTree extends Component {
     }
 
     /**
-     * La ligne d'attribut au-dessus du point de dépôt.
-     *
-     * ⚠️ **LE VOISIN N'EST PAS FORCÉMENT UN ATTRIBUT.** Il peut être une VALEUR,
-     * qui porte l'identifiant de son attribut : déposer sous la dernière valeur
-     * de X, c'est bien déposer sous X. On remonte donc jusqu'à la première ligne
-     * qui dise quelque chose.
-     *
-     * ⚠️ **ET LE BANDEAU D'ÉTAPE SE SAUTE.** Il porte lui aussi un
-     * `data-line-id` depuis qu'il se déplace — mais celui de la ligne qu'il
-     * OUVRE, c'est-à-dire celle qui le suit. S'y arrêter renverrait une ligne
-     * située EN DESSOUS du point de dépôt : l'attribut déposé sous un bandeau
-     * aurait sauté d'un cran de trop.
-     *
-     * ⓘ `null` veut dire « rien au-dessus » : dépôt en tête.
-     */
-    previousLineId(node) {
-        let curseur = node;
-        while (curseur && (this.isStepRow(curseur) || !curseur.dataset.lineId)) {
-            curseur = curseur.previousElementSibling;
-        }
-        return curseur ? Number(curseur.dataset.lineId) : null;
-    }
-
-    /** ⓘ Un bandeau d'étape : il porte un `data-line-id` qui n'est pas le sien. */
-    isStepRow(node) {
-        return node.classList.contains("o_config_step");
-    }
-
-    /**
      * La valeur au-dessus du point de dépôt — DANS le même attribut.
      *
-     * ⚠️ **UNE VALEUR NE CHANGE PAS D'ATTRIBUT EN GLISSANT.** Rien dans le DOM
-     * ne l'en empêche : toutes les lignes partagent un `<tbody>`, et l'option
-     * `groups` du cœur réclamerait un élément parent par groupe. Le refus se
-     * joue donc ici — `-1`, que `dropIndex` puis `reorder` traitent comme un
-     * non-mouvement.
+     * ⓘ `null` : rien au-dessus DANS SON BLOC, la valeur passe en tête. C'est le
+     * cas ordinaire depuis le découpage en `<tbody>` — la rangée d'attribut vit
+     * dans un autre conteneur, elle n'est plus le voisin du dessus.
      *
-     * ⓘ `null` quand le voisin est la ligne d'ATTRIBUT elle-même : la valeur
-     * passe en tête de son bloc.
+     * ⚠️ Le contrôle d'appartenance RESTE, bien que `groups` empêche désormais
+     * la valeur de sortir de son bloc : c'est la barrière qui ne dépend pas de
+     * l'interface (D-080). `-1`, que `dropIndex` puis `reorder` traitent comme
+     * un non-mouvement.
      */
     previousValueId(node, lineId) {
-        if (!node || this.isStepRow(node) || Number(node.dataset.lineId) !== lineId) {
+        if (!node) {
+            return null;
+        }
+        if (!node.dataset.valueId || Number(node.dataset.lineId) !== lineId) {
             return -1;
         }
-        return node.dataset.valueId ? Number(node.dataset.valueId) : null;
+        return Number(node.dataset.valueId);
     }
 
-    async onDrop(element, previous) {
+    async onDrop(element, previous, next) {
         const moved = Number(element.dataset.lineId);
         const ids = this.lineIds;
         const from = ids.indexOf(moved);
-        const ordonne = reorder(ids, from, dropIndex(ids, from, this.previousLineId(previous)));
+        const rangees = this.bodyRows();
+        const dessus = lineIdAbove(rangees, this.dropAt(rangees, previous, next));
+        const ordonne = reorder(ids, from, dropIndex(ids, from, dessus));
         await this.writeAndReload(
             "product.template", "configurator_reorder", [[this.templateId], ordonne],
             reorderRows(this.state.rows, ordonne)
@@ -699,28 +762,15 @@ export class ConfiguratorTree extends Component {
         }
     }
 
-    /**
-     * La première ligne d'ATTRIBUT sous le point de dépôt.
-     *
-     * ⚠️ **UN BANDEAU S'OUVRE SUR CE QUI LE SUIT**, pas sur ce qui le précède —
-     * c'est toute la forme (A) de D-202. On regarde donc vers le bas, et on ne
-     * s'arrête que sur un attribut : une VALEUR porte l'identifiant de sa ligne,
-     * qui est AU-DESSUS d'elle, et poser le marqueur là ferait remonter le
-     * bandeau par-dessus les valeurs qu'on venait de dépasser.
-     *
-     * ⓘ `null` : rien en dessous — une étape qui n'ouvre rien n'existe pas.
-     */
-    nextAttributeLineId(node) {
-        let curseur = node;
-        while (curseur && !curseur.classList.contains("o_config_attribute")) {
-            curseur = curseur.nextElementSibling;
-        }
-        return curseur ? Number(curseur.dataset.lineId) : null;
-    }
-
-    async onDropStep(element, next) {
+    async onDropStep(element, previous, next) {
         const stepId = Number(element.dataset.stepId);
-        const lineId = this.nextAttributeLineId(next);
+        const rangees = this.bodyRows();
+        const at = this.dropAt(rangees, previous, next);
+        // ⓘ On repart d'un cran SOUS le point de dépôt : le bandeau s'ouvre sur
+        // ce qui le suit. `at` vaut −1 quand le fantôme n'a aucun voisin — il
+        // est alors seul dans son bloc, et rien n'a bougé.
+        const lineId =
+            previous || next ? attributeLineIdBelow(rangees, at + 1) : null;
         if (!lineId) {
             // Déposé sous la dernière ligne : il n'y a rien à ouvrir. Le cœur
             // n'a pas touché au DOM (`applyChangeOnDrop` est faux), le bandeau

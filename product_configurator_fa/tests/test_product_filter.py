@@ -139,6 +139,12 @@ class ProductFilter(BaseCommon):
         trouvees = self.env["product.attribute.value"].search(action["domain"])
         self.assertEqual(trouvees.product_id, self.poignees)
         self.assertEqual(trouvees.attribute_id, self.attribute)
+        # ⚠️ Ni créer ni supprimer : cette liste est le RÉSULTAT d'un filtre. Une
+        # valeur ajoutée à la main n'en ferait pas partie, et une valeur retirée
+        # reviendrait au prochain enregistrement (D-228). Constat de Gerry :
+        # « la fenêtre montre un bouton nouveau qui n'a pas de sens ».
+        self.assertFalse(action["context"]["create"])
+        self.assertFalse(action["context"]["delete"])
 
     # ── le MODE : liste tenue, ou liste proposée (D-218) ────────────────────
     def test_11_a_filter_proposes_NOTHING_without_the_dynamic_mode(self):

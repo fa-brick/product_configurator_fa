@@ -339,6 +339,16 @@ class ProductAttribute(models.Model):
                 ("product_id", "in", self._proposed_products().ids),
             ],
             "target": "new",
+            # ⚠️ **NI CRÉER NI SUPPRIMER ICI** — constat de Gerry : *« la fenêtre
+            # montre un bouton nouveau qui n'a pas de sens »*. Cette liste est le
+            # RÉSULTAT d'un filtre : une valeur ajoutée à la main n'en ferait pas
+            # partie, et une valeur retirée reviendrait au prochain
+            # enregistrement (D-228). Un geste qui se défait tout seul ne doit
+            # pas être offert.
+            #
+            # ⓘ La liste tenue à la main, elle, reste l'onglet « Valeurs
+            # d'attribut » — c'est là qu'on ajoute et qu'on retire.
+            "context": {"create": False, "delete": False},
         }
 
     def _materialise_proposed_values(self):

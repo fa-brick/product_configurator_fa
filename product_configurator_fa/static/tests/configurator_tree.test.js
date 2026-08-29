@@ -5,7 +5,14 @@
  * cacher en CSS ferait payer un produit à trois cents valeurs pour rien — c'est
  * précisément le cas que le dialogue existe pour éviter (D-206).
  */
-import {dropIndex, flattenTree, reorder} from "../src/js/configurator_tree.esm.js";
+import {
+    dropIndex,
+    flattenTree,
+    moveStepRow,
+    reorder,
+    reorderRowValues,
+    reorderRows,
+} from "../src/js/configurator_tree.esm.js";
 
 const ARBRE = [
     {kind: "attribute", id: 1, name: "Type de Camplate", values: [
@@ -110,5 +117,71 @@ describe("Le point de dépôt se lit sur le VOISIN, pas sur un index", () => {
         // aucun élément du DOM ne les regroupe, le refus se joue ici.
         expect(dropIndex(IDS, 0, 999)).toBe(-1);
         expect(reorder(IDS, 0, dropIndex(IDS, 0, 999))).toEqual(IDS);
+    });
+});
+
+describe("Le dépôt s'affiche AVANT que le serveur l'ait confirmé", () => {
+    // ⚠️ Constat de Gerry : « quand je relâche, la ligne retourne à son ancienne
+    // position puis revient à la nouvelle ». Le cœur ne déplace rien dans le DOM
+    // au dépôt : sans anticipation, l'écran montre l'ordre d'avant pendant tout
+    // l'aller-retour serveur — enregistrement du formulaire compris.
+    const ARBRE_ETAPE = [
+        {kind: "attribute", id: 1, name: "Camplate", values: []},
+        {kind: "step", id: 9, line_id: 2, name: "Formes"},
+        {kind: "attribute", id: 2, name: "Forme", values: []},
+        {kind: "attribute", id: 3, name: "Hauteur", values: []},
+    ];
+
+    test("les attributs suivent l'ordre demandé", () => {
+        const suivant = reorderRows(ARBRE_ETAPE, [3, 1, 2]);
+        expect(suivant.filter((r) => r.kind === "attribute").map((r) => r.name))
+            .toEqual(["Hauteur", "Camplate", "Forme"]);
+    });
+
+    test("⚠️ et le BANDEAU suit sa ligne — il est déduit du marqueur qu'elle porte", () => {
+        // D-202 : déplacer la ligne qui ouvre l'étape déplace l'étape. C'est ce
+        // que fait le serveur ; l'anticipation doit dire la même chose, sinon
+        // l'écran se corrigerait tout seul une seconde plus tard.
+        const suivant = reorderRows(ARBRE_ETAPE, [2, 1, 3]);
+        expect(suivant.map((r) => r.kind)).toEqual([
+            "step", "attribute", "attribute", "attribute",
+        ]);
+        expect(suivant[0].id).toBe(9);
+        expect(suivant[1].id).toBe(2);
+    });
+
+    test("aucune rangée ne se perd ni ne se duplique", () => {
+        const suivant = reorderRows(ARBRE_ETAPE, [3, 2, 1]);
+        expect(suivant).toHaveLength(ARBRE_ETAPE.length);
+        expect(new Set(suivant).size).toBe(ARBRE_ETAPE.length);
+    });
+
+    test("les valeurs se réordonnent DANS leur attribut, et lui seul", () => {
+        const arbre = [
+            {kind: "attribute", id: 1, values: [{id: 11}, {id: 12}, {id: 13}]},
+            {kind: "attribute", id: 2, values: [{id: 21}, {id: 22}]},
+        ];
+        const suivant = reorderRowValues(arbre, 1, [13, 11, 12]);
+        expect(suivant[0].values.map((v) => v.id)).toEqual([13, 11, 12]);
+        expect(suivant[1].values.map((v) => v.id)).toEqual([21, 22]);
+    });
+
+    test("⚠️ l'attribut touché est REMPLACÉ, pas muté — OWL compare des références", () => {
+        const arbre = [{kind: "attribute", id: 1, values: [{id: 11}, {id: 12}]}];
+        const suivant = reorderRowValues(arbre, 1, [12, 11]);
+        expect(suivant[0]).not.toBe(arbre[0]);
+        expect(arbre[0].values.map((v) => v.id)).toEqual([11, 12]);
+    });
+
+    test("le bandeau déplacé se pose JUSTE AVANT sa nouvelle ligne", () => {
+        const suivant = moveStepRow(ARBRE_ETAPE, 9, 3);
+        expect(suivant.map((r) => `${r.kind}${r.id}`)).toEqual([
+            "attribute1", "attribute2", "step9", "attribute3",
+        ]);
+        expect(suivant[2].line_id).toBe(3);
+    });
+
+    test("⚠️ un bandeau inconnu ne mutile pas l'arbre", () => {
+        expect(moveStepRow(ARBRE_ETAPE, 999, 3)).toEqual(ARBRE_ETAPE);
     });
 });

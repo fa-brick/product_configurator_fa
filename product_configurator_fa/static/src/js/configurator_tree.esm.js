@@ -94,6 +94,94 @@ export function flattenTree(rows, expanded) {
     return flat;
 }
 
+/**
+ * L'arbre tel qu'il sera, AVANT que le serveur l'ait confirmé.
+ *
+ * ⚠️ **SANS ANTICIPATION, LE DÉPÔT CLIGNOTE.** Constaté à l'écran par Gerry :
+ * *« quand je relâche, la ligne retourne à son ancienne position puis revient à
+ * la nouvelle »*. Le cœur ne déplace RIEN dans le DOM au dépôt
+ * (`applyChangeOnDrop` est faux par défaut) : la ligne reprend sa place, et n'en
+ * bouge qu'une fois l'aller-retour serveur terminé — enregistrement du
+ * formulaire compris. On rend donc le résultat tout de suite, et la relecture
+ * qui suit ne fait plus que confirmer.
+ *
+ * ⓘ **On anticipe dans l'ÉTAT, jamais dans le DOM.** Déplacer un `<tr>` à la
+ * main derrière OWL le mettrait en désaccord avec son arbre interne, et le
+ * patch suivant réordonnerait à partir d'un ordre qui n'est plus celui de
+ * l'écran. C'est aussi pourquoi `applyChangeOnDrop` reste faux.
+ *
+ * ⓘ Fonction PURE. Le bandeau d'étape SUIT sa ligne : il est déduit du marqueur
+ * qu'elle porte (D-202), donc déplacer la ligne déplace l'étape — exactement ce
+ * que fait le serveur.
+ */
+export function reorderRows(rows, lineIds) {
+    const bandeaux = new Map();
+    const attributs = new Map();
+    for (const row of rows || []) {
+        if (row.kind === "step") {
+            bandeaux.set(row.line_id, row);
+        } else if (row.kind === "attribute") {
+            attributs.set(row.id, row);
+        }
+    }
+    const suivant = [];
+    for (const id of lineIds) {
+        if (bandeaux.has(id)) {
+            suivant.push(bandeaux.get(id));
+        }
+        if (attributs.has(id)) {
+            suivant.push(attributs.get(id));
+        }
+    }
+    return suivant;
+}
+
+/**
+ * Le même service pour les VALEURS d'un attribut.
+ *
+ * ⓘ Fonction PURE. On remplace la ligne d'attribut plutôt que de muter ses
+ * valeurs : `flattenTree` recopie déjà les rangées, mais une mutation en place
+ * ne dirait rien à OWL, qui compare des références.
+ */
+export function reorderRowValues(rows, lineId, valueIds) {
+    return (rows || []).map((row) => {
+        if (row.kind !== "attribute" || row.id !== lineId) {
+            return row;
+        }
+        const parId = new Map((row.values || []).map((valeur) => [valeur.id, valeur]));
+        return {
+            ...row,
+            values: valueIds.map((id) => parId.get(id)).filter(Boolean),
+        };
+    });
+}
+
+/**
+ * Le bandeau change de ligne — il s'ouvre désormais SUR celle-ci.
+ *
+ * ⓘ Fonction PURE. Le bandeau se pose JUSTE AVANT son attribut : c'est toute la
+ * forme (A) de D-202 — ce qui suit une étape lui appartient.
+ */
+export function moveStepRow(rows, stepId, lineId) {
+    const bandeau = (rows || []).find(
+        (row) => row.kind === "step" && row.id === stepId
+    );
+    if (!bandeau) {
+        return [...(rows || [])];
+    }
+    const suivant = [];
+    for (const row of rows) {
+        if (row === bandeau) {
+            continue;
+        }
+        if (row.kind === "attribute" && row.id === lineId) {
+            suivant.push({...bandeau, line_id: lineId});
+        }
+        suivant.push(row);
+    }
+    return suivant;
+}
+
 export class ConfiguratorTree extends Component {
     static template = "product_configurator_fa.ConfiguratorTree";
     static props = {...standardFieldProps};
@@ -180,6 +268,13 @@ export class ConfiguratorTree extends Component {
     }
 
     async load() {
+        // ⚠️ **PENDANT UNE ÉCRITURE, NE RIEN RELIRE.** `record.save()` fait
+        // repasser le formulaire, donc `onWillUpdateProps`, donc un `load` — qui
+        // rendrait l'ordre d'AVANT et effacerait l'anticipation du dépôt. C'est
+        // le clignotement, revenu par une autre porte.
+        if (this.writing) {
+            return;
+        }
         if (!this.templateId) {
             this.state.rows = [];
             return;
@@ -207,18 +302,27 @@ export class ConfiguratorTree extends Component {
      * requis vide, contrainte) rend `false` : on renonce alors à écrire, plutôt
      * que d'agir sur un état que l'utilisateur n'a pas pu valider.
      */
-    async writeAndReload(model, method, args) {
+    async writeAndReload(model, method, args, anticipe) {
         const record = this.props.record;
-        if ((await record.save()) === false) {
-            return false;
+        // ⚠️ L'arbre ANTICIPÉ est rendu tout de suite : sans lui, la ligne
+        // reprend sa place le temps de l'aller-retour, et le dépôt clignote.
+        if (anticipe) {
+            this.state.rows = anticipe;
         }
-        await this.orm.call(model, method, args);
-        // ⓘ `load` du RECORD, puis celui de l'arbre : le premier rafraîchit
-        // `attribute_line_ids` pour l'onglet voisin, le second l'arbre lui-même,
-        // qui ne lit pas ce champ mais sa propre structure jointe.
-        await record.load();
+        this.writing = true;
+        try {
+            if ((await record.save()) !== false) {
+                await this.orm.call(model, method, args);
+                // ⓘ `load` du RECORD : il rafraîchit `attribute_line_ids` pour
+                // l'onglet voisin, qui lit ce champ et non notre structure.
+                await record.load();
+            }
+        } finally {
+            this.writing = false;
+        }
+        // ⓘ On relit dans TOUS les cas : après une écriture pour confirmer,
+        // après un enregistrement refusé pour DÉFAIRE l'anticipation.
         await this.load();
-        return true;
     }
 
     get rows() {
@@ -390,7 +494,8 @@ export class ConfiguratorTree extends Component {
         const from = ids.indexOf(moved);
         const ordonne = reorder(ids, from, dropIndex(ids, from, this.previousLineId(previous)));
         await this.writeAndReload(
-            "product.template", "configurator_reorder", [[this.templateId], ordonne]
+            "product.template", "configurator_reorder", [[this.templateId], ordonne],
+            reorderRows(this.state.rows, ordonne)
         );
     }
 
@@ -413,9 +518,11 @@ export class ConfiguratorTree extends Component {
             // (`applyChangeOnDrop` est faux), la ligne est déjà revenue seule.
             return;
         }
+        const ordonne = reorder(ids, from, to);
         await this.writeAndReload(
             "product.template", "configurator_reorder_values",
-            [[this.templateId], lineId, reorder(ids, from, to)]
+            [[this.templateId], lineId, ordonne],
+            reorderRowValues(this.state.rows, lineId, ordonne)
         );
     }
 
@@ -464,14 +571,21 @@ export class ConfiguratorTree extends Component {
      */
     async addStep() {
         const record = this.props.record;
-        if ((await record.save()) === false) {
-            return;
+        let stepId = null;
+        this.writing = true;
+        try {
+            if ((await record.save()) !== false) {
+                stepId = await this.orm.call(
+                    "product.template", "configurator_add_step", [[this.templateId]]
+                );
+                await record.load();
+            }
+        } finally {
+            this.writing = false;
         }
-        const stepId = await this.orm.call(
-            "product.template", "configurator_add_step", [[this.templateId]]
-        );
-        await record.load();
         await this.load();
+        // ⓘ Après la relecture : le bandeau doit EXISTER pour que sa saisie
+        // s'ouvre — l'ouvrir avant nommerait une rangée que rien ne rend encore.
         this.state.editingStep = stepId;
     }
 
@@ -551,7 +665,8 @@ export class ConfiguratorTree extends Component {
         }
         await this.writeAndReload(
             "product.template", "configurator_move_step",
-            [[this.templateId], stepId, lineId]
+            [[this.templateId], stepId, lineId],
+            moveStepRow(this.state.rows, stepId, lineId)
         );
     }
 

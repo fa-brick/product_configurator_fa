@@ -7,80 +7,11 @@ from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
 
-class ProductAttributeBoundMixin(models.AbstractModel):
-    """Les trois bornes d'un attribut numérique — mini, maxi, pas.
-
-    Porté par DEUX modèles : la ligne d'attribut (les bornes par défaut) et la
-    borne conditionnelle (celles qui s'appliquent quand un domaine est
-    satisfait). Le mixin évite que les deux divergent — D-089.
-
-    ⚠️ `has_min_val` / `has_max_val` ne sont pas du confort : un `fields.Float`
-    d'Odoo ne peut PAS être nul (`convert_to_column` fait `float(value or 0.0)`,
-    odoo/fields.py:1670). Sans le drapeau, une borne légitimement nulle serait
-    indistinguable d'une absence de borne — le défaut d'OCA que D-089 nomme.
-    Le `step`, lui, n'a pas besoin de drapeau : un pas de zéro n'a pas de sens,
-    donc zéro veut dire « pas de pas », sans ambiguïté.
-    """
-
-    _name = "product.attribute.bound.mixin"
-    _description = "Bounds of a Numeric Attribute (min / max / step)"
-
-    has_min_val = fields.Boolean(
-        string="Has Minimum",
-        help="Check to enforce a minimum value. Needed to tell "
-        "'no minimum' from 'a minimum of zero'.",
-    )
-    min_val = fields.Float(
-        string="Minimum Value",
-        digits=(16, 4),
-        help="Minimum value allowed, enforced only when 'Has Minimum' is set",
-    )
-    has_max_val = fields.Boolean(
-        string="Has Maximum",
-        help="Check to enforce a maximum value. Needed to tell "
-        "'no maximum' from 'a maximum of zero'.",
-    )
-    max_val = fields.Float(
-        string="Maximum Value",
-        digits=(16, 4),
-        help="Maximum value allowed, enforced only when 'Has Maximum' is set",
-    )
-    step = fields.Float(
-        string="Step",
-        digits=(16, 4),
-        help="Allowed increment between the minimum and the maximum. "
-        "Zero means any value is allowed.",
-    )
-
-    @api.constrains("has_min_val", "min_val", "has_max_val", "max_val", "step")
-    def _check_bounds_consistency(self):
-        for record in self:
-            if (
-                record.has_min_val
-                and record.has_max_val
-                and record.max_val < record.min_val
-            ):
-                raise ValidationError(
-                    self.env._("Maximum value must be greater than Minimum value")
-                )
-            if record.step < 0:
-                raise ValidationError(self.env._("Step must not be negative"))
-
-    def _as_bounds(self, cause=None):
-        """Rend les bornes sous une forme neutre — `None` dit « pas de borne ».
-
-        Le reste du code raisonne sur ce dictionnaire et jamais sur les champs :
-        c'est ce qui empêche le `if minv and maxv` d'OCA de revenir, et c'est ce
-        qui permet à une borne conditionnelle et à une borne par défaut d'être
-        consommées par le même code.
-        """
-        self.ensure_one()
-        return {
-            "min_val": self.min_val if self.has_min_val else None,
-            "max_val": self.max_val if self.has_max_val else None,
-            "step": self.step or None,
-            "cause": cause,
-        }
+# ⓘ `product.attribute.bound.mixin` a MIGRÉ vers `product_attribute_advanced`.
+# Les bornes d'une LIGNE décrivent la question, et l'éditeur 3D en a besoin pour
+# poser un champ de saisie qui respecte le pas et affiche « mini à maxi ». Les
+# bornes CONDITIONNELLES ci-dessous, elles, sont une RÈGLE — elles restent ici, et
+# n'empruntent au module partagé que ce mixin.
 
 
 class ProductAttributeBound(models.Model):
@@ -932,6 +863,8 @@ class ProductAttributeLine(models.Model):
     # ligne, Odoo prend le nom de la CLASSE pour nom de modèle et refuse de
     # démarrer (`models.py:143`).
     _name = "product.template.attribute.line"
+    # ⓘ Le mixin de bornes vient désormais de `product_attribute_advanced`, qui le
+    # définit : le déclarer ici suffit à l'appliquer, sans le posséder.
     _inherit = ["product.template.attribute.line", "product.attribute.bound.mixin"]
     _order = "product_tmpl_id, sequence, id"
     # TODO: Order by dependencies first and then sequence so dependent fields
@@ -1011,7 +944,8 @@ class ProductAttributeLine(models.Model):
             }
         }
 
-    custom = fields.Boolean(help="Allow custom values for this attribute?")
+    # ⓘ `custom` a MIGRÉ vers `product_attribute_advanced` : c'est lui qui décide,
+    # dans l'éditeur 3D, entre une liste déroulante et un champ de saisie.
     required = fields.Boolean(help="Is this attribute required?")
     required_condition = fields.Char(compute="_compute_attribute_condition", store=True)
     invisible_condition = fields.Char(
@@ -1324,8 +1258,8 @@ class ProductAttributeLine(models.Model):
             if session.validate_domains_against_sels(
                 domains, value_ids or [], custom_vals or {}
             ):
-                return bound._as_bounds(cause=bound.domain_id.name)
-        return self._as_bounds()
+                return bound.as_bounds(cause=bound.domain_id.name)
+        return self.as_bounds()
 
     def _format_bound(self, value):
         """« 4000 mm » — une borne s'affiche comme la valeur qu'elle borne.

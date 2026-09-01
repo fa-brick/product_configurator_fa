@@ -1021,7 +1021,9 @@ class ProductAttributeLine(models.Model):
     multi = fields.Boolean(
         help="Allow selection of multiple values for this attribute?",
     )
-    default_val = fields.Many2one(comodel_name="product.attribute.value")
+    # ⓘ `default_val` a MIGRÉ vers `product_attribute_advanced`. L'éditeur 3D en a
+    # besoin : ses réponses ne s'enregistrent pas, donc ce qui part en base — la
+    # vignette, le prix — doit se construire sur le défaut du produit.
 
     sequence = fields.Integer(default=10)
 
@@ -1820,12 +1822,10 @@ class ProductAttributeValue(models.Model):
     # qu'un supplément saisi. Fonctionnalité complète et inatteignable, même
     # famille que le taux au m² (D-162). La colonne le rend enfin saisissable,
     # gouvernée par `value_type` comme les pastilles le sont par `display_type`.
-    product_id = fields.Many2one(
-        comodel_name="product.product",
-        string="Product",
-        help="The product this value stands for. Its price replaces the extra "
-             "price when set.",
-    )
+    # ⓘ `product_id` a MIGRÉ vers `product_attribute_advanced` : c'est le premier
+    # maillon de la permutation (D-164), et il vivait ici — donc hors d'atteinte de
+    # l'éditeur, qui ne peut pas dépendre de ce module (D-075). Son prix, lui, reste
+    # une affaire de configurateur et se lit sur le produit désigné.
     # ⚠️ REDEVENU UN `Image`, et ce n'est pas cosmétique. Le fork le redéfinissait
     # en `Binary` : sondé au runtime, il n'avait plus ni `max_width` ni contrôle
     # de résolution — une photo de plusieurs méga-octets partait telle quelle dans

@@ -700,11 +700,75 @@ class ProductAttribute(models.Model):
              "customer becomes a real attribute value, kept and reusable — not "
              "a throwaway entry.",
     )
+    #: Ce qu'une NATURE impose comme format. ⚠️ `number` → `float` : le format le
+    #: plus général, celui qui ne perd pas de décimale. L'entier reste atteignable
+    #: — il est une PRÉCISION que la nature ne porte pas, et n'a pas à porter.
+    NATURE_TO_CUSTOM_TYPE = {
+        "text": "char",
+        "number": "float",
+        # ⓘ Un produit et une matière se répondent par une valeur DISCRÈTE : le
+        # format de saisie libre reste du texte, c'est la nature qui dit ce que
+        # cette valeur désigne.
+        "product": "char",
+        "material": "char",
+        "attachment": "binary",
+    }
+
+    #: Le chemin inverse. ⚠️ Il n'est pas bijectif — `integer` et `float` mènent
+    #: tous deux à `number` —, et c'est exactement pourquoi le format survit : la
+    #: nature dit de quoi la question parle, le format dit comment on la saisit.
+    CUSTOM_TYPE_TO_NATURE = {
+        "char": "text",
+        "integer": "number",
+        "float": "number",
+        "binary": "attachment",
+    }
+
     custom_type = fields.Selection(
         selection=CUSTOM_TYPES,
         string="Field Type",
-        help="The type of the custom field generated in the frontend",
+        compute="_compute_custom_type",
+        inverse="_inverse_custom_type",
+        store=True,
+        readonly=False,
+        help="How the custom field is rendered in the frontend.\n\n"
+        "It now FOLLOWS the attribute's nature, which is the source of truth: "
+        "`product_attribute_advanced` carries what a question is ABOUT, this "
+        "field carries how it is typed in. Both remain writable — writing one "
+        "sets the other — so that nothing which read this field has to change.\n\n"
+        "The integer/decimal distinction survives here, and only here: it is a "
+        "matter of widget, and the shared module deliberately carries no widget.",
     )
+
+    @api.depends("nature")
+    def _compute_custom_type(self):
+        """Le format suit la nature — sans effacer la PRÉCISION qu'il porte en plus.
+
+        ⚠️ **On ne corrige que l'incohérence.** Un `integer` sous une nature `number`
+        est légitime, et le recalculer en `float` l'effacerait à chaque écriture de
+        la fiche — une perte silencieuse, à chaque enregistrement.
+        """
+        for attribute in self:
+            if self.CUSTOM_TYPE_TO_NATURE.get(attribute.custom_type) == attribute.nature:
+                continue
+            # ⓘ « Aucun format » est l'état HISTORIQUE de la plupart des attributs, et
+            # `text` est la nature par défaut : les deux se correspondent, et inventer
+            # un `char` là où il n'y en avait pas ne rendrait service à personne.
+            if attribute.nature == "text" and not attribute.custom_type:
+                continue
+            attribute.custom_type = self.NATURE_TO_CUSTOM_TYPE.get(attribute.nature)
+
+    def _inverse_custom_type(self):
+        """Écrire le format écrit la nature — c'est ce qui garde les 47 points d'appel.
+
+        ⓘ Sans cet inverse, toute écriture existante — un test qui crée un attribut
+        `integer`, un import — poserait un format que la nature contredirait au
+        recalcul suivant. L'inverse est ce qui rend le remplacement invisible.
+        """
+        for attribute in self:
+            nature = self.CUSTOM_TYPE_TO_NATURE.get(attribute.custom_type)
+            if nature and attribute.nature != nature:
+                attribute.nature = nature
     description = fields.Text(translate=True)
     search_ok = fields.Boolean(
         string="Searchable",
@@ -741,7 +805,10 @@ class ProductAttribute(models.Model):
         string="Default: multiple values",
         help="Default applied to a NEW product line — see 'Default: required'.",
     )
-    uom_id = fields.Many2one(comodel_name="uom.uom", string="Unit of Measure")
+    # ⓘ `uom_id` a MIGRÉ vers `product_attribute_advanced` : le module partagé le
+    # porte pour les deux, et le catalogue d'unités d'Odoo apporte ses conversions —
+    # huit unités de longueur, le pouce compris. Le définir ici en plus en ferait
+    # deux définitions pour un seul champ.
     image = fields.Binary()
     price_mode = fields.Selection(
         selection=[("fixed", "Fixed amount"), ("per_sqm", "Per square meter")],

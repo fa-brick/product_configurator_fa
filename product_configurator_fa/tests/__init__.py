@@ -1,4 +1,5 @@
 from . import test_attribute_bounds
+from . import test_attribute_nature_bridge
 from . import test_auto_selection
 from . import test_configuration_rules
 from . import test_create

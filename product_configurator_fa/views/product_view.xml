@@ -123,15 +123,13 @@
                      contenu, les autres portent une case ou un nom court. Sans
                      largeur déclarée, la liste répartissait la place à parts égales
                      et laissait un grand vide au milieu. -->
-                <field
-                    name="default_val"
-                    string="Default value"
-                    domain="[('id', 'in', value_ids)]"
-                    context="{'show_attribute': False}"
-                    options="{'no_create': True, 'no_create_edit': True}"
-                    column_invisible="not context.get('default_config_ok', False)"
-                    width="150px"
-                />
+                <!-- ⚠️ **`default_val` N'EST PLUS DÉCLARÉ ICI** (2026-09-02). La
+                     colonne est posée par `product_attribute_advanced`, et sans
+                     condition de contexte : elle était masquée hors du menu
+                     « Produits configurables », donc introuvable pour un produit qui
+                     porte un modèle 3D sans être configurable — alors que l'éditeur
+                     EXIGE ce défaut (D-244). La redéclarer ici en ferait deux
+                     colonnes. -->
                 <field
                     name="required"
                     column_invisible="not context.get('default_config_ok', False)"

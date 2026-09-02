@@ -84,13 +84,16 @@ class ProductAttribute(models.Model):
 
     _inherit = "product.attribute"
 
-    # `ondelete` est EXIGÉ par Odoo sur un `selection_add` stocké : il dit ce que
-    # deviennent les enregistrements qui portent la valeur si ce module part. Les
-    # ramener au défaut vaut mieux que de les laisser pointer un type disparu.
-    value_type = fields.Selection(
-        selection_add=[("material", "Material")],
-        ondelete={"material": "set default"},
-    )
+    # ⚠️ **« Matière » n'est PLUS ajouté ici**, il est dans la liste de base de
+    # `product_attribute_advanced` (2026-09-02). Ce module est le pont entre le
+    # configurateur et l'éditeur ; or c'est l'ÉDITEUR qui a besoin de cette valeur — il
+    # ne propose comme pilote de zone que les questions qui portent sur une matière — et
+    # il ne peut pas dépendre d'un pont AGPL-3 (D-075). La laisser ici la rendait donc
+    # inatteignable pour son premier usager.
+    #
+    # ⓘ Ce qui RESTE ici est le lien réel : la valeur qui pointe une fiche matière. Une
+    # valeur de sélection ne nomme aucun modèle et n'entraîne aucune dépendance ; un
+    # `Many2one` vers `product.model3d.material`, si.
 
 
 class ProductAttributeValue(models.Model):

@@ -419,54 +419,6 @@ class ProductAttribute(models.Model):
             return self.env["product.product"]
         return self.env["product.product"].search(literal_eval(filtre))
 
-    VALUE_TYPES = [
-        ("value", "Value"),
-        ("product", "Product"),
-    ]
-
-    value_type = fields.Selection(
-        selection=VALUE_TYPES,
-        string="Value type",
-        default="value",
-        required=True,
-        help="What a value of this attribute DESIGNATES.\n\n"
-             "- Value: nothing but itself — a label chosen from a list. How that "
-             "label is read (text, number, date) is the FORMAT, and whether the "
-             "customer may add one is a separate flag.\n"
-             "- Product: the value designates a product, and its list may be "
-             "proposed by a filter.\n\n"
-             "It is the type that lets a screen know what to show: a product "
-             "picker, a material thumbnail, or a plain label.",
-    )
-
-    # ⚠️ LE FORMAT ET L'UNITÉ N'ONT DE SENS QUE POUR LE TYPE « VALEUR ».
-    #
-    # Constat de Gerry (2026-08-28) : *« on peut choisir value type : product et
-    # format integer, ça n'a pas de sens »*. Il a raison, et le défaut est de moi :
-    # j'ai posé trois notions INDÉPENDANTES — type, format, ajout — ce qui est
-    # juste, et j'en ai conclu qu'aucune ne contraignait les autres, ce qui est
-    # faux. Un format dit comment LIRE un libellé ; quand la valeur désigne un
-    # produit ou une fiche matière, il n'y a pas de libellé à lire, l'objet EST la
-    # réponse. Idem pour l'unité, qui appartient alors au produit.
-    #
-    # DEUX BARRIÈRES, comme pour l'éditeur de conditions (D-080) : la vue masque
-    # ces deux champs hors du type « valeur », et cette contrainte refuse la
-    # combinaison quelle que soit l'interface — import, ORM, script.
-    #
-    # ⚠️ Et un `onchange` NETTOIE en basculant le type. Sans lui, un format saisi
-    # avant la bascule resterait, invisible, et le refus tomberait sur un champ
-    # que l'utilisateur ne voit plus : le pire des messages d'erreur.
-    #
-    # ⚠️ **`binary` EST HORS DE CETTE RÈGLE.** Ce n'est pas un format de LECTURE :
-    # c'est un canal de pièce jointe — le client envoie un fichier. Le raisonnement
-    # ci-dessus (« l'objet est la réponse, il n'y a pas de libellé à lire ») ne le
-    # concerne donc pas : rien n'empêche de demander un plan ou un échantillon en
-    # plus d'un produit désigné.
-    #
-    # ⓘ Trouvé en essayant de faire entrer trois tests du module dans la garde :
-    # ils posaient un `binary` sur un attribut devenu « produit ». Contorsionner des
-    # tests amont pour les faire entrer dans une garde, c'est le signe que la garde
-    # est mal posée — pas que les tests le sont ([[L-160]]).
     @api.model_create_multi
     def create(self, vals_list):
         """⚠️ **UN ATTRIBUT CRÉÉ AVEC SON FILTRE MATÉRIALISE AUSSI.**
@@ -510,107 +462,27 @@ class ProductAttribute(models.Model):
                 attribute._materialise_proposed_values()
         return res
 
-    @api.constrains("value_type", "custom_type", "uom_id")
-    def _check_format_only_for_plain_values(self):
-        for attribute in self:
-            if attribute.value_type == "value":
-                continue
-            if attribute.custom_type == "binary":
-                # Reste l'unité, qui n'a toujours rien à qualifier ici.
-                if attribute.uom_id:
-                    raise ValidationError(
-                        self.env._(
-                            "A unit of measure qualifies a number. Here a value "
-                            "designates a %s: drop the unit.",
-                            dict(self._fields["value_type"].selection).get(
-                                attribute.value_type, attribute.value_type
-                            ),
-                        )
-                    )
-                continue
-            if attribute.custom_type or attribute.uom_id:
-                raise ValidationError(
-                    self.env._(
-                        "A format and a unit only make sense when a value designates "
-                        "nothing but itself. Here a value designates a %s: the object "
-                        "is the answer, there is no label to read.",
-                        dict(self._fields["value_type"].selection).get(
-                            attribute.value_type, attribute.value_type
-                        ),
-                    )
-                )
-
-    # ─ UNE UNITÉ QUALIFIE UN NOMBRE, arbitrage de Gerry (2026-08-28) ────────
+    # ⚠️ **`value_type` et `custom_type` ont DÉMÉNAGÉ** vers `product_attribute_advanced`
+    # (2026-09-02) — avec leurs gardes, et sans une ligne de changement. Cadrage de
+    # Gerry : *« custom_type et value_type tels qu'ils étaient définis précédemment
+    # étaient très bien, je ne voulais pas modifier — je voulais juste transférer tout ce
+    # qui touchait à l'attribut dans un module spécifique »*.
     #
-    # *« l'unité de mesure est possible uniquement pour float et integer »*. Un
-    # millimètre qualifie une quantité ; accolé à un mot, il ne veut rien dire —
-    # « Chêne mm » n'est pas une lecture, c'est un accident de saisie.
+    # ⓘ `NUMERIC_TYPES` les accompagne, mais ce n'est PAS un champ d'origine : il date du
+    # 2026-08-28 (« trois formats, et l'unité qualifie un NOMBRE »), où il a remplacé un
+    # `("integer", "float")` écrit en clair à trois endroits. Relevé par Gerry — la
+    # distinction compte, « tel qu'il était » ne veut pas dire la même chose pour un
+    # champ hérité d'OCA et pour une constante extraite la semaine dernière.
     #
-    # ⚠️ Deuxième barrière, comme ci-dessus : la vue masque l'unité hors des deux
-    # formats numériques, ceci la refuse quelle que soit l'interface.
-    @api.constrains("custom_type", "uom_id")
-    def _check_unit_needs_a_number(self):
-        for attribute in self:
-            if attribute.uom_id and attribute.custom_type not in self.NUMERIC_TYPES:
-                raise ValidationError(
-                    self.env._(
-                        "A unit of measure qualifies a number. Give this attribute "
-                        "the Integer or Float format, or drop the unit."
-                    )
-                )
-
-    @api.onchange("value_type")
-    def _onchange_value_type(self):
-        if self.value_type != "value":
-            self.custom_type = False
-            self.uom_id = False
-
-    @api.onchange("custom_type")
-    def _onchange_custom_type_clears_uom(self):
-        # ⚠️ Même raison que pour la bascule de type : la vue masque l'unité dès
-        # que le format cesse d'être numérique. Sans ce nettoyage, elle resterait
-        # en base, hors du regard, et le refus désignerait un champ invisible.
-        if self.custom_type not in self.NUMERIC_TYPES:
-            self.uom_id = False
-
-    # ─ TROIS FORMATS, arbitrage de Gerry (2026-08-28) ───────────────────────
+    # ⓘ Les constantes de classe suivent l'héritage, Odoo ne construisant qu'UNE classe
+    # par modèle : `self.NUMERIC_TYPES` répondrait toujours ici. Plus personne ne le lit
+    # pourtant — `_is_numeric_custom` s'adosse désormais à `is_numeric()`, pour que la
+    # règle ne soit écrite qu'une fois. Les 47 points d'appel de `custom_type`, eux,
+    # n'ont rien vu passer.
     #
-    # ⚠️ Le catalogue héritié en proposait HUIT. Gerry : *« je ne vois pas l'intérêt
-    # des autres »*. Un format ne sert qu'à une chose ici : dire comment se LIT le
-    # libellé d'une valeur — un mot, un entier, un décimal. Les cinq autres
-    # décrivaient des WIDGETS de saisie, pas des façons de lire :
-    #
-    #   · `text` ne diffère de `char` que par la hauteur du champ ;
-    #   · `date`/`datetime` n'ont jamais désigné une caractéristique de produit ;
-    #   · `color` faisait double emploi avec le type « matière », qui porte une
-    #     vraie miniature — et une couleur de laquage n'est pas un code hexa ;
-    #
-    # ⚠️ **`binary` EST RESTÉ, et j'avais eu tort de le compter parmi eux.** Je
-    # l'avais écarté d'un « une pièce jointe n'est pas une valeur, c'est un
-    # document » — et Gerry a décidé sur cette phrase. Elle était fausse : le
-    # client JOINT UN FICHIER comme valeur personnalisée, `product_config.py`
-    # valide la pièce jointe et refuse les incohérences, et **sept tests du module
-    # l'exercent de bout en bout**. Rétabli le 2026-08-28 sur ce constat.
-    #
-    # ⓘ Ces sept tests ne tournaient pas : la base de test n'avait pas les données
-    # de démo, et leur `setUpClass` échouait avant d'atteindre la moindre garde.
-    # Retirer une capacité sans pouvoir exécuter ce qui l'éprouve, c'est décider
-    # les yeux fermés — voir [[L-159]].
-    #
-    # ⓘ Mesuré avant de trancher : sur `fabk18`, un seul attribut portait un format
-    # abandonné — « Brand » en `color`, sans ajout client et sans une seule valeur.
-    #
-    # ⚠️ Le CODE qui traite `color` reste en place (`product_config.py`, wizard) :
-    # restreindre l'offre est réversible, arracher la plomberie ne l'est pas.
-    CUSTOM_TYPES = [
-        ("char", "Char"),
-        ("integer", "Integer"),
-        ("float", "Float"),
-        ("binary", "Attachment"),
-    ]
-
-    #: Les formats qui décrivent un NOMBRE — les seuls qu'une unité peut qualifier.
-    NUMERIC_TYPES = ("integer", "float")
+    # ⚠️ Ce qui RESTE ici est ce qui relève du configurateur seul : le régime des valeurs
+    # (`dynamic_values`, `product_filter_domain`) et la purge de désignation, qui parlent
+    # de la façon dont une liste se remplit — pas de ce qu'un attribut est.
 
     active = fields.Boolean(
         default=True,
@@ -631,75 +503,6 @@ class ProductAttribute(models.Model):
              "customer becomes a real attribute value, kept and reusable — not "
              "a throwaway entry.",
     )
-    #: Ce qu'une NATURE impose comme format. ⚠️ `number` → `float` : le format le
-    #: plus général, celui qui ne perd pas de décimale. L'entier reste atteignable
-    #: — il est une PRÉCISION que la nature ne porte pas, et n'a pas à porter.
-    NATURE_TO_CUSTOM_TYPE = {
-        "text": "char",
-        "number": "float",
-        # ⓘ Un produit et une matière se répondent par une valeur DISCRÈTE : le
-        # format de saisie libre reste du texte, c'est la nature qui dit ce que
-        # cette valeur désigne.
-        "product": "char",
-        "material": "char",
-        "attachment": "binary",
-    }
-
-    #: Le chemin inverse. ⚠️ Il n'est pas bijectif — `integer` et `float` mènent
-    #: tous deux à `number` —, et c'est exactement pourquoi le format survit : la
-    #: nature dit de quoi la question parle, le format dit comment on la saisit.
-    CUSTOM_TYPE_TO_NATURE = {
-        "char": "text",
-        "integer": "number",
-        "float": "number",
-        "binary": "attachment",
-    }
-
-    custom_type = fields.Selection(
-        selection=CUSTOM_TYPES,
-        string="Field Type",
-        compute="_compute_custom_type",
-        inverse="_inverse_custom_type",
-        store=True,
-        readonly=False,
-        help="How the custom field is rendered in the frontend.\n\n"
-        "It now FOLLOWS the attribute's nature, which is the source of truth: "
-        "`product_attribute_advanced` carries what a question is ABOUT, this "
-        "field carries how it is typed in. Both remain writable — writing one "
-        "sets the other — so that nothing which read this field has to change.\n\n"
-        "The integer/decimal distinction survives here, and only here: it is a "
-        "matter of widget, and the shared module deliberately carries no widget.",
-    )
-
-    @api.depends("nature")
-    def _compute_custom_type(self):
-        """Le format suit la nature — sans effacer la PRÉCISION qu'il porte en plus.
-
-        ⚠️ **On ne corrige que l'incohérence.** Un `integer` sous une nature `number`
-        est légitime, et le recalculer en `float` l'effacerait à chaque écriture de
-        la fiche — une perte silencieuse, à chaque enregistrement.
-        """
-        for attribute in self:
-            if self.CUSTOM_TYPE_TO_NATURE.get(attribute.custom_type) == attribute.nature:
-                continue
-            # ⓘ « Aucun format » est l'état HISTORIQUE de la plupart des attributs, et
-            # `text` est la nature par défaut : les deux se correspondent, et inventer
-            # un `char` là où il n'y en avait pas ne rendrait service à personne.
-            if attribute.nature == "text" and not attribute.custom_type:
-                continue
-            attribute.custom_type = self.NATURE_TO_CUSTOM_TYPE.get(attribute.nature)
-
-    def _inverse_custom_type(self):
-        """Écrire le format écrit la nature — c'est ce qui garde les 47 points d'appel.
-
-        ⓘ Sans cet inverse, toute écriture existante — un test qui crée un attribut
-        `integer`, un import — poserait un format que la nature contredirait au
-        recalcul suivant. L'inverse est ce qui rend le remplacement invisible.
-        """
-        for attribute in self:
-            nature = self.CUSTOM_TYPE_TO_NATURE.get(attribute.custom_type)
-            if nature and attribute.nature != nature:
-                attribute.nature = nature
     description = fields.Text(translate=True)
     search_ok = fields.Boolean(
         string="Searchable",
@@ -766,9 +569,21 @@ class ProductAttribute(models.Model):
                 )
 
     def _is_numeric_custom(self):
-        """Un attribut dont la valeur EST un nombre."""
+        """Un attribut dont la valeur EST un nombre.
+
+        ⚠️ **Le corps a DÉMÉNAGÉ, le nom reste** (2026-09-02). La même question se pose
+        désormais depuis l'éditeur 3D, qui ne peut pas dépendre d'ici (D-075) :
+        `product_attribute_advanced` porte donc `is_numeric()`, et cette méthode s'y
+        adosse. Deux corps identiques dans deux modules divergeraient au premier format
+        ajouté — c'est [[L-034]], et c'est exactement ce que le module partagé existe
+        pour éviter.
+
+        ⓘ Le nom privé survit parce que cinq points d'appel le citent, et qu'ils n'ont
+        aucune raison de changer : ce qui devait bouger, c'est l'endroit où la règle est
+        écrite, pas la façon de la poser.
+        """
         self.ensure_one()
-        return self.custom_type in self.NUMERIC_TYPES
+        return self.is_numeric()
 
     def canonical_custom_value(self, value):
         """La forme STOCKÉE d'une valeur numérique : le nombre, et rien d'autre.

@@ -1,6 +1,6 @@
 {
     "name": "Product Configurator (fa-brick)",
-    "version": "18.0.1.25.0",
+    "version": "18.0.1.26.0",
     "category": "Generic Modules/Base",
     "summary": "Base for product configuration interface modules",
     # Dérivé de OCA/product-configurator (AGPL-3) : l'attribution d'origine est
@@ -13,10 +13,13 @@
             "mako",
         ]
     },
-    # ⚠️ `product_attribute_advanced` porte ce qu'un attribut EST — sa nature et son
-    # unité —, et l'éditeur 3D en dépend aussi. C'est le seul endroit où les deux
-    # modules peuvent se rejoindre : l'éditeur est en LGPL-3 et ne peut pas dépendre
-    # d'ici (D-075), la contamination allant du dépendu vers le dépendant.
+    # ⚠️ `product_attribute_advanced` porte ce qu'un attribut EST — `value_type`,
+    # `custom_type`, l'unité —, et l'éditeur 3D en dépend aussi. C'est le seul endroit
+    # où les deux modules peuvent se rejoindre : l'éditeur est en LGPL-3 et ne peut pas
+    # dépendre d'ici (D-075), la contamination allant du dépendu vers le dépendant.
+    #
+    # ⓘ Ces champs VENAIENT d'ici, et n'ont pas changé en partant : c'est un
+    # déménagement, pas une refonte.
     "depends": ["account", "mail", "stock", "product_attribute_advanced"],
     "data": [
         "security/configurator_security.xml",

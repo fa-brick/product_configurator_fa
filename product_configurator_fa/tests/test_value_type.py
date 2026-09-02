@@ -68,25 +68,31 @@ class ValueType(BaseCommon):
         })
         self.assertEqual(attr.value_type, "product")
 
-    def test_05_the_core_does_NOT_know_materials(self):
-        """⚠️ « matière » appartient au module PONT, et le cœur l'ignore.
+    def test_05_knowing_materials_costs_NO_dependency(self):
+        """⚠️ « matière » ne doit rien coûter à un configurateur sans éditeur 3D.
 
-        Pas pour une raison de licence — D-075 autorise expressément le
-        configurateur AGPL-3 à dépendre de l'éditeur LGPL-3 — mais de MODULARITÉ :
-        un configurateur sans éditeur 3D doit continuer de fonctionner. Si ce test
-        échoue, c'est que le type a migré dans le cœur, et cette garantie avec lui.
+        ⓘ **La garantie a changé de forme le 2026-09-02, pas de fond.** « Matière »
+        était ajouté par le module PONT, pour que le configurateur seul continue de
+        fonctionner sans lui. Il est désormais dans la liste de base de
+        `product_attribute_advanced` — parce que c'est l'ÉDITEUR qui en a besoin, et
+        qu'il ne peut pas dépendre d'un pont AGPL-3 (D-075).
+
+        La modularité est préservée, et mieux qu'avant : le module qui le porte ne
+        dépend que de `product`. Une valeur de sélection ne nomme aucun modèle ; c'est
+        le LIEN vers une fiche matière qui coûterait une dépendance, et lui est resté
+        chez qui possède les matières.
         """
         types = dict(self.Attribute._fields["value_type"].selection)
         self.assertIn("value", types)
         self.assertIn("product", types)
-        if "material" in types:
-            # Le pont est installé : il a le droit d'y être, mais il doit venir de
-            # LUI. La liste déclarée par le cœur, elle, ne doit pas le contenir.
-            self.assertNotIn(
-                "material",
-                dict(self.Attribute.VALUE_TYPES),
-                "« matière » a été déclaré dans le cœur du configurateur",
-            )
+        self.assertIn("material", types)
+
+        carrier = self.env["ir.module.module"].search(
+            [("name", "=", "product_attribute_advanced")], limit=1)
+        self.assertTrue(carrier, "le module qui porte les types n'est pas installé")
+        # ⚠️ C'est CETTE ligne qui tient la promesse : un module qui ne dépend que de
+        # `product` n'entraîne ni l'éditeur, ni son moteur, ni ses matières.
+        self.assertEqual(carrier.dependencies_id.mapped("name"), ["product"])
 
     # ── ce que le type CONTRAINT ────────────────────────────────────────────
     def test_06_a_format_makes_no_sense_on_a_product(self):

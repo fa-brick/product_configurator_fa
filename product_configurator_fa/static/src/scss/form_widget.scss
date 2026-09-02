@@ -72,6 +72,24 @@
             opacity: 1;
         }
     }
+    // Le CHEVRON se tient comme la POIGNÉE, juste à sa gauche — demande de Gerry
+    // (2026-09-02). Les deux sont des affordances discrètes posées devant un libellé :
+    // elles ne portent aucune information, elles invitent à un geste. En couleur de
+    // lien, le chevron tirait l'œil plus fort que le nom qu'il précède.
+    //
+    // ⓘ Les deux teintes sont celles du cœur, relevées sur `.o_row_handle`
+    // (`views/fields/fields.scss`) : les reprendre plutôt que d'en choisir de proches
+    // garde les deux gestes indiscernables le jour où le thème bouge.
+    //
+    // ⚠️ `:focus-visible` et non `:focus` : un dialogue donne le focus à son premier
+    // contrôle, et le chevron de la première ligne s'assombrissait tout seul à
+    // l'ouverture. `:focus-visible` ne se déclenche qu'au clavier.
+    .o_config_tree_chevron {
+        color: #adb5bd;
+        &:hover, &:focus-visible {
+            color: #666666;
+        }
+    }
     // ⓘ Le « × » d'une pastille reprend sa couleur : un rouge d'alerte sur chaque
     // condition ferait de l'écran une liste d'avertissements.
     .o_config_facet_remove {

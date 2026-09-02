@@ -162,7 +162,7 @@
                 <span t-att-style="row.depth ? 'padding-left: 2rem;' : ''">
                     <button
                         t-if="row.kind === 'attribute' and row.hasValues"
-                        class="btn btn-link p-0 me-1"
+                        class="btn btn-link p-0 me-1 o_config_tree_chevron"
                         t-on-click="() => this.toggle(row)"
                     >
                         <i t-att-class="row.expanded ? 'fa fa-chevron-down' : 'fa fa-chevron-right'"/>

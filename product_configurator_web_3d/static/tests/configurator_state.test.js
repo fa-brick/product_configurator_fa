@@ -5,7 +5,7 @@
  * disait : *« le fork n'a aucun harnais de test JS »*. Il en a un, et la page naît sous
  * tests plutôt que l'inverse.
  */
-import { toViewModel, answerFor, reasonFor, sameDefinition }
+import { toViewModel, answerFor, reasonFor, sameDefinition, confirmError }
     from "@product_configurator_web_3d/configurator_state";
 
 const PAYLOAD = {
@@ -126,5 +126,28 @@ describe("reasonFor — ce qu'un appui doit dire (D-178)", () => {
 
     test("une valeur éteinte rend une phrase", () => {
         expect(String(reasonFor({ available: false }))).toBeTruthy();
+    });
+});
+
+describe("le refus de confirmation ne doit pas effacer la page", () => {
+    test("une confirmation réussie ne rend AUCUN message", () => {
+        expect(confirmError({ productName: "Porte", attributes: [] })).toBe(null);
+        expect(confirmError(null)).toBe(null);
+    });
+
+    test("une configuration incomplète NOMME ce qui manque", () => {
+        const message = confirmError({ error: "incomplete", missing: ["Couleur", "Serrure"] });
+        expect(message).toContain("Couleur");
+        expect(message).toContain("Serrure");
+    });
+
+    test("incomplète sans liste reste compréhensible", () => {
+        expect(confirmError({ error: "incomplete" })).toBeTruthy();
+    });
+
+    test("une session déjà confirmée le dit, et ne parle pas de lien invalide", () => {
+        const message = confirmError({ error: "session_closed" });
+        expect(message).toBeTruthy();
+        expect(message).not.toContain("link");
     });
 });

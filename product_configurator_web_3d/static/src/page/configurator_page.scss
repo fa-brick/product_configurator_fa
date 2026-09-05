@@ -60,4 +60,11 @@
     margin: 8px 0;
 }
 
+/* ⓘ Pleine largeur et détaché du prix : c'est le geste qui TERMINE, il ne doit pas
+   se confondre avec les boutons de valeur, tous en ligne au-dessus. */
+.o_cfg3d_confirm {
+    width: 100%;
+    margin-top: 16px;
+}
+
 .o_cfg3d_error { margin: 15vh auto; text-align: center; }

@@ -70,6 +70,59 @@ class ProductConfigSession(models.Model):
         self.ensure_one()
         return {value.attribute_id.id: value.id for value in self.value_ids}
 
+    def _web_missing_attributes(self):
+        """Les questions OBLIGATOIRES restées sans réponse.
+
+        ⚠️ **La visibilité passe AVANT l'exigence** — c'est la règle de D-086 :
+        un attribut masqué par une condition cesse d'être obligatoire. Sans
+        cela, une question que le client ne voit pas l'empêcherait de terminer,
+        et rien à l'écran ne dirait pourquoi.
+
+        ⓘ On ne s'appuie PAS sur `check_and_open_incomplete_step` : elle ne
+        regarde que les ÉTAPES (`get_open_step_lines`), donc un produit qui n'en
+        déclare aucune passerait sans contrôle. La page ne montre pas encore les
+        étapes ; elle doit pourtant refuser une configuration incomplète.
+        """
+        self.ensure_one()
+        chosen = self.value_ids
+        missing = self.env["product.template.attribute.line"]
+        for line in self.product_tmpl_id.attribute_line_ids:
+            if not line.required or not line._is_visible(value_ids=chosen):
+                continue
+            if not (line._configurator_value_ids() & chosen):
+                missing |= line
+        return missing
+
+    def _web_after_confirm(self):
+        """Ce qui suit la confirmation, là où la configuration ATTERRIT.
+
+        Vide ici, et c'est voulu : le cœur de l'interface ne sait pas ce qu'est
+        un devis. `product_configurator_web_3d_sale` s'y branche pour écrire la
+        ligne. Un autre atterrissage (un panier, une demande) s'y brancherait
+        pareil, sans toucher à cette classe.
+        """
+        return True
+
+    def web_confirm(self):
+        """Terminer la configuration : la variante naît, la session se ferme.
+
+        ⚠️ **Une session confirmée ne se rouvre pas.** Elle a donné sa variante,
+        et cette variante peut déjà être sur une commande : la changer ensuite
+        serait pire qu'un refus (D-190, même raison que `set_value`).
+        """
+        self.ensure_one()
+        missing = self._web_missing_attributes()
+        if missing:
+            # ⓘ Les NOMS, pas seulement le refus : la page doit pouvoir dire ce
+            # qui manque, et l'utilisateur ne connaît pas nos identifiants.
+            return {
+                "error": "incomplete",
+                "missing": missing.attribute_id.mapped("name"),
+            }
+        self.action_confirm()
+        self._web_after_confirm()
+        return self.web_state()
+
     def action_open_3d_page(self):
         """L'action qui EMMÈNE à la page 3D de cette configuration.
 

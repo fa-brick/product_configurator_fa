@@ -55,6 +55,15 @@
                     <span t-esc="priceLabel"/>
                     <strong t-esc="price"/>
                 </div>
+
+                <!-- ⓘ Le bouton DISPARAÎT une fois la configuration close : le
+                     bandeau de fermeture, juste au-dessus, dit alors ce qu'il en
+                     est. Deux états, un seul endroit qui parle. -->
+                <button t-if="state.model and not state.model.closed and not state.model.error"
+                        class="btn btn-primary o_cfg3d_confirm"
+                        t-att-disabled="state.loading"
+                        t-on-click="() => this.onConfirm()"
+                        t-esc="confirmLabel"/>
             </aside>
         </t>
     </div>

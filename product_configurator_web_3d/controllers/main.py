@@ -88,6 +88,25 @@ class ProductConfiguratorWeb3D(http.Controller):
         return session.web_state()
 
     @http.route(
+        "/configurator/confirm", type="json", auth="public", methods=["POST"],
+        website=False, csrf=False,
+    )
+    def confirm(self, token=None, **kwargs):
+        """Terminer la configuration — la seule route qui la FERME.
+
+        ⚠️ Le porteur du jeton confirme, et c'est cohérent avec tout le reste :
+        sur cette page, le jeton EST l'identité (D-190). Ce qui protège n'est
+        pas l'identité de l'appelant mais l'état de la session — une
+        configuration close ne se re-confirme pas.
+        """
+        session = self._session(token)
+        if not session:
+            return {"error": "unknown_session"}
+        if session.state != "draft":
+            return {"error": "session_closed"}
+        return session.web_confirm()
+
+    @http.route(
         "/configurator/set_value", type="json", auth="public", methods=["POST"],
         website=False, csrf=False,
     )

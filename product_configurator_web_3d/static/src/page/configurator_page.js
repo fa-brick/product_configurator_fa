@@ -22,7 +22,7 @@ import { registry } from "@web/core/registry";
 import { rpc } from "@web/core/network/rpc";
 import { PartViewer3D } from "@product_editor/components/part_viewer_3d/part_viewer_3d";
 import { projectSketchItems } from "@product_editor/engine/builder/project_items";
-import { toViewModel, answerFor, reasonFor }
+import { toViewModel, answerFor, reasonFor, confirmError }
     from "@product_configurator_web_3d/configurator_state";
 
 export class ConfiguratorPage extends Component {
@@ -93,12 +93,33 @@ export class ConfiguratorPage extends Component {
         this.state.loading = false;
     }
 
+    /**
+     * Terminer la configuration.
+     *
+     * ⚠️ Un refus n'efface RIEN. Il manque une réponse : la page reste telle quelle
+     * et dit laquelle. Seule une réussite remplace l'état — et la session étant alors
+     * close, le bandeau de fermeture prend la place du bouton, sans code de plus.
+     */
+    async onConfirm() {
+        this.state.loading = true;
+        const next = await this._call("/configurator/confirm");
+        this.state.loading = false;
+        const refus = confirmError(next);
+        if (refus) {
+            this.state.reason = refus;
+            return;
+        }
+        this.state.reason = null;
+        this.state.model = toViewModel(next, this.state.model);
+    }
+
     // ── Libellés — remontés du gabarit, où `_t()` n'est pas résoluble ────────
     get priceLabel() { return _t("Price"); }
     get closedLabel() {
         return _t("This configuration is confirmed and can no longer be changed.");
     }
     get emptyLabel() { return _t("This product asks no question."); }
+    get confirmLabel() { return _t("Confirm"); }
 }
 
 // Le service de composants publics d'Odoo 18 monte tout `<owl-component name="…">`

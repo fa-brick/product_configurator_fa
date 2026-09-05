@@ -99,6 +99,29 @@ export function answerFor(model, questionId, valueId) {
 }
 
 /**
+ * Ce que la page DIT quand la confirmation est refusée — ou `null` si elle a réussi.
+ *
+ * ⚠️ Un refus de confirmation n'est PAS une réponse d'état : le passer à `toViewModel`
+ * effacerait la configuration à l'écran pour afficher « ce lien n'est plus valable »,
+ * alors que la page est parfaitement vivante et qu'il manque juste une réponse.
+ */
+export function confirmError(payload) {
+    if (!payload || !payload.error) return null;
+    if (payload.error === "incomplete") {
+        const missing = (payload.missing || []).join(", ");
+        // ⓘ On NOMME ce qui manque : « configuration incomplète » n'aide personne
+        // sur un produit qui pose quinze questions.
+        return missing
+            ? _t("Please answer first: %s", missing)
+            : _t("Some required answers are missing.");
+    }
+    if (payload.error === "session_closed") {
+        return _t("This configuration is already confirmed.");
+    }
+    return _t("This configuration link is not valid any more.");
+}
+
+/**
  * La raison pour laquelle une valeur est éteinte — D-178, *« un appui donne la raison »*.
  *
  * ⓘ Ce que la page peut dire aujourd'hui est court, et c'est assumé : le serveur rend

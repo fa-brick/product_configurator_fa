@@ -75,7 +75,11 @@
                 <!-- ⓘ Le bouton DISPARAÎT une fois la configuration close : le
                      bandeau de fermeture, juste au-dessus, dit alors ce qu'il en
                      est. Deux états, un seul endroit qui parle. -->
-                <button t-if="state.model and not state.model.closed and not state.model.error"
+                <!-- ⚠️ `!` ET NON `not`. OWL traduit `and`, `or`, `gt`, `lte`… mais PAS
+                     `not` (`owl.js`, `WORD_REPLACEMENT`) : il en fait une VARIABLE,
+                     `ctx['not']`, le gabarit ne compile plus, et la page entière reste
+                     BLANCHE — pas seulement ce bouton. Mesuré le 2026-09-05. -->
+                <button t-if="state.model and !state.model.closed and !state.model.error"
                         class="btn btn-primary o_cfg3d_confirm"
                         t-att-disabled="state.loading or watching"
                         t-on-click="() => this.onConfirm()"

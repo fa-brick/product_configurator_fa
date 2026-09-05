@@ -70,6 +70,25 @@ class ProductConfigSession(models.Model):
         self.ensure_one()
         return {value.attribute_id.id: value.id for value in self.value_ids}
 
+    def action_open_3d_page(self):
+        """L'action qui EMMÈNE à la page 3D de cette configuration.
+
+        Un seul endroit fabrique cette URL : la fiche produit et la ligne de
+        devis y passent toutes les deux. Le jeton reste la seule identité, même
+        au back-office — c'est ce qui permet d'ouvrir la même page, pour un
+        interne comme pour un client (D-091).
+
+        ⓘ `target: "new"` — un onglet à côté, et non à la place : le commercial
+        garde son devis ouvert derrière.
+        """
+        self.ensure_one()
+        self._ensure_access_token()
+        return {
+            "type": "ir.actions.act_url",
+            "url": f"/configurator/{self.access_token}",
+            "target": "new",
+        }
+
     def web_state(self):
         """Tout ce qu'il faut à la page, en UNE réponse.
 

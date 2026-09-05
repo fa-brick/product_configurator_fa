@@ -19,12 +19,17 @@ import { _t } from "@web/core/l10n/translation";
  */
 import { Component, onWillStart, onWillUnmount, useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
+import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
 import { rpc } from "@web/core/network/rpc";
 import { PartViewer3D } from "@product_editor/components/part_viewer_3d/part_viewer_3d";
 import { projectSketchItems } from "@product_editor/engine/builder/project_items";
-import { toViewModel, answerFor, reasonFor, confirmError }
+import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage }
     from "@product_configurator_web_3d/configurator_state";
+
+// Fenêtre de partage de la caméra. 150 ms : sous le seuil où un mouvement
+// paraît saccadé à qui regarde, au-dessus de la cadence d'une orbite au doigt.
+const CAMERA_SHARE_MS = 150;
 
 export class ConfiguratorPage extends Component {
     static template = "product_configurator_web_3d.ConfiguratorPage";
@@ -34,7 +39,17 @@ export class ConfiguratorPage extends Component {
     };
 
     setup() {
-        this.state = useState({ model: null, loading: true, reason: null });
+        this.state = useState({
+            model: null, loading: true, reason: null, cameraApply: null,
+        });
+        // ⚠️ UN IDENTIFIANT PAR ONGLET, pas par utilisateur : la même personne
+        // peut ouvrir la même configuration deux fois, et c'est bien l'onglet
+        // qui conduit. `randomUUID` n'existe QUE dans un contexte sécurisé
+        // (https, ou localhost) — sur un site en clair il vaut `undefined`, et
+        // l'absence de repli ferait de tout le monde le même porteur.
+        this.holder = crypto.randomUUID
+            ? crypto.randomUUID()
+            : `h-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         onWillStart(async () => {
             this.state.model = toViewModel(await this._call("/configurator/state"));
             this.state.loading = false;
@@ -64,16 +79,36 @@ export class ConfiguratorPage extends Component {
             // couleur (D-191).
             this.state.model = toViewModel(payload, this.state.model);
         };
+        /**
+         * Le point de vue de celui qui conduit — D-256.
+         *
+         * ⚠️ **On ignore sa PROPRE caméra**, et c'est indispensable : la
+         * réappliquer relancerait `onCameraPose`, qui rediffuserait, et la vue
+         * se mettrait à trembler entre deux poses presque identiques.
+         */
+        const onCamera = ({ holder, pose }) => {
+            if (!pose || holder === this.holder) return;
+            this.state.cameraApply = {
+                move: true, pose,
+                // ⓘ Une RÉFÉRENCE neuve à chaque fois : le viewer applique la vue
+                // quand la prop change d'identité, pas quand son contenu diffère.
+                serial: (this.state.cameraApply?.serial ?? 0) + 1,
+            };
+        };
         bus.addChannel(channel);
         bus.subscribe("configurator_state", onRemote);
+        bus.subscribe("configurator_camera", onCamera);
         onWillUnmount(() => {
             bus.unsubscribe("configurator_state", onRemote);
+            bus.unsubscribe("configurator_camera", onCamera);
             bus.deleteChannel(channel);
         });
     }
 
     _call(route, params = {}) {
-        return rpc(route, { token: this.props.token, ...params });
+        // ⓘ Le porteur accompagne le jeton sur TOUS les appels : les routes qui
+        // s'en moquent l'ignorent, et aucune ne peut l'oublier.
+        return rpc(route, { token: this.props.token, holder: this.holder, ...params });
     }
 
     /**
@@ -109,7 +144,65 @@ export class ConfiguratorPage extends Component {
      * C'est le seul geste qui vaille sur les deux mondes — un clic au bureau, une tape sur
      * un téléphone — et c'est pour cela qu'une valeur indisponible reste cliquable.
      */
+    /** Qui conduit, vu d'ici. */
+    get hand() {
+        return handState(this.state.model, this.holder);
+    }
+
+    /** Ce qui est en LECTURE SEULE parce qu'un autre conduit. */
+    get watching() {
+        const hand = this.hand;
+        return !hand.free && !hand.mine;
+    }
+
+    get handLabel() {
+        return handMessage(this.hand);
+    }
+
+    get takeHandLabel() { return _t("Take over"); }
+
+    /**
+     * Prendre la main — et le dire à ceux qui regardent.
+     *
+     * ⓘ Cela réussit toujours (D-255) : ce n'est pas un verrou qu'on force,
+     * c'est une conduite qu'on annonce.
+     */
+    async onTakeHand() {
+        this.state.loading = true;
+        const next = await this._call("/configurator/take_hand");
+        this.state.loading = false;
+        if (next && !next.error) {
+            this.state.reason = null;
+            this.state.model = toViewModel(next, this.state.model);
+        }
+    }
+
+    /**
+     * Publier son point de vue — seulement si l'on conduit.
+     *
+     * ⚠️ Le viewer débruite déjà (il n'émet qu'au-delà d'un degré ou d'un
+     * millimètre), mais une orbite au doigt en produit tout de même des
+     * dizaines par seconde. On garde le DERNIER d'une fenêtre plutôt que de
+     * tous les envoyer : ce qui compte est où l'on s'arrête, pas le trajet.
+     */
+    onCameraPose(pose) {
+        if (!this.hand.mine || !pose) return;
+        this._lastPose = pose;
+        if (this._poseTimer) return;
+        this._poseTimer = browser.setTimeout(() => {
+            this._poseTimer = null;
+            this._call("/configurator/camera", { pose: this._lastPose });
+        }, CAMERA_SHARE_MS);
+    }
+
     async onPick(questionId, value) {
+        // ⚠️ Le refus est LOCAL avant d'être serveur : le serveur refuse aussi
+        // (c'est lui qui fait foi), mais laisser partir l'appel ferait clignoter
+        // la page pour finir sur le même message.
+        if (this.watching) {
+            this.state.reason = this.handLabel;
+            return;
+        }
         const payload = answerFor(this.state.model, questionId, value.id);
         if (!payload) {
             this.state.reason = reasonFor(value);

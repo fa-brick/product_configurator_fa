@@ -66,6 +66,10 @@ export function toViewModel(payload, previous = null) {
         })),
         definition,
         scope: payload.scope || {},
+        // ⓘ Toujours un objet : « personne ne conduit » se lit `{holder: null}`,
+        // jamais par une absence — sans quoi un état ancien et un état libre
+        // seraient indistinguables.
+        hand: payload.hand || { holder: null, label: null },
     };
 }
 
@@ -99,6 +103,33 @@ export function answerFor(model, questionId, valueId) {
 }
 
 /**
+ * Qui conduit, vu de CETTE page — D-255.
+ *
+ * @param {object} model le modèle courant
+ * @param {string} me    l'identifiant de cette page (un par onglet)
+ * @returns {{free: boolean, mine: boolean, label: ?string}}
+ */
+export function handState(model, me) {
+    const hand = (model && model.hand) || {};
+    if (!hand.holder) return { free: true, mine: false, label: null };
+    return { free: false, mine: hand.holder === me, label: hand.label || null };
+}
+
+/**
+ * Ce qu'on dit à qui ne conduit pas — ou `null` s'il conduit.
+ *
+ * ⚠️ Le message NOMME celui qui tient la main. « Modification impossible » est
+ * la seule réponse dont on ne peut rien faire : on ne sait ni pourquoi, ni
+ * jusqu'à quand, ni qui aller voir.
+ */
+export function handMessage(hand) {
+    if (!hand || hand.free || hand.mine) return null;
+    return hand.label
+        ? _t("%s is configuring. Take over to make a change.", hand.label)
+        : _t("Someone else is configuring. Take over to make a change.");
+}
+
+/**
  * Ce que la page DIT quand la confirmation est refusée — ou `null` si elle a réussi.
  *
  * ⚠️ Un refus de confirmation n'est PAS une réponse d'état : le passer à `toViewModel`
@@ -117,6 +148,11 @@ export function confirmError(payload) {
     }
     if (payload.error === "session_closed") {
         return _t("This configuration is already confirmed.");
+    }
+    if (payload.error === "not_holding") {
+        // ⓘ Le serveur rend l'état de la main AVEC son refus : la page peut donc
+        // nommer celui qui conduit sans redemander l'état complet.
+        return handMessage({ free: false, mine: false, label: payload.hand?.label });
     }
     return _t("This configuration link is not valid any more.");
 }

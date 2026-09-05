@@ -175,6 +175,9 @@ class ProductConfigSession(models.Model):
             "state": self.state,
             "attributes": self._web_attribute_lines(),
             "price": self.get_cfg_price(),
+            # Qui conduit (D-255). ⓘ Toujours présent, même libre : la page doit
+            # pouvoir dire « personne » sans distinguer « absent » de « vide ».
+            "hand": self._hand_state(),
             # ⓘ La définition porte la FORME, la portée porte les VALEURS : c'est
             # la séparation de D-163, et elle vaut ici comme dans l'éditeur.
             "definition": model3d.to_definition(values) if model3d else None,

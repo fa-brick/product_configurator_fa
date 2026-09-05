@@ -5,7 +5,7 @@
  * disait : *« le fork n'a aucun harnais de test JS »*. Il en a un, et la page naît sous
  * tests plutôt que l'inverse.
  */
-import { toViewModel, answerFor, reasonFor, sameDefinition, confirmError }
+import { toViewModel, answerFor, reasonFor, sameDefinition, confirmError, handState, handMessage }
     from "@product_configurator_web_3d/configurator_state";
 
 const PAYLOAD = {
@@ -149,5 +149,39 @@ describe("le refus de confirmation ne doit pas effacer la page", () => {
         const message = confirmError({ error: "session_closed" });
         expect(message).toBeTruthy();
         expect(message).not.toContain("link");
+    });
+});
+
+describe("qui conduit, et ce qu'on en dit", () => {
+    test("personne ne conduit : la page est libre", () => {
+        const hand = handState({ hand: { holder: null } }, "moi");
+        expect(hand).toEqual({ free: true, mine: false, label: null });
+        expect(handMessage(hand)).toBe(null);
+    });
+
+    test("je conduis : rien à annoncer", () => {
+        const hand = handState({ hand: { holder: "moi", label: "Gerry" } }, "moi");
+        expect(hand.mine).toBe(true);
+        expect(handMessage(hand)).toBe(null);
+    });
+
+    test("un autre conduit : on le NOMME", () => {
+        const hand = handState({ hand: { holder: "elle", label: "Gerry" } }, "moi");
+        expect(hand).toEqual({ free: false, mine: false, label: "Gerry" });
+        expect(handMessage(hand)).toContain("Gerry");
+    });
+
+    test("un autre sans nom reste compréhensible", () => {
+        expect(handMessage(handState({ hand: { holder: "elle" } }, "moi"))).toBeTruthy();
+    });
+
+    test("un modèle sans main ne fait pas tomber la page", () => {
+        expect(handState(null, "moi").free).toBe(true);
+        expect(handState({}, "moi").free).toBe(true);
+    });
+
+    test("le refus « pas la main » nomme lui aussi le conducteur", () => {
+        const message = confirmError({ error: "not_holding", hand: { label: "Gerry" } });
+        expect(message).toContain("Gerry");
     });
 });

@@ -88,10 +88,56 @@ class ProductConfiguratorWeb3D(http.Controller):
         return session.web_state()
 
     @http.route(
+        "/configurator/take_hand", type="json", auth="public", methods=["POST"],
+        website=False, csrf=False,
+    )
+    def take_hand(self, token=None, holder=None, **kwargs):
+        """Prendre la main — et cela RÉUSSIT toujours.
+
+        ⚠️ Ce n'est pas un verrou qu'on force : c'est une coordination qu'on
+        annonce. Gerry a tranché que l'interne agit sur la configuration du
+        client (D-253) ; refuser ici rendrait cette décision inapplicable dès
+        que le client aurait touché un bouton. Ce qui compte est que l'autre le
+        VOIE — d'où la diffusion qui suit.
+        """
+        session = self._session(token)
+        if not session:
+            return {"error": "unknown_session"}
+        if not holder:
+            return {"error": "unknown_holder"}
+        session._take_hand(holder)
+        session._notify_configuration_changed()
+        return session.web_state()
+
+    @http.route(
+        "/configurator/camera", type="json", auth="public", methods=["POST"],
+        website=False, csrf=False,
+    )
+    def camera(self, token=None, holder=None, pose=None, **kwargs):
+        """Partager son point de vue — réservé à celui qui conduit (D-256).
+
+        ⚠️ **Seul le porteur de la main diffuse sa caméra.** Sans cette
+        réserve, deux personnes qui regardent chacune de leur côté se
+        renverraient leur vue à tour de rôle, et la scène deviendrait
+        inutilisable pour les deux.
+
+        ⓘ Rien n'est ÉCRIT : une pose de caméra n'est pas un état de la
+        configuration, c'est un geste qui passe. La stocker ferait d'un regard
+        une donnée, et d'un devis un objet qui change sans que rien ne change.
+        """
+        session = self._session(token)
+        if not session:
+            return {"error": "unknown_session"}
+        if not session._hand_belongs_to(holder):
+            return {"error": "not_holding"}
+        session._bus_send("configurator_camera", {"holder": holder, "pose": pose})
+        return {"ok": True}
+
+    @http.route(
         "/configurator/confirm", type="json", auth="public", methods=["POST"],
         website=False, csrf=False,
     )
-    def confirm(self, token=None, **kwargs):
+    def confirm(self, token=None, holder=None, **kwargs):
         """Terminer la configuration — la seule route qui la FERME.
 
         ⚠️ Le porteur du jeton confirme, et c'est cohérent avec tout le reste :
@@ -104,13 +150,19 @@ class ProductConfiguratorWeb3D(http.Controller):
             return {"error": "unknown_session"}
         if session.state != "draft":
             return {"error": "session_closed"}
+        # ⚠️ Terminer est le geste le plus fort de la page : il fait naître une
+        # variante et ferme la session. Il demande donc la MAIN, comme le
+        # moindre changement de valeur — à plus forte raison.
+        if not (session._hand_belongs_to(holder) or session._hand_is_free()):
+            return {"error": "not_holding", "hand": session._hand_state()}
         return session.web_confirm()
 
     @http.route(
         "/configurator/set_value", type="json", auth="public", methods=["POST"],
         website=False, csrf=False,
     )
-    def set_value(self, token=None, attribute_id=None, value_id=None, **kwargs):
+    def set_value(self, token=None, attribute_id=None, value_id=None, holder=None,
+                  **kwargs):
         """Répondre à une question, et recevoir l'état qui en découle.
 
         ⚠️ **AUCUNE FOURCHE, NULLE PART** — et depuis D-253, plus nulle part
@@ -127,6 +179,12 @@ class ProductConfiguratorWeb3D(http.Controller):
             return {"error": "unknown_session"}
         if session.state != "draft":
             return {"error": "session_closed"}
+        # ⚠️ LA MAIN (D-255). Un geste de celui qui ne conduit pas est refusé —
+        # et le refus DIT qui conduit, sans quoi la page ne pourrait qu'afficher
+        # « non » : la seule réponse dont on ne peut rien faire.
+        if not (session._hand_belongs_to(holder) or session._hand_is_free()):
+            return {"error": "not_holding", "hand": session._hand_state()}
+        session._take_hand(holder)
         value = request.env["product.attribute.value"].sudo().browse(int(value_id or 0))
         if not value.exists() or value.attribute_id.id != int(attribute_id or 0):
             # Une valeur qui n'appartient pas à la question posée n'est pas une

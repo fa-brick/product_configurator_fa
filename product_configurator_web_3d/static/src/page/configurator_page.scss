@@ -60,6 +60,20 @@
     margin: 8px 0;
 }
 
+/* Le bandeau de conduite : il informe ET il agit, donc les deux tiennent sur une
+   ligne, à hauteur de regard des questions qu'il gèle. */
+.o_cfg3d_hand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 8px 0 12px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.05);
+    font-size: 12.5px;
+}
+
 /* ⓘ Pleine largeur et détaché du prix : c'est le geste qui TERMINE, il ne doit pas
    se confondre avec les boutons de valeur, tous en ligne au-dessus. */
 .o_cfg3d_confirm {

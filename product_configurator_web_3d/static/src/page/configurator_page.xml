@@ -12,11 +12,16 @@
 
         <t t-else="">
             <div class="o_cfg3d_viewer">
+                <!-- ⓘ `cameraApply` reçoit le point de vue de celui qui conduit,
+                     `onCameraPose` publie le nôtre quand c'est nous (D-256). Les deux
+                     existaient déjà sur le viewer : rien n'a été ajouté à l'éditeur. -->
                 <PartViewer3D sketchItems="sketchItems"
                               onSelectSketch="() => {}"
                               displayMode="'realistic'"
                               showPlanes="false"
-                              origineVisible="false"/>
+                              origineVisible="false"
+                              cameraApply="state.cameraApply"
+                              onCameraPose="(pose) => this.onCameraPose(pose)"/>
             </div>
 
             <aside class="o_cfg3d_side">
@@ -24,6 +29,17 @@
 
                 <div t-if="state.model and state.model.closed" class="o_cfg3d_closed"
                      t-esc="closedLabel"/>
+
+                <!-- ⚠️ QUI CONDUIT — et le moyen de le remplacer, au même endroit.
+                     Un bandeau qui annonce un empêchement sans offrir la sortie
+                     laisse le lecteur devant une porte fermée. -->
+                <div t-if="watching" class="o_cfg3d_hand">
+                    <span t-esc="handLabel"/>
+                    <button class="btn btn-sm btn-primary"
+                            t-att-disabled="state.loading"
+                            t-on-click="() => this.onTakeHand()"
+                            t-esc="takeHandLabel"/>
+                </div>
 
                 <t t-foreach="questions" t-as="question" t-key="question.id">
                     <section class="o_cfg3d_question">
@@ -61,7 +77,7 @@
                      est. Deux états, un seul endroit qui parle. -->
                 <button t-if="state.model and not state.model.closed and not state.model.error"
                         class="btn btn-primary o_cfg3d_confirm"
-                        t-att-disabled="state.loading"
+                        t-att-disabled="state.loading or watching"
                         t-on-click="() => this.onConfirm()"
                         t-esc="confirmLabel"/>
             </aside>

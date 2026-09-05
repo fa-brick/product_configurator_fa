@@ -944,7 +944,19 @@ class ProductTemplate(models.Model):
         # une valeur de devis) : comparer sans convertir lève un TypeError que
         # rien n'annonce à la lecture.
         date = fields.Date.to_date(date) or fields.Date.context_today(self)
-        grids = self.price_grid_ids.filtered(
+        # ⚠️ `sudo` — SANS LUI, LA BOUTIQUE RÉPOND 403 À TOUT VISITEUR ANONYME.
+        # `_price_compute` passe ici pour n'importe quel lecteur d'un prix, et
+        # l'utilisateur PUBLIC n'a aucune ACL sur `product.price.grid` : les
+        # droits posés en D-093 s'arrêtent au portail, parce qu'il n'y avait pas
+        # de site quand ils ont été écrits. Le rendu de `website_sale.product`
+        # levait donc un `AccessError` sur le premier produit venu — configurable
+        # ou non.
+        # ⓘ `sudo` plutôt qu'une ACL publique : ce que le visiteur doit obtenir
+        # est le PRIX, pas la grille. Une ligne d'ACL rendrait les paliers et
+        # les cellules lisibles partout ; ici la lecture reste enfermée dans le
+        # calcul, et le `sudo` porte aussi les paliers et cellules que
+        # `get_price` traverse ensuite.
+        grids = self.sudo().price_grid_ids.filtered(
             lambda grid: (not grid.date_start or grid.date_start <= date)
             and (not grid.date_end or grid.date_end >= date)
         )

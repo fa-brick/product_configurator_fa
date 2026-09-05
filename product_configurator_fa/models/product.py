@@ -1284,6 +1284,14 @@ class ProductProduct(models.Model):
             config_manager
             or (config_user and mode not in ["delete"])
             or self.env.user.id in [user_root.id, user_admin.id]
+            # ⚠️ `env.su` MANQUAIT ICI, et la jumelle de cette méthode
+            # (`product.template.check_config_user_access`) l'a depuis toujours.
+            # La même règle écrite deux fois avait donc deux sens : un code qui
+            # s'exécute en `sudo` — donc qui a pris la responsabilité ailleurs —
+            # passait sur le gabarit et butait sur la variante.
+            # Mesuré le 2026-09-05 : le visiteur public ne pouvait pas TERMINER
+            # sa configuration, la naissance de la variante étant refusée.
+            or self.env.su
         ):
             return True
         raise ValidationError(

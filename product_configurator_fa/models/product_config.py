@@ -9,6 +9,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.fields import Command
 from odoo.tools.misc import formatLang
+from markupsafe import Markup, escape
 
 _logger = logging.getLogger(__name__)
 
@@ -923,7 +924,10 @@ class ProductConfigSession(models.Model):
     # professionnel, un commercial. Savoir qui a changé quoi et quand n'est pas
     # un luxe (D-092). OCA n'en avait aucune trace.
     _name = "product.config.session"
-    _inherit = ["mail.thread"]
+    # ⓘ `bus.listener.mixin` : une session est un objet qu'on REGARDE à
+    # plusieurs (D-253). Le mixin lui donne son canal ; qui diffuse et
+    # quoi reste au module d'interface.
+    _inherit = ["mail.thread", "bus.listener.mixin"]
     _description = "Product Config Session"
 
     @api.depends(
@@ -1174,37 +1178,70 @@ class ProductConfigSession(models.Model):
             return self.browse()
         return session
 
-    def _session_for_edit(self):
-        """Rend la session dans laquelle ÉCRIRE — la mienne, ou une fourche.
+    def _configuration_snapshot(self):
+        """Ce que la configuration DIT aujourd'hui : `{attribut → libellés}`."""
+        self.ensure_one()
+        snapshot = {}
+        for value in self.value_ids:
+            snapshot.setdefault(value.attribute_id, self.env["product.attribute.value"])
+            snapshot[value.attribute_id] |= value
+        return snapshot
 
-        Une session appartient à une IDENTITÉ (D-092) : quand un utilisateur
-        identifié reprend celle d'un autre, une nouvelle session naît, reliée à
-        l'originale, et l'original garde sa version intacte.
+    def _log_configuration_change(self, before, after):
+        """La note d'historique — `attribut : ancienne → nouvelle` (D-253).
 
-        ⚠️ La fourche a lieu à la première MODIFICATION, pas à l'ouverture —
-        sinon le commercial qui vient seulement regarder crée une session pour
-        rien. C'est la doctrine de D-082 appliquée ici.
+        ⓘ La forme est celle du suivi natif d'Odoo, mais le mécanisme ne peut
+        pas l'être : `mail.tracking.value` ne sait pas suivre un **many2many**,
+        et une configuration n'est QUE cela. La note est donc composée ici.
+
+        ⚠️ Un attribut qui n'a pas bougé n'apparaît pas. Une note qui répète
+        l'état entier à chaque clic ne se lit plus, donc ne protège plus rien.
         """
         self.ensure_one()
-        user = self.env.user
-        if self.user_id == user:
-            return self
-        fork = self.copy(
-            {
-                "user_id": user.id,
-                "parent_id": self.id,
-                "state": "draft",
-                "product_id": False,
-                "access_token": False,
-            }
-        )
-        fork._ensure_access_token()
-        fork._message_log(
-            body=self.env._(
-                "Configuration taken over from %(session)s", session=self.display_name
+        lignes = []
+        for attribute in (set(before) | set(after)):
+            avant = before.get(attribute)
+            apres = after.get(attribute)
+            if avant == apres:
+                continue
+            lignes.append(
+                "<li>%s : <span style='text-decoration: line-through'>%s</span>"
+                " → <b>%s</b></li>" % (
+                    escape(attribute.name),
+                    escape(", ".join(avant.mapped("name")) if avant else "—"),
+                    escape(", ".join(apres.mapped("name")) if apres else "—"),
+                )
             )
-        )
-        return fork
+        if not lignes:
+            return False
+        self._message_log(body=Markup("<ul>%s</ul>") % Markup("".join(lignes)))
+        return True
+
+    def _notify_configuration_changed(self):
+        """Crochet du DIRECT — vide ici, et c'est voulu.
+
+        Le cœur sait qu'une configuration a changé ; il ne sait pas quelle
+        forme la page en attend. `product_configurator_web_3d` s'y branche pour
+        diffuser l'état sur le bus.
+        """
+        return True
+
+    # ══ LA FOURCHE A ÉTÉ RETIRÉE — D-253 remplace D-092 ═════════════════
+    #
+    # `_session_for_edit` vivait ici : reprendre la session d'un autre en
+    # créait une COPIE, et l'original gardait sa version. Arbitrage de Gerry le
+    # 2026-09-05 : **on partage, on ne duplique pas**. Un interne voit et
+    # modifie en direct la configuration d'un collègue sur le même devis, comme
+    # celle d'un client connecté au portail.
+    #
+    # ⓘ Ce qui remplace la protection que la fourche apportait : l'HISTORIQUE.
+    # Chaque modification laisse sa note — `attribut : ancienne → nouvelle` —
+    # donc rien ne se perd sans laisser de trace, et on sait qui a fait quoi.
+    # Une copie muette protégeait moins que ça.
+    #
+    # ⚠️ Elle n'était appelée nulle part en production : elle attendait un
+    # branchement qui n'est jamais venu. La retirer ne change donc aucun
+    # comportement — elle retire une intention.
 
     @api.autovacuum
     def _gc_config_sessions(self):
@@ -1421,10 +1458,28 @@ class ProductConfigSession(models.Model):
         self.write(update_vals)
 
     def write(self, vals):
-        """Validate configuration when writing new values to session"""
-        # TODO: Issue warning when writing to value_ids or custom_val_ids
+        """Validate configuration when writing new values to session.
+
+        ⚠️ **ET POSER LA TRACE** — D-253. Elle vit ICI et non dans une seconde
+        `write` : la classe en avait déjà une, et Python garde la DERNIÈRE
+        définition du corps de classe. Une surcharge ajoutée plus haut est
+        muette, sans une erreur, sans un avertissement — mesuré le 2026-09-05.
+
+        ⚠️ La trace est posée **après** la validation, qui peut elle-même
+        retirer des valeurs devenues indisponibles : la note doit dire l'état
+        où l'on ARRIVE, pas celui qu'on a demandé. D'où le drapeau de contexte,
+        qui empêche l'écriture interne ci-dessous d'en produire une seconde.
+        """
+        trace = "value_ids" in vals and not self.env.context.get("cfg_no_trace")
+        avant = (
+            {record.id: record._configuration_snapshot() for record in self}
+            if trace else {}
+        )
+        if trace:
+            self = self.with_context(cfg_no_trace=True)
         res = super().write(vals)
         if not self.product_tmpl_id:
+            self._trace_configuration_change(avant)
             return res
         value_ids = self.value_ids.ids
         avail_val_ids = self.values_available(value_ids)
@@ -1436,7 +1491,18 @@ class ProductConfigSession(models.Model):
             raise ValidationError(self.env._(f"{exc}")) from exc
         except Exception as exc:
             raise ValidationError(self.env._("Invalid Configuration")) from exc
+        self._trace_configuration_change(avant)
         return res
+
+    def _trace_configuration_change(self, avant):
+        """La note, et le signal aux spectateurs — une seule porte pour les deux."""
+        if not avant:
+            return
+        for record in self:
+            if record._log_configuration_change(
+                avant.get(record.id, {}), record._configuration_snapshot()
+            ):
+                record._notify_configuration_changed()
 
     @api.model_create_multi
     def create(self, vals_list):

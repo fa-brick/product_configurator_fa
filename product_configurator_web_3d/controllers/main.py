@@ -113,13 +113,11 @@ class ProductConfiguratorWeb3D(http.Controller):
     def set_value(self, token=None, attribute_id=None, value_id=None, **kwargs):
         """Répondre à une question, et recevoir l'état qui en découle.
 
-        ⚠️ **AUCUNE FOURCHE ICI, et c'est une décision** (D-190). `_session_for_edit`
-        duplique une session quand l'utilisateur courant n'est pas son
-        propriétaire — c'est le geste juste au **back-office**, où un commercial
-        reprend la configuration d'un autre. Sur une route publique, l'appelant est
-        toujours l'utilisateur *public* : forker à chaque clic créerait une session
-        par réponse, et le visiteur perdrait la sienne au premier changement.
-        **Le porteur du jeton EST le propriétaire.**
+        ⚠️ **AUCUNE FOURCHE, NULLE PART** — et depuis D-253, plus nulle part
+        ailleurs non plus. La duplication d'une session reprise par un autre a été
+        RETIRÉE du cœur (arbitrage Gerry, 2026-09-05) : on partage, et chaque
+        modification laisse sa note. Ce qui n'était vrai que de cette route est
+        devenu la règle du dépôt. **Le porteur du jeton EST le propriétaire.**
 
         ⚠️ Une session **confirmée** ne se modifie plus : elle a donné sa variante,
         et la changer sous une commande déjà passée serait pire qu'un refus.

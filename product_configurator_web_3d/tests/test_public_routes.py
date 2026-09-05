@@ -117,11 +117,10 @@ class TestPublicRoutes(HttpCase):
     def test_repondre_NE_FORKE_PAS_la_session(self):
         """D-190 — le porteur du jeton EST le propriétaire.
 
-        `_session_for_edit` duplique quand l'utilisateur courant n'est pas le
-        propriétaire : c'est juste au back-office, où un commercial reprend la
-        configuration d'un autre. Ici l'appelant est TOUJOURS l'utilisateur
-        public — forker à chaque clic créerait une session par réponse, et le
-        visiteur perdrait la sienne au premier changement.
+        Ce test valait d'abord contre `_session_for_edit`, qui dupliquait la
+        session reprise par un autre. Cette fourche a été RETIRÉE du cœur
+        (D-253) : le test garde tout son sens, il garde simplement contre une
+        autre récidive — celle où répondre créerait une session par clic.
         """
         avant = self.env["product.config.session"].search_count([])
         self._call("/configurator/set_value", token=self.session.access_token,

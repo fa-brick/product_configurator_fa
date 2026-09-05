@@ -17,7 +17,8 @@ import { _t } from "@web/core/l10n/translation";
  * ⚠️ **Le jeton entre par l'URL et ne ressort pas.** Il est passé en prop par le gabarit,
  * employé dans les appels, et n'apparaît dans aucun état rendu (D-190).
  */
-import { Component, onWillStart, useState } from "@odoo/owl";
+import { Component, onWillStart, onWillUnmount, useState } from "@odoo/owl";
+import { useService } from "@web/core/utils/hooks";
 import { registry } from "@web/core/registry";
 import { rpc } from "@web/core/network/rpc";
 import { PartViewer3D } from "@product_editor/components/part_viewer_3d/part_viewer_3d";
@@ -37,6 +38,37 @@ export class ConfiguratorPage extends Component {
         onWillStart(async () => {
             this.state.model = toViewModel(await this._call("/configurator/state"));
             this.state.loading = false;
+        });
+        this._listenToOthers();
+    }
+
+    /**
+     * Suivre EN DIRECT ce que les autres font de cette configuration — D-253.
+     *
+     * Un commercial reprend la configuration de son client pendant qu'il la regarde :
+     * ce qu'il change apparaît chez le client sans qu'il ait à recharger. C'est la
+     * contrepartie de la fourche supprimée — on partage, donc on montre.
+     *
+     * ⚠️ **L'écho de sa PROPRE modification revient aussi**, et on l'applique comme
+     * les autres. C'est sans effet : le message porte l'état complet du serveur, qui
+     * est justement celui qu'on vient d'appliquer. Filtrer l'auteur coûterait un
+     * identifiant de plus sur le fil, pour rien.
+     */
+    _listenToOthers() {
+        const bus = useService("bus_service");
+        const channel = `product.config.session_${this.props.token}`;
+        const onRemote = (payload) => {
+            // ⓘ Le même chemin que la réponse d'un clic : le modèle PRÉCÉDENT est
+            // passé, donc la définition est conservée quand la recette n'a pas
+            // changé — un spectateur ne reconstruit pas sa géométrie pour une
+            // couleur (D-191).
+            this.state.model = toViewModel(payload, this.state.model);
+        };
+        bus.addChannel(channel);
+        bus.subscribe("configurator_state", onRemote);
+        onWillUnmount(() => {
+            bus.unsubscribe("configurator_state", onRemote);
+            bus.deleteChannel(channel);
         });
     }
 

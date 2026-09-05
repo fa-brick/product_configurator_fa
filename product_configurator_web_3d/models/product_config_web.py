@@ -93,6 +93,24 @@ class ProductConfigSession(models.Model):
                 missing |= line
         return missing
 
+    def _notify_configuration_changed(self):
+        """Diffuser le nouvel état à tous ceux qui regardent — D-253.
+
+        ⓘ On envoie **l'état complet**, pas un delta : c'est exactement ce que
+        `/configurator/state` rend, donc la page l'applique avec le code qu'elle
+        a déjà — et `toViewModel(next, previous)` garde la définition quand la
+        recette n'a pas changé, si bien qu'un spectateur ne reconstruit pas sa
+        géométrie pour un changement de couleur (D-191).
+
+        ⚠️ Le prix de cette simplicité est la TAILLE du message : la définition
+        3D voyage à chaque clic, pour chaque spectateur. Acceptable tant qu'on
+        regarde à deux ou trois ; à revoir si une présentation se joue devant
+        une salle.
+        """
+        self.ensure_one()
+        self._bus_send("configurator_state", self.web_state())
+        return super()._notify_configuration_changed()
+
     def _web_after_confirm(self):
         """Ce qui suit la confirmation, là où la configuration ATTERRIT.
 

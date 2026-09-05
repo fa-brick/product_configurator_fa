@@ -34,6 +34,22 @@ class SessionIdentity(BaseCommon):
                 "groups_id": [(6, 0, [cls.env.ref("base.group_user").id])],
             }
         )
+        # ── D-253 : le PARTAGE remplace la fourche ───────────────────────
+        cls.attribute = cls.env["product.attribute"].create({"name": "Couleur"})
+        cls.blanc, cls.noir = cls.env["product.attribute.value"].create([
+            {"name": "Blanc", "attribute_id": cls.attribute.id},
+            {"name": "Noir", "attribute_id": cls.attribute.id},
+        ])
+        # Un COLLÈGUE : un interne qui a le droit de configurer. C'est lui qui
+        # reprend la session d'un autre, et qui ne la duplique plus.
+        cls.colleague = cls.env["res.users"].create({
+            "name": "Colleague",
+            "login": "colleague@example.com",
+            "groups_id": [(6, 0, [
+                cls.env.ref("base.group_user").id,
+                cls.env.ref("product_configurator_fa.group_product_configurator_fa").id,
+            ])],
+        })
 
     # ── le jeton ─────────────────────────────────────────────────────────────
 
@@ -87,24 +103,55 @@ class SessionIdentity(BaseCommon):
         self.assertIn(("parent_id", "=", self.session.id), domain)
         self.env["product.config.session"].search(domain)
 
-    def test_06_taking_over_forks_the_session(self):
-        mine = self.session._session_for_edit()
-        self.assertEqual(mine, self.session, "ma propre session ne se duplique pas")
+    def test_06_taking_over_does_NOT_fork_any_more(self):
+        """⚠️ D-253 REMPLACE D-092. Arbitrage de Gerry, 2026-09-05 : un interne
+        voit et modifie **en direct** la configuration d'un collègue sur le même
+        devis. Reprendre ne duplique plus — donc rien ne diverge, et il n'y a
+        plus deux versions dont l'une se périme en silence."""
+        avant = self.env["product.config.session"].search([])
+        self.session.with_user(self.colleague).write(
+            {"value_ids": [(6, 0, self.noir.ids)]}
+        )
+        self.assertEqual(
+            self.env["product.config.session"].search([]), avant,
+            "aucune session ne naît d'une reprise",
+        )
+        self.assertEqual(self.session.value_ids, self.noir)
+        self.assertEqual(
+            self.session.user_id, self.env.user,
+            "le propriétaire ne change pas non plus : on partage, on ne prend pas",
+        )
 
-        theirs = self.session.with_user(self.other_user)._session_for_edit()
-        self.assertNotEqual(theirs, self.session)
-        self.assertEqual(theirs.parent_id, self.session)
-        self.assertEqual(theirs.user_id, self.other_user)
-        self.assertTrue(theirs.access_token)
-        self.assertNotEqual(theirs.access_token, self.session.access_token)
+    def test_07_a_change_leaves_a_NOTE_naming_both_values(self):
+        """Ce qui remplace la protection qu'apportait la fourche.
 
-    def test_07_the_original_keeps_its_version(self):
-        original_values = self.session.value_ids
-        fork = self.session.with_user(self.other_user)._session_for_edit()
-        fork.write({"state": "draft"})
-        self.assertEqual(self.session.value_ids, original_values)
-        self.assertEqual(self.session.user_id, self.env.user)
-        self.assertIn(fork, self.session.child_ids)
+        Une copie muette gardait l'ancienne version sans dire qui l'avait
+        quittée. La note dit l'attribut, l'ancienne valeur et la nouvelle —
+        c'est la forme du suivi natif d'Odoo, que `mail.tracking.value` ne sait
+        pas produire pour un many2many.
+        """
+        self.session.write({"value_ids": [(6, 0, self.blanc.ids)]})
+        self.session.invalidate_recordset(["message_ids"])
+        avant = len(self.session.message_ids)
+
+        self.session.with_user(self.colleague).write(
+            {"value_ids": [(6, 0, self.noir.ids)]}
+        )
+        self.session.invalidate_recordset(["message_ids"])
+        self.assertGreater(len(self.session.message_ids), avant)
+        note = self.session.message_ids[0].body
+        self.assertIn("Couleur", note)
+        self.assertIn("Blanc", note)
+        self.assertIn("Noir", note)
+
+    def test_07bis_une_note_qui_REPETE_ne_se_lit_plus(self):
+        """Écrire la même valeur n'est pas une modification."""
+        self.session.write({"value_ids": [(6, 0, self.blanc.ids)]})
+        self.session.invalidate_recordset(["message_ids"])
+        avant = len(self.session.message_ids)
+        self.session.write({"value_ids": [(6, 0, self.blanc.ids)]})
+        self.session.invalidate_recordset(["message_ids"])
+        self.assertEqual(len(self.session.message_ids), avant)
 
     def test_08_a_session_now_has_a_history(self):
         """Sur un objet qui passe de main en main, savoir qui a changé quoi
@@ -129,14 +176,20 @@ class SessionIdentity(BaseCommon):
             "parent_id", other.message_ids.mapped("tracking_value_ids.field_id.name")
         )
 
-    def test_08bis_a_fork_says_where_it_comes_from(self):
+    def test_08bis_la_note_TIENT_pour_un_auteur_SANS_courriel(self):
         """⚠️ La trace passe par `_message_log` et non `message_post` : ce
-        dernier EXIGE une adresse e-mail à l'auteur, et un visiteur n'en a
-        pas — la fourche elle-même échouerait."""
-        fork = self.session.with_user(self.other_user)._session_for_edit()
+        dernier EXIGE une adresse à son auteur, et un visiteur anonyme n'en a
+        pas. La note ferait alors échouer la MODIFICATION elle-même — bien pire
+        que de ne pas tracer. La leçon vient de la fourche, qui est partie ; le
+        piège, lui, est resté."""
+        public = self.env.ref("base.public_user")
+        self.session.with_user(public).sudo().write(
+            {"value_ids": [(6, 0, self.blanc.ids)]}
+        )
+        self.session.invalidate_recordset(["message_ids"])
         self.assertTrue(
-            any("taken over" in (m.body or "") for m in fork.message_ids),
-            "la fourche dit d'où elle vient",
+            any("Blanc" in (m.body or "") for m in self.session.message_ids),
+            "la note est posée même par un auteur sans adresse",
         )
 
     # ── le prix ──────────────────────────────────────────────────────────────

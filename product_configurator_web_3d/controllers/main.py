@@ -44,7 +44,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         return request.env["product.config.session"].sudo()._find_by_access_token(token)
 
     @http.route(
-        "/configurator/<string:token>", type="http", auth="public", website=False,
+        "/configurator/<string:token>", type="http", auth="public", website=True,
         sitemap=False,
     )
     def page(self, token, **kwargs):
@@ -58,6 +58,18 @@ class ProductConfiguratorWeb3D(http.Controller):
 
         ⓘ `sitemap=False` : une configuration n'est pas une page à indexer. Sans lui,
         un moteur qui suivrait un lien partagé enregistrerait le jeton d'un client.
+
+        ⚠️ **`website=True` — SANS LUI, CETTE PAGE REND UN 500** dès que le module
+        `website` est installé. Il étend `web.frontend_layout` d'un noeud qui lit
+        `website` dans le contexte de rendu, et seul ce drapeau l'y met :
+        `KeyError: 'website'`, mesuré le 2026-09-05. La page marchait donc
+        uniquement sur une base sans site — c'est-à-dire partout où on l'avait
+        essayée.
+
+        ⓘ Le drapeau ne CHANGE RIEN sans le module `website` : personne ne lit
+        cette clé de routage, et la page reste NUE dans les deux cas — c'est le
+        gabarit qui appelle `web.frontend_layout`, pas `website.layout`, donc ni
+        menu ni pied de page.
         """
         return request.render(
             "product_configurator_web_3d.configurator_page",

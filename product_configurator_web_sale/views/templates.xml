@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ══ LA FICHE PRODUIT ═══════════════════════════════════════════════════
+         « Ajouter au panier » devient « Configurer ». Le bouton n'est pas
+         renommé : il change de DESTINATION — la configuration, pas le panier.
+
+         ⚠️ **LE BOUTON EST HORS DU FORMULAIRE, ET C'EST OBLIGATOIRE.** Mesuré à
+         l'exécution le 2026-09-05 : un produit configurable n'a AUCUNE variante
+         (le fork ne les crée qu'à la confirmation d'une configuration), donc
+         `_is_add_to_cart_possible()` est FAUX, donc le `<form>` d'Odoo — prix,
+         sélecteurs, bouton — ne se rend pas du tout, et la page affiche à sa
+         place *« This product has no valid combination »*. Un bouton placé
+         dans ce formulaire n'apparaîtrait donc JAMAIS sur un produit
+         configurable : c'est-à-dire exactement là où on le veut. -->
+    <template id="product_configure_button" inherit_id="website_sale.product"
+              name="Configurable product: Configure instead of Add to cart">
+
+        <!-- 1. Le bouton, avant le formulaire, donc indépendant de son sort. -->
+        <xpath expr="//div[@id='product_details']//form[@action='/shop/cart/update']"
+               position="before">
+            <div t-if="product.config_ok" id="configure_wrap" class="d-flex mb-3">
+                <a role="button" class="btn btn-primary"
+                   t-attf-href="/configurator/start/#{slug(product)}">
+                    <i class="fa fa-cube me-2"/>Configure
+                </a>
+            </div>
+        </xpath>
+
+        <!-- 2. Le panier s'efface. Le formulaire, lui, RESTE : un produit
+             configurable qui a déjà des variantes en montre le prix et les
+             options, et c'est bien. Seul le bouton d'achat direct s'en va —
+             sans quoi la page en offrirait deux, qui ne mènent pas au même
+             endroit. -->
+        <xpath expr="//div[@id='add_to_cart_wrap']" position="attributes">
+            <attribute name="t-if">not product.config_ok</attribute>
+        </xpath>
+
+        <!-- 3. ⚠️ Et le message qui MENT s'arrête. « Cette combinaison n'existe
+             pas » est la retombée du `t-else` d'Odoo : vrai pour un produit
+             ordinaire sans variante vendable, FAUX pour un produit
+             configurable, dont c'est l'état normal avant la première
+             configuration. -->
+        <xpath expr="//p[@t-else=''][hasclass('alert-warning')]" position="attributes">
+            <attribute name="t-else"/>
+            <attribute name="t-elif">not product.config_ok</attribute>
+        </xpath>
+    </template>
+
+    <!-- ══ LA VIGNETTE DE LA GRILLE ═══════════════════════════════════════════
+         Le même geste dans la liste de la boutique. L'ajout RAPIDE (l'icône de
+         panier) disparaît par `_website_show_quick_add()` — en Python, parce que
+         la vue qui le porte est optionnelle et peut être éteinte. -->
+    <template id="products_item_configure" inherit_id="website_sale.products_item"
+              name="Configurable product: Configure button on the grid item">
+        <xpath expr="//div[hasclass('o_wsale_product_btn')]" position="inside">
+            <a t-if="product.config_ok" role="button" class="btn btn-primary btn-sm"
+               t-attf-href="/configurator/start/#{slug(product)}"
+               aria-label="Configure" title="Configure">
+                <i class="fa fa-cube"/>
+            </a>
+        </xpath>
+    </template>
+
+</odoo>

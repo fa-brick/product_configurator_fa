@@ -23,7 +23,17 @@ import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
 import { rpc } from "@web/core/network/rpc";
 import { PartViewer3D } from "@product_editor/components/part_viewer_3d/part_viewer_3d";
-import { projectSketchItems } from "@product_editor/engine/builder/project_items";
+import { projectSketchItems, projectAssemblyPieces, worldByNodeId }
+    from "@product_editor/engine/builder/project_items";
+import { toBuildable } from "@product_editor/engine/builder/to_buildable";
+import { build } from "@product_editor/engine/builder/build";
+// ⓘ Deux modules voisins et faciles à confondre : `buildPart` — celui qui CONSTRUIT
+// une pièce — vit dans `part_descriptor` ; `build_part` porte la lecture des
+// fonctions 3D. L'éditeur importe les deux de la même façon.
+import { buildPart } from "@product_editor/engine/builder/part_descriptor";
+import { booleanModeOf } from "@product_editor/engine/builder/build_part";
+import { getThree } from "@product_editor/engine/three/three_init";
+import { getCSG } from "@product_editor/engine/three/csg_init";
 import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage }
     from "@product_configurator_web_3d/configurator_state";
 
@@ -41,7 +51,16 @@ export class ConfiguratorPage extends Component {
     setup() {
         this.state = useState({
             model: null, loading: true, reason: null, cameraApply: null,
+            // Les ENFANTS de l'assemblage, et le compteur qui dit au viewer que
+            // les poses ont changé (il ne relit pas une Map par référence).
+            pieces: [], sceneSerial: 0,
+            // ⚠️ FAUX tant que la première scène n'est pas construite : c'est ce qui
+            // tient la photo devant. Il ne repasse jamais à faux ensuite — une
+            // reconstruction n'est pas une attente, c'est une mise à jour, et
+            // recouvrir la 3D à chaque clic la ferait clignoter.
+            ready: false,
         });
+        this._worlds = new Map();
         // ⚠️ UN IDENTIFIANT PAR ONGLET, pas par utilisateur : la même personne
         // peut ouvrir la même configuration deux fois, et c'est bien l'onglet
         // qui conduit. `randomUUID` n'existe QUE dans un contexte sécurisé
@@ -51,7 +70,7 @@ export class ConfiguratorPage extends Component {
             ? crypto.randomUUID()
             : `h-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         onWillStart(async () => {
-            this.state.model = toViewModel(await this._call("/configurator/state"));
+            await this._applyModel(await this._call("/configurator/state"));
             this.state.loading = false;
         });
         this._listenToOthers();
@@ -77,7 +96,7 @@ export class ConfiguratorPage extends Component {
             // passé, donc la définition est conservée quand la recette n'a pas
             // changé — un spectateur ne reconstruit pas sa géométrie pour une
             // couleur (D-191).
-            this.state.model = toViewModel(payload, this.state.model);
+            this._applyModel(payload);
         };
         /**
          * Le point de vue de celui qui conduit — D-256.
@@ -109,6 +128,118 @@ export class ConfiguratorPage extends Component {
         // ⓘ Le porteur accompagne le jeton sur TOUS les appels : les routes qui
         // s'en moquent l'ignorent, et aucune ne peut l'oublier.
         return rpc(route, { token: this.props.token, holder: this.holder, ...params });
+    }
+
+    /**
+     * Poser un nouvel état — et ne reconstruire QUE si la scène en dépend.
+     *
+     * ⚠️ Un seul endroit remplace le modèle : le premier chargement, un clic, une
+     * confirmation, une prise de main et une modification VENUE D'AILLEURS y passent
+     * tous. Reconstruire à quatre endroits, c'est en oublier un.
+     *
+     * ⓘ La DÉFINITION se compare par référence — `toViewModel` garde la précédente
+     * quand la recette n'a pas changé (D-191) —, la PORTÉE par valeur : elle arrive du
+     * serveur en objet neuf à chaque réponse, et c'est elle qui porte les cotes.
+     */
+    async _applyModel(payload) {
+        const precedent = this.state.model;
+        const model = toViewModel(payload, precedent);
+        this.state.model = model;
+        const memeRecette = precedent && model.definition === precedent.definition;
+        const memesValeurs = precedent
+            && JSON.stringify(model.scope) === JSON.stringify(precedent.scope);
+        if (!memeRecette || !memesValeurs) {
+            await this._buildScene(model.definition, model.scope);
+        }
+    }
+
+    /**
+     * CONSTRUIRE la scène — le moteur, pas seulement la projection (D-257).
+     *
+     * ⚠️ **Un produit réel est un ASSEMBLAGE.** Sa géométrie est dans ses enfants ; la
+     * racine ne porte presque rien. Projeter la seule racine donnait un viewer VIDE, sans
+     * une erreur — trouvé à l'écran sur le JeNo, jamais par un test.
+     *
+     * Le viewer n'accepte des enfants qu'accompagnés de leurs POSES, et celles-ci ne se
+     * lisent nulle part : elles se CALCULENT. D'où le moteur, ici, dans la page — le
+     * même que celui de l'éditeur, au même appel près.
+     *
+     * ⓘ Tout est déjà dans le bundle public : le sous-bundle `_viewer3d` porte
+     * `to_buildable`, `build` et `build_part` depuis D-189. Il ne manquait que le
+     * chaînage.
+     */
+    async _buildScene(definition, scope) {
+        if (!definition) {
+            this.state.pieces = [];
+            this._worlds = new Map();
+            this.state.ready = true;
+            return;
+        }
+        try {
+            const buildable = toBuildable(definition);
+            const THREE = await getThree();
+            // ⓘ La bibliothèque de booléens est LOURDE : on ne la charge que si un
+            // perçage ou une fusion existe dans l'arbre (D-038). Sans elle, les volumes
+            // sont pleins — ce qui se voit, alors qu'un chargement inutile ne se voit pas.
+            const CSG = this._hasBoolean(buildable) ? await getCSG() : null;
+            const tree = build(
+                buildable, scope || {},
+                (node, nodeScope, wt) => buildPart(THREE, node, nodeScope, wt, { CSG }),
+                { THREE },
+            );
+            this._worlds = worldByNodeId(tree);
+            this.state.pieces = projectAssemblyPieces(buildable, tree);
+            this.state.sceneSerial++;
+            this._settleCamera();
+        } catch (e) {
+            // ⚠️ **LE REPLI EST MUET, ET C'EST CE QUI LE REND DANGEREUX** — la leçon est
+            // celle de l'éditeur ([[L-188]]) : sans arbre résolu, le viewer redessine
+            // depuis les seuls items de la racine. Il montre une pièce PLAUSIBLE, et rien
+            // ne dit qu'elle est fausse. On le DIT donc au moins dans la console.
+            console.warn("[configurateur] la scène n'a pas pu être construite :", e);
+            this.state.pieces = [];
+            this._worlds = new Map();
+            // ⚠️ ON DÉCOUVRE QUAND MÊME. Une photo qui ne s'efface jamais laisserait
+            // croire à un chargement éternel, alors que la page est vivante et que
+            // les questions, elles, répondent.
+            this.state.ready = true;
+        }
+    }
+
+    /**
+     * Se poser sur la vue d'où la PHOTO a été prise — puis découvrir la 3D.
+     *
+     * ⓘ C'est la même vue (`is_thumbnail`, D-115) : « la vue depuis laquelle on veut
+     * travailler est la vue que l'on veut montrer ». Le produit se retrouve donc
+     * exactement là où l'image le montrait, et le passage de l'une à l'autre ne
+     * déplace rien à l'écran.
+     *
+     * ⚠️ `instant: true` — ARRIVER, pas se déplacer. Une animation raconterait un
+     * trajet depuis une pose que personne n'a demandée, et c'est justement ce que
+     * l'éditeur a appris à ne plus faire à l'ouverture.
+     */
+    _settleCamera() {
+        const vue = this.state.model?.camera;
+        if (vue && !this.state.ready) {
+            this.state.cameraApply = {
+                ...vue, move: true, instant: true,
+                serial: (this.state.cameraApply?.serial ?? 0) + 1,
+            };
+        }
+        this.state.ready = true;
+    }
+
+    /** Un perçage ou une fusion quelque part dans l'arbre ? (D-038) */
+    _hasBoolean(node) {
+        if (!node) return false;
+        const actif = (f) => f.op === "cut" || booleanModeOf(f) !== "none";
+        return (node.functions3d || []).some(actif)
+            || (node.children || []).some((child) => this._hasBoolean(child));
+    }
+
+    /** `Map(nodeId → worldTransform)` — le viewer POSE les enfants avec. */
+    getResolvedWorldByNodeId() {
+        return this._worlds || new Map();
     }
 
     /**
@@ -173,7 +304,7 @@ export class ConfiguratorPage extends Component {
         this.state.loading = false;
         if (next && !next.error) {
             this.state.reason = null;
-            this.state.model = toViewModel(next, this.state.model);
+            await this._applyModel(next);
         }
     }
 
@@ -211,10 +342,7 @@ export class ConfiguratorPage extends Component {
         this.state.reason = null;
         this.state.loading = true;
         const next = await this._call("/configurator/set_value", payload);
-        // ⚠️ Le modèle PRÉCÉDENT est passé : c'est lui qui permet de garder la définition
-        // quand la recette n'a pas changé, donc de ne PAS reconstruire la géométrie pour
-        // un changement de couleur (D-191).
-        this.state.model = toViewModel(next, this.state.model);
+        await this._applyModel(next);
         this.state.loading = false;
     }
 
@@ -235,7 +363,7 @@ export class ConfiguratorPage extends Component {
             return;
         }
         this.state.reason = null;
-        this.state.model = toViewModel(next, this.state.model);
+        await this._applyModel(next);
     }
 
     // ── Libellés — remontés du gabarit, où `_t()` n'est pas résoluble ────────

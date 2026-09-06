@@ -65,6 +65,49 @@ class ProductConfigSession(models.Model):
         # et c'est le seul endroit du dépôt qui en ait le droit (D-075).
         return self.product_tmpl_id._root_model3d()
 
+    def _web_camera(self, model3d):
+        """La vue PAR DÉFAUT de la pièce — celle d'où sa vignette a été prise.
+
+        ⓘ C'est tout l'intérêt de D-115 : *« la vue depuis laquelle on veut
+        travailler est la vue que l'on veut montrer »*. Un seul drapeau pour les
+        deux, donc **l'image du produit et la 3D se superposent** — la page peut
+        montrer la photo pendant le chargement, puis se poser exactement dessus
+        (demande de Gerry, 2026-09-06).
+
+        ⚠️ La reproductibilité vient de la POSE REJOUÉE, pas de bornes figées :
+        c'est ce que dit `is_thumbnail`, et c'est pourquoi on envoie la pose et
+        non un cadrage.
+        """
+        if not model3d:
+            return None
+        camera = self.env["product.model3d.camera"].sudo().search(
+            [("model3d_id", "=", model3d.id), ("is_thumbnail", "=", True)], limit=1,
+        )
+        if not camera:
+            return None
+        return {
+            "pose": {
+                "azimuth": camera.pos_azimuth,
+                "inclination": camera.pos_inclination,
+                "distance": camera.pos_distance,
+            },
+            "fov": camera.fov,
+            "projection": camera.projection,
+            "fitDistance": camera.fit_distance,
+        }
+
+    def _web_image(self):
+        """L'image du produit — ce qu'on montre PENDANT que la 3D se construit.
+
+        ⓘ Une URL, pas des octets : elle passe par le cache du navigateur et ne
+        gonfle pas une réponse que l'on renvoie à chaque clic.
+        """
+        self.ensure_one()
+        tmpl = self.product_tmpl_id
+        if not tmpl.image_1920:
+            return None
+        return "/web/image/product.template/%s/image_1920" % tmpl.id
+
     def _web_values(self):
         """`{attribut → valeur}` — la forme que le moteur 3D attend (D-163)."""
         self.ensure_one()
@@ -178,6 +221,10 @@ class ProductConfigSession(models.Model):
             # Qui conduit (D-255). ⓘ Toujours présent, même libre : la page doit
             # pouvoir dire « personne » sans distinguer « absent » de « vide ».
             "hand": self._hand_state(),
+            # L'attente a un visage : la photo du produit, puis la vue d'où elle
+            # a été prise — la 3D se pose dessus au lieu d'apparaître ailleurs.
+            "image": self._web_image(),
+            "camera": self._web_camera(model3d),
             # ⓘ La définition porte la FORME, la portée porte les VALEURS : c'est
             # la séparation de D-163, et elle vaut ici comme dans l'éditeur.
             "definition": model3d.to_definition(values) if model3d else None,

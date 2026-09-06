@@ -60,6 +60,39 @@
     margin: 8px 0;
 }
 
+/* ── L'ATTENTE ──────────────────────────────────────────────────────────────
+   La photo occupe la place EXACTE de la 3D qui va la remplacer : même cadre,
+   même fond. Le tourniquet se pose dessus, discret — ce qu'on regarde est le
+   produit, pas l'attente. */
+.o_cfg3d_loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: inherit;
+    z-index: 2;
+
+    img {
+        max-width: 70%;
+        max-height: 70%;
+        object-fit: contain;
+    }
+}
+
+.o_cfg3d_spinner {
+    position: absolute;
+    bottom: 24px;
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgba(0, 0, 0, 0.15);
+    border-top-color: rgba(0, 0, 0, 0.45);
+    border-radius: 50%;
+    animation: o_cfg3d_turn 0.8s linear infinite;
+}
+
+@keyframes o_cfg3d_turn { to { transform: rotate(360deg); } }
+
 /* Le bandeau de conduite : il informe ET il agit, donc les deux tiennent sur une
    ligne, à hauteur de regard des questions qu'il gèle. */
 .o_cfg3d_hand {

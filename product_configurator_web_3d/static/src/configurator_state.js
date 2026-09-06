@@ -70,6 +70,10 @@ export function toViewModel(payload, previous = null) {
         // jamais par une absence — sans quoi un état ancien et un état libre
         // seraient indistinguables.
         hand: payload.hand || { holder: null, label: null },
+        // L'attente a un visage (2026-09-06) : la photo du produit tient la place
+        // de la 3D, et la VUE d'où elle a été prise sert à s'y poser exactement.
+        image: payload.image || null,
+        camera: payload.camera || null,
     };
 }
 

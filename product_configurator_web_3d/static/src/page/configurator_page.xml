@@ -12,10 +12,29 @@
 
         <t t-else="">
             <div class="o_cfg3d_viewer">
+                <!-- ⚠️ L'ATTENTE A UN VISAGE. Construire un assemblage prend une seconde
+                     ou deux : un fond vide laisse croire à une panne. On montre la PHOTO
+                     du produit, puis la 3D se pose exactement dessus — c'est la même vue
+                     (`is_thumbnail`, D-115), donc le passage ne déplace rien.
+                     ⓘ `!` et non `not` : dans un gabarit OWL, `not` est une variable et
+                     le composant entier cesse de compiler (L-209). -->
+                <div t-if="!state.ready" class="o_cfg3d_loading">
+                    <img t-if="state.model and state.model.image"
+                         t-att-src="state.model.image" alt=""/>
+                    <span class="o_cfg3d_spinner"/>
+                </div>
                 <!-- ⓘ `cameraApply` reçoit le point de vue de celui qui conduit,
                      `onCameraPose` publie le nôtre quand c'est nous (D-256). Les deux
                      existaient déjà sur le viewer : rien n'a été ajouté à l'éditeur. -->
+                <!-- ⚠️ `pieces` ET `sketchItems` : la racine d'un assemblage ne porte
+                     presque rien, tout est dans ses enfants — et chaque enfant a besoin
+                     de sa POSE, que seul le moteur calcule. `resolvedTreeSerial` dit au
+                     viewer que les poses ont changé : il ne relit pas une Map par
+                     référence. -->
                 <PartViewer3D sketchItems="sketchItems"
+                              pieces="state.pieces"
+                              resolvedTreeSerial="state.sceneSerial"
+                              getResolvedWorldByNodeId.bind="getResolvedWorldByNodeId"
                               onSelectSketch="() => {}"
                               displayMode="'realistic'"
                               showPlanes="false"

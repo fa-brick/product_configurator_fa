@@ -20,10 +20,18 @@
         <xpath expr="//div[@id='product_details']//form[@action='/shop/cart/update']"
                position="before">
             <div t-if="product.config_ok" id="configure_wrap" class="d-flex mb-3">
-                <a role="button" class="btn btn-primary"
+                <!-- ⚠️ **CE RESTE UN VRAI LIEN**, et c'est la garantie. Le composant
+                     ci-dessous détourne son clic UNE FOIS la configuration prête ;
+                     avant cela — ou si le JavaScript échoue — il navigue comme avant.
+                     La promesse « sans attente » se dégrade, elle ne casse pas. -->
+                <a role="button" class="btn btn-primary o_cfg3d_configure"
                    t-attf-href="/configurator/start/#{slug(product)}">
                     <i class="fa fa-cube me-2"/>Configure
                 </a>
+                <!-- Prépare la configuration pendant que le visiteur lit la fiche :
+                     un jeton, l'état, et la scène construite d'avance. -->
+                <owl-component name="product_configurator_web_sale.ConfiguratorOverlay"
+                               t-att-props="json.dumps({'productTmplId': product.id})"/>
             </div>
         </xpath>
 

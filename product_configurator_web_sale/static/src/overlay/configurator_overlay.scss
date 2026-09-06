@@ -1,0 +1,40 @@
+/* ⚠️ La page DESSOUS ne défile plus tant que le configurateur est ouvert — sans quoi
+   la molette agit sur une fiche qu'on ne voit pas, et sa barre de défilement reste
+   affichée à droite du recouvrement. */
+body.o_cfg3d_locked {
+    overflow: hidden;
+}
+
+/* Le configurateur PRÉPARÉ, posé par-dessus la fiche produit.
+   ⚠️ Il est RENDU avant d'être vu — d'où l'opacité plutôt que `display`. */
+.o_cfg3d_overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    /* ⓘ Une transition courte : le contenu est déjà là, il n'y a rien à masquer —
+       juste un passage qui évite le saut brutal. */
+    transition: opacity 0.15s ease-out;
+
+    &--open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+.o_cfg3d_overlay_close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    z-index: 1;
+    border: 0;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.5;
+
+    &:hover { opacity: 1; }
+}

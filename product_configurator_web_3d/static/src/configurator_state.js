@@ -77,6 +77,7 @@ export function toViewModel(payload, previous = null) {
         // Les MATIÈRES de la scène, composées par le serveur : la page n'a le droit
         // de lire aucun des modèles qui les portent.
         zones: payload.zones || null,
+        productId: payload.productId || null,
     };
 }
 

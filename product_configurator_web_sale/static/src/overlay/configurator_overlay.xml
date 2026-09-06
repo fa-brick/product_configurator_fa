@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+<t t-name="product_configurator_web_sale.ConfiguratorOverlay">
+    <!-- ⚠️ **LA PAGE EST MONTÉE AVANT LE CLIC, et rendue.** C'est ce qui rend le clic
+         instantané : la scène est assemblée, le WebGL vivant, la caméra posée. On la
+         garde donc TRANSPARENTE plutôt que masquée — `display: none` supprimerait le
+         rendu, et la prop `hidden` du viewer arrête sa boucle mais lui interdit aussi
+         de reconstruire tant qu'il l'est.
+
+         ⓘ Le prix est une boucle de rendu pendant la préparation, sur un canevas
+         qu'on ne voit pas. C'est le prix demandé : « le clic ouvre directement le
+         configurateur sans attente ». -->
+    <div t-if="state.token"
+         class="o_cfg3d_overlay"
+         t-att-class="{ 'o_cfg3d_overlay--open': state.open }">
+        <!-- ⓘ `cart` : ouvert DEPUIS LA BOUTIQUE, terminer veut dire mettre au
+             panier — et le bouton le dit. La même page ouverte par un lien de
+             courriel ou depuis un devis garde « Terminer ». -->
+        <ConfiguratorPage token="state.token" initialState="state.initialState"
+                          cart="true"/>
+        <!-- Fermer REND SON URL à la fiche : c'est l'historique qui referme, jamais
+             un état de plus à tenir d'un côté et de l'autre. -->
+        <button class="o_cfg3d_overlay_close"
+                t-on-click="() => this.close()"
+                aria-label="Fermer">×</button>
+    </div>
+</t>
+</templates>

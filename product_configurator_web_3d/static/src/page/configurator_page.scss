@@ -4,7 +4,13 @@
 .o_cfg3d_page {
     display: flex;
     align-items: stretch;
-    min-height: 100vh;
+    height: 100vh;
+    /* ⚠️ OPAQUE ET AU-DESSUS : c'est ce qui efface le tourniquet du premier instant,
+       rendu par le serveur en dessous. Sans fond, il transparaîtrait entre les deux
+       colonnes ; sans `position`, le `z-index` ne s'appliquerait pas. */
+    position: relative;
+    z-index: 1;
+    background: #fff;
 
     /* ⚠️ Sous 900 px, la 3D PASSE AU-DESSUS : le lien arrive souvent par courriel, donc
        sur un téléphone, et c'est le produit qu'on vient voir en premier. */
@@ -21,8 +27,12 @@
 
 .o_cfg3d_side {
     flex: 0 0 340px;
-    padding: 16px;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    /* ⚠️ `min-height: 0` — sans lui, un enfant flexible REFUSE de rétrécir sous sa
+       hauteur de contenu, le panneau déborde et la barre de défilement s'installe
+       sur toute la page au lieu du seul corps. C'est le défaut que Gerry a vu. */
+    min-height: 0;
     border-left: 1px solid rgba(0, 0, 0, 0.08);
 
     @media (max-width: 900px) {
@@ -30,6 +40,22 @@
         border-left: none;
         border-top: 1px solid rgba(0, 0, 0, 0.08);
     }
+}
+
+/* Le corps : lui seul défile, et seulement s'il le faut. */
+.o_cfg3d_scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px;
+}
+
+/* Le pied : le prix et le geste, toujours sous les yeux. */
+.o_cfg3d_footer {
+    flex: 0 0 auto;
+    padding: 12px 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    background: #fff;
 }
 
 .o_cfg3d_title { font-size: 20px; margin-bottom: 12px; }
@@ -50,14 +76,24 @@
 .o_cfg3d_price {
     display: flex;
     justify-content: space-between;
-    padding-top: 12px;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    margin-bottom: 10px;
 }
 
 .o_cfg3d_reason, .o_cfg3d_note, .o_cfg3d_closed {
     font-size: 12.5px;
     opacity: 0.75;
     margin: 8px 0;
+}
+
+/* Le tourniquet du PREMIER INSTANT — rendu par le serveur, sous le composant.
+   Il n'a pas besoin d'être masqué : la page se monte par-dessus, opaque. */
+.o_cfg3d_boot {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef1f5;
 }
 
 /* ── L'ATTENTE ──────────────────────────────────────────────────────────────
@@ -83,6 +119,9 @@
 .o_cfg3d_spinner {
     position: absolute;
     bottom: 24px;
+    /* ⓘ Au CENTRE quand il est celui du premier instant : il n'y a alors
+       aucune image sous laquelle se ranger. */
+    .o_cfg3d_boot & { position: static; }
     width: 22px;
     height: 22px;
     border: 2px solid rgba(0, 0, 0, 0.15);
@@ -111,7 +150,6 @@
    se confondre avec les boutons de valeur, tous en ligne au-dessus. */
 .o_cfg3d_confirm {
     width: 100%;
-    margin-top: 16px;
 }
 
 .o_cfg3d_error { margin: 15vh auto; text-align: center; }

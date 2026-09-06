@@ -20,6 +20,21 @@
             <t t-set="no_footer" t-value="True"/>
             <t t-set="html_data" t-value="{'style': 'height: 100%;'}"/>
             <div id="wrap">
+                <!-- ⚠️ **L'ATTENTE COMMENCE AVANT OWL, et c'est le seul moyen de la
+                     voir.** Le composant ne peint qu'après son `onWillStart`, donc
+                     après l'aller-retour qui rapporte l'état — plus d'une seconde sur
+                     un assemblage. Jusque-là la page était BLANCHE : l'attente qu'on
+                     avait écrite arrivait trop tard pour servir (Gerry, 2026-09-06).
+                     Ce tourniquet-ci est du HTML pur, présent dès le premier octet.
+
+                     ⓘ Il n'est pas caché par du JS : le composant se monte PAR-DESSUS,
+                     avec un fond opaque. Rien à synchroniser, donc rien qui puisse
+                     rester coincé si le montage échoue.
+
+                     ⚠️ Et il ne montre PAS l'image du produit : la connaître demande de
+                     résoudre le jeton, donc de dire ici s'il existe — ce que D-190
+                     refuse. La photo arrive avec l'état, un instant plus tard. -->
+                <div class="o_cfg3d_boot"><span class="o_cfg3d_spinner"/></div>
                 <owl-component name="product_configurator_web_3d.ConfiguratorPage"
                                t-att-props="props"/>
             </div>

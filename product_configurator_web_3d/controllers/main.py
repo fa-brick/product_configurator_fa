@@ -88,6 +88,38 @@ class ProductConfiguratorWeb3D(http.Controller):
         return session.web_state()
 
     @http.route(
+        "/configurator/prepare", type="json", auth="public", methods=["POST"],
+        website=False, csrf=False,
+    )
+    def prepare(self, product_tmpl_id=None, **kwargs):
+        """Ouvrir une configuration SANS y aller — pour la préparer d'avance.
+
+        ⚠️ **C'est `/configurator/start` sans la navigation.** Cette dernière
+        redirige, donc jette tout ce que le navigateur avait en mémoire : le
+        travail le plus cher — la construction de la scène, une à deux secondes
+        de calcul — ne survit à aucun changement de page. Préparer d'avance n'a
+        donc de sens que si l'on reste sur place, et c'est ce que cette route
+        permet : la fiche produit obtient un jeton et l'état complet, construit
+        pendant que le visiteur lit, et le clic n'a plus qu'à montrer.
+
+        ⓘ Elle rend EXACTEMENT ce que la page recevrait — jeton et état — pour
+        qu'aucune seconde lecture ne s'invente ici.
+
+        ⚠️ **Un jeton par consultation de fiche**, comme un clic en crée un
+        (D-190 : tous les anonymes sont le même utilisateur). Les sessions
+        abandonnées sont ramassées par l'`@api.autovacuum` du cœur — c'est le
+        prix, connu, d'un clic sans attente.
+        """
+        tmpl = request.env["product.template"].sudo().browse(int(product_tmpl_id or 0))
+        if not tmpl.exists() or not tmpl.config_ok:
+            return {"error": "not_configurable"}
+        session = request.env["product.config.session"].sudo().create_get_session(
+            tmpl.id, force_create=True,
+        )
+        session._ensure_access_token()
+        return {"token": session.access_token, "state": session.web_state()}
+
+    @http.route(
         "/configurator/take_hand", type="json", auth="public", methods=["POST"],
         website=False, csrf=False,
     )

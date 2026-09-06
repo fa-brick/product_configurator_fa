@@ -17,7 +17,7 @@ import { _t } from "@web/core/l10n/translation";
  * ⚠️ **Le jeton entre par l'URL et ne ressort pas.** Il est passé en prop par le gabarit,
  * employé dans les appels, et n'apparaît dans aucun état rendu (D-190).
  */
-import { Component, onWillStart, onWillUnmount, useState } from "@odoo/owl";
+import { Component, onMounted, onWillStart, onWillUnmount, useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
@@ -47,6 +47,15 @@ export class ConfiguratorPage extends Component {
     static components = { PartViewer3D };
     static props = {
         token: { type: String },
+        // ⓘ L'état DÉJÀ PRIS, quand quelqu'un l'a demandé avant nous : la fiche
+        // produit le fait pendant que le visiteur lit (route `/configurator/prepare`).
+        // Sans lui, la page le demande elle-même — c'est le cas du lien reçu par
+        // courriel, qui arrive sans rien de préparé.
+        initialState: { type: Object, optional: true },
+        // ⓘ Le contexte BOUTIQUE : le geste qui termine met au panier, et le dit.
+        // Ailleurs — un lien reçu par courriel, une ligne de devis — terminer reste
+        // terminer : il n'y a pas de panier où aller.
+        cart: { type: Boolean, optional: true },
     };
 
     setup() {
@@ -70,9 +79,30 @@ export class ConfiguratorPage extends Component {
         this.holder = crypto.randomUUID
             ? crypto.randomUUID()
             : `h-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        // ⚠️ **`onWillStart` NE CONSTRUIT PAS LA SCÈNE, et c'est tout l'objet de
+        // l'attente.** OWL ne peint RIEN tant que ce crochet n'est pas résolu :
+        // y attendre le moteur — une à deux secondes sur un assemblage — laissait
+        // la page blanche, puis la faisait apparaître finie. Ni photo, ni
+        // tourniquet : l'attente qu'on avait écrite ne s'est jamais vue
+        // (constat de Gerry, 2026-09-06).
+        //
+        // ⓘ On ne prend donc ici que l'ÉTAT — un aller-retour court, et il porte
+        // l'image. Le premier rendu montre la photo ; le moteur travaille après.
         onWillStart(async () => {
-            await this._applyModel(await this._call("/configurator/state"));
+            const payload = this.props.initialState
+                || await this._call("/configurator/state");
+            this.state.model = toViewModel(payload);
             this.state.loading = false;
+        });
+        // ⓘ APRÈS le montage, et sans `await` : la construction ne bloque plus
+        // personne, et c'est elle qui lèvera `ready` en se posant sur la vue.
+        onMounted(() => {
+            const model = this.state.model;
+            if (model && !model.error) {
+                this._buildScene(model.definition, model.scope);
+            } else {
+                this.state.ready = true;
+            }
         });
         this._listenToOthers();
     }
@@ -399,6 +429,31 @@ export class ConfiguratorPage extends Component {
         }
         this.state.reason = null;
         await this._applyModel(next);
+        await this._addToCart();
+    }
+
+    /**
+     * Mettre la configuration au panier — le geste qui la fait exister ailleurs.
+     *
+     * ⚠️ **APRÈS la confirmation, jamais avant** : c'est elle qui fait naître la
+     * variante, et il n'y a rien à mettre au panier tant qu'elle n'existe pas.
+     *
+     * ⓘ Un échec ici ne défait RIEN : la configuration est confirmée, sa variante
+     * existe, et son lien la retrouve. On le dit plutôt que de faire comme si le
+     * clic n'avait pas eu lieu.
+     */
+    async _addToCart() {
+        if (!this.props.cart) return;
+        const productId = this.state.model?.productId;
+        if (!productId) return;
+        try {
+            await rpc("/shop/cart/update_json", { product_id: productId, add_qty: 1 });
+            browser.location.href = "/shop/cart";
+        } catch (e) {
+            console.warn("[configurateur] mise au panier impossible :", e);
+            this.state.reason = _t(
+                "This configuration is confirmed, but the cart could not be updated.");
+        }
     }
 
     // ── Libellés — remontés du gabarit, où `_t()` n'est pas résoluble ────────
@@ -407,7 +462,9 @@ export class ConfiguratorPage extends Component {
         return _t("This configuration is confirmed and can no longer be changed.");
     }
     get emptyLabel() { return _t("This product asks no question."); }
-    get confirmLabel() { return _t("Confirm"); }
+    get confirmLabel() {
+        return this.props.cart ? _t("Add to cart") : _t("Confirm");
+    }
 }
 
 // Le service de composants publics d'Odoo 18 monte tout `<owl-component name="…">`

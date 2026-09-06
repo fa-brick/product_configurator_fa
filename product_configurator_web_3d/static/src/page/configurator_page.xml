@@ -39,6 +39,7 @@
                               displayMode="'realistic'"
                               showPlanes="false"
                               origineVisible="false"
+                              hideViewGizmo="true"
                               zonesByPiece="zonesByPiece"
                               zoneMaterialsByNode="state.nodeMaterials"
                               cameraApply="state.cameraApply"
@@ -46,6 +47,10 @@
             </div>
 
             <aside class="o_cfg3d_side">
+                <!-- ⓘ SEUL LE CORPS DÉFILE. Le titre et le pied restent en place : ce
+                     qu'on vient chercher — le prix et le geste — ne doit jamais partir
+                     hors de l'écran (demande de Gerry, 2026-09-06). -->
+                <div class="o_cfg3d_scroll">
                 <h1 class="o_cfg3d_title" t-esc="state.model and state.model.productName"/>
 
                 <div t-if="state.model and state.model.closed" class="o_cfg3d_closed"
@@ -88,23 +93,27 @@
                 <!-- La raison d'un refus, là où le doigt vient de se poser. -->
                 <p t-if="state.reason" class="o_cfg3d_reason" t-esc="state.reason"/>
 
-                <div class="o_cfg3d_price">
-                    <span t-esc="priceLabel"/>
-                    <strong t-esc="price"/>
                 </div>
 
-                <!-- ⓘ Le bouton DISPARAÎT une fois la configuration close : le
-                     bandeau de fermeture, juste au-dessus, dit alors ce qu'il en
-                     est. Deux états, un seul endroit qui parle. -->
-                <!-- ⚠️ `!` ET NON `not`. OWL traduit `and`, `or`, `gt`, `lte`… mais PAS
-                     `not` (`owl.js`, `WORD_REPLACEMENT`) : il en fait une VARIABLE,
-                     `ctx['not']`, le gabarit ne compile plus, et la page entière reste
-                     BLANCHE — pas seulement ce bouton. Mesuré le 2026-09-05. -->
-                <button t-if="state.model and !state.model.closed and !state.model.error"
-                        class="btn btn-primary o_cfg3d_confirm"
-                        t-att-disabled="state.loading or watching"
-                        t-on-click="() => this.onConfirm()"
-                        t-esc="confirmLabel"/>
+                <div class="o_cfg3d_footer">
+                    <div class="o_cfg3d_price">
+                        <span t-esc="priceLabel"/>
+                        <strong t-esc="price"/>
+                    </div>
+
+                    <!-- ⓘ Le bouton DISPARAÎT une fois la configuration close : le
+                         bandeau de fermeture, plus haut, dit alors ce qu'il en est.
+                         Deux états, un seul endroit qui parle. -->
+                    <!-- ⚠️ `!` ET NON `not`. OWL traduit `and`, `or`, `gt`, `lte`… mais
+                         PAS `not` (`owl.js`, `WORD_REPLACEMENT`) : il en fait une
+                         VARIABLE, `ctx['not']`, le gabarit ne compile plus, et la page
+                         entière reste BLANCHE — pas seulement ce bouton (L-209). -->
+                    <button t-if="state.model and !state.model.closed and !state.model.error"
+                            class="btn btn-primary o_cfg3d_confirm"
+                            t-att-disabled="state.loading or watching"
+                            t-on-click="() => this.onConfirm()"
+                            t-esc="confirmLabel"/>
+                </div>
             </aside>
         </t>
     </div>

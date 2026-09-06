@@ -351,6 +351,9 @@ class ProductConfigSession(models.Model):
             "state": self.state,
             "attributes": self._web_attribute_lines(),
             "price": self.get_cfg_price(),
+            # La VARIANTE née de la confirmation, quand elle existe : c'est par elle
+            # qu'une boutique met la configuration au panier.
+            "productId": self.product_id.id or None,
             # Qui conduit (D-255). ⓘ Toujours présent, même libre : la page doit
             # pouvoir dire « personne » sans distinguer « absent » de « vide ».
             "hand": self._hand_state(),

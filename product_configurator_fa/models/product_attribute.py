@@ -1689,7 +1689,16 @@ class ProductAttributeValue(models.Model):
             [("id", "in", pt_attr_value_ids.ids), ("product_id", "!=", False)]
         )
         extra_prices = {
-            av.id: av.product_id.with_context(
+            # ⚠️ `sudo` — SANS LUI, TOUTE FICHE PUBLIQUE D'UN PRODUIT CONFIGURABLE
+            # RÉPOND 403. Une valeur qui désigne un COMPOSANT (une top plate, un bras)
+            # pointe un produit non publié : la règle d'enregistrement le cache au
+            # visiteur, et lire son prix ici lève un `AccessError` qui emporte le rendu
+            # de la page entière. Mesuré le 2026-09-06 sur le JeNo, produit 50.
+            #
+            # ⓘ Ce qu'on lit est un PRIX, et il entre dans un total que le visiteur voit
+            # de toute façon. Publier le composant serait l'autre issue — mais elle
+            # exposerait dans la boutique des pièces qui n'ont pas à s'y vendre.
+            av.id: av.product_id.sudo().with_context(
                 pricelist=pricelist.id
             )._get_contextual_price()
             for av in related_product_av_ids

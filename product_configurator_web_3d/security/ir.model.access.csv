@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_product_model3d_texture_public,product.model3d.texture.public,product_editor.model_product_model3d_texture,base.group_public,1,0,0,0

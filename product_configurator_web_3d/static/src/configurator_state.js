@@ -74,6 +74,9 @@ export function toViewModel(payload, previous = null) {
         // de la 3D, et la VUE d'où elle a été prise sert à s'y poser exactement.
         image: payload.image || null,
         camera: payload.camera || null,
+        // Les MATIÈRES de la scène, composées par le serveur : la page n'a le droit
+        // de lire aucun des modèles qui les portent.
+        zones: payload.zones || null,
     };
 }
 

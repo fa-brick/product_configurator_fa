@@ -65,6 +65,135 @@ class ProductConfigSession(models.Model):
         # et c'est le seul endroit du dépôt qui en ait le droit (D-075).
         return self.product_tmpl_id._root_model3d()
 
+    def _web_scene_models(self, definition):
+        """Les pièces de la scène, LUES DE LA DÉFINITION — jamais recomposées.
+
+        ⓘ La définition sait de quelle pièce vient chaque nœud (`model3dId`), y
+        compris après une permutation (D-164). Rejouer les échanges ici pour le
+        deviner donnerait une seconde lecture de la même chose, et c'est
+        exactement ce qui finit par diverger.
+        """
+        models = []
+        pile = [definition] if definition else []
+        while pile:
+            node = pile.pop()
+            if not isinstance(node, dict):
+                continue
+            model_id = node.get("model3dId")
+            if model_id and model_id not in models:
+                models.append(model_id)
+            pile.extend(node.get("children") or [])
+        return models
+
+    def _web_materials(self, material_ids):
+        """Les fiches matière, ENTIÈRES — et c'est délibéré.
+
+        ⚠️ Le viewer lit une trentaine de champs PBR, dont la liste vit en JS
+        (`PBR_READ_FIELDS`) sous sa propre garde. La recopier ici en ferait une
+        seconde, et un champ ajouté d'un côté manquerait de l'autre — ce qui
+        s'est déjà produit **dans le seul monde JS** (`normal_scale`,
+        `ao_map_intensity`, `bump_scale` : rendu muet, deux écrans qui diffèrent).
+        On envoie donc **tout l'enregistrement** : rien à tenir à jour.
+
+        ⓘ `bin_size` : les binaires voyagent en TAILLE, pas en contenu — les
+        textures sont des `Many2one`, et le viewer va chercher leurs images par
+        URL. C'est exactement ce que fait l'éditeur.
+        """
+        if not material_ids:
+            return {}
+        rows = self.env["product.model3d.material"].sudo().with_context(
+            bin_size=True,
+        ).browse(list(material_ids)).read()
+        return {row["id"]: row for row in rows}
+
+    def _web_zones(self, model3d, definition, values):
+        """Les zones de matière de toute la scène, et ce qu'elles rendent.
+
+        ⚠️ **La page ne peut pas les lire elle-même.** Dans l'éditeur, ce trajet
+        est entièrement CLIENT : `searchRead` des zones, `resolve_zone_materials`,
+        `read` des fiches, exceptions par placement. Un visiteur public n'a de
+        droit sur aucun de ces modèles — d'où ce montage serveur, en `sudo`, qui
+        rend la même chose.
+
+        ⓘ Les deux résolutions sont déjà en Python (`resolve_zone_materials`,
+        `resolve_placement_exceptions`) : l'éditeur ne fait que les appeler. On
+        les appelle aussi, avec les mêmes réponses — donc une matière PILOTÉE par
+        une question (D-166) suit la configuration ici comme là-bas.
+        """
+        self.ensure_one()
+        empty = {"zonesByPiece": {}, "nodeMaterials": {}}
+        model_ids = self._web_scene_models(definition)
+        if not model_ids:
+            return empty
+        Zone = self.env["product.model3d.material.zone"].sudo()
+        rows = Zone.search_read(
+            [("model3d_id", "in", model_ids)],
+            ["id", "name", "face_keys", "face_role", "material_id", "origin",
+             "sequence", "model3d_id", "driver_attribute_id", "file_material"],
+            order="sequence, id",
+        )
+        pieces = self.env["product.model3d"].sudo().browse(model_ids)
+        # La matière RENDUE d'une zone pilotée dépend des réponses : c'est le
+        # cœur de D-166, et c'est ce qui rend une matière configurable.
+        rendered = {}
+        for piece in pieces:
+            try:
+                rendered.update(piece.resolve_zone_materials(values) or {})
+            except Exception:  # noqa: BLE001
+                # ⓘ Le défaut de la zone reste en place : une correspondance
+                # illisible ne doit pas rendre la pièce noire (esprit de D-150).
+                continue
+
+        zones_by_piece = {str(model_id): [] for model_id in model_ids}
+        needed = set()
+        for row in rows:
+            model_id = row["model3d_id"][0] if row["model3d_id"] else None
+            default_id = row["material_id"][0] if row["material_id"] else None
+            render_id = rendered.get(row["id"], rendered.get(str(row["id"]), default_id))
+            if render_id:
+                needed.add(render_id)
+            zones_by_piece.setdefault(str(model_id), []).append({
+                "id": row["id"],
+                "name": row["name"],
+                # ⚠️ Le MÊME filtre que côté client et côté Python : une chaîne
+                # NON VIDE. Une face au nom vide ne se résout nulle part.
+                "faceKeys": [k for k in (row["face_keys"] or []) if k],
+                "faceRole": row["face_role"] or None,
+                "auto": row["origin"] == "auto",
+                "fileMaterial": bool(row["file_material"]),
+                "materialId": default_id,
+                "renderMaterialId": render_id,
+            })
+
+        # Les EXCEPTIONS par placement (D-175) : deux barreaux du même lien
+        # peuvent rendre autre chose.
+        #
+        # ⚠️ **On sert le BRUT** — `{linkId, functionId, occurrenceIndex, zones}` —
+        # et non un index par nœud. Rattacher une exception à un nœud demande de
+        # connaître les pièces de la scène, que seul le client a après le build ;
+        # le refaire ici serait une seconde lecture de la même règle, et
+        # `placementExceptionsByNode` existe déjà pour ça, partagée.
+        try:
+            exceptions = model3d.resolve_placement_exceptions(values) or []
+        except Exception:  # noqa: BLE001
+            exceptions = []
+        for item in exceptions:
+            for material_id in (item.get("zones") or {}).values():
+                if material_id:
+                    needed.add(material_id)
+
+        materials = self._web_materials(needed)
+        for zones in zones_by_piece.values():
+            for zone in zones:
+                zone["material"] = materials.get(zone["renderMaterialId"]) or None
+        return {
+            "zonesByPiece": zones_by_piece,
+            "exceptions": exceptions,
+            # Par ID : la page y puise pour les exceptions, sans que la même fiche
+            # voyage deux fois.
+            "materials": materials,
+        }
+
     def _web_camera(self, model3d):
         """La vue PAR DÉFAUT de la pièce — celle d'où sa vignette a été prise.
 
@@ -213,6 +342,10 @@ class ProductConfigSession(models.Model):
         self.ensure_one()
         model3d = self._web_model3d()
         values = self._web_values()
+        # ⓘ UNE SEULE FOIS : la définition est l'objet le plus cher de cette
+        # réponse, et les matières s'y appuient pour savoir quelles pièces la
+        # scène contient. La recalculer serait la payer deux fois par clic.
+        definition = model3d.to_definition(values) if model3d else None
         return {
             "productName": self.product_tmpl_id.display_name,
             "state": self.state,
@@ -225,8 +358,11 @@ class ProductConfigSession(models.Model):
             # a été prise — la 3D se pose dessus au lieu d'apparaître ailleurs.
             "image": self._web_image(),
             "camera": self._web_camera(model3d),
+            # Les MATIÈRES de toute la scène — la page ne peut pas les lire
+            # elle-même : aucun de ces modèles n'est ouvert au public.
+            "zones": self._web_zones(model3d, definition, values) if model3d else {},
             # ⓘ La définition porte la FORME, la portée porte les VALEURS : c'est
             # la séparation de D-163, et elle vaut ici comme dans l'éditeur.
-            "definition": model3d.to_definition(values) if model3d else None,
+            "definition": definition,
             "scope": model3d.get_attribute_scope(values) if model3d else {},
         }

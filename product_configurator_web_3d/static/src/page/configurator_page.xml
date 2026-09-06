@@ -39,6 +39,8 @@
                               displayMode="'realistic'"
                               showPlanes="false"
                               origineVisible="false"
+                              zonesByPiece="zonesByPiece"
+                              zoneMaterialsByNode="state.nodeMaterials"
                               cameraApply="state.cameraApply"
                               onCameraPose="(pose) => this.onCameraPose(pose)"/>
             </div>

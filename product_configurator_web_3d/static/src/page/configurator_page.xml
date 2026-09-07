@@ -31,15 +31,33 @@
                      de sa POSE, que seul le moteur calcule. `resolvedTreeSerial` dit au
                      viewer que les poses ont changé : il ne relit pas une Map par
                      référence. -->
+                <!-- ⚠️ **TROIS PROPS QUI MANQUAIENT** (Gerry, 2026-09-07) :
+                     · `getResolvedSolidsByNodeId` — les volumes PERCÉS et CHANFREINÉS
+                       du moteur. Sans eux le viewer refait l'extrusion depuis le
+                       dessin : la pièce s'affiche, plausible, sans ses trous ;
+                     · `rootPieceId` — les zones de matière sont rangées PAR PIÈCE
+                       (D-166) ; sans lui la racine reste grise ;
+                     · `rootNodeId` — par lui, la racine retrouve son volume construit.
+                     ⓘ Aucune de ces absences ne lève : c'est la famille de défauts
+                     que seule une capture révèle ([[L-188]]).
+
+                     ⚠️ **`showSketchLines="false"` — AUCUN TRAIT D'ESQUISSE.** Le
+                     dessin sert à ÉDITER ; ici on ne peut rien modifier, et ses
+                     traits faisaient passer la gravure « JENO » pour un contour
+                     rouge posé sur la plaque (Gerry, 2026-09-07). -->
                 <PartViewer3D sketchItems="sketchItems"
                               pieces="state.pieces"
                               resolvedTreeSerial="state.sceneSerial"
                               getResolvedWorldByNodeId.bind="getResolvedWorldByNodeId"
+                              getResolvedSolidsByNodeId.bind="getResolvedSolidsByNodeId"
+                              rootPieceId="rootPieceId"
+                              rootNodeId="rootNodeId"
                               onSelectSketch="() => {}"
                               displayMode="'realistic'"
                               showPlanes="false"
                               origineVisible="false"
                               hideViewGizmo="true"
+                              showSketchLines="false"
                               zonesByPiece="zonesByPiece"
                               zoneMaterialsByNode="state.nodeMaterials"
                               cameraApply="state.cameraApply"
@@ -70,7 +88,91 @@
                 <t t-foreach="questions" t-as="question" t-key="question.id">
                     <section class="o_cfg3d_question">
                         <h2 t-esc="question.name"/>
-                        <div class="o_cfg3d_values">
+                        <!-- ⚠️ **LA QUESTION PREND LA FORME QU'ON LUI A DONNÉE.**
+                             `display_type` est réglé en back-office depuis toujours ;
+                             la page l'ignorait et rendait un bouton pour tout
+                             (constat de Gerry, 2026-09-06). Cinq formes viennent
+                             d'Odoo, la sixième — la CARTE — a été ajoutée pour les
+                             réponses qui désignent un produit ou une matière : on
+                             reconnaît une pièce à sa forme avant de lire son nom.
+
+                             ⓘ Le geste, lui, ne change JAMAIS : `onPick`. Ce qui
+                             change est ce que l'œil reçoit. -->
+
+                        <!-- ── LA CARTE : une vignette, son libellé dessous ── -->
+                        <div t-if="question.displayType === 'card'"
+                             class="o_cfg3d_cards">
+                            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                                <button class="o_cfg3d_card"
+                                        t-att-class="{
+                                            'o_cfg3d_card--chosen': value.chosen,
+                                            'o_cfg3d_card--muted': value.muted }"
+                                        t-on-click="() => this.onPick(question.id, value)">
+                                    <!-- ⚠️ **PAS DE CADRE SANS IMAGE.** Une vignette promise
+                                         et vide est pire qu'une absence : elle se lit comme
+                                         un chargement en panne. Une valeur qui ne désigne
+                                         rien n'a pas d'image, et la carte se réduit alors à
+                                         son libellé (relevé de Gerry, 2026-09-07). -->
+                                    <span t-if="value.image" class="o_cfg3d_card_shot">
+                                        <img t-att-src="value.image" t-att-alt="value.name"/>
+                                    </span>
+                                    <span class="o_cfg3d_card_label" t-esc="value.name"/>
+                                </button>
+                            </t>
+                        </div>
+
+                        <!-- ── LA COULEUR : la pastille, et le nom au survol ── -->
+                        <div t-elif="question.displayType === 'color'"
+                             class="o_cfg3d_swatches">
+                            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                                <button class="o_cfg3d_swatch"
+                                        t-att-class="{
+                                            'o_cfg3d_swatch--chosen': value.chosen,
+                                            'o_cfg3d_swatch--muted': value.muted }"
+                                        t-att-title="value.name"
+                                        t-att-style="value.color ? 'background-color: ' + value.color : ''"
+                                        t-on-click="() => this.onPick(question.id, value)">
+                                    <img t-if="value.image" t-att-src="value.image"
+                                         t-att-alt="value.name"/>
+                                </button>
+                            </t>
+                        </div>
+
+                        <!-- ── LA LISTE : pour les questions à longue réponse ── -->
+                        <select t-elif="question.displayType === 'select'"
+                                class="o_cfg3d_select form-select"
+                                t-on-change="(ev) => this.onSelect(question, ev)">
+                            <!-- ⚠️ Sans cette ligne vide, un menu deroulant montre sa
+                                 PREMIERE valeur comme si elle etait choisie : la
+                                 question parait repondue alors qu'elle ne l'est pas. -->
+                            <option value="" t-att-selected="!this.isAnswered(question)">
+                                <t t-esc="chooseLabel"/>
+                            </option>
+                            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                                <option t-att-value="value.id"
+                                        t-att-selected="value.chosen"
+                                        t-esc="value.name"/>
+                            </t>
+                        </select>
+
+                        <!-- ── LES CASES : une question qui accepte PLUSIEURS
+                             réponses. ⚠️ C'est la seule forme dont la règle
+                             SERVEUR diffère : répondre AJOUTE au lieu de
+                             remplacer. -->
+                        <div t-elif="question.displayType === 'multi'"
+                             class="o_cfg3d_checks">
+                            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                                <label class="o_cfg3d_check"
+                                       t-att-class="{ 'o_cfg3d_check--muted': value.muted }">
+                                    <input type="checkbox" t-att-checked="value.chosen"
+                                           t-on-change="() => this.onPick(question.id, value)"/>
+                                    <span t-esc="value.name"/>
+                                </label>
+                            </t>
+                        </div>
+
+                        <!-- ── RADIO ET PASTILLES : la forme d'origine ── -->
+                        <div t-else="" class="o_cfg3d_values">
                             <t t-foreach="question.values" t-as="value" t-key="value.id">
                                 <!-- ⚠️ Une valeur ÉTEINTE reste un bouton : c'est D-178,
                                      un appui doit pouvoir en donner la raison. `disabled`

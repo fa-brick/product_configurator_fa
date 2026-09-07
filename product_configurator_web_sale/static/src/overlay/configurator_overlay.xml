@@ -22,7 +22,7 @@
              un état de plus à tenir d'un côté et de l'autre. -->
         <button class="o_cfg3d_overlay_close"
                 t-on-click="() => this.close()"
-                aria-label="Fermer">×</button>
+                aria-label="Close">×</button>
     </div>
 </t>
 </templates>

@@ -95,6 +95,36 @@ class ProductAttribute(models.Model):
     # valeur de sélection ne nomme aucun modèle et n'entraîne aucune dépendance ; un
     # `Many2one` vers `product.model3d.material`, si.
 
+    # ── LES FORMES D'AFFICHAGE SONT À CE MODULE — D-258, arbitré 2026-09-06 ──
+    #
+    # Odoo en propose cinq — radio, pastilles, liste, couleur, cases — et aucune ne
+    # montre une IMAGE. Or une réponse qui désigne un produit ou une matière se
+    # reconnaît à sa forme avant de se lire : la CARTE est un carré à coins
+    # arrondis portant la vignette, le libellé dessous.
+    #
+    # ⓘ **Pourquoi ici et pas dans `product_attribute_advanced`**, où elle avait
+    # d'abord été posée. Ce module-là dit ce qu'une question EST — ce qu'une
+    # valeur désigne, comment elle se lit, dans quelle unité — et sa notice
+    # écarte explicitement le dessin : *« il ne porte aucun WIDGET »*. Une forme
+    # d'affichage est du dessin, et c'est ce module-ci qui dessine. Les formes à
+    # venir s'ajoutent donc ICI, à côté du gabarit qui les rend.
+    #
+    # ⓘ Ajoutée au champ du CŒUR plutôt que doublée par un réglage à nous : deux
+    # façons de dire « comment cette question s'affiche » finiraient par se
+    # contredire, faute que ce dépôt a déjà payée (`nature` contre `value_type`,
+    # 2026-09-02).
+    #
+    # ⚠️ **ODOO NE SAIT PAS LA RENDRE.** `website_sale.variants` branche en
+    # `t-if`/`t-elif` sur ses cinq chaînes, sans `t-else` : une carte disparaît de
+    # SES pages, sans erreur (rattrapé par `variants_card_fallback` côté
+    # boutique). Et son dialogue de vente est pire : il VALIDE `display_type`
+    # contre une liste fermée puis choisit son gabarit par un `switch` sans
+    # `default`. ⏳ Non traité — il y faut un module-pont dépendant de `sale`.
+    display_type = fields.Selection(
+        selection_add=[("card", "Card")],
+        ondelete={"card": "set default"},
+    )
+
 
 class ProductAttributeValue(models.Model):
     """Une valeur peut DÉSIGNER une matière — et c'est sa miniature qui la choisit.
@@ -139,6 +169,22 @@ class ProductAttributeValue(models.Model):
         string="Preview",
         readonly=True,
     )
+
+    def _preview_source(self):
+        """La MATIÈRE complète la chaîne du module attribut — D-258.
+
+        ⓘ Elle vient en DERNIER, et c'est voulu : l'image posée sur la valeur,
+        puis le produit qu'elle désigne, puis seulement le rendu de sa matière.
+        Une valeur ne désigne jamais les deux à la fois (D-219 les efface l'une
+        l'autre), donc l'ordre ne tranche rien en pratique — il dit simplement
+        que ce module AJOUTE une provenance sans déplacer les autres.
+        """
+        record, field = super()._preview_source()
+        if record:
+            return record, field
+        if self.material_id and self.material_id.preview_image:
+            return self.material_id, "preview_image"
+        return None, None
 
     # ─ LA LIGNE SE REMPLIT SEULE — D-198 ────────────────────────────────────
     #

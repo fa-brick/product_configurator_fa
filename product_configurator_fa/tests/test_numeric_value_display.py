@@ -147,3 +147,65 @@ class NumericValueDisplay(BaseCommon):
         )
         self.assertIn("50 mm", message)
         self.assertIn("1250 mm", message)
+
+    # ── LA VALEUR DE CATALOGUE, DANS LA LISTE — demande de Gerry, 2026-09-07 ──
+    #
+    # La règle tenait pour les valeurs SAISIES ; les valeurs rangées (D-081),
+    # elles, se lisaient comme des nombres nus dans la liste de l'attribut.
+
+    def test_09_une_valeur_RANGÉE_se_lit_avec_son_unité(self):
+        valeur = self.env["product.attribute.value"].create(
+            {"name": "2400", "attribute_id": self.attr_width.id}
+        )
+        self.assertEqual(valeur.name, "2400", "le stocké reste le nombre nu")
+        self.assertEqual(valeur.display_value, "2400 mm")
+
+    def test_10_l_affichage_ne_se_STOCKE_pas(self):
+        """⚠️ L'unité en base ferait d'un changement d'unité une migration, et
+        d'une comparaison de largeurs une comparaison de chaînes (D-160)."""
+        champ = self.env["product.attribute.value"]._fields["display_value"]
+        self.assertFalse(champ.store, "la valeur affichée ne doit pas être rangée")
+        self.assertTrue(champ.readonly, "elle ne doit pas être saisissable")
+
+    def test_11_changer_l_unité_change_l_affichage_sans_toucher_au_nombre(self):
+        valeur = self.env["product.attribute.value"].create(
+            {"name": "2400", "attribute_id": self.attr_width.id}
+        )
+        self.attr_width.uom_id = self.env.ref("uom.product_uom_meter")
+        valeur.invalidate_recordset(["display_value"])
+        self.assertEqual(valeur.name, "2400")
+        self.assertEqual(valeur.display_value.split()[0], "2400")
+        self.assertNotIn("mm", valeur.display_value)
+
+    def test_12_sans_unité_l_affichage_est_le_NOMBRE_seul(self):
+        sans_unite = self.env["product.attribute"].create({
+            "name": "Holes", "custom_type": "integer",
+            "create_variant": "no_variant",
+        })
+        valeur = self.env["product.attribute.value"].create(
+            {"name": "4", "attribute_id": sans_unite.id}
+        )
+        self.assertEqual(valeur.display_value, "4")
+
+    def test_13_une_question_qui_n_est_PAS_un_nombre_est_laissée_telle_quelle(self):
+        valeur = self.env["product.attribute.value"].create(
+            {"name": "Gravure du logo", "attribute_id": self.attr_note.id}
+        )
+        self.assertEqual(valeur.display_value, "Gravure du logo")
+
+    def test_14_la_colonne_est_DANS_la_liste_et_non_modifiable(self):
+        """⓵ Elle doit exister — sinon la demande n'est pas rendue.
+        ⓶ Elle doit être en lecture seule : saisir « 2400 mm » créerait une
+        valeur distincte de « 2400 », et l'unicité de D-081 serait satisfaite
+        par deux doublons pour une seule largeur."""
+        from lxml import etree
+
+        arch = self.env["product.attribute"].get_view(
+            self.env.ref("product.product_attribute_view_form").id, "form"
+        )["arch"]
+        colonne = etree.fromstring(arch).xpath(
+            "//field[@name='value_ids']/list/field[@name='display_value']"
+        )
+        self.assertTrue(colonne, "la valeur affichée ne paraît pas dans la liste")
+        self.assertEqual(colonne[0].get("readonly"), "1")
+        self.assertIn("custom_type", colonne[0].get("column_invisible", ""))

@@ -585,39 +585,13 @@ class ProductAttribute(models.Model):
         self.ensure_one()
         return self.is_numeric()
 
-    def canonical_custom_value(self, value):
-        """La forme STOCKÉE d'une valeur numérique : le nombre, et rien d'autre.
-
-        ⚠️ Sans elle, `2400`, `2400.0` et ` 2400 ` sont trois chaînes
-        différentes — donc trois valeurs d'attribut différentes le jour où une
-        dimension se range en valeur (D-081), pour une seule et même largeur.
-        La mise en forme ne REFUSE jamais : ce qui n'est pas un nombre ressort
-        tel quel, et c'est `validate_custom_val` qui tranche.
-        """
-        self.ensure_one()
-        if not self._is_numeric_custom() or value in (None, False, ""):
-            return value
-        try:
-            number = float(str(value).strip())
-        except (TypeError, ValueError):
-            return value
-        if number.is_integer():
-            return str(int(number))
-        return f"{number:.6f}".rstrip("0").rstrip(".")
-
-    def format_custom_value(self, value):
-        """La forme AFFICHÉE : le nombre, puis son unité.
-
-        La valeur reste le nombre — l'unité ne s'écrit nulle part en base, elle
-        se rajoute à l'affichage. L'y stocker ferait d'un changement d'unité une
-        migration de données, et d'une comparaison de largeurs une comparaison
-        de chaînes.
-        """
-        self.ensure_one()
-        text = self.canonical_custom_value(value)
-        if text in (None, False, "") or not self.uom_id:
-            return text
-        return f"{text} {self.uom_id.name}"
+    # ⓘ **`canonical_custom_value` et `format_custom_value` ONT DÉMÉNAGÉ** vers
+    # `product_attribute_advanced` (2026-09-07). Elles ne lisent que ce qu'il
+    # porte — le format, l'unité, et le lecteur de nombre — et l'ÉDITEUR en a
+    # besoin sans le configurateur : c'est lui qui affiche « 2,5 mm » dans ses
+    # listes de valeurs, et il ne peut pas dépendre d'un module AGPL-3 (D-075).
+    # Elles restent appelables ici, par héritage, et D-160 tient toujours : un
+    # seul formateur, porté par l'ATTRIBUT.
 
     def _resolves_to_values(self):
         """Un nombre saisi sur cet attribut se RANGE-t-il en valeur d'attribut ?
@@ -1420,6 +1394,11 @@ class ProductAttributeValue(models.Model):
         help="Set on values the configurator created from a free entry. "
         "Only these are candidates for the automatic cleanup.",
     )
+
+    # ⓘ **`display_value` A DÉMÉNAGÉ** vers `product_attribute_advanced`
+    # (2026-09-07), avec le formateur dont il dépend : ce qu'une valeur MONTRE
+    # ne dépend que de son format et de son unité, et l'éditeur en a besoin
+    # sans le configurateur.
 
     def init(self):
         """Unicité `(attribut, nom)` EN BASE — D-081, condition 2.

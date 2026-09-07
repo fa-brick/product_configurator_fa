@@ -23,7 +23,7 @@ import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
 import { rpc } from "@web/core/network/rpc";
 import { PartViewer3D } from "@product_editor/components/part_viewer_3d/part_viewer_3d";
-import { projectSketchItems, projectAssemblyPieces, worldByNodeId }
+import { projectSketchItems, projectAssemblyPieces, solidsByNodeId, worldByNodeId }
     from "@product_editor/engine/builder/project_items";
 import { placementExceptionsByNode } from "@product_editor/engine/ui/zone_rules";
 import { toBuildable } from "@product_editor/engine/builder/to_buildable";
@@ -56,6 +56,10 @@ export class ConfiguratorPage extends Component {
         // Ailleurs — un lien reçu par courriel, une ligne de devis — terminer reste
         // terminer : il n'y a pas de panier où aller.
         cart: { type: Boolean, optional: true },
+        // ⓘ **QUI ACCUEILLE reprend la main à la fin** — le dialogue d'un devis,
+        // qui doit poser la variante sur sa ligne et se refermer (D-259). Absent
+        // sur une page pleine : il n'y a personne à qui rendre la main.
+        onConfirmed: { type: Function, optional: true },
     };
 
     setup() {
@@ -92,6 +96,17 @@ export class ConfiguratorPage extends Component {
             const payload = this.props.initialState
                 || await this._call("/configurator/state");
             this.state.model = toViewModel(payload);
+            // ⚠️ **LA VUE PAR DÉFAUT SE DEMANDE ICI**, avant même le premier rendu :
+            // le viewer reçoit alors la pose dans ses props d'origine et se pose
+            // dessus sans jamais cadrer par lui-même. Demandée après la construction,
+            // elle arrivait 2,5 s trop tard et l'on voyait la pièce à deux endroits
+            // (sonde du 2026-09-07).
+            //
+            // ⚠️ Ce chemin ne passe PAS par `_applyModel` — le premier chargement pose
+            // l'état lui-même. Poser la demande dans le seul `_applyModel` revenait à
+            // ne jamais l'appliquer au premier affichage, qui est justement celui qui
+            // compte.
+            this._settleCamera();
             this.state.loading = false;
         });
         // ⓘ APRÈS le montage, et sans `await` : la construction ne bloque plus
@@ -176,6 +191,10 @@ export class ConfiguratorPage extends Component {
         const previous = this.state.model;
         const model = toViewModel(payload, previous);
         this.state.model = model;
+        // ⚠️ La caméra se demande MAINTENANT, pas après la construction : le viewer la
+        // met en attente tant que sa scène n'existe pas, et la sert au premier instant
+        // possible. C'est ce qui fait coïncider la 3D et la photo (D-115).
+        this._settleCamera();
         const sameRecipe = previous && model.definition === previous.definition;
         const sameValues = previous
             && JSON.stringify(model.scope) === JSON.stringify(previous.scope);
@@ -203,6 +222,7 @@ export class ConfiguratorPage extends Component {
         if (!definition) {
             this.state.pieces = [];
             this._worlds = new Map();
+            this._solids = new Map();
             this.state.ready = true;
             return;
         }
@@ -219,12 +239,20 @@ export class ConfiguratorPage extends Component {
                 { THREE },
             );
             this._worlds = worldByNodeId(tree);
+            // ⚠️ **LES VOLUMES DU MOTEUR** — percés, chanfreinés, fusionnés. Le viewer
+            // sait refaire une extrusion depuis son dessin, mais pas ceux-là : ils
+            // n'existent que dans l'arbre résolu. Sans cette table, la plaque
+            // s'affichait sans ses trous ni ses chanfreins, et rien ne le disait
+            // (Gerry, 2026-09-07).
+            this._solids = solidsByNodeId(tree);
             this.state.pieces = projectAssemblyPieces(buildable, tree);
             // ⚠️ APRÈS la projection : les exceptions s'apparient sur les PIÈCES —
             // leur lien, leur occurrence —, qui n'existent qu'une fois construites.
             this.state.nodeMaterials = this._exceptionsByNode();
             this.state.sceneSerial++;
-            this._settleCamera();
+            // ⓘ La photo s'efface quand la SCÈNE est là — la caméra, elle, a été
+            // demandée dès que l'état est arrivé.
+            this.state.ready = true;
         } catch (e) {
             // ⚠️ **LE REPLI EST MUET, ET C'EST CE QUI LE REND DANGEREUX** — la leçon est
             // celle de l'éditeur ([[L-188]]) : sans arbre résolu, le viewer redessine
@@ -233,6 +261,7 @@ export class ConfiguratorPage extends Component {
             console.warn("[configurateur] la scène n'a pas pu être construite :", e);
             this.state.pieces = [];
             this._worlds = new Map();
+            this._solids = new Map();
             // ⚠️ ON DÉCOUVRE QUAND MÊME. Une photo qui ne s'efface jamais laisserait
             // croire à un chargement éternel, alors que la page est vivante et que
             // les questions, elles, répondent.
@@ -253,14 +282,20 @@ export class ConfiguratorPage extends Component {
      * l'éditeur a appris à ne plus faire à l'ouverture.
      */
     _settleCamera() {
+        // ⚠️ **AVANT LA CONSTRUCTION, ET UNE SEULE FOIS.** Posée après, la vue arrivait
+        // 2,5 secondes trop tard : le viewer avait déjà cadré la scène tout seul, et
+        // l'on voyait la pièce dans deux positions successives (sonde du 2026-09-07 :
+        // cadrage automatique à 2 405 ms, vue par défaut à 4 899 ms). Demandée avant
+        // que la scène existe, elle est mise en attente par le viewer et servie au
+        // premier instant où il peut — donc jamais après coup.
         const view = this.state.model?.camera;
-        if (view && !this.state.ready) {
+        if (view && !this._cameraSettled) {
+            this._cameraSettled = true;
             this.state.cameraApply = {
                 ...view, move: true, instant: true,
                 serial: (this.state.cameraApply?.serial ?? 0) + 1,
             };
         }
-        this.state.ready = true;
     }
 
     /** Un perçage ou une fusion quelque part dans l'arbre ? (D-038) */
@@ -303,6 +338,35 @@ export class ConfiguratorPage extends Component {
     }
 
     /** `Map(nodeId → worldTransform)` — le viewer POSE les enfants avec. */
+    /**
+     * Les VOLUMES du moteur, par nœud — ce que le viewer consomme tel quel.
+     *
+     * ⓘ Même guichet que l'éditeur (`solidsByNodeId`) : deux exemplaires de cette
+     * marche divergeraient au premier cas particulier.
+     */
+    getResolvedSolidsByNodeId() {
+        return this._solids || new Map();
+    }
+
+    /**
+     * La PIÈCE de la racine — et sans elle, aucune matière sur un produit d'une
+     * seule pièce.
+     *
+     * ⚠️ `projectAssemblyPieces` saute délibérément la racine : dans l'éditeur,
+     * c'est la pièce OUVERTE, dessinée par un autre chemin. Ici la racine est le
+     * produit : ses items sont rendus avec `rootPieceId`, et les zones de matière
+     * sont rangées PAR PIÈCE (D-166). Sans cet identifiant, elles ne trouvent
+     * personne — la plaque restait grise.
+     */
+    get rootPieceId() {
+        return this.state.model?.definition?.model3dId ?? null;
+    }
+
+    /** Le nœud de la racine — par lui, le viewer retrouve son volume construit. */
+    get rootNodeId() {
+        return this.state.model?.definition?.id ?? null;
+    }
+
     getResolvedWorldByNodeId() {
         return this._worlds || new Map();
     }
@@ -391,6 +455,23 @@ export class ConfiguratorPage extends Component {
         }, CAMERA_SHARE_MS);
     }
 
+    /**
+     * Répondre par une LISTE DÉROULANTE.
+     *
+     * ⓘ Le geste rejoint `onPick` — une seule porte pour toutes les formes. Ce qui
+     * change d'une forme à l'autre est ce que l'œil reçoit, jamais ce qui part au
+     * serveur.
+     *
+     * ⚠️ `ev.target.value` est une CHAÎNE : la comparer telle quelle aux
+     * identifiants numériques ne trouverait jamais rien, et la question resterait
+     * muette sans qu'aucune erreur ne le dise.
+     */
+    onSelect(question, ev) {
+        const chosenId = Number(ev.target.value);
+        const value = question.values.find((v) => v.id === chosenId);
+        if (value) this.onPick(question.id, value);
+    }
+
     async onPick(questionId, value) {
         // ⚠️ Le refus est LOCAL avant d'être serveur : le serveur refuse aussi
         // (c'est lui qui fait foi), mais laisser partir l'appel ferait clignoter
@@ -429,6 +510,12 @@ export class ConfiguratorPage extends Component {
         }
         this.state.reason = null;
         await this._applyModel(next);
+        // ⚠️ APRÈS `_applyModel` : c'est lui qui pose la variante née de la
+        // confirmation dans l'état, et c'est elle que l'hôte attend.
+        if (this.props.onConfirmed) {
+            this.props.onConfirmed({ productId: this.state.model?.productId });
+            return;
+        }
         await this._addToCart();
     }
 
@@ -458,6 +545,13 @@ export class ConfiguratorPage extends Component {
 
     // ── Libellés — remontés du gabarit, où `_t()` n'est pas résoluble ────────
     get priceLabel() { return _t("Price"); }
+    get chooseLabel() { return _t("Choose…"); }
+
+    /** Une question est repondue des qu'une de ses valeurs est retenue. */
+    isAnswered(question) {
+        return question.values.some((value) => value.chosen);
+    }
+
     get closedLabel() {
         return _t("This configuration is confirmed and can no longer be changed.");
     }

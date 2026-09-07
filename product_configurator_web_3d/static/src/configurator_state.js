@@ -23,6 +23,10 @@ function toValue(raw) {
     return {
         id: raw.id,
         name: raw.name,
+        // La pastille et la vignette, telles que le serveur les range. `null` veut
+        // dire « il n'y en a pas » — jamais « on ne sait pas ».
+        color: raw.color || null,
+        image: raw.image || null,
         available: raw.available !== false,
         chosen: !!raw.chosen,
         // ⚠️ Une valeur indisponible reste AFFICHÉE et CLIQUABLE : c'est D-178 — un appui
@@ -49,7 +53,13 @@ export function toViewModel(payload, previous = null) {
             questions: [],
         };
     }
-    const definition = sameDefinition(previous?.definition, payload.definition)
+    // ⚠️ `previous &&` EN TÊTE, et ce n'est pas une précaution de style : sans
+    // modèle précédent, `previous?.definition` vaut `undefined` — et si la charge
+    // n'a pas de clé `definition`, `sameDefinition(undefined, undefined)` rend
+    // VRAI, donc on lisait `previous.definition` sur `null`. En production la clé
+    // est toujours là, ce qui rendait le défaut invisible ; un appel sans elle le
+    // fait tomber (trouvé par les tests, 2026-09-06).
+    const definition = previous && sameDefinition(previous.definition, payload.definition)
         ? previous.definition
         : payload.definition || null;
     return {
@@ -62,6 +72,9 @@ export function toViewModel(payload, previous = null) {
             name: line.name,
             required: !!line.required,
             multi: !!line.multi,
+            // ⓘ Le repli est `radio`, comme chez Odoo : une question sans forme
+            // déclarée reste une question, elle ne disparaît pas.
+            displayType: line.displayType || "radio",
             values: (line.values || []).map(toValue),
         })),
         definition,
@@ -106,7 +119,12 @@ export function answerFor(model, questionId, valueId) {
     if (!model || model.error || model.closed) return null;
     const question = (model.questions || []).find((q) => q.id === questionId);
     const value = question?.values.find((v) => v.id === valueId);
-    if (!value || !value.available || value.chosen) return null;
+    if (!value || !value.available) return null;
+    // ⚠️ **RE-CLIQUER UNE RÉPONSE DÉJÀ RETENUE NE VAUT RIEN — SAUF SI ELLE EST
+    // MULTIPLE.** Sur une question à réponse unique, le serveur réécrirait la
+    // même chose et la page clignoterait ; sur une question à cases, c'est le
+    // geste qui DÉCOCHE, et le refuser rendrait un choix irréversible.
+    if (value.chosen && !question.multi) return null;
     return { attribute_id: questionId, value_id: valueId };
 }
 

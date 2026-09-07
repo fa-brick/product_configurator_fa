@@ -88,6 +88,67 @@ class ProductConfiguratorWeb3D(http.Controller):
         return session.web_state()
 
     @http.route(
+        "/configurator/<string:token>/image", type="http", auth="public",
+        website=False, sitemap=False, methods=["GET"],
+    )
+    def product_image(self, token, **kwargs):
+        """LA PHOTO qui tient la place de la 3D pendant qu'elle se construit.
+
+        ⚠️ **Pourquoi pas `/web/image/product.template/<id>`.** Ce contrôleur
+        vérifie le droit de LECTURE, et un produit configurable n'est pas
+        forcément publié : le visiteur recevait le pictogramme d'Odoo, et
+        l'attente montrait un appareil photo barré au lieu de la pièce qu'il
+        vient voir (2026-09-07). Même mur, même franchissement que les vignettes
+        de valeurs : `sudo`, pour une image que la page montre de toute façon.
+
+        ⚠️ **Le JETON est l'autorisation**, et c'est ce qui rend la route sûre :
+        il désigne UNE configuration, donc un produit et un seul. Une route par
+        identifiant de produit aurait ouvert le catalogue entier à qui essaie des
+        numéros — et un catalogue de composants n'est pas public (D-190).
+
+        ⓘ Ce qui sort est une IMAGE, jamais un enregistrement : ni prix, ni nom,
+        ni disponibilité.
+        """
+        session = self._session(token)
+        if not session:
+            return request.not_found()
+        tmpl = session.sudo().product_tmpl_id
+        if not tmpl.image_1920:
+            return request.not_found()
+        return request.env["ir.binary"]._get_image_stream_from(
+            tmpl.sudo(), field_name="image_1920",
+        ).get_response()
+
+    @http.route(
+        "/configurator/value/<int:value_id>/image", type="http", auth="public",
+        website=False, sitemap=False, methods=["GET"],
+    )
+    def value_image(self, value_id, **kwargs):
+        """La VIGNETTE d'une réponse — produit, matière, ou son image propre.
+
+        ⚠️ **Pourquoi une route à nous plutôt que `/web/image`.** Ce contrôleur
+        vérifie le droit de lecture sur l'enregistrement, et une réponse désigne
+        souvent un COMPOSANT non publié — une top plate, un bras : le visiteur
+        recevrait un 403 par vignette. C'est le même mur que celui qui rendait
+        toute la boutique inaccessible (correctif du 2026-09-06), et on le
+        franchit ici au même titre : en `sudo`, pour une image de catalogue que
+        le configurateur montre de toute façon.
+
+        ⓘ Ce qui sort est une IMAGE, jamais un enregistrement : ni prix, ni nom
+        de produit, ni disponibilité. Un identifiant énumérable ne donne donc que
+        ce que la page affiche déjà.
+        """
+        value = request.env["product.attribute.value"].sudo().browse(value_id).exists()
+        if not value:
+            return request.not_found()
+        record, field = value._preview_source()
+        if not record or not record.sudo()[field]:
+            return request.not_found()
+        return request.env["ir.binary"]._get_image_stream_from(
+            record.sudo(), field_name=field,
+        ).get_response()
+
+    @http.route(
         "/configurator/prepare", type="json", auth="public", methods=["POST"],
         website=False, csrf=False,
     )
@@ -222,11 +283,21 @@ class ProductConfiguratorWeb3D(http.Controller):
             # Une valeur qui n'appartient pas à la question posée n'est pas une
             # réponse : la retenir écrirait une configuration que rien ne relit.
             return {"error": "unknown_value"}
-        # La réponse REMPLACE celle de la même question — une question à réponse
-        # unique n'en garde qu'une, et c'est le cas de tout ce que la page montre
-        # aujourd'hui.
-        others = session.value_ids.filtered(
-            lambda v, a=value.attribute_id: v.attribute_id != a
+        # ⚠️ **UNE QUESTION MULTIPLE S'AJOUTE, LES AUTRES REMPLACENT.** C'est la
+        # seule forme d'affichage dont la règle serveur diffère : une case cochée
+        # s'ajoute aux précédentes, et re-cliquer la décoche. Jusqu'ici, `multi`
+        # était SERVI à la page et ignoré ici — on ne pouvait donc pas en retenir
+        # deux, et rien ne le disait (constat de Gerry, 2026-09-06).
+        line = session.product_tmpl_id.attribute_line_ids.filtered(
+            lambda l, a=value.attribute_id: l.attribute_id == a
+        )[:1]
+        same = session.value_ids.filtered(
+            lambda v, a=value.attribute_id: v.attribute_id == a
         )
-        session.write({"value_ids": [(6, 0, (others | value).ids)]})
+        others = session.value_ids - same
+        if line.multi:
+            kept = (same - value) if value in same else (same | value)
+        else:
+            kept = value
+        session.write({"value_ids": [(6, 0, (others | kept).ids)]})
         return session.web_state()

@@ -59,4 +59,50 @@
         </field>
     </record>
 
+    <!-- ══ LA VIGNETTE D'UNE VALEUR EN CARTE ══════════════════════════════════
+         ⓘ Ces vues sont ICI, et non dans `product_attribute_advanced`, pour la
+         même raison que le type lui-même : elles ne servent qu'à la forme que
+         ce module dessine (D-258, arbitré le 2026-09-06).
+         Odoo ne montre le champ `image` d'une valeur QUE pour le type
+         « couleur » — c'est le seul de ses cinq types qui affiche une image.
+         Une carte en affiche une aussi : sans cette levée, l'attribut réglé en
+         carte n'offre AUCUN moyen de téléverser sa vignette, et la hiérarchie de
+         `_preview_source()` n'a plus de premier maillon atteignable.
+         ⓘ On ÉLARGIT la condition d'origine plutôt que de la remplacer : le
+         comportement pour « couleur » ne bouge pas d'un pixel. -->
+    <record id="product_attribute_view_form_card_image" model="ir.ui.view">
+        <field name="name">product.attribute.form.card.image</field>
+        <field name="model">product.attribute</field>
+        <field name="inherit_id" ref="product.product_attribute_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='value_ids']/list/field[@name='image']"
+                   position="attributes">
+                <attribute name="column_invisible">parent.display_type not in ('color', 'card')</attribute>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Et là où la valeur de VARIANTE se lit : la même image, la même règle. -->
+    <record id="product_template_attribute_value_tree_card_image" model="ir.ui.view">
+        <field name="name">product.template.attribute.value.list.card.image</field>
+        <field name="model">product.template.attribute.value</field>
+        <field name="inherit_id" ref="product.product_template_attribute_value_view_tree"/>
+        <field name="arch" type="xml">
+            <field name="image" position="attributes">
+                <attribute name="invisible">display_type not in ('color', 'card')</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="product_template_attribute_value_form_card_image" model="ir.ui.view">
+        <field name="name">product.template.attribute.value.form.card.image</field>
+        <field name="model">product.template.attribute.value</field>
+        <field name="inherit_id" ref="product.product_template_attribute_value_view_form"/>
+        <field name="arch" type="xml">
+            <field name="image" position="attributes">
+                <attribute name="invisible">display_type not in ('color', 'card') or not image</attribute>
+            </field>
+        </field>
+    </record>
+
 </odoo>

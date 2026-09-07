@@ -68,7 +68,7 @@
     padding: 6px 10px;
     background: transparent;
 
-    &--chosen { border-color: currentColor; font-weight: 600; }
+    &--chosen { border-color: $o-brand-primary; color: $o-brand-primary; font-weight: 600; }
     /* ÉTEINTE, pas désactivée : le bouton reste cliquable pour pouvoir DIRE pourquoi. */
     &--muted { opacity: 0.4; }
 }
@@ -106,7 +106,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: inherit;
+    /* ⚠️ **OPAQUE, ET NON `inherit`.** Le parent (`.o_cfg3d_viewer`) n'a pas de fond :
+       `inherit` valait donc « transparent », et la 3D se voyait À TRAVERS la photo —
+       la même pièce à deux endroits, en même temps (relevé de Gerry, 2026-09-07). Un
+       fond hérité d'un parent qui n'en a pas est une absence qui se déguise en
+       valeur. */
+    background: #fff;
     z-index: 2;
 
     img {
@@ -131,6 +136,89 @@
 }
 
 @keyframes o_cfg3d_turn { to { transform: rotate(360deg); } }
+
+/* ── LA CARTE ───────────────────────────────────────────────────────────────
+   Une vignette dans un carré à coins arrondis, le libellé dessous. C'est la forme
+   des réponses qui DÉSIGNENT — un produit, une matière : on reconnaît une pièce à
+   sa silhouette avant de lire son nom. */
+.o_cfg3d_cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 8px;
+}
+
+.o_cfg3d_card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 6px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    text-align: center;
+
+    &--chosen { border-color: $o-brand-primary; border-width: 2px; padding: 7px 5px; }
+    /* ÉTEINTE, pas désactivée : l'appui doit rester possible pour en donner la
+       raison (D-178). */
+    &--muted { opacity: 0.4; }
+}
+
+.o_cfg3d_card_shot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+
+    img { max-width: 100%; max-height: 100%; object-fit: contain; }
+}
+
+.o_cfg3d_card_label {
+    font-size: 12px;
+    line-height: 1.25;
+    /* Deux lignes au plus : au-delà, les cartes cessent d'être comparables. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ── LA COULEUR ─────────────────────────────────────────────────────────── */
+.o_cfg3d_swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.o_cfg3d_swatch {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    overflow: hidden;
+
+    img { width: 100%; height: 100%; object-fit: cover; }
+
+    &--chosen { outline: 2px solid $o-brand-primary; outline-offset: 2px; }
+    &--muted { opacity: 0.4; }
+}
+
+/* ── LES CASES ──────────────────────────────────────────────────────────── */
+.o_cfg3d_checks { display: flex; flex-direction: column; gap: 4px; }
+
+.o_cfg3d_check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+
+    &--muted { opacity: 0.4; }
+}
+
+.o_cfg3d_select { font-size: 13px; }
 
 /* Le bandeau de conduite : il informe ET il agit, donc les deux tiennent sur une
    ligne, à hauteur de regard des questions qu'il gèle. */

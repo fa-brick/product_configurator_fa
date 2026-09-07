@@ -162,3 +162,253 @@ class TestPublicRoutes(HttpCase):
         # porte ni le numéro de session ni un autre jeton.
         self.assertIn(self.session.access_token, page.text)
         self.assertNotIn(self.session.name, page.text)
+
+
+@tagged("post_install", "-at_install")
+class TestDisplayShapes(HttpCase):
+    """La FORME d'une question, et la règle qu'elle change — 2026-09-06.
+
+    Cinq formes viennent d'Odoo, la sixième — la carte — a été ajoutée pour les
+    réponses qui désignent. Une seule change la règle du serveur : la question
+    MULTIPLE, dont les réponses s'ajoutent au lieu de se remplacer.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        Value = cls.env["product.attribute.value"]
+        # Odoo l'exige : une question a cases cochees ne cree pas de variante
+        # (contrainte check_multi_checkbox_no_variant).
+        cls.options = cls.env["product.attribute"].create({
+            "name": "Options",
+            "display_type": "multi",
+            "create_variant": "no_variant",
+        })
+        cls.gravure, cls.vernis = Value.create([
+            {"name": "Gravure", "attribute_id": cls.options.id},
+            {"name": "Vernis", "attribute_id": cls.options.id},
+        ])
+        cls.tmpl_multi = cls.env["product.template"].create({
+            "name": "Porte a options",
+            "config_ok": True,
+            "attribute_line_ids": [Command.create({
+                "attribute_id": cls.options.id,
+                "value_ids": [Command.set((cls.gravure | cls.vernis).ids)],
+                "multi": True,
+            })],
+        })
+        cls.session_multi = cls.env["product.config.session"].create({
+            "product_tmpl_id": cls.tmpl_multi.id,
+            "user_id": cls.env.user.id,
+        })
+        cls.session_multi._ensure_access_token()
+
+    def _call(self, route, **params):
+        """Un appel JSON-RPC anonyme — comme un visiteur, sans session web."""
+        response = self.url_open(
+            route,
+            data=json.dumps({"jsonrpc": "2.0", "method": "call", "params": params}),
+            headers={"Content-Type": "application/json"},
+        )
+        return response.json().get("result")
+
+    def _answer(self, value):
+        return self._call(
+            "/configurator/set_value", token=self.session_multi.access_token,
+            attribute_id=self.options.id, value_id=value.id,
+        )
+
+    def test_la_FORME_est_servie_a_la_page(self):
+        """Elle était réglée en back-office et n'arrivait jamais : la page rendait
+        un bouton pour tout."""
+        state = self._call("/configurator/state", token=self.session_multi.access_token)
+        self.assertEqual(state["attributes"][0]["displayType"], "multi")
+
+    def test_le_type_CARTE_existe(self):
+        """⚠️ Il n'est pas d'Odoo — ses cinq formes ne montrent aucune image."""
+        formes = dict(self.env["product.attribute"]._fields["display_type"].selection)
+        self.assertIn("card", formes)
+
+    def test_une_question_MULTIPLE_garde_les_deux_reponses(self):
+        self._answer(self.gravure)
+        state = self._answer(self.vernis)
+        retenues = {v["name"] for v in state["attributes"][0]["values"] if v["chosen"]}
+        self.assertEqual(retenues, {"Gravure", "Vernis"})
+
+    def test_re_repondre_DECOCHE_au_lieu_de_ne_rien_faire(self):
+        self._answer(self.gravure)
+        state = self._answer(self.gravure)
+        retenues = [v["name"] for v in state["attributes"][0]["values"] if v["chosen"]]
+        self.assertEqual(retenues, [])
+
+    def test_une_question_SIMPLE_remplace_toujours(self):
+        """La règle d'avant ne bouge pas — c'est la forme qui décide, pas le hasard."""
+        self.tmpl_multi.attribute_line_ids.multi = False
+        self._answer(self.gravure)
+        state = self._answer(self.vernis)
+        retenues = [v["name"] for v in state["attributes"][0]["values"] if v["chosen"]]
+        self.assertEqual(retenues, ["Vernis"])
+
+
+@tagged("post_install", "-at_install")
+class TestNumericValueOnThePage(HttpCase):
+    """Ce que le CLIENT lit d'un nombre — D-160, demandé le 2026-09-07.
+
+    La valeur rangée est le nombre nu ; partout où elle se LIT, elle porte son
+    unité. Le back-office le faisait depuis ce matin, la page non : la même
+    largeur se lisait « 2400 mm » d'un côté et « 2400 » de l'autre.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.largeur = cls.env["product.attribute"].create({
+            "name": "Largeur",
+            "custom_type": "float",
+            "uom_id": cls.env.ref("uom.product_uom_millimeter").id,
+            "create_variant": "no_variant",
+        })
+        cls.deux_mille = cls.env["product.attribute.value"].create(
+            {"name": "2400", "attribute_id": cls.largeur.id}
+        )
+        cls.tmpl = cls.env["product.template"].create({
+            "name": "Porte a largeur",
+            "config_ok": True,
+            "attribute_line_ids": [Command.create({
+                "attribute_id": cls.largeur.id,
+                "value_ids": [Command.set(cls.deux_mille.ids)],
+            })],
+        })
+        cls.session = cls.env["product.config.session"].create({
+            "product_tmpl_id": cls.tmpl.id, "user_id": cls.env.user.id,
+        })
+        cls.session._ensure_access_token()
+
+    def _call(self, route, **params):
+        response = self.url_open(
+            route,
+            data=json.dumps({"jsonrpc": "2.0", "method": "call", "params": params}),
+            headers={"Content-Type": "application/json"},
+        )
+        return response.json().get("result")
+
+    def test_la_page_montre_le_nombre_AVEC_son_unité(self):
+        state = self._call("/configurator/state", token=self.session.access_token)
+        libelles = [v["name"] for a in state["attributes"] for v in a["values"]]
+        self.assertEqual(libelles, ["2400 mm"])
+
+    def test_la_valeur_RANGÉE_reste_le_nombre_nu(self):
+        """⚠️ L'affichage ne doit rien changer au stockage : « 2400 mm » en base
+        serait une valeur distincte de « 2400 » pour la même largeur."""
+        self.assertEqual(self.deux_mille.name, "2400")
+
+
+@tagged("post_install", "-at_install")
+class TestTheScopeCarriesNumbers(HttpCase):
+    """La portée envoyée à la page porte des NOMBRES, pas des identifiants.
+
+    ⚠️ Relevé de Gerry le 2026-09-07, mesuré : `scope = {'__attribute_144': 292.0}`
+    — 292 étant l'`id` de la valeur « 2 ». La plaque se construisait donc à
+    292 mm d'épaisseur. Le danger était pourtant ANNONCÉ ailleurs : *« les
+    options portent leur libellé, jamais leur identifiant »*.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.epaisseur = cls.env["product.attribute"].create({
+            "name": "Épaisseur", "custom_type": "float",
+            "create_variant": "no_variant",
+        })
+        cls.deux = cls.env["product.attribute.value"].create(
+            {"name": "2", "attribute_id": cls.epaisseur.id})
+        cls.teinte = cls.env["product.attribute"].create(
+            {"name": "Teinte", "create_variant": "no_variant"})
+        cls.chene = cls.env["product.attribute.value"].create(
+            {"name": "Chêne", "attribute_id": cls.teinte.id})
+        cls.tmpl = cls.env["product.template"].create({
+            "name": "Plaque", "config_ok": True,
+            "attribute_line_ids": [
+                Command.create({"attribute_id": cls.epaisseur.id,
+                                "value_ids": [Command.set(cls.deux.ids)]}),
+                Command.create({"attribute_id": cls.teinte.id,
+                                "value_ids": [Command.set(cls.chene.ids)]}),
+            ],
+        })
+        cls.session = cls.env["product.config.session"].create({
+            "product_tmpl_id": cls.tmpl.id, "user_id": cls.env.user.id})
+        cls.session.value_ids = [(6, 0, (cls.deux | cls.chene).ids)]
+
+    def test_une_question_NUMÉRIQUE_reçoit_le_nom(self):
+        """⚠️ Son identifiant serait un nombre valide — et faux."""
+        values = self.session._web_values()
+        self.assertEqual(values[self.epaisseur.id], "2")
+        self.assertNotEqual(values[self.epaisseur.id], self.deux.id)
+
+    def test_une_question_DISCRÈTE_garde_son_identifiant(self):
+        """Lui, se retrouve sans ambiguïté : deux attributs peuvent porter le
+        même libellé."""
+        self.assertEqual(self.session._web_values()[self.teinte.id], self.chene.id)
+
+    def test_la_portée_de_la_PAGE_porte_bien_le_nombre(self):
+        """Le chemin complet, celui que la page reçoit — c'est là que le défaut
+        se voyait, et nulle part ailleurs."""
+        self.env["product.model3d"].create(
+            {"name": "Plaque", "product_tmpl_id": self.tmpl.id})
+        scope = self.session.web_state()["scope"]
+        self.assertEqual(scope[self.epaisseur.scope_key()], 2.0)
+        self.assertNotEqual(scope[self.epaisseur.scope_key()], float(self.deux.id))
+
+
+@tagged("post_install", "-at_install")
+class TestTheWaitingPhoto(HttpCase):
+    """La photo d'attente, pour un visiteur qui n'a AUCUN droit — 2026-09-07.
+
+    ⚠️ `/web/image` vérifie la lecture de l'enregistrement : un produit
+    configurable n'étant pas forcément publié, l'attente montrait le pictogramme
+    d'Odoo — un appareil photo barré à la place de la pièce qu'on vient voir.
+    C'est le même mur que les vignettes de valeurs (D-258), franchi de la même
+    façon : une route à nous, en `sudo`, autorisée par le JETON.
+    """
+
+    #: Un vrai PNG de 1×1 — `fields.Image` refuse ce qui n'en est pas un.
+    PNG = ("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAE"
+           "hQGAhKmMIQAAAABJRU5ErkJggg==")
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.tmpl = cls.env["product.template"].create({
+            "name": "Plaque non publiée",
+            "config_ok": True,
+            "image_1920": cls.PNG,
+        })
+        cls.session = cls.env["product.config.session"].create({
+            "product_tmpl_id": cls.tmpl.id, "user_id": cls.env.user.id})
+        cls.session._ensure_access_token()
+
+    def test_l_état_donne_une_route_À_NOUS_et_non_web_image(self):
+        image = self.session.web_state()["image"]
+        self.assertTrue(image.endswith("/image"), image)
+        self.assertIn(self.session.access_token, image)
+        self.assertNotIn("/web/image", image)
+
+    def test_un_visiteur_ANONYME_reçoit_la_photo(self):
+        response = self.url_open(self.session.web_state()["image"])
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.headers["Content-Type"].startswith("image/"))
+        self.assertTrue(response.content, "une image vide n'est pas une photo")
+
+    def test_un_jeton_INCONNU_n_ouvre_aucune_image(self):
+        """⚠️ Le jeton est l'autorisation : une route par identifiant de produit
+        aurait ouvert le catalogue entier à qui essaie des numéros (D-190)."""
+        response = self.url_open("/configurator/%s/image" % ("x" * 32))
+        self.assertEqual(response.status_code, 404)
+
+    def test_un_produit_SANS_photo_ne_promet_rien(self):
+        nue = self.env["product.template"].create({"name": "Sans photo",
+                                                   "config_ok": True})
+        session = self.env["product.config.session"].create({
+            "product_tmpl_id": nue.id, "user_id": self.env.user.id})
+        session._ensure_access_token()
+        self.assertIsNone(session.web_state()["image"])

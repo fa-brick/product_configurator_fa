@@ -70,4 +70,18 @@
         </xpath>
     </template>
 
+    <!-- ══ LA FORME « CARTE » N'EST PAS D'ODOO ════════════════════════════════
+         `website_sale.variants` enchaîne t-if/t-elif sur des chaînes exactes et
+         n'a AUCUN cas par défaut : une forme qu'il ne connaît pas ne rend RIEN
+         — pas d'erreur, pas de trace, juste une question absente de la page.
+         Notre configurateur, lui, sait dessiner la carte ; ici on rattache
+         simplement `card` aux pastilles, dont elle est la parente visuelle. -->
+    <template id="variants_card_fallback" inherit_id="website_sale.variants"
+              name="Card display type: fall back to pills on standard pages">
+        <xpath expr="//t[@t-elif=&quot;attribute.display_type == 'pills'&quot;]"
+               position="attributes">
+            <attribute name="t-elif">attribute.display_type in ('pills', 'card')</attribute>
+        </xpath>
+    </template>
+
 </odoo>

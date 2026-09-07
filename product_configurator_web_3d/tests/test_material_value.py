@@ -153,3 +153,67 @@ class MaterialValue(BaseCommon):
         self.assertFalse(valeur.product_id)
         valeur.material_id = self.material
         self.assertEqual(valeur.material_id, self.material)
+
+    # ── LA VIGNETTE : CE MODULE COMPLÈTE LA CHAÎNE, IL NE LA REFAIT PAS ──────
+    #
+    # `_preview_source()` est déclarée dans `product_attribute_advanced` (D-258).
+    # Ici on éprouve seulement l'apport de ce module — la matière — et le fait
+    # que les provenances d'amont gardent leur rang.
+
+    def test_09_une_valeur_de_MATIÈRE_montre_le_rendu_du_catalogue(self):
+        attribute = self.env["product.attribute"].create({
+            "name": "Finish", "create_variant": "no_variant",
+            "value_type": "material",
+        })
+        value = self.env["product.attribute.value"].create({
+            "name": "Oak", "attribute_id": attribute.id,
+            "material_id": self.material.id,
+        })
+        self.assertEqual(value._preview_source(), (None, None),
+                         "sans rendu, la matière ne promet pas de vignette")
+        self.material.sudo().preview_image = RED_PIXEL
+        self.assertEqual(value._preview_source(), (self.material, "preview_image"))
+
+    def test_10_l_image_POSÉE_sur_la_valeur_passe_devant_la_matière(self):
+        """⚠️ L'apport de ce module s'AJOUTE en queue : il ne double personne."""
+        attribute = self.env["product.attribute"].create({
+            "name": "Finish", "create_variant": "no_variant",
+            "value_type": "material",
+        })
+        self.material.sudo().preview_image = RED_PIXEL
+        value = self.env["product.attribute.value"].create({
+            "name": "Oak", "attribute_id": attribute.id,
+            "material_id": self.material.id, "image": BLUE_PIXEL,
+        })
+        self.assertEqual(value._preview_source(), (value, "image"))
+
+    # ── LA FORME « CARTE » APPARTIENT À CE MODULE — D-258 ────────────────────
+
+    def test_11_le_type_CARTE_est_offert_par_CE_module(self):
+        """⚠️ Il a d'abord été posé dans `product_attribute_advanced`, dont la
+        notice écarte pourtant le dessin. Arbitré le 2026-09-06 : les formes
+        d'affichage vivent avec le gabarit qui les rend."""
+        formes = dict(self.env["product.attribute"]._fields["display_type"].selection)
+        self.assertIn("card", formes)
+
+    def test_12_une_carte_LAISSE_TÉLÉVERSER_la_vignette_de_la_valeur(self):
+        """⚠️ Odoo ne montre le champ `image` d'une valeur que pour « couleur » —
+        le seul de ses cinq types qui affiche une image. Sans cette levée, un
+        attribut en carte n'offre AUCUN moyen de poser sa vignette, et le premier
+        maillon de `_preview_source()` devient inatteignable.
+
+        ⓘ Éprouvé sur la vue RENDUE, pas sur le fichier : c'est l'héritage qui
+        peut se perdre, pas le XML qu'on vient d'écrire.
+        """
+        from lxml import etree
+
+        arch = self.env["product.attribute"].get_view(
+            self.env.ref("product.product_attribute_view_form").id, "form"
+        )["arch"]
+        champ = etree.fromstring(arch).xpath(
+            "//field[@name='value_ids']//field[@name='image']"
+        )
+        self.assertTrue(champ, "le champ image a disparu de la vue")
+        condition = champ[0].get("column_invisible", "")
+        self.assertIn("card", condition, "la carte ne peut pas montrer de vignette")
+        self.assertIn("color", condition, "la couleur a perdu la sienne au passage")

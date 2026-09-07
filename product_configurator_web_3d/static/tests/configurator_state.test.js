@@ -185,3 +185,54 @@ describe("qui conduit, et ce qu'on en dit", () => {
         expect(message).toContain("Gerry");
     });
 });
+
+describe("la forme d'une question, et la réponse multiple", () => {
+    const question = (extra = {}) => toViewModel({
+        productName: "Porte", price: 0,
+        attributes: [{
+            id: 3, name: "Couleur", displayType: "card", multi: false,
+            values: [
+                { id: 7, name: "Blanc", available: true, chosen: true, color: "#fff",
+                  image: "/configurator/value/7/image" },
+                { id: 8, name: "Noir", available: true, chosen: false },
+            ],
+            ...extra,
+        }],
+    });
+
+    test("la forme voyage jusqu'à la page", () => {
+        expect(question().questions[0].displayType).toBe("card");
+    });
+
+    test("une question SANS forme déclarée retombe sur `radio`, elle ne disparaît pas", () => {
+        const modele = toViewModel({ attributes: [{ id: 1, name: "X", values: [] }] });
+        expect(modele.questions[0].displayType).toBe("radio");
+    });
+
+    test("la pastille et la vignette suivent la valeur", () => {
+        const [blanc, noir] = question().questions[0].values;
+        expect(blanc.color).toBe("#fff");
+        expect(blanc.image).toBe("/configurator/value/7/image");
+        // ⓘ `null` veut dire « il n'y en a pas », jamais « on ne sait pas ».
+        expect(noir.color).toBe(null);
+        expect(noir.image).toBe(null);
+    });
+
+    test("re-cliquer une réponse UNIQUE déjà retenue ne renvoie rien", () => {
+        expect(answerFor(question(), 3, 7)).toBe(null);
+    });
+
+    test("⚠️ re-cliquer une réponse MULTIPLE la décoche — sinon le choix serait sans retour", () => {
+        const modele = question({ multi: true, displayType: "multi" });
+        expect(answerFor(modele, 3, 7)).toEqual({ attribute_id: 3, value_id: 7 });
+    });
+
+    test("une valeur indisponible ne part jamais, multiple ou non", () => {
+        const modele = toViewModel({
+            attributes: [{ id: 3, name: "Couleur", multi: true, values: [
+                { id: 9, name: "Rouge", available: false, chosen: false },
+            ] }],
+        });
+        expect(answerFor(modele, 3, 9)).toBe(null);
+    });
+});

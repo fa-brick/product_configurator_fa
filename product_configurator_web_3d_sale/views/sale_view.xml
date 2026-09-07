@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══ LE DRAPEAU QUE LE WIDGET LIT ═══════════════════════════════════════
+         `product_tmpl_config_ok` doit être DANS la vue pour arriver au client :
+         un champ absent de l'arch n'est pas chargé, et le correctif retomberait
+         silencieusement sur le dialogue d'Odoo (D-259).
+         ⓘ `config_session_id` est déjà posé par `product_configurator_fa_sale`,
+         sur la liste comme sur le formulaire — on ne le redouble pas. -->
+    <record id="sale_order_form_web3d" model="ir.ui.view">
+        <field name="name">sale.order.form.web3d</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="product_configurator_fa_sale.sale_order_form_config"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='order_line']/list//field[@name='config_ok']"
+                   position="after">
+                <field name="product_tmpl_config_ok" column_invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/form//field[@name='config_ok']"
+                   position="after">
+                <field name="product_tmpl_config_ok" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ══ CE QUE LE CONFIGURATEUR 3D REND OBSOLÈTE ═══════════════════════════
+         Arbitré par Gerry le 2026-09-06 : *« le bouton actuel de OCA ainsi que
+         la fonctionnalité derrière devient obsolète »*.
+
+         ⓘ **Masqués, pas supprimés.** Ces boutons appartiennent à un module
+         amont ; les retirer de son arbre ferait diverger notre copie et
+         compliquerait chaque montée de version. `invisible="1"` les retire de
+         l'écran et se défait d'une ligne.
+
+         ⚠️ **Rien n'est perdu, tout est déplacé** :
+         - « Configure Product » (un par devis) faisait choisir un produit puis
+           posait les questions dans un formulaire fabriqué à la volée, qui ignore
+           `display_type`. C'est désormais la LIGNE qui ouvre le configurateur,
+           comme Odoo le fait pour ses propres produits à attributs.
+         - la roue dentée (une par ligne) ouvrait notre page dans un ONGLET. Odoo
+           a déjà son affordance pour rouvrir : le crayon dans la cellule du
+           produit, qui appelle le même point d'entrée — en dialogue, sans
+           quitter le devis. -->
+    <record id="sale_order_form_web3d_obsolete" model="ir.ui.view">
+        <field name="name">sale.order.form.web3d.obsolete</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="product_configurator_fa_sale.sale_order_form_config"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_config_start']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//button[@name='reconfigure_product']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

@@ -54,9 +54,11 @@ class TestQuoteLineEntry(TransactionCase):
     def test_une_ligne_qui_a_deja_sa_session_la_ROUVRE(self):
         line = self._line(session=self.session_source)
         action = line.reconfigure_product()
-        self.assertEqual(action["type"], "ir.actions.act_url")
+        # ⓘ Un DIALOGUE depuis le 2026-09-07 : le commercial ne quitte pas son
+        # devis. Le jeton reste la seule identité (D-091).
+        self.assertEqual(action["type"], "ir.actions.client")
         self.assertEqual(
-            action["url"], f"/configurator/{self.session_source.access_token}"
+            action["params"]["token"], self.session_source.access_token
         )
         # ⚠️ Rouvrir ne doit RIEN changer : c'est un lien qu'on suit, pas un geste.
         self.assertEqual(line.config_session_id, self.session_source)
@@ -69,7 +71,7 @@ class TestQuoteLineEntry(TransactionCase):
         action = line.reconfigure_product()
         self.assertTrue(line.config_session_id)
         self.assertEqual(
-            action["url"], f"/configurator/{line.config_session_id.access_token}"
+            action["params"]["token"], line.config_session_id.access_token
         )
         self.assertEqual(line.config_session_id.product_tmpl_id, self.tmpl)
 

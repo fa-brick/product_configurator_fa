@@ -54,6 +54,34 @@
             "product_configurator_web_3d/static/src/page/configurator_page.xml",
             "product_configurator_web_3d/static/src/page/configurator_page.js",
         ],
+        # ══ CE QUE LA FORME « CARTE » DOIT AU BACK-OFFICE ══════════════════════
+        #
+        # ⚠️ Une seule ligne, et c'est une garde : le dialogue de vente d'Odoo
+        # VALIDE `display_type` contre une liste fermée et choisit son gabarit
+        # sans cas par défaut. Sans ce correctif, une carte posée sur un produit
+        # ORDINAIRE fait tomber son écran (D-258).
+        #
+        # ⓘ Aucun module-pont : `sale` est déjà en amont d'ici
+        # (`product_configurator_web_3d` → `product_editor` → `sale`).
+        # ══ LE MÊME CONFIGURATEUR, EN DIALOGUE AU BACK-OFFICE — D-262 ══════════
+        #
+        # ⓘ La PAGE est déclarée ici, et non dans le pont de vente : elle
+        # appartient à ce module, et le dialogue d'une ligne de devis n'est qu'un
+        # de ses hôtes. L'ordre reste significatif ([[L-001]]) : l'état, la page,
+        # puis l'action qui la monte.
+        #
+        # ⓘ Rien du viewer : `product_editor` met déjà ses 65 fichiers dans ce
+        # paquet — c'est le FRONT qui avait dû les recevoir, pas l'inverse.
+        "web.assets_backend": [
+            "product_configurator_web_3d/static/src/sale_card_tolerance.js",
+            "product_configurator_web_3d/static/src/configurator_state.js",
+            "product_configurator_web_3d/static/src/page/configurator_page.scss",
+            "product_configurator_web_3d/static/src/page/configurator_page.xml",
+            "product_configurator_web_3d/static/src/page/configurator_page.js",
+            "product_configurator_web_3d/static/src/page/configurator_action.scss",
+            "product_configurator_web_3d/static/src/page/configurator_action.xml",
+            "product_configurator_web_3d/static/src/page/configurator_action.js",
+        ],
     },
     "installable": True,
     "auto_install": False,

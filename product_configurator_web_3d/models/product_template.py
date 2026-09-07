@@ -1,8 +1,10 @@
 # Copyright 2026 fa-brick
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""La CLÉ À MOLETTE de la fiche produit ouvre la page 3D — arbitrage Gerry, 2026-09-05.
+"""Le CRAYON de la fiche produit ouvre la configuration 3D — arbitrage Gerry, 2026-09-05.
 
-Le bouton ne change pas de place, ni d'icône : il change de destination.
+Le bouton ne change pas de place : il change de destination. Son dessin est
+passé de la clé à molette au crayon le 2026-09-07, pour rejoindre l'icône
+qu'Odoo emploie déjà sur la cellule produit d'une ligne de devis.
 L'assistant OCA reste en vie pour les autres chemins (le bon de commande, la
 reprise depuis un devis sans 3D) — il ne sera retiré que lorsque tous auront
 leur remplaçant (lot 6, point c).

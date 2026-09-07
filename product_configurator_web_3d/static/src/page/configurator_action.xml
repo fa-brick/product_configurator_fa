@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="product_configurator_web_3d.ConfiguratorAction">
+        <!-- ⓘ Le cadre du dialogue est celui d'Odoo : cette classe ne sert qu'à
+             borner la hauteur de la page, faite pour un écran entier. -->
+        <div class="o_cfg3d_action">
+            <ConfiguratorPage t-if="token"
+                              token="token"
+                              initialState="initialState"
+                              onConfirmed="() => this.onConfirmed()"/>
+        </div>
+    </t>
+
+</templates>

@@ -7,7 +7,7 @@ sur chaque ligne configurable d'un devis en brouillon. Comme la clé à molette 
 la fiche produit, il ne change ni de place ni d'icône — seulement de
 destination.
 """
-from odoo import models
+from odoo import fields, models
 
 
 class SaleOrderLine(models.Model):
@@ -43,3 +43,18 @@ class SaleOrderLine(models.Model):
             session.value_ids = [(6, 0, values.product_attribute_value_id.ids)]
             self.config_session_id = session
         return session.action_open_3d_page()
+
+    # ── CE QUE LE CLIENT DOIT SAVOIR AVANT DE CHOISIR — D-259 ────────────────
+    #
+    # ⚠️ `config_ok` existe déjà sur la ligne, mais il suit `product_id` : pour un
+    # produit configurable, la VARIANTE n'existe pas encore au moment du choix, et
+    # ce champ vaut donc `False` exactement quand on aurait besoin de lui.
+    # Celui-ci suit le MODÈLE, qui est ce que le commercial vient de choisir.
+    #
+    # ⓘ Un `related` plutôt qu'un aller-retour de plus : le widget lit la donnée
+    # déjà chargée avec la ligne, sans appeler le serveur pour chaque produit.
+    product_tmpl_config_ok = fields.Boolean(
+        related="product_template_id.config_ok",
+        string="Configurable template",
+        readonly=True,
+    )

@@ -1,0 +1,14 @@
+// La page est faite pour occuper un écran ; dans un dialogue, c'est le dialogue
+// qui donne la mesure. On borne ICI plutôt que dans la page, qui ne doit rien
+// savoir de ses hôtes.
+.o_cfg3d_action {
+    .o_cfg3d_page { height: 70vh; }
+}
+
+// ⚠️ **LE CORPS DU DIALOGUE N'A PAS À AJOUTER SA MARGE.** Odoo pose
+// `padding: var(--modal-padding)` sur `.modal-body` — juste pour un formulaire,
+// inutile pour une scène 3D qui occupe tout : le cadre gris se voyait autour de
+// la pièce (relevé de Gerry, 2026-09-07). La page porte déjà ses propres marges.
+.modal-body:has(> .o_cfg3d_action) {
+    padding: 0;
+}

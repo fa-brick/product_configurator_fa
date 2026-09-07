@@ -11,7 +11,7 @@ questions, leurs réponses possibles, le prix et la définition 3D. Elle ne reç
 ni identifiant interne de session, ni jeton d'une autre, ni rien qui permette
 d'énumérer : le jeton entre, il ne ressort pas.
 """
-from odoo import models
+from odoo import api, models
 
 
 class ProductConfigSession(models.Model):
@@ -42,21 +42,61 @@ class ProductConfigSession(models.Model):
                 "name": line.attribute_id.name,
                 "required": bool(line.required),
                 "multi": bool(line.multi),
+                # ⚠️ **LA FORME QU'ON A DONNÉE À LA QUESTION.** Réglée en
+                # back-office depuis toujours, elle n'était pas servie : la page
+                # rendait un bouton pour tout, quel que soit le type. Cinq
+                # formes chez Odoo, plus la « carte » — une vignette et son
+                # libellé — qui manquait pour une valeur désignant un produit.
+                "displayType": line.attribute_id.display_type,
                 "values": [
                     {
                         "id": value.id,
-                        "name": value.name,
+                        # ⓘ **La forme AFFICHÉE, pas la forme rangée** — D-160.
+                        # Sur une question numérique, la valeur en base est le
+                        # nombre nu ; le client, lui, lit « 2400 mm ». Sans cette
+                        # ligne le back-office portait l'unité et la page non,
+                        # pour la même largeur (demande de Gerry, 2026-09-07).
+                        # Sur toute autre question, le formateur rend le libellé
+                        # inchangé — il n'y a rien à ajouter à « Chêne ».
+                        "name": value.display_value or value.name,
                         # ⚠️ La valeur INDISPONIBLE est rendue quand même, marquée.
                         # C'est D-168 et D-178 : on la grise, et un appui dira
                         # pourquoi. La retirer ici ôterait à la page le moyen de
                         # le faire.
                         "available": value.id in available,
                         "chosen": value.id in chosen,
+                        # La PASTILLE d'une valeur de couleur — telle qu'Odoo la
+                        # range, sans interprétation.
+                        "color": value.html_color or None,
+                        # ⓘ Une URL, jamais des octets : elle passe par le cache du
+                        # navigateur, là où un base64 repartirait à chaque réponse.
+                        # `_web_value_image` dit si l'image EXISTE — une vignette
+                        # promise et vide est pire qu'une absence.
+                        "image": (
+                            "/configurator/value/%s/image" % value.id
+                            if self._web_value_has_image(value) else None
+                        ),
                     }
                     for value in values
                 ],
             })
         return out
+
+    @api.model
+    def _web_value_has_image(self, value):
+        """La chaîne des provenances appartient à la VALEUR, pas à la page.
+
+        ⚠️ Elle a vécu ici, et c'était une erreur de rangement : le back-office
+        et la page du client auraient fini par montrer deux vignettes différentes
+        pour la même valeur. `_preview_source()` est déclarée dans le module
+        attribut et complétée par le pont 3D — D-258.
+
+        ⓘ En `sudo` : un visiteur ne lit ni un composant non publié, ni le
+        catalogue des matières. Seule l'existence de l'image est révélée ici ;
+        l'image elle-même sort par la route, qui est aussi en `sudo`.
+        """
+        record, _field = value.sudo()._preview_source()
+        return bool(record)
 
     def _web_model3d(self):
         """Le modèle 3D du produit configuré, ou rien."""
@@ -230,17 +270,50 @@ class ProductConfigSession(models.Model):
 
         ⓘ Une URL, pas des octets : elle passe par le cache du navigateur et ne
         gonfle pas une réponse que l'on renvoie à chaque clic.
+
+        ⚠️ **PAS `/web/image` — le visiteur n'a aucun droit sur ce produit.** Ce
+        contrôleur vérifie la lecture de l'enregistrement : un produit non publié
+        rendait donc le pictogramme d'Odoo, et l'attente montrait un appareil
+        photo barré au lieu de la pièce (relevé le 2026-09-07). C'est le même mur
+        que celui des vignettes de valeurs, franchi de la même façon : une route
+        à nous, en `sudo` (D-258).
+
+        ⓘ **La route est indexée par le JETON, pas par le produit** : il autorise
+        exactement cette configuration, et rien d'autre. Une route par
+        identifiant de produit ouvrirait tout le catalogue à qui essaie des
+        numéros.
         """
         self.ensure_one()
-        tmpl = self.product_tmpl_id
-        if not tmpl.image_1920:
+        if not self.product_tmpl_id.image_1920:
             return None
-        return "/web/image/product.template/%s/image_1920" % tmpl.id
+        self._ensure_access_token()
+        return "/configurator/%s/image" % self.access_token
 
     def _web_values(self):
-        """`{attribut → valeur}` — la forme que le moteur 3D attend (D-163)."""
+        """`{attribut → réponse}` — la forme que le moteur 3D attend (D-163).
+
+        ⚠️ **Une question NUMÉRIQUE reçoit le NOM de la valeur, jamais son
+        identifiant.** `to_scope_entry` traduit une réponse numérique par
+        `parse_number(brut)` : l'`id` de la valeur « 2 » y entrait comme **292**,
+        un nombre parfaitement valide et faux. La plaque du JeNo se construisait
+        donc à 292 mm d'épaisseur — relevé de Gerry le 2026-09-07, mesuré :
+        `scope = {'__attribute_144': 292.0}`.
+
+        ⓘ Le danger était ANNONCÉ, à un autre endroit : *« les options portent
+        leur libellé, jamais leur identifiant »* (`answer_field`). La règle
+        valait ici aussi, et rien ne la tenait.
+
+        ⓘ Pour une question DISCRÈTE, l'identifiant reste la bonne forme : c'est
+        lui que `resolve_answer` retrouve sans ambiguïté, là où deux valeurs
+        peuvent porter le même libellé sur deux attributs différents.
+        """
         self.ensure_one()
-        return {value.attribute_id.id: value.id for value in self.value_ids}
+        return {
+            value.attribute_id.id: (
+                value.name if value.attribute_id.is_numeric() else value.id
+            )
+            for value in self.value_ids
+        }
 
     def _web_missing_attributes(self):
         """Les questions OBLIGATOIRES restées sans réponse.
@@ -321,15 +394,39 @@ class ProductConfigSession(models.Model):
         au back-office — c'est ce qui permet d'ouvrir la même page, pour un
         interne comme pour un client (D-091).
 
-        ⓘ `target: "new"` — un onglet à côté, et non à la place : le commercial
-        garde son devis ouvert derrière.
+        ⚠️ **UN DIALOGUE, PLUS UN ONGLET** — relevé de Gerry, 2026-09-07 :
+        *« une nouvelle page s'ouvre au lieu d'un dialogue comme pour une ligne
+        de devis »*. Un onglet fait perdre de vue ce qu'on faisait, et c'est
+        justement ce qu'on ne veut pas d'un configurateur ouvert depuis un devis.
+        Une action CLIENTE en `target: "new"` : Odoo l'enveloppe lui-même.
+
+        ⓘ **L'état part AVEC l'action.** On vient de le calculer ; le redemander
+        au montage coûterait un aller-retour pour la même réponse, et la page
+        attendrait devant un écran vide (D-249).
+
+        ⓘ Le JETON reste la seule identité, au back-office comme ailleurs
+        (D-091) : c'est lui qui permet d'ouvrir la même configuration pour un
+        interne et pour un client. L'URL publique existe toujours et se partage.
+
+        ⓘ **`footer: False`** — relevé de Gerry, 2026-09-07 : *« le Ok et donc le
+        footer est inutile car la croix est présente »*. Le pied qu'Odoo ajoute
+        d'office ne porte qu'un bouton « Ok » qui ferme, exactement comme la
+        croix du titre ; deux façons de faire le même geste, et l'une des deux
+        ressemble à une validation qu'elle n'est pas. C'est `action_service`
+        qui lit ce drapeau dans le contexte (`web/…/actions/action_service.js`).
         """
         self.ensure_one()
         self._ensure_access_token()
         return {
-            "type": "ir.actions.act_url",
-            "url": f"/configurator/{self.access_token}",
+            "type": "ir.actions.client",
+            "tag": "product_configurator_web_3d.configurator",
+            "name": self.product_tmpl_id.display_name,
             "target": "new",
+            "context": {"footer": False},
+            "params": {
+                "token": self.access_token,
+                "state": self.web_state(),
+            },
         }
 
     def web_state(self):

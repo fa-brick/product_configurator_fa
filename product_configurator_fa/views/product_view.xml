@@ -130,9 +130,17 @@
                      porte un modèle 3D sans être configurable — alors que l'éditeur
                      EXIGE ce défaut (D-244). La redéclarer ici en ferait deux
                      colonnes. -->
+                <!-- ⚠️ **PLUS DE CONDITION DE CONTEXTE sur ces trois-là** (2026-09-07,
+                     demande de Gerry). Elles étaient masquées hors du menu « Produits
+                     configurables » : sur la fiche produit ordinaire — celle où l'on
+                     travaille — les trois réglages étaient donc invisibles, alors qu'ils
+                     sont LUS à l'exécution. `answer_field` lit `custom` pour choisir
+                     entre une liste et une saisie, et la page du configurateur lit
+                     `multi` pour accumuler les réponses. C'est le même défaut que
+                     `default_val` avait déjà payé, et pour la même raison : une pièce
+                     peut porter un modèle 3D sans être configurable. -->
                 <field
                     name="required"
-                    column_invisible="not context.get('default_config_ok', False)"
                     width="90px"
                 />
                 <field
@@ -155,7 +163,6 @@
                 />
                 <field
                     name="multi"
-                    column_invisible="not context.get('default_config_ok', False)"
                     width="90px"
                 />
                 <!-- ⚠️ « Custom » NE DISAIT RIEN. Constat de Gerry : *« Custom n'a
@@ -166,7 +173,6 @@
                 <field
                     name="custom"
                     string="Allow add"
-                    column_invisible="not context.get('default_config_ok', False)"
                     width="100px"
                 />
             </xpath>
@@ -335,13 +341,20 @@
                 <field name="config_ok" />
             </xpath>
             <xpath expr="//field[@name='is_favorite']" position="before">
+                <!-- ⚠️ **UN CRAYON, PAS UNE CLÉ** (Gerry, 2026-09-07). C'est l'icône
+                     qu'Odoo emploie lui-même pour « configurer » — le bouton de la
+                     cellule produit d'une ligne de devis en porte une. Deux dessins
+                     pour un même geste font hésiter ; celle-ci est déjà apprise.
+                     ⓘ `me-2` : sans marge, le crayon touchait l'étoile des favoris,
+                     et deux gestes voisins qui se frôlent se cliquent l'un pour
+                     l'autre. -->
                 <div
-                    class="float-end"
+                    class="float-end me-2"
                     groups="product_configurator_fa.group_product_configurator_fa"
                     invisible="not config_ok"
                 >
                     <a name="configure_product" type="object">
-                        <i class="fa fa-wrench fa-lg" title="Configure Product" />
+                        <i class="fa fa-pencil fa-lg" title="Configure Product" />
                     </a>
                 </div>
             </xpath>

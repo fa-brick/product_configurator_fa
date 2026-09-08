@@ -1,2 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_product_model3d_texture_public,product.model3d.texture.public,product_editor.model_product_model3d_texture,base.group_public,1,0,0,0
+access_product_configurator_condition_designer,product.configurator.condition Design Office,product_configurator_fa.model_product_configurator_condition,product_editor.group_designer,1,1,1,1
+access_product_config_condition_subject_designer,product.config.condition.subject Design Office,product_configurator_fa.model_product_config_condition_subject,product_editor.group_designer,1,0,0,0

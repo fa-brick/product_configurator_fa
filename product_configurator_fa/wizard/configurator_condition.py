@@ -134,8 +134,15 @@ class ProductConfiguratorCondition(models.TransientModel):
     product_tmpl_id = fields.Many2one(
         comodel_name="product.template", required=True, readonly=True
     )
+    # ⚠️ **PLUS OBLIGATOIRE depuis le 2026-09-07** — et ce n'est pas un relâchement.
+    # Ce dialogue est devenu le seul endroit où l'on écrit une condition (D-267), y
+    # compris pour un objet que ce module ne connaît pas : l'emplacement d'un
+    # assemblage 3D, qui vit dans `product_editor` (LGPL, hors de portée d'ici, D-075).
+    # La CIBLE se choisit donc par deux crochets — `_seed_domain` et `_apply_condition` —
+    # qu'un module-pont surcharge. Sans eux, il aurait fallu un second dialogue disant
+    # la même chose, et deux éditeurs de condition auraient divergé au premier ajout.
     domain_id = fields.Many2one(
-        comodel_name="product.config.domain", required=True, readonly=True
+        comodel_name="product.config.domain", readonly=True
     )
     subject = fields.Char(
         compute="_compute_subject",
@@ -147,7 +154,23 @@ class ProductConfiguratorCondition(models.TransientModel):
     @api.depends("domain_id")
     def _compute_subject(self):
         for assistant in self:
-            assistant.subject = assistant.domain_id.display_name
+            assistant.subject = assistant._subject_label()
+
+    def _subject_label(self):
+        """Ce que la condition GOUVERNE, en une ligne. Crochet : un pont peut viser
+        autre chose qu'un `product.config.domain`."""
+        self.ensure_one()
+        return self.domain_id.display_name
+
+    def _seed_domain(self):
+        """La condition ACTUELLE, sous la forme que l'éditeur sait lire. Crochet."""
+        self.ensure_one()
+        return self.domain_id.to_odoo_domain() if self.domain_id else []
+
+    def _apply_condition(self, domain):
+        """Où la condition ATTERRIT. Crochet : le stockage dépend de la cible."""
+        self.ensure_one()
+        self.domain_id.from_odoo_domain(domain)
 
     @api.model
     def open_for(self, product_tmpl, domain):
@@ -162,14 +185,23 @@ class ProductConfiguratorCondition(models.TransientModel):
             "domain_id": domain.id,
             "condition_domain": str(domain.to_odoo_domain()),
         })
+        return assistant._open(domain.display_name)
+
+    def _open(self, name):
+        """L'action qui montre CET assistant — commune à toutes les cibles.
+
+        ⚠️ `views` EST OBLIGATOIRE : rendue à un composant par un appel ORM, l'action
+        n'est complétée par personne ([[L-165]]).
+        """
+        self.ensure_one()
         formulaire = self.env.ref(
             "product_configurator_fa.product_configurator_condition_form_view"
         )
         return {
             "type": "ir.actions.act_window",
-            "name": domain.display_name,
+            "name": name,
             "res_model": self._name,
-            "res_id": assistant.id,
+            "res_id": self.id,
             "view_mode": "form",
             "views": [(formulaire.id, "form")],
             "target": "new",
@@ -211,5 +243,5 @@ class ProductConfiguratorCondition(models.TransientModel):
                             )
                         )
                     break
-        self.domain_id.from_odoo_domain(domaine)
+        self._apply_condition(domaine)
         return {"type": "ir.actions.act_window_close"}

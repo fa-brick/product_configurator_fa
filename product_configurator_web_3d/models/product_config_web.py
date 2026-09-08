@@ -207,20 +207,6 @@ class ProductConfigSession(models.Model):
 
         # Les EXCEPTIONS par placement (D-175) : deux barreaux du même lien
         # peuvent rendre autre chose.
-        #
-        # ⚠️ **On sert le BRUT** — `{linkId, functionId, occurrenceIndex, zones}` —
-        # et non un index par nœud. Rattacher une exception à un nœud demande de
-        # connaître les pièces de la scène, que seul le client a après le build ;
-        # le refaire ici serait une seconde lecture de la même règle, et
-        # `placementExceptionsByNode` existe déjà pour ça, partagée.
-        try:
-            exceptions = model3d.resolve_placement_exceptions(values) or []
-        except Exception:  # noqa: BLE001
-            exceptions = []
-        for item in exceptions:
-            for material_id in (item.get("zones") or {}).values():
-                if material_id:
-                    needed.add(material_id)
 
         materials = self._web_materials(needed)
         for zones in zones_by_piece.values():
@@ -228,9 +214,7 @@ class ProductConfigSession(models.Model):
                 zone["material"] = materials.get(zone["renderMaterialId"]) or None
         return {
             "zonesByPiece": zones_by_piece,
-            "exceptions": exceptions,
-            # Par ID : la page y puise pour les exceptions, sans que la même fiche
-            # voyage deux fois.
+            # Par ID : la page y puise sans que la même fiche voyage deux fois.
             "materials": materials,
         }
 

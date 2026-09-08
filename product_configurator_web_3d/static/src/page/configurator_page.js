@@ -25,7 +25,6 @@ import { rpc } from "@web/core/network/rpc";
 import { PartViewer3D } from "@product_editor/components/part_viewer_3d/part_viewer_3d";
 import { projectSketchItems, projectAssemblyPieces, solidsByNodeId, worldByNodeId }
     from "@product_editor/engine/builder/project_items";
-import { placementExceptionsByNode } from "@product_editor/engine/ui/zone_rules";
 import { toBuildable } from "@product_editor/engine/builder/to_buildable";
 import { build } from "@product_editor/engine/builder/build";
 // ⓘ Deux modules voisins et faciles à confondre : `buildPart` — celui qui CONSTRUIT
@@ -67,7 +66,7 @@ export class ConfiguratorPage extends Component {
             model: null, loading: true, reason: null, cameraApply: null,
             // Les ENFANTS de l'assemblage, et le compteur qui dit au viewer que
             // les poses ont changé (il ne relit pas une Map par référence).
-            pieces: [], sceneSerial: 0, nodeMaterials: {},
+            pieces: [], sceneSerial: 0,
             // ⚠️ FAUX tant que la première scène n'est pas construite : c'est ce qui
             // tient la photo devant. Il ne repasse jamais à faux ensuite — une
             // reconstruction n'est pas une attente, c'est une mise à jour, et
@@ -246,9 +245,6 @@ export class ConfiguratorPage extends Component {
             // (Gerry, 2026-09-07).
             this._solids = solidsByNodeId(tree);
             this.state.pieces = projectAssemblyPieces(buildable, tree);
-            // ⚠️ APRÈS la projection : les exceptions s'apparient sur les PIÈCES —
-            // leur lien, leur occurrence —, qui n'existent qu'une fois construites.
-            this.state.nodeMaterials = this._exceptionsByNode();
             this.state.sceneSerial++;
             // ⓘ La photo s'efface quand la SCÈNE est là — la caméra, elle, a été
             // demandée dès que l'état est arrivé.
@@ -304,32 +300,6 @@ export class ConfiguratorPage extends Component {
         const actif = (f) => f.op === "cut" || booleanModeOf(f) !== "none";
         return (node.functions3d || []).some(actif)
             || (node.children || []).some((child) => this._hasBoolean(child));
-    }
-
-    /**
-     * Ce que certaines COPIES rendent d'autre — `{nœud → {zone → fiche}}` (D-175).
-     *
-     * ⓘ Le serveur envoie les exceptions BRUTES (lien, fonction, rang) et les fiches
-     * par identifiant ; l'appariement au nœud vit dans `placementExceptionsByNode`,
-     * partagée avec l'éditeur. Le refaire ici donnerait deux lectures d'une même
-     * règle — dont une seule serait corrigée le jour où la forme d'un chemin change.
-     */
-    _exceptionsByNode() {
-        const zones = this.state.model?.zones;
-        if (!zones?.exceptions?.length) return {};
-        const byNode = placementExceptionsByNode(this.state.pieces, zones.exceptions);
-        const out = {};
-        for (const [nodeId, byZone] of Object.entries(byNode)) {
-            const sheets = {};
-            for (const [zoneId, materialId] of Object.entries(byZone)) {
-                // Une fiche absente laisse la zone à son défaut : mieux vaut la
-                // couleur d'avant qu'un trou noir.
-                const sheet = materialId ? zones.materials?.[materialId] : null;
-                if (sheet) sheets[zoneId] = sheet;
-            }
-            if (Object.keys(sheets).length) out[nodeId] = sheets;
-        }
-        return out;
     }
 
     /** Les zones de matière, rangées par pièce — ce que le viewer peint. */

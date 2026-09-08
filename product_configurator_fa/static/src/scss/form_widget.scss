@@ -179,8 +179,13 @@ div:has(> .o_config_tree) {
 // le modèle-sujet d'une condition ne porte pas de données — ses champs
 // décrivent des attributs, pas des lignes à compter. Affiché, il annoncerait
 // « 0 enregistrement » sous chaque condition, ce qui se lit comme une panne.
+// ⚠️ **`!important`, ET IL N'EST PAS OPTIONNEL** — relevé à l'écran le 2026-09-07 : le
+// compteur s'affichait malgré cette règle, qui existait depuis le début. Le panneau porte
+// la classe utilitaire `d-flex` de Bootstrap, déclarée `display: flex !important` : une
+// règle ordinaire, si spécifique soit-elle, ne peut pas la battre. On ne se bat pas contre
+// une déclaration `!important` autrement qu'avec une autre.
 .o_config_condition .o_field_domain_panel {
-    display: none;
+    display: none !important;
 }
 
 // ══ LE FILTRE DES VALEURS DYNAMIQUES TIENT DANS UNE COLONNE ═════════════════

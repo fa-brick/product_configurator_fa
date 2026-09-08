@@ -27,3 +27,4 @@ from . import test_actions_are_complete  # noqa: F401
 from . import test_multi_and_custom  # noqa: F401
 from . import test_dynamic_materialisation  # noqa: F401
 from . import test_line_flag_columns
+from . import test_numeric_condition

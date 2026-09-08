@@ -46,23 +46,23 @@ class ProductConfigDomain(models.Model):
                 continue
             # ⓘ `_resolved_value_ids` — et non `value_ids` — pour que la forme
             # « produit » (C4, D-201) soit évaluée par le MÊME moteur.
+            # ⓘ **L'OPÉRANDE DÉPEND DE L'OPÉRATEUR** : des identifiants de valeurs
+            # pour une appartenance, un NOMBRE pour une comparaison (2026-09-07).
+            # `validate_domains_against_sels` lit les deux formes.
+            def _operande(line):
+                if line.condition in line.NUMERIC_CONDITIONS:
+                    return line.numeric_value
+                return line._resolved_value_ids().ids
+
             for line in lines[:-1]:
                 if line.operator == "or":
                     computed_domain.append("|")
                 computed_domain.append(
-                    (
-                        line.attribute_id.id,
-                        line.condition,
-                        line._resolved_value_ids().ids,
-                    )
+                    (line.attribute_id.id, line.condition, _operande(line))
                 )
             # ensure 2 operands follow the last operator
             computed_domain.append(
-                (
-                    lines[-1].attribute_id.id,
-                    lines[-1].condition,
-                    lines[-1]._resolved_value_ids().ids,
-                )
+                (lines[-1].attribute_id.id, lines[-1].condition, _operande(lines[-1]))
             )
         return computed_domain
 
@@ -116,6 +116,12 @@ class ProductConfigDomain(models.Model):
 
     def _leaf_of(self, line):
         """La feuille d'éditeur d'une ligne — selon la forme qu'elle porte."""
+        if line.condition in line.NUMERIC_CONDITIONS:
+            return (
+                self._attribute_field_name(line.attribute_id),
+                line.condition,
+                line.numeric_value,
+            )
         if line.product_ids:
             return (
                 self._product_field_name(line.attribute_id),
@@ -229,6 +235,33 @@ class ProductConfigDomain(models.Model):
                             field=field_name,
                         )
                     )
+                # ⚠️ **UNE COMPARAISON SE RECONNAÎT À SA QUESTION**, pas à son
+                # opérateur : `=` sur une question à valeurs veut dire « parmi », `=`
+                # sur une question numérique veut dire « égal à ce nombre ». Les
+                # confondre stockerait un identifiant de valeur comme un nombre — une
+                # règle silencieusement fausse (2026-09-07).
+                attribut = self.env["product.attribute"].browse(
+                    int(str(field_name)[len(
+                        self.PRODUCT_FIELD_PREFIX if produits
+                        else self.ATTRIBUTE_FIELD_PREFIX):])
+                ) if not produits else self.env["product.attribute"]
+                # ⓘ La constante vit sur la LIGNE — c'est elle qui porte la
+                # comparaison —, et `self` est ici la condition.
+                numeriques = self.env["product.config.domain.line"].NUMERIC_CONDITIONS
+                if attribut and attribut.is_numeric() and operator in numeriques:
+                    try:
+                        nombre = float(values)
+                    except (TypeError, ValueError):
+                        raise ValidationError(self.env._(
+                            "“%(attribute)s” compares to a number: type a number.",
+                            attribute=attribut.name)) from None
+                    lines.append((0, 0, {
+                        "attribute_id": attribut.id,
+                        "condition": operator,
+                        "operator": "or" if pending_or else "and",
+                        "numeric_value": nombre,
+                    }))
+                    continue
                 # ⚠️ **LE SÉLECTEUR ÉCRIT `=`, LE STOCKAGE NE CONNAÎT QUE `in`.**
                 # Choisir un champ dans l'éditeur de domaine produit `('champ', '=',
                 # id)` — c'est son défaut pour un `many2one`. Refuser sec rendait le
@@ -382,12 +415,21 @@ class ProductConfigDomain(models.Model):
             valeurs = " / ".join(
                 designes.mapped("display_name" if ligne.product_ids else "name")
             )
-            dedans = ligne.condition == "in"
-            libelle = "%s %s %s" % (
-                ligne.attribute_id.name or "?",
-                "=" if dedans else "\u2260",
-                valeurs or "?",
-            )
+            if ligne.condition in ligne.NUMERIC_CONDITIONS:
+                # ⓘ Une comparaison se lit telle qu'elle s'écrit : « largeur > 4000 ».
+                # Rien à traduire — un opérateur n'est pas de la prose.
+                libelle = "%s %s %s" % (
+                    ligne.attribute_id.name or "?",
+                    ligne.condition,
+                    ("%g" % ligne.numeric_value),
+                )
+            else:
+                dedans = ligne.condition == "in"
+                libelle = "%s %s %s" % (
+                    ligne.attribute_id.name or "?",
+                    "=" if dedans else "\u2260",
+                    valeurs or "?",
+                )
             if index:
                 precedente = lignes[index - 1]
                 lien = (
@@ -427,9 +469,21 @@ class ProductConfigDomainLine(models.Model):
     _order = "sequence"
     _description = "Domain Line for Config Restrictions"
 
+    #: Comparaisons à un NOMBRE — demandées par Gerry le 2026-09-07, *« pour le
+    #: configurateur l'éditeur »*. Elles portent sur la réponse SAISIE d'une question
+    #: numérique (`custom_vals`), là où `in`/`not in` portent sur des valeurs choisies.
+    NUMERIC_CONDITIONS = ("=", "!=", ">", ">=", "<", "<=")
+
     def _get_domain_conditions(self):
         operators = [("in", "In"), ("not in", "Not In")]
-
+        # ⚠️ **UNE COMPARAISON N'EST PAS UNE APPARTENANCE**, et le stockage les
+        # distingue par le champ qu'elles remplissent : `value_ids` pour l'une,
+        # `numeric_value` pour l'autre. Les mêlant, `in` sur un nombre ou `>` sur des
+        # valeurs auraient produit des règles qu'aucun évaluateur ne sait lire.
+        operators += [
+            ("=", "="), ("!=", "\u2260"),
+            (">", ">"), (">=", "\u2265"), ("<", "<"), ("<=", "\u2264"),
+        ]
         return operators
 
     def _get_domain_operators(self):
@@ -530,6 +584,34 @@ class ProductConfigDomainLine(models.Model):
         related="attribute_id.value_type",
         string="Attribute value type",
     )
+    # ⚠️ **L'OPÉRANDE D'UNE COMPARAISON** — un nombre, jamais une valeur d'attribut.
+    # Une question numérique ne se répond pas en choisissant dans une liste : sa réponse
+    # est saisie (`custom_vals`), et c'est à elle que la règle se compare.
+    numeric_value = fields.Float(
+        string="Number",
+        digits=(16, 4),
+        help="The number this rule compares the answer to. Only for the comparison "
+             "operators; membership rules use values instead.",
+    )
+
+    @api.constrains("condition", "value_ids", "product_ids", "attribute_id")
+    def _check_numeric_leaf(self):
+        """Une comparaison porte sur une question NUMÉRIQUE, et sur rien d'autre.
+
+        ⓘ Sans ce refus, `épaisseur > 4` posée sur une question de couleur serait
+        stockée puis évaluée contre une réponse qui n'est pas un nombre : la règle
+        serait simplement fausse, toujours, sans que rien ne le dise.
+        """
+        for line in self:
+            if line.condition not in self.NUMERIC_CONDITIONS:
+                continue
+            if line.value_ids or line.product_ids:
+                raise ValidationError(self.env._(
+                    "A comparison rule compares a number: it cannot also list values."))
+            if not line.attribute_id.is_numeric():
+                raise ValidationError(self.env._(
+                    "“%(attribute)s” is not a numeric question: compare it to values, "
+                    "not to a number.", attribute=line.attribute_id.name))
 
     def _resolved_value_ids(self):
         """Les valeurs que cette ligne teste — quelle que soit sa forme.
@@ -570,6 +652,11 @@ class ProductConfigDomainLine(models.Model):
         obligatoire, il est toujours présent à la création.
         """
         for line in self:
+            # ⓘ **UNE COMPARAISON NE DÉSIGNE RIEN** (2026-09-07) : elle compare la
+            # réponse saisie à un nombre. Sa garde à elle est `_check_numeric_leaf`,
+            # qui exige une question numérique et refuse justement les valeurs.
+            if line.condition in self.NUMERIC_CONDITIONS:
+                continue
             if bool(line.value_ids) == bool(line.product_ids):
                 raise ValidationError(
                     self.env._(
@@ -2138,6 +2225,30 @@ class ProductConfigSession(models.Model):
         stack = []
         for domain in reversed(domains):
             if isinstance(domain, tuple):
+                # ⚠️ **UNE COMPARAISON SE LIT SUR LA RÉPONSE SAISIE**, pas sur les
+                # valeurs choisies (2026-09-07). Une question numérique n'est pas
+                # répondue en cochant : sa réponse vit dans `custom_vals`, et c'est à
+                # elle que la règle se compare.
+                #
+                # ⓘ Réponse absente ou illisible → la règle n'est pas satisfaite. C'est
+                # l'inverse de la doctrine de l'éditeur 3D (D-150, « on ignore ce qu'on
+                # ne sait pas »), et c'est voulu : ici la condition GOUVERNE ce qu'on
+                # propose au client, et proposer sur la foi d'une réponse manquante
+                # ouvrirait des questions que la règle voulait fermer.
+                if domain[1] in self.env["product.config.domain.line"].NUMERIC_CONDITIONS:
+                    reponse = (custom_vals or {}).get(domain[0])
+                    try:
+                        gauche, droite = float(reponse), float(domain[2])
+                    except (TypeError, ValueError):
+                        stack.append(False)
+                        continue
+                    verdicts = {
+                        "=": gauche == droite, "!=": gauche != droite,
+                        ">": gauche > droite, ">=": gauche >= droite,
+                        "<": gauche < droite, "<=": gauche <= droite,
+                    }
+                    stack.append(verdicts[domain[1]])
+                    continue
                 # evaluate operand and push to stack
                 if domain[1] == "in":
                     if not set(domain[2]) & set(value_ids):

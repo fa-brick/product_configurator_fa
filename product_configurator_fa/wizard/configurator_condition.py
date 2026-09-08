@@ -76,12 +76,30 @@ class ProductConfigConditionSubject(models.TransientModel):
         champs = {}
         domaine_obj = self.env["product.config.domain"]
         for attribut in self._condition_attributes():
-            # ⚠️ TOUT attribut est décrit en `many2one` vers une VALEUR, y
-            # compris les numériques — le stockage ne connaît que `in` / `not in`
-            # sur des valeurs (D-080). Décrire une dimension en `float`
-            # laisserait écrire `largeur > 4000`, que l'enregistrement perdrait
-            # en silence.
             nom = domaine_obj._attribute_field_name(attribut)
+            # ⚠️ **UNE QUESTION NUMÉRIQUE SE DÉCRIT EN NOMBRE** — demande de Gerry,
+            # 2026-09-07 : *« il faut tenir compte des opérateurs supérieur inférieur
+            # et égalité pour le configurateur l'éditeur »*.
+            #
+            # Elle était décrite en `many2one` comme les autres, parce que le stockage
+            # ne savait garder que `in`/`not in` : `largeur > 4000` se serait perdu en
+            # silence. La ligne de condition porte désormais un `numeric_value`, et le
+            # champ peut dire ce qu'il est. Le contraire — l'offrir sans le stocker —
+            # est exactement ce que D-077 proscrit.
+            #
+            # ⓘ Une question numérique ne se répond pas en cochant : sa réponse est
+            # SAISIE, et l'évaluation la lit dans `custom_vals`.
+            if attribut.is_numeric():
+                champs[nom] = {
+                    "name": nom,
+                    "string": attribut.name,
+                    "type": "float",
+                    "searchable": True,
+                    "sortable": False,
+                    "store": False,
+                    "readonly": False,
+                }
+                continue
             champs[nom] = {
                 # ⚠️ **`name` EST INDISPENSABLE, et son absence casse tout.** Le
                 # sélecteur de champ compose le chemin retenu avec

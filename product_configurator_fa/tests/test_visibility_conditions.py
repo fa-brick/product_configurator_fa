@@ -222,12 +222,22 @@ class VisibilityConditions(BaseCommon):
         fields = self.template.fields_get()
         self.assertNotIn(f"__attribute_{self.attr_mounting.id}", fields)
 
-    def test_12_even_a_numeric_attribute_is_offered_by_its_VALUES(self):
-        """Décrire une dimension en `float` laisserait construire
-        « largeur > 4000 », que le stockage perdrait (D-080)."""
+    def test_12_a_numeric_attribute_is_offered_as_a_NUMBER(self):
+        """⚠️ **AMENDÉ le 2026-09-07** (Gerry : *« il faut tenir compte des opérateurs
+        supérieur inférieur et égalité »*).
+
+        Ce test fixait l'inverse, et sa raison a expiré : une dimension était décrite en
+        `many2one` parce que le stockage ne savait garder que `in`/`not in` — « largeur >
+        4000 » se serait perdu en silence. La ligne de condition porte désormais un
+        `numeric_value`, et le champ peut dire ce qu'il est.
+
+        ⓘ Une question numérique ne se répond pas en cochant : sa réponse est SAISIE, et
+        c'est à elle que la comparaison se compare (`custom_vals`).
+        """
         fields = self.env["product.config.condition.subject"].fields_get()
         name = f"__attribute_{self.attr_width.id}"
-        self.assertEqual(fields[name]["type"], "many2one")
+        self.assertEqual(fields[name]["type"], "float")
+        self.assertNotIn("relation", fields[name])
 
     def test_12b_le_COMPTEUR_de_l_editeur_ne_fait_pas_echouer_la_saisie(self):
         """⚠️ L'éditeur compte les enregistrements à chaque frappe. Sur des

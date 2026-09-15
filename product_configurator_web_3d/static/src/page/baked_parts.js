@@ -21,15 +21,19 @@
  * C'est exactement ce que l'editeur fait de ses geometries importees, et pour la meme
  * raison.
  *
- * ─ ⓘ CE QUE CETTE VERSION FAIT, ET CE QU'ELLE NE FAIT PAS ENCORE ─────────────
+ * ─ ⓵ REPOSER LES MATIERES : la table des faces revient sur la geometrie ─────
  *
- * Elle substitue la GEOMETRIE — c'est la totalite du gain de temps. La table des faces
- * voyage avec la piece et est posee sur le solide, mais **rien ne la relie encore aux
- * primitives du fichier** : l'export retire `geometry.userData` et chaque groupe de
- * materiau devient sa propre primitive, si bien que la correspondance demande une mesure au
- * navigateur qui n'a pas ete faite. Tant qu'elle ne l'est pas, une piece cuite se rend avec
- * la matiere du fichier, comme une piece importee. C'est dit ici plutot que suppose
- * ailleurs.
+ * Le viewer peint en lisant `geometry.userData.faces` et en en derivant des PLAGES DE
+ * TRIANGLES. Il suffit donc de reposer cette table sur la geometrie chargee pour que la
+ * peinture par zones fonctionne exactement comme dans l'editeur — sans une ligne de code de
+ * peinture ici.
+ *
+ * ⚠️ **Deux conditions, et les deux sont tenues a la cuisson.** L'export ecrit UNE SEULE
+ * PRIMITIVE par maille (materiau unique force), donc l'index n'est pas redecoupe et les
+ * plages restent valides. Et la table est rangee PAR SOLIDE, si bien qu'on la retrouve par
+ * le nom de la maille — `<pieceKey>#<nodeId>` — sans rien deviner. A plat, il aurait fallu
+ * inferer par le prefixe d'identifiant, ce qui echoue en silence sur un solide ne d'un
+ * booleen, lequel agrege les faces de PLUSIEURS fonctions.
  */
 
 /**
@@ -63,8 +67,15 @@ export function meshesOf(scene) {
  * @param {Array} [spec.faces] la table des faces, telle que le moteur l'avait publiee
  * @returns {Array<object>} un descripteur de solide par maille
  */
-export function bakedSolids(scene, { nodeId, faces = [] } = {}) {
-    return meshesOf(scene).map((mesh, index) => ({
+export function facesOfMesh(mesh, faces) {
+    const name = mesh?.name || "";
+    const cut = name.indexOf("#");
+    const key = cut >= 0 ? name.slice(cut + 1) : name;
+    return (faces && faces[key]) || [];
+}
+
+export function bakedSolids(scene, { nodeId, faces = {} } = {}) {
+    return meshesOf(scene).map((mesh) => ({
         fnId: null,
         nodeId,
         // ⓘ Le nom du fichier est conserve pour le RELEVE, jamais pour l'identite :
@@ -72,9 +83,10 @@ export function bakedSolids(scene, { nodeId, faces = [] } = {}) {
         bakedName: mesh.name || null,
         geometry: mesh.geometry,
         importedMaterial: mesh.material || null,
-        // ⓘ La table entiere sur la PREMIERE maille : elle decrit la piece, pas une
-        // primitive, et la repartir demanderait une correspondance qui n'est pas etablie.
-        faces: index === 0 ? faces : [],
+        // ⚠️ **ET ELLE REVIENT SUR LA GEOMETRIE**, pas seulement sur le descripteur : c'est
+        // `geometry.userData.faces` que le viewer lit pour peindre. La poser ailleurs
+        // laisserait la piece grise, sans la moindre erreur.
+        faces: applyFacesTo(mesh, faces),
         op: "bakedGlb",
         resolved: {},
         sketchName: null,
@@ -88,6 +100,16 @@ export function bakedSolids(scene, { nodeId, faces = [] } = {}) {
         // rebatirait une piece vide, et le fichier resterait invisible.
         engineOwned: true,
     }));
+}
+
+/** Repose la table des faces sur la GEOMETRIE, et la rend. */
+function applyFacesTo(mesh, faces) {
+    const own = facesOfMesh(mesh, faces);
+    if (own.length) {
+        mesh.geometry.userData = mesh.geometry.userData || {};
+        mesh.geometry.userData.faces = own;
+    }
+    return own;
 }
 
 /**
@@ -115,7 +137,7 @@ export function bakedPart(THREE, node, worldTransform, loaded) {
         worldTransform: worldTransform || null,
         sketches: [], tools: [], errors: [],
         solids,
-        faces: entry.faces || [],
+        faces: Object.values(entry.faces || {}).flat(),
         bboxWorld: { min: box.min.toArray(), max: box.max.toArray() },
     };
 }

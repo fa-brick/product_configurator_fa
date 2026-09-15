@@ -8,13 +8,14 @@
  * produit qui n'est pas le sien — et rien ne le dit. Ces tests eprouvent donc surtout ce
  * qui doit RESTER vrai.
  */
-import { meshesOf, bakedSolids, bakedPart }
+import { meshesOf, bakedSolids, bakedPart, facesOfMesh }
     from "@product_configurator_web_3d/page/baked_parts";
 
 /** Une scene glTF reduite a ce qui decide : des mailles, et leur nom. */
 const mesh = (name) => ({
     isMesh: true, name, children: [],
-    geometry: { boundingBox: null, computeBoundingBox() { this.boundingBox = box(); } },
+    geometry: { userData: {}, boundingBox: null,
+                computeBoundingBox() { this.boundingBox = box(); } },
     material: { name: "du fichier" },
 });
 const box = () => ({
@@ -60,13 +61,38 @@ describe("⚠️ L'IDENTITE d'un solide cuit", () => {
         expect(solid.engineOwned).toBe(true);
     });
 
-    test("la table des faces ne se DUPLIQUE pas sur chaque maille", () => {
-        // Elle decrit la piece, pas une primitive. La repartir demanderait une
-        // correspondance qui n'est pas etablie — la dupliquer la rendrait fausse N fois.
-        const faces = [{ id: "f3d_1.face:end@x" }];
-        const solids = bakedSolids(scene([mesh("a"), mesh("b")]), { nodeId: "c1", faces });
-        expect(solids[0].faces).toBe(faces);
-        expect(solids[1].faces).toEqual([]);
+    test("⚠️ chaque maille recoit SES faces, retrouvees par son NOM", () => {
+        // La table est rangee par solide a la cuisson, et l'export nomme la maille
+        // `<pieceKey>#<nodeId>` : on la retrouve sans rien DEVINER. A plat, il aurait
+        // fallu inferer par le prefixe d'identifiant — ce qui echoue en silence sur un
+        // solide ne d'un booleen, lequel agrege les faces de PLUSIEURS fonctions.
+        const faces = { f3d_1: [{ id: "f3d_1.face:end@x" }],
+                        f3d_2: [{ id: "f3d_2.wall:a" }, { id: "f3d_2.wall:b" }] };
+        const solids = bakedSolids(scene([mesh("root#f3d_1"), mesh("root#f3d_2")]),
+                                   { nodeId: "c1", faces });
+        expect(solids[0].faces).toHaveLength(1);
+        expect(solids[1].faces).toHaveLength(2);
+    });
+
+    test("⚠️ et elles reviennent sur la GEOMETRIE, la ou le viewer les lit", () => {
+        // C'est `geometry.userData.faces` qu'il lit pour en deriver ses plages de
+        // triangles. Les poser ailleurs laisserait la piece GRISE, sans la moindre erreur.
+        const m = mesh("root#f3d_1");
+        bakedSolids(scene([m]), { nodeId: "c1",
+                                  faces: { f3d_1: [{ id: "f3d_1.face:end@x" }] } });
+        expect(m.geometry.userData.faces).toHaveLength(1);
+    });
+
+    test("une maille sans table ne se voit rien poser", () => {
+        const m = mesh("root#inconnu");
+        bakedSolids(scene([m]), { nodeId: "c1", faces: { f3d_1: [{ id: "x" }] } });
+        expect(m.geometry.userData.faces).toBeUndefined();
+    });
+
+    test("le nom SANS `#` sert de cle tel quel", () => {
+        // Robustesse : un fichier cuit par une version qui nommait autrement ne doit pas
+        // faire perdre ses faces en silence.
+        expect(facesOfMesh({ name: "f3d_9" }, { f3d_9: [{ id: "a" }] })).toHaveLength(1);
     });
 });
 
@@ -88,12 +114,15 @@ describe("⚠️ LA SUBSTITUTION NE SE FAIT QUE SI ELLE EST SURE", () => {
 
     test("un fichier SANS maille rend null lui aussi", () => {
         // Un fichier vide servirait une piece vide, ce qui est pire que de la rebatir.
-        const loaded = new Map([["c1", { scene: scene([]), faces: [] }]]);
+        const loaded = new Map([["c1", { scene: scene([]), faces: {} }]]);
         expect(bakedPart(THREE, { id: "c1" }, null, loaded)).toBe(null);
     });
 
     test("et avec une maille, la piece prend la forme que `build()` attend", () => {
-        const loaded = new Map([["c1", { scene: scene([mesh("a")]), faces: [{ id: "x" }] }]]);
+        const loaded = new Map([["c1", {
+            scene: scene([mesh("root#f3d_1")]),
+            faces: { f3d_1: [{ id: "x" }] },
+        }]]);
         const part = bakedPart(THREE, { id: "c1" }, null, loaded);
         expect(part.solids).toHaveLength(1);
         expect(part.sketches).toEqual([]);

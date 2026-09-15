@@ -449,4 +449,13 @@ class ProductConfigSession(models.Model):
             # la séparation de D-163, et elle vaut ici comme dans l'éditeur.
             "definition": definition,
             "scope": model3d.get_attribute_scope(values) if model3d else {},
+            # ⚠️ **LES PIÈCES DÉJÀ CUITES, et elles ne sont PAS dans la définition.**
+            # Celle-ci est ce dont l'empreinte se calcule : y mettre le pointeur d'une
+            # cuisson rendrait l'empreinte auto-référente — cuire changerait la définition,
+            # donc l'empreinte, donc périmerait la cuisson qu'on vient d'écrire.
+            #
+            # ⓘ Servi dans le MÊME aller-retour que le reste : la page s'ouvre sur un lien
+            # reçu par courriel, souvent sur un téléphone, et c'est la règle de cette
+            # méthode.
+            "baked": model3d.baked_parts(values) if model3d else {},
         }

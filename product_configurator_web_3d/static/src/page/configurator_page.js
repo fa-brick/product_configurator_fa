@@ -34,6 +34,9 @@ import { buildPart } from "@product_editor/engine/builder/part_descriptor";
 import { booleanModeOf } from "@product_editor/engine/builder/build_part";
 import { getThree } from "@product_editor/engine/three/three_init";
 import { getCSG } from "@product_editor/engine/three/csg_init";
+import { getGLTFLoader, getDRACOLoader, DRACO_DECODER_PATH }
+    from "@product_editor/engine/three/loaders_init";
+import { bakedPart } from "@product_configurator_web_3d/page/baked_parts";
 import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage }
     from "@product_configurator_web_3d/configurator_state";
 
@@ -113,7 +116,7 @@ export class ConfiguratorPage extends Component {
         onMounted(() => {
             const model = this.state.model;
             if (model && !model.error) {
-                this._buildScene(model.definition, model.scope);
+                this._buildScene(model.definition, model.scope, model.baked);
             } else {
                 this.state.ready = true;
             }
@@ -198,7 +201,7 @@ export class ConfiguratorPage extends Component {
         const sameValues = previous
             && JSON.stringify(model.scope) === JSON.stringify(previous.scope);
         if (!sameRecipe || !sameValues) {
-            await this._buildScene(model.definition, model.scope);
+            await this._buildScene(model.definition, model.scope, model.baked);
         }
     }
 
@@ -217,7 +220,47 @@ export class ConfiguratorPage extends Component {
      * `to_buildable`, `build` et `build_part` depuis D-189. Il ne manquait que le
      * chaînage.
      */
-    async _buildScene(definition, scope) {
+    /**
+     * Charger les GLB des pièces DÉJÀ CUITES — avant la construction, jamais pendant.
+     *
+     * ⓘ **Un échec ne coûte qu'une reconstruction.** Une cuisson est un confort : si le
+     * fichier manque ou ne se décode pas, la table reste vide pour ce nœud et le moteur
+     * bâtit comme il l'a toujours fait. On le CONSIGNE — un gain qui disparaît en silence
+     * ne se diagnostique pas — mais on ne retient pas la page pour autant.
+     *
+     * ⓘ Le décodeur Draco n'est chargé que s'il y a quelque chose à décoder : une page
+     * sans pièce cuite ne doit pas payer son téléchargement.
+     */
+    async _loadBaked(THREE, baked) {
+        const loaded = new Map();
+        const entries = Object.entries(baked || {});
+        if (!entries.length) return loaded;
+        try {
+            const { GLTFLoader } = await getGLTFLoader();
+            const { DRACOLoader } = await getDRACOLoader();
+            const decoder = new DRACOLoader().setDecoderPath(DRACO_DECODER_PATH);
+            const loader = new GLTFLoader().setDRACOLoader(decoder);
+            await Promise.all(entries.map(async ([nodeId, entry]) => {
+                try {
+                    const response = await fetch(`/web/content/${entry.attachmentId}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const buffer = await response.arrayBuffer();
+                    const gltf = await new Promise((resolve, reject) =>
+                        loader.parse(buffer, "", resolve, reject));
+                    loaded.set(nodeId, { scene: gltf.scene, faces: entry.faces || [] });
+                } catch (error) {
+                    console.warn(`[configurateur] pièce cuite ${nodeId} non chargée :`,
+                                 error);
+                }
+            }));
+        } catch (error) {
+            console.warn("[configurateur] les pièces cuites n'ont pas pu être lues :",
+                         error);
+        }
+        return loaded;
+    }
+
+    async _buildScene(definition, scope, baked = null) {
         if (!definition) {
             this.state.pieces = [];
             this._worlds = new Map();
@@ -232,9 +275,20 @@ export class ConfiguratorPage extends Component {
             // perçage ou une fusion existe dans l'arbre (D-038). Sans elle, les volumes
             // sont pleins — ce qui se voit, alors qu'un chargement inutile ne se voit pas.
             const CSG = this._hasBoolean(buildable) ? await getCSG() : null;
+            // ⚠️ **LES FICHIERS D'ABORD, LA CONSTRUCTION ENSUITE** — `build()` est
+            // SYNCHRONE, et charger un fichier ne l'est pas. On remplit donc la table
+            // avant, et le constructeur ne fait plus que la consulter. C'est ce que
+            // l'éditeur fait de ses géométries importées, et pour la même raison.
+            const loaded = await this._loadBaked(THREE, baked);
             const tree = build(
                 buildable, scope || {},
-                (node, nodeScope, wt) => buildPart(THREE, node, nodeScope, wt, { CSG }),
+                // ⓘ **La substitution est une ENVELOPPE, pas une bifurcation.** Un nœud
+                // déjà cuit rend sa pièce toute faite ; tout le reste passe par le chemin
+                // d'avant, inchangé. Et `bakedPart` rend `null` au moindre doute — une
+                // table vide, un fichier sans maille — donc l'incertitude retombe
+                // toujours sur la construction.
+                (node, nodeScope, wt) => bakedPart(THREE, node, wt, loaded)
+                    || buildPart(THREE, node, nodeScope, wt, { CSG }),
                 { THREE },
             );
             this._worlds = worldByNodeId(tree);

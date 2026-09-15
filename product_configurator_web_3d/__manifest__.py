@@ -52,6 +52,10 @@
             "product_configurator_web_3d/static/src/configurator_state.js",
             "product_configurator_web_3d/static/src/page/configurator_page.scss",
             "product_configurator_web_3d/static/src/page/configurator_page.xml",
+            # ⚠️ **AVANT la page qui l'appelle** — l'ordre d'un bundle est significatif
+            # ([[L-001]] côté éditeur) : ce module n'était déclaré NULLE PART, et son
+            # absence cassait le bundle ENTIER en accusant `configurator_page`.
+            "product_configurator_web_3d/static/src/page/baked_parts.js",
             "product_configurator_web_3d/static/src/page/configurator_page.js",
         ],
         # ══ CE QUE LA FORME « CARTE » DOIT AU BACK-OFFICE ══════════════════════
@@ -77,6 +81,10 @@
             "product_configurator_web_3d/static/src/configurator_state.js",
             "product_configurator_web_3d/static/src/page/configurator_page.scss",
             "product_configurator_web_3d/static/src/page/configurator_page.xml",
+            # ⚠️ **AVANT la page qui l'appelle** — l'ordre d'un bundle est significatif
+            # ([[L-001]] côté éditeur) : ce module n'était déclaré NULLE PART, et son
+            # absence cassait le bundle ENTIER en accusant `configurator_page`.
+            "product_configurator_web_3d/static/src/page/baked_parts.js",
             "product_configurator_web_3d/static/src/page/configurator_page.js",
             "product_configurator_web_3d/static/src/page/configurator_action.scss",
             "product_configurator_web_3d/static/src/page/configurator_action.xml",

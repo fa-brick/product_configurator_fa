@@ -382,6 +382,21 @@ export class ConfiguratorPage extends Component {
      * sont rangées PAR PIÈCE (D-166). Sans cet identifiant, elles ne trouvent
      * personne — la plaque restait grise.
      */
+    /**
+     * L'AMBIANCE du produit — l'éclairage sous lequel il se montre.
+     *
+     * ⓘ `undefined` et non `null` quand il n'y en a pas : la prop du viewer est optionnelle,
+     * et dans OWL `optional` autorise une prop ABSENTE, jamais une prop NULLE ([[L-178]]).
+     * Un `null` ferait lever la validation le jour où quelqu'un ouvre le mode debug — et
+     * l'écran mourrait en emportant son propre diagnostic.
+     *
+     * ⚠️ Absente, le viewer rend ses constantes mesurées : le produit s'affiche exactement
+     * comme avant ce chantier, jamais en noir.
+     */
+    get ambience() {
+        return this.state.model?.ambience || undefined;
+    }
+
     get rootPieceId() {
         return this.state.model?.definition?.model3dId ?? null;
     }

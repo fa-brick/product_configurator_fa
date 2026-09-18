@@ -54,6 +54,7 @@
                               rootNodeId="rootNodeId"
                               onSelectSketch="() => {}"
                               displayMode="'realistic'"
+                              ambience="ambience"
                               showPlanes="false"
                               origineVisible="false"
                               hideViewGizmo="true"

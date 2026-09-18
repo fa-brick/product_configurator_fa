@@ -105,6 +105,44 @@ class ProductConfigSession(models.Model):
         # et c'est le seul endroit du dépôt qui en ait le droit (D-075).
         return self.product_tmpl_id._root_model3d()
 
+    def _web_ambience(self, model3d):
+        """L'AMBIANCE de la pièce ouverte — l'éclairage sous lequel elle se montre.
+
+        ─ Pourquoi elle passe par ICI et pas par un `read` du navigateur ────────
+
+        ⚠️ **Un visiteur n'a de droit sur aucun de ces modèles.** Dans l'éditeur, le trajet
+        est entièrement client : `load_for_company` rend le catalogue, et la sidebar choisit.
+        Ici il n'y a rien à choisir — le produit a SON ambiance — et rien à lire côté
+        navigateur. D'où ce montage serveur, en `sudo`, exactement comme les zones de
+        matière et pour la même raison.
+
+        ⓘ Le vocabulaire vient de `js_row()`, dans `product_editor` : la table de
+        correspondance `snake_case` → `camelCase` n'existe qu'à un seul endroit. La recopier
+        ici en ferait une seconde, et un champ ajouté d'un côté manquerait de l'autre — le
+        symptôme serait un réglage qui marche dans l'éditeur et pas sur le site ([[L-073]]).
+
+        ─ Ce qui reste VOLONTAIREMENT sans garde-fou ───────────────────────────
+
+        ⚠️ **Le reflet au sol et la photo d'environnement passent tels quels**, alors qu'ils
+        coûtent cher sur un téléphone — un rendu complet de la scène par image pour l'un,
+        deux à vingt mégaoctets à télécharger pour l'autre.
+
+        C'est un arbitrage de Gerry (2026-09-18) : *« les rendre disponibles sur mobile si
+        c'est ce que veut celui qui a édité la scène »*. Les filtrer ici aurait été plus
+        simple à écrire et faux à l'usage — un présentoir de bijoux vaut peut-être son reflet
+        au sol même sur un téléphone, et personne d'autre que l'auteur de la scène ne peut en
+        juger. L'éditeur AVERTIT à la place, dans son onglet Rendu.
+
+        ⓘ Absente, le viewer retombe sur ses constantes mesurées — c'est-à-dire sur le rendu
+        d'avant ce chantier, jamais sur du noir. Un produit dont personne n'a choisi
+        l'ambiance s'affiche donc exactement comme hier.
+        """
+        self.ensure_one()
+        if not model3d:
+            return None
+        preset = model3d.sudo().render_preset_id
+        return preset.js_row() if preset else None
+
     def _web_scene_models(self, definition):
         """Les pièces de la scène, LUES DE LA DÉFINITION — jamais recomposées.
 
@@ -442,6 +480,8 @@ class ProductConfigSession(models.Model):
             # a été prise — la 3D se pose dessus au lieu d'apparaître ailleurs.
             "image": self._web_image(),
             "camera": self._web_camera(model3d),
+            # L'AMBIANCE du produit — sous quel éclairage il se montre.
+            "ambience": self._web_ambience(model3d),
             # Les MATIÈRES de toute la scène — la page ne peut pas les lire
             # elle-même : aucun de ces modèles n'est ouvert au public.
             "zones": self._web_zones(model3d, definition, values) if model3d else {},

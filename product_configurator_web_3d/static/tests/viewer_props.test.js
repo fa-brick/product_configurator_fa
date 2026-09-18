@@ -137,3 +137,69 @@ describe("le dialogue n'ajoute pas sa marge autour de la scène", () => {
         expect(SCSS_ACTION.replace(/\s+/g, " ")).toContain("o_cfg3d_action) { padding: 0;");
     });
 });
+
+describe("l'AMBIANCE du produit atteint le viewer", () => {
+    const SOURCE = readFileSync(
+        join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
+    const PAYLOAD = readFileSync(
+        join(__dirname, "..", "..", "models", "product_config_web.py"), "utf8");
+
+    test("le gabarit la passe — sans quoi la page rend les constantes du moteur", () => {
+        // ⓘ Son absence ne LÈVE pas : le viewer se rabat sur son studio en dur, et la page
+        // affiche une pièce plausible sous un éclairage que personne n'a choisi. C'est
+        // exactement le mode de panne de ce fichier ([[L-188]]).
+        expect(viewerTag()).toContain("ambience=");
+    });
+
+    test("elle vient de l'ÉTAT, pas d'une lecture du navigateur", () => {
+        // Un visiteur n'a de droit sur aucun de ces modèles : un `read` côté page
+        // reviendrait vide, et l'ambiance serait silencieusement ignorée.
+        expect(SOURCE).toContain("this.state.model?.ambience");
+    });
+
+    test("⚠️ `undefined` et jamais `null` — OWL refuse une prop NULLE", () => {
+        // Dans OWL, `optional` autorise une prop ABSENTE et jamais une prop nulle. Un
+        // `null` ne se verrait qu'au jour où quelqu'un ouvre le mode debug, et l'écran
+        // mourrait alors en emportant son propre diagnostic ([[L-178]]).
+        const bloc = SOURCE.slice(SOURCE.indexOf("get ambience()"),
+                                  SOURCE.indexOf("get rootPieceId()"));
+        expect(bloc).toContain("|| undefined");
+    });
+
+    test("le serveur la monte en SUDO — et par `js_row`, jamais recopiée", () => {
+        // Une seconde table de correspondance finirait par diverger de celle de l'éditeur,
+        // et le symptôme serait un réglage qui marche là-bas et pas ici ([[L-073]]).
+        expect(PAYLOAD).toContain('"ambience": self._web_ambience(model3d)');
+        const bloc = PAYLOAD.slice(PAYLOAD.indexOf("def _web_ambience"),
+                                   PAYLOAD.indexOf("def _web_scene_models"));
+        expect(bloc).toContain("sudo()");
+        expect(bloc).toContain("js_row()");
+    });
+
+    test("⚠️ les réglages COÛTEUX passent tels quels — c'est un arbitrage", () => {
+        // « Les rendre disponibles sur mobile si c'est ce que veut celui qui a édité la
+        // scène » (Gerry, 2026-09-18). Ce test existe pour qu'une session ultérieure ne
+        // rajoute pas un filtre ici en croyant bien faire : l'éditeur AVERTIT à la place.
+        const bloc = PAYLOAD.slice(PAYLOAD.indexOf("def _web_ambience"),
+                                   PAYLOAD.indexOf("def _web_scene_models"));
+        for (const clef of ["groundReflection", "ground_reflection",
+                            "hdriUrl", "hdri_background", "pop("]) {
+            expect(bloc).not.toContain(clef);
+        }
+    });
+
+    test("la photo d'environnement est LISIBLE par un visiteur", () => {
+        // ⚠️ Son URL est `/web/content/product.model3d.render.preset/<id>/hdri`, servie
+        // telle quelle sur la page publique. Sans droit de lecture, le navigateur reçoit
+        // un 403 et la pièce se rend sans sa photo — EN SILENCE. C'est le même mur que
+        // celui des textures, franchi de la même façon.
+        const ACL = readFileSync(
+            join(__dirname, "..", "..", "security", "ir.model.access.csv"), "utf8");
+        const ligne = ACL.split("\n").find(
+            (l) => l.includes("model_product_model3d_render_preset"));
+        expect(ligne).toBeDefined();
+        expect(ligne).toContain("base.group_public");
+        // Lecture SEULE : un visiteur ne règle pas l'ambiance d'un produit.
+        expect(ligne.trim().endsWith("1,0,0,0")).toBe(true);
+    });
+});

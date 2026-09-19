@@ -11,16 +11,12 @@
                 >oe_title col-lg-10 col-md-9 col-sm-9 col-xs-12 pull-left</attribute>
             </xpath>
             <xpath expr="//div[hasclass('oe_title')]" position="after">
+                <!-- ⓘ **LE BOUTON « Reconfigure » A DISPARU** avec le wizard qu'il
+                     ouvrait (arbitrage Gerry, 2026-09-19). Choisir le produit ouvre
+                     désormais le configurateur 3D, et le rouvrir se fait en rechoisissant
+                     le même produit — un seul chemin, celui qu'on emprunte déjà. -->
                 <div class="col-lg-2 col-md-3 col-sm-3 col-xs-12 pull-left">
                     <field name="config_ok" invisible="1" />
-                    <button
-                        name="reconfigure_product"
-                        groups="product_configurator_fa.group_product_configurator_fa"
-                        class="oe_highlight"
-                        type="object"
-                        string="Reconfigure"
-                        invisible="not config_ok or state != 'draft'"
-                    />
                 </div>
             </xpath>
             <page name="finished_products" position="after">

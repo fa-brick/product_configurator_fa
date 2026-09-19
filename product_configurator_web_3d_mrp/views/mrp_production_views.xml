@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        CHOISIR UN PRODUIT CONFIGURABLE OUVRE LE CONFIGURATEUR — arbitrage Gerry,
+        2026-09-19 : *« lorsque l'on sélectionne un produit configuré, que cela déclenche
+        le configurateur comme lors d'un devis. »*
+
+        ⚠️ **Un WIDGET posé sur ce seul champ, et non un correctif global.** Le bouton
+        « Configure » que ce lot retire faisait l'inverse : il s'injectait dans les
+        gabarits GÉNÉRIQUES de toutes les listes, kanbans et formulaires du back-office,
+        se cachait en CSS, puis se rallumait en JS quand le modèle était le bon. Un widget
+        nommé dans la vue est cadré par construction — rien à cacher, rien à garder.
+    -->
+    <record id="mrp_production_form_web3d" model="ir.ui.view">
+        <field name="name">mrp.production.form.web3d</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view" />
+        <field name="arch" type="xml">
+            <field name="product_id" position="attributes">
+                <attribute name="widget">mrp_config_product</attribute>
+            </field>
+            <!-- ⓘ La SESSION voyage avec la fiche : le widget la lit pour ROUVRIR une
+                 configuration existante au lieu d'en ouvrir une neuve. Elle est aussi
+                 déclarée en dépendance du widget — la vue seule ne suffirait pas sur un
+                 écran où le champ serait absent. -->
+            <field name="product_id" position="after">
+                <field name="config_session_id" invisible="1" />
+            </field>
+        </field>
+    </record>
+</odoo>

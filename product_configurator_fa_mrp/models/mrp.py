@@ -1,7 +1,7 @@
 # Copyright (C) 2021 Open Source Integrators
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo import api, fields, models
+from odoo import fields, models
 
 
 class MrpProduction(models.Model):
@@ -23,28 +23,17 @@ class MrpProduction(models.Model):
         string="Custom Values",
     )
 
-    @api.model
-    def action_config_start(self):
-        """Return action to start configuration wizard"""
-        configurator_obj = self.env["product.configurator.mrp"]
-        ctx = dict(
-            self.env.context,
-            wizard_id=None,
-            wizard_model="product.configurator.mrp",
-            allow_preset_selection=True,
-        )
-        return configurator_obj.with_context(**ctx).get_wizard_action()
-
-    def reconfigure_product(self):
-        """Creates and launches a product configurator wizard with a linked
-        template and variant in order to re-configure a existing product. It is
-        esetially a shortcut to pre-fill configuration data of a variant"""
-        wizard_model = "product.configurator.mrp"
-        extra_vals = {"order_id": self.id, "product_id": self.product_id.id}
-        self = self.with_context(default_order_id=self.id)
-        return self.product_id.product_tmpl_id.create_config_wizard(
-            model_name=wizard_model, extra_vals=extra_vals
-        )
+    # ⓘ **`action_config_start` ET `reconfigure_product` ONT DISPARU** — arbitrage
+    # Gerry, 2026-09-19 : *« pour moi le wizard est mort, on peut le supprimer. »*
+    #
+    # Les deux n'existaient que pour ouvrir l'assistant OCA : la première depuis un
+    # bouton injecté dans toutes les listes du back-office, la seconde depuis un bouton
+    # « Reconfigure » du formulaire. Le configurateur 3D les remplace toutes les deux, et
+    # `product_configurator_web_3d_mrp` l'ouvre au moment où l'on CHOISIT le produit —
+    # ce qui supprime le besoin d'un bouton.
+    #
+    # ⚠️ `config_session_id` reste : c'est le lien vers la configuration, et le
+    # configurateur 3D l'écrit comme le faisait le wizard. Ce n'est pas lui qui meurt.
 
 
 class MrpBom(models.Model):

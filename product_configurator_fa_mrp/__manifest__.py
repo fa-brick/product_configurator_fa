@@ -17,18 +17,16 @@
         "security/configurator_security.xml",
         "security/ir.model.access.csv",
     ],
-    "assets": {
-        "web.assets_backend": [
-            "/product_configurator_fa_mrp/static/src/js/config_button_mixin.esm.js",
-            "/product_configurator_fa_mrp/static/src/js/list_controller.esm.js",
-            "/product_configurator_fa_mrp/static/src/js/kanban_controller.esm.js",
-            "/product_configurator_fa_mrp/static/src/js/form_controller.esm.js",
-            "/product_configurator_fa_mrp/static/src/scss/mrp_config.scss",
-            "/product_configurator_fa_mrp/static/src/xml/mrp_production_views.xml",
-        ],
-    },
+    # ⓘ **PLUS AUCUN ASSET, et c'est le cœur de ce lot.** Le bouton « Configure » qui
+    # vivait ici s'injectait dans les gabarits GÉNÉRIQUES de toutes les listes, kanbans
+    # et formulaires du back-office, se cachait en CSS, puis se rallumait en JS quand le
+    # modèle était le bon. Mesuré le 2026-09-18 : un clic partait **deux fois**, le
+    # gabarit et le mixin ayant chacun branché le leur sur le même bouton.
+    #
+    # Il est remplacé par `product_configurator_web_3d_mrp`, qui pose un WIDGET sur le
+    # seul champ produit — cadré par construction (arbitrage Gerry, 2026-09-19 :
+    # *« cela évite la présence inutile de ce bouton »*).
     "demo": ["demo/product_template.xml"],
-    "qweb": ["static/src/xml/mrp_production_views.xml"],
     "installable": True,
     "auto_install": False,
     "development_status": "Beta",

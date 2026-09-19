@@ -29,9 +29,10 @@
         # dialogue depuis une fiche produit (D-262). La lister deux fois la
         # chargerait deux fois.
         "web.assets_backend": [
-            "product_configurator_web_3d_sale/static/src/configurator_dialog.scss",
-            "product_configurator_web_3d_sale/static/src/configurator_dialog.xml",
-            "product_configurator_web_3d_sale/static/src/configurator_dialog.js",
+            # ⓘ **LE DIALOGUE N'EST PLUS ICI.** Il n'avait rien de commercial — il monte
+            # la page du configurateur et rend ce qu'elle produit — et l'ordre de
+            # fabrication en a le même besoin. Il appartient donc à
+            # `product_configurator_web_3d`, qui possède déjà la page, et qui le déclare.
             "product_configurator_web_3d_sale/static/src/sale_product_field_patch.js",
         ],
     },

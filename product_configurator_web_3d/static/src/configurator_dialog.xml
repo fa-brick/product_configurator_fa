@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-    <t t-name="product_configurator_web_3d_sale.ConfiguratorDialog">
+    <t t-name="product_configurator_web_3d.ConfiguratorDialog">
         <!-- ⚠️ `footer="false"` : le dialogue d'Odoo pose sinon SON pied de page,
              avec un bouton « Ok » qui ne fait rien ici — la page porte déjà le
              sien, où vivent le prix et le geste qui termine. Vu à la capture. -->

@@ -89,6 +89,11 @@
             "product_configurator_web_3d/static/src/page/configurator_action.scss",
             "product_configurator_web_3d/static/src/page/configurator_action.xml",
             "product_configurator_web_3d/static/src/page/configurator_action.js",
+            # ⚠️ **APRÈS la page** : le dialogue la monte, donc elle doit exister.
+            # C'est la même règle d'ordre que ci-dessus ([[L-001]]).
+            "product_configurator_web_3d/static/src/configurator_dialog.scss",
+            "product_configurator_web_3d/static/src/configurator_dialog.xml",
+            "product_configurator_web_3d/static/src/configurator_dialog.js",
         ],
     },
     "installable": True,

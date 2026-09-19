@@ -16,7 +16,7 @@
  */
 import { patch } from "@web/core/utils/patch";
 import { SaleOrderLineProductField } from "@sale/js/sale_product_field";
-import { ConfiguratorDialog } from "./configurator_dialog";
+import { ConfiguratorDialog } from "@product_configurator_web_3d/configurator_dialog";
 
 patch(SaleOrderLineProductField.prototype, {
     /**

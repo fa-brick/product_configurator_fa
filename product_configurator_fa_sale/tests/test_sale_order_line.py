@@ -41,39 +41,34 @@ class TestSaleOrderLine(BaseCommon):
         product_template.config_ok = True
         cls.product_template = product_template
 
-    def _create_wizard(self, sale_order, product_template):
-        """Create configuration wizard for `product_template` in `sale_order`."""
-        wizard_action = sale_order.action_config_start()
-        wizard_model = self.env[wizard_action["res_model"]]
-        wizard_context = wizard_action.get("context", {})
-        wizard = wizard_model.with_context(**wizard_context).create(
-            {
-                "product_tmpl_id": product_template.id,
-            }
-        )
-        return wizard
-
-    def _configure_wizard(self, wizard, template_values):
-        """Fill `wizard` with `template_values`."""
-        # Fill in the values
-        fields_prefixes = wizard._prefixes
-        field_prefix = fields_prefixes.get("field_prefix")
-        for attribute, ptav in template_values.items():
-            dynamic_attribute_name = field_prefix + str(attribute.id)
-            wizard.write(
-                {
-                    dynamic_attribute_name: ptav.product_attribute_value_id.id,
-                }
-            )
-        return wizard.action_config_done()
-
     def _configure_product(self, sale_order, product_template, template_values):
-        """
-        Configure `product_template` in `sale_order` with values `template_values`.
-        """
-        wizard = self._create_wizard(sale_order, product_template)
+        """Poser sur le devis une ligne CONFIGURÉE, avec sa session.
 
-        return self._configure_wizard(wizard, template_values)
+        ⚠️ **Ce passage ne passe plus par l'assistant OCA** : il est mort le
+        2026-09-19 (*« pour moi le wizard est mort, on peut le supprimer »*), et
+        `action_config_start` avec lui.
+
+        ⓘ Ce que ce banc mesure n'a jamais été l'assistant : c'est que **le prix
+        de la ligne suit celui de sa session**. L'assistant n'était que le moyen
+        d'obtenir une ligne configurée. On l'obtient désormais comme le fait le
+        configurateur 3D — une session, ses valeurs, sa variante — et la règle
+        mesurée reste exactement la même.
+        """
+        session = self.env["product.config.session"].create_get_session(
+            product_template.id, force_create=True
+        )
+        session.value_ids = [(
+            6, 0,
+            [ptav.product_attribute_value_id.id for ptav in template_values.values()],
+        )]
+        variant = session.create_get_variant()
+        session.action_confirm(product_id=variant)
+        return self.env["sale.order.line"].create({
+            "order_id": sale_order.id,
+            "product_id": variant.id,
+            "product_uom_qty": 1,
+            "config_session_id": session.id,
+        })
 
     def test_config_session_change_price_unit(self):
         """

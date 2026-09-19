@@ -4,19 +4,11 @@
 from odoo import api, fields, models
 
 
-class SaleOrder(models.Model):
-    _inherit = "sale.order"
-
-    def action_config_start(self):
-        """Return action to start configuration wizard"""
-        configurator_obj = self.env["product.configurator.sale"]
-        ctx = dict(
-            self.env.context,
-            default_order_id=self.id,
-            wizard_model="product.configurator.sale",
-            allow_preset_selection=True,
-        )
-        return configurator_obj.with_context(**ctx).get_wizard_action()
+# ⓘ **`sale.order.action_config_start` A DISPARU** — arbitrage Gerry, 2026-09-19 :
+# *« pour moi le wizard est mort, on peut le supprimer. »* Elle n'existait que pour
+# ouvrir l'assistant OCA depuis un bouton « Configure Product » au-dessus des lignes,
+# lui-même retiré. Le configurateur 3D s'ouvre désormais au CHOIX du produit sur la
+# ligne, ce qui ne demande plus de bouton.
 
 
 class SaleOrderLine(models.Model):
@@ -35,24 +27,10 @@ class SaleOrderLine(models.Model):
         comodel_name="product.config.session", string="Config Session"
     )
 
-    def reconfigure_product(self):
-        """Creates and launches a product configurator wizard with a linked
-        template and variant in order to re-configure a existing product. It is
-        esetially a shortcut to pre-fill configuration data of a variant"""
-        wizard_model = "product.configurator.sale"
-
-        extra_vals = {
-            "order_id": self.order_id.id,
-            "order_line_id": self.id,
-            "product_id": self.product_id.id,
-        }
-        self = self.with_context(
-            default_order_id=self.order_id.id,
-            default_order_line_id=self.id,
-        )
-        return self.product_id.product_tmpl_id.create_config_wizard(
-            model_name=wizard_model, extra_vals=extra_vals
-        )
+    # ⓘ **`reconfigure_product` A DISPARU D'ICI**, et elle n'a pas disparu tout court :
+    # `product_configurator_web_3d_sale` en donne sa propre version, qui ouvre la page 3D
+    # de la ligne. Celle-ci ne faisait qu'ouvrir l'assistant OCA, et la remplaçait déjà
+    # sans l'appeler — la garder ne laissait qu'un corps mort sous un nom vivant.
 
     @api.depends(
         "config_session_id",

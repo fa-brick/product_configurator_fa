@@ -10,7 +10,8 @@
     "website": "https://github.com/fa-brick/product_configurator_fa",
     "depends": ["sale_management", "product_configurator_fa", "stock"],
     "data": [
-        "security/ir.model.access.csv",
+        # ⓘ Plus aucun droit à déclarer : les deux lignes qui restaient portaient
+        # sur `product.configurator.sale`, supprimé avec le wizard (2026-09-19).
         "data/menu_product.xml",
         "views/sale_view.xml",
     ],

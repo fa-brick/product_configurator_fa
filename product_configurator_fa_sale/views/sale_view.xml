@@ -5,17 +5,10 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form" />
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='order_line']" position="before">
-                <button
-                    class="oe_highlight"
-                    groups="product_configurator_fa.group_product_configurator_fa"
-                    name="action_config_start"
-                    invisible="state not in ['draft','sent']"
-                    string="Configure Product"
-                    style="margin-top: 15px;"
-                    type="object"
-                />
-            </xpath>
+            <!-- ⓘ **LE BOUTON « Configure Product » A DISPARU** avec la méthode qu'il
+                 appelait (arbitrage Gerry, 2026-09-19 : *« pour moi le wizard est
+                 mort »*). Le configurateur 3D s'ouvre au CHOIX du produit sur la ligne,
+                 ce qui ne demande plus de bouton au-dessus du tableau. -->
             <xpath
                 expr="//field[@name='order_line']/form//field[@name='product_id']"
                 position="after"
@@ -28,16 +21,14 @@
                 position="after"
             >
                 <field column_invisible="1" name="config_ok" />
-                <button
-                    invisible="not config_ok or state not in ['draft','sent']"
-                    class="fa-lg"
-                    groups="product_configurator_fa.group_product_configurator_fa"
-                    help="Reconfigure"
-                    icon="fa-cogs"
-                    name="reconfigure_product"
-                    type="object"
-                    title="Reconfigure"
-                />
+                <!-- ⚠️ **LA ROUE DENTÉE A QUITTÉ CETTE VUE**, et pas seulement parce
+                     qu'elle était masquée. `reconfigure_product` ne vit plus ici : sa
+                     seule implémentation est celle de `product_configurator_web_3d_sale`,
+                     qui ouvre la page 3D. Or ce module DÉPEND de celui-ci, donc il charge
+                     APRÈS — et une vue qui cite une méthode pas encore définie fait
+                     échouer l'installation sur *« reconfigure_product is not a valid
+                     action on sale.order.line »*. Une vue ne peut citer que ce que son
+                     propre module garantit. -->
                 <field name="config_session_id" />
             </xpath>
             <!--

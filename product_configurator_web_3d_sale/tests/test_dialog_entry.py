@@ -95,17 +95,38 @@ class TestDialogEntry(TransactionCase):
 
     # ── CE QUI DEVIENT OBSOLÈTE ──────────────────────────────────────────
 
-    def test_les_deux_boutons_OCA_ne_s_affichent_PLUS(self):
-        """Arbitré par Gerry : *« le bouton actuel de OCA ainsi que la
-        fonctionnalité derrière devient obsolète »*. Masqués, pas supprimés —
-        ils sont dans un module amont."""
-        arch = etree.fromstring(self.env["sale.order"].get_view(
+    def _arch_devis(self):
+        return etree.fromstring(self.env["sale.order"].get_view(
             self.env.ref("sale.view_order_form").id, "form"
         )["arch"])
-        for nom in ("action_config_start", "reconfigure_product"):
-            boutons = arch.xpath("//button[@name='%s']" % nom)
-            self.assertTrue(boutons, "le bouton %s a disparu de la vue" % nom)
-            self.assertEqual(
-                boutons[0].get("invisible"), "1",
-                "%s s'affiche encore et double le nouveau chemin" % nom,
-            )
+
+    def test_le_bouton_du_WIZARD_a_ete_SUPPRIME(self):
+        """Arbitré par Gerry : *« le bouton actuel de OCA ainsi que la
+        fonctionnalité derrière devient obsolète »*, puis le 2026-09-19 : *« pour
+        moi le wizard est mort, on peut le supprimer. »*
+
+        ⚠️ Il était d'abord MASQUÉ, le temps qu'il vive encore dans un module
+        amont. Ce module est le nôtre : le bouton et sa méthode sont partis
+        ensemble, et il ne reste rien à cacher.
+        """
+        self.assertFalse(self._arch_devis().xpath(
+            "//button[@name='action_config_start']"))
+        self.assertFalse(hasattr(self.env["sale.order"], "action_config_start"))
+
+    def test_la_ROUE_DENTEE_a_quitte_la_vue_mais_PAS_le_code(self):
+        """Son bouton faisait double emploi depuis que choisir le produit ouvre le
+        configurateur, et il a suivi l'autre.
+
+        ⚠️ **`reconfigure_product`, elle, N'EST PAS MORTE** : c'est elle qui ouvre
+        la page 3D d'une ligne, et six tests la couvrent. Ce banc tient les deux
+        moitiés — le bouton parti, la méthode vivante — parce qu'on retire ici un
+        geste d'interface, pas une fonctionnalité.
+
+        ⓘ Et le bouton ne pouvait pas RESTER en étant masqué : sa méthode ne vit
+        que dans ce module-ci, qui charge APRÈS celui qui portait la vue. Odoo
+        refusait alors la vue amont — *« reconfigure_product is not a valid action
+        on sale.order.line »*. Une vue ne cite que ce que son module garantit.
+        """
+        self.assertFalse(self._arch_devis().xpath(
+            "//button[@name='reconfigure_product']"))
+        self.assertTrue(hasattr(self.env["sale.order.line"], "reconfigure_product"))

@@ -41,18 +41,10 @@
            a déjà son affordance pour rouvrir : le crayon dans la cellule du
            produit, qui appelle le même point d'entrée — en dialogue, sans
            quitter le devis. -->
-    <record id="sale_order_form_web3d_obsolete" model="ir.ui.view">
-        <field name="name">sale.order.form.web3d.obsolete</field>
-        <field name="model">sale.order</field>
-        <field name="inherit_id" ref="product_configurator_fa_sale.sale_order_form_config"/>
-        <field name="arch" type="xml">
-            <xpath expr="//button[@name='action_config_start']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-            <xpath expr="//button[@name='reconfigure_product']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath>
-        </field>
-    </record>
+    <!-- ⓘ **LA VUE « obsolete » A DISPARU** (2026-09-19). Elle ne servait qu'à MASQUER
+         les deux boutons de l'assistant OCA, le temps qu'ils vivent encore dans un module
+         amont. Ce module est le nôtre : les boutons et leurs méthodes sont partis
+         ensemble, et il ne reste rien à cacher. -->
+
 
 </odoo>

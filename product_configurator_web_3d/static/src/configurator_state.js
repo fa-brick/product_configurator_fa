@@ -96,6 +96,16 @@ export function toViewModel(payload, previous = null) {
         // vaut `null` sur une base sans site : la croix ne se dessine alors pas, plutôt que
         // de mener nulle part.
         productUrl: payload.productUrl || null,
+        // ⚠️ **LA CUISSON ET L'AMBIANCE TRAVERSENT — et elles ne le faisaient PAS.** Le
+        // serveur les émettait (`web_state`), la page les lisait (`model.baked`,
+        // `model.ambience`), et cette fonction — une LISTE BLANCHE — les laissait tomber
+        // ([[L-212]] : une transformation qui recopie champ par champ perd tout ce qu'on
+        // ajoute en amont). Le chemin des GLB cuits n'avait donc JAMAIS tourné sur la page
+        // publique, et l'ambiance du produit n'atteignait pas le viewer — sans une erreur,
+        // et sous des gardes vertes qui lisaient le TEXTE de la page, jamais la donnée.
+        // Relevé le 2026-09-22 sur le JeNo : `baked: null`, `ambience: non`.
+        baked: payload.baked || null,
+        ambience: payload.ambience || null,
     };
 }
 

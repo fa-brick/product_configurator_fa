@@ -23,20 +23,22 @@ import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
 import { rpc } from "@web/core/network/rpc";
 import { PartViewer3D } from "@product_editor/components/part_viewer_3d/part_viewer_3d";
-import { projectSketchItems, projectAssemblyPieces, solidsByNodeId, worldByNodeId }
-    from "@product_editor/engine/builder/project_items";
+import { projectSketchItems } from "@product_editor/engine/builder/project_items";
 import { toBuildable } from "@product_editor/engine/builder/to_buildable";
-import { build } from "@product_editor/engine/builder/build";
-// ⓘ Deux modules voisins et faciles à confondre : `buildPart` — celui qui CONSTRUIT
-// une pièce — vit dans `part_descriptor` ; `build_part` porte la lecture des
-// fonctions 3D. L'éditeur importe les deux de la même façon.
-import { buildPart } from "@product_editor/engine/builder/part_descriptor";
-import { booleanModeOf } from "@product_editor/engine/builder/build_part";
+// ⚠️ **LE PASSAGE OBLIGÉ (D-329).** La page n'appelle plus `build()` : la session charge
+// THREE et la CSG (si la recette le demande), tient la graine, met l'allègement dans la
+// clé et rend les projections. Six réglages que cette page rejouait de mémoire — et dont
+// deux lui ont manqué pendant des mois (≈ 1 s par clic, image identique) ([[L-270]]).
+import { createBuildSession } from "@product_editor/engine/builder/build_session";
+import { createChronicle } from "@product_editor/engine/builder/build_chronicle";
 import { getThree } from "@product_editor/engine/three/three_init";
 import { getCSG } from "@product_editor/engine/three/csg_init";
 import { getGLTFLoader, getDRACOLoader, DRACO_DECODER_PATH }
     from "@product_editor/engine/three/loaders_init";
-import { bakedPart } from "@product_configurator_web_3d/page/baked_parts";
+// ⚠️ Le MÊME lecteur de fichier cuit que l'éditeur : la page avait le sien, dont les corps
+// ne portaient pas le drapeau `baked` — ni la session ni `bakedSolidsByNode` ne les
+// auraient reconnus.
+import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
 import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage }
     from "@product_configurator_web_3d/configurator_state";
 
@@ -92,16 +94,14 @@ export class ConfiguratorPage extends Component {
             selectedNodeId: null,
         });
         this._worlds = new Map();
-        // ⚠️ **LA GRAINE — ce qui évite de reconstruire DOUZE pièces pour en changer une.**
-        // `build()` repart sans rien : une permutation refaisait donc tout l'arbre, CSG
-        // compris, alors qu'une seule pose est neuve. Mesuré le 2026-09-22 sur le JeNo, au
-        // travers du serveur d'essai : 2 742 ms sans graine, **1 616 ms avec**, et les
-        // douze autres pièces annoncées « semée » à 0 ms. C'est la mécanique que l'éditeur
-        // emploie depuis le 2026-09-19 (`model3d_editor.js`), au même appel près.
-        //
-        // ⓘ `null` au départ, et non une carte vide : la première construction n'a rien à
-        // emprunter, et le moteur distingue « pas de graine » de « graine sans rien ».
-        this._sharedParts = null;
+        this._solids = new Map();
+        this._bakedSolids = new Map();
+        // ⚠️ **LA SESSION DE CONSTRUCTION (D-329)** — possédée par la page, donc par un
+        // objet à durée de vie connue : c'est elle qui tient la graine de partage (ce qui
+        // évite de reconstruire DOUZE pièces pour en changer une — mesuré le 2026-09-22
+        // sur le JeNo : 2 742 ms sans graine, 1 616 ms avec), et qui décide seule de
+        // charger la lib CSG. La page ne rejoue plus aucun de ces réglages.
+        this._session = createBuildSession({ getThree, getCSG });
         // ⚠️ UN IDENTIFIANT PAR ONGLET, pas par utilisateur : la même personne
         // peut ouvrir la même configuration deux fois, et c'est bien l'onglet
         // qui conduit. `randomUUID` n'existe QUE dans un contexte sécurisé
@@ -256,7 +256,7 @@ export class ConfiguratorPage extends Component {
      * ⓘ Le décodeur Draco n'est chargé que s'il y a quelque chose à décoder : une page
      * sans pièce cuite ne doit pas payer son téléchargement.
      */
-    async _loadBaked(THREE, baked) {
+    async _loadBaked(baked) {
         const loaded = new Map();
         const entries = Object.entries(baked || {});
         if (!entries.length) return loaded;
@@ -272,7 +272,12 @@ export class ConfiguratorPage extends Component {
                     const buffer = await response.arrayBuffer();
                     const gltf = await new Promise((resolve, reject) =>
                         loader.parse(buffer, "", resolve, reject));
-                    loaded.set(nodeId, { scene: gltf.scene, faces: entry.faces || [] });
+                    // ⚠️ La FORME que le moteur attend — `Map(nodeId → {solids})`, la même
+                    // que l'éditeur dépose : c'est par elle que `buildPart` sert la pièce
+                    // cuite, et que la session la met dans la clé de partage.
+                    const solids = bakedSolidsFromScene(this._session.THREE, gltf.scene,
+                                                        { faces: entry.faces || {} });
+                    if (solids.length) loaded.set(nodeId, { solids });
                 } catch (error) {
                     console.warn(`[configurateur] pièce cuite ${nodeId} non chargée :`,
                                  error);
@@ -290,56 +295,39 @@ export class ConfiguratorPage extends Component {
             this.state.pieces = [];
             this._worlds = new Map();
             this._solids = new Map();
+            this._bakedSolids = new Map();
             this.state.ready = true;
             return;
         }
         try {
             const buildable = toBuildable(definition);
-            const THREE = await getThree();
-            // ⓘ La bibliothèque de booléens est LOURDE : on ne la charge que si un
-            // perçage ou une fusion existe dans l'arbre (D-038). Sans elle, les volumes
-            // sont pleins — ce qui se voit, alors qu'un chargement inutile ne se voit pas.
-            const CSG = this._hasBoolean(buildable) ? await getCSG() : null;
+            // ⓘ La session charge THREE, et la lib de booléens SEULEMENT si un perçage ou
+            // une fusion existe dans l'arbre (D-038) — la page ne pose plus la question,
+            // donc ne peut plus la poser faux.
+            await this._session.prepare(buildable);
             // ⚠️ **LES FICHIERS D'ABORD, LA CONSTRUCTION ENSUITE** — `build()` est
             // SYNCHRONE, et charger un fichier ne l'est pas. On remplit donc la table
-            // avant, et le constructeur ne fait plus que la consulter. C'est ce que
-            // l'éditeur fait de ses géométries importées, et pour la même raison.
-            const loaded = await this._loadBaked(THREE, baked);
-            const sharedOut = new Map();
-            const tree = build(
-                buildable, scope || {},
-                // ⓘ **La substitution est une ENVELOPPE, pas une bifurcation.** Un nœud
-                // déjà cuit rend sa pièce toute faite ; tout le reste passe par le chemin
-                // d'avant, inchangé. Et `bakedPart` rend `null` au moindre doute — une
-                // table vide, un fichier sans maille — donc l'incertitude retombe
-                // toujours sur la construction.
-                (node, nodeScope, wt) => bakedPart(THREE, node, wt, loaded)
-                    || buildPart(THREE, node, nodeScope, wt, { CSG }),
-                // ⚠️ **CARTE NEUVE EN SORTIE, jamais la graine elle-même.** Ce qui n'a pas
-                // servi à cette passe ne repasse pas : c'est ce qui borne le cache à
-                // l'arbre courant au lieu de le laisser enfler en retenant des géométries
-                // que le viewer croit libérées.
-                //
-                // ⚠️ **`bakedParts` ENTRE DANS LA CLÉ, et ce n'est pas décoratif.** Une
-                // pose servie par son GLB n'a pas la géométrie d'une pose construite, et
-                // rien dans sa recette ne le dit. Sans ce drapeau, une pièce cuite à la
-                // passe d'avant serait rendue telle quelle à une passe qui, elle, n'a plus
-                // son fichier — la géométrie cuite survivrait à sa cuisson.
-                { THREE, bakedParts: loaded,
-                  sharedSeed: this._sharedParts, sharedOut },
-            );
-            // ⓘ Retenue APRÈS coup, donc jamais en cas d'échec : une passe qui a levé n'a
-            // rien à léguer, et la graine d'avant — dont les clés portent la recette —
-            // reste bonne pour la suivante.
-            this._sharedParts = sharedOut;
-            this._worlds = worldByNodeId(tree);
+            // avant, et la session ne fait plus que la consulter.
+            const bakedParts = await this._loadBaked(baked);
+            // ⓘ Le moteur se mesure PENDANT qu'il construit ([[D-094]]) : le relevé est
+            // gardé sur la page, pour une sonde — jamais envoyé, une durée est une
+            // propriété de la machine.
+            const chronicle = createChronicle();
+            const { worlds, solids, baked: bakedSolids, pieces } =
+                this._session.build(buildable, scope || {}, { bakedParts, chronicle });
+            this._lastBuild = chronicle.snapshot();
+            this._worlds = worlds;
             // ⚠️ **LES VOLUMES DU MOTEUR** — percés, chanfreinés, fusionnés. Le viewer
             // sait refaire une extrusion depuis son dessin, mais pas ceux-là : ils
             // n'existent que dans l'arbre résolu. Sans cette table, la plaque
             // s'affichait sans ses trous ni ses chanfreins, et rien ne le disait
             // (Gerry, 2026-09-07).
-            this._solids = solidsByNodeId(tree);
-            this.state.pieces = projectAssemblyPieces(buildable, tree);
+            this._solids = solids;
+            // ⚠️ **LES CORPS CUITS, À PART** : une géométrie cuite est déjà dans le repère
+            // de la pièce ; montée par la route des esquisses, elle recevrait la matrice
+            // du plan une seconde fois — un quart de tour (mesuré sur le bras, 2026-09-19).
+            this._bakedSolids = bakedSolids;
+            this.state.pieces = pieces;
             this.state.sceneSerial++;
             // ⓘ La photo s'efface quand la SCÈNE est là — la caméra, elle, a été
             // demandée dès que l'état est arrivé.
@@ -353,6 +341,7 @@ export class ConfiguratorPage extends Component {
             this.state.pieces = [];
             this._worlds = new Map();
             this._solids = new Map();
+            this._bakedSolids = new Map();
             // ⚠️ ON DÉCOUVRE QUAND MÊME. Une photo qui ne s'efface jamais laisserait
             // croire à un chargement éternel, alors que la page est vivante et que
             // les questions, elles, répondent.
@@ -389,14 +378,6 @@ export class ConfiguratorPage extends Component {
         }
     }
 
-    /** Un perçage ou une fusion quelque part dans l'arbre ? (D-038) */
-    _hasBoolean(node) {
-        if (!node) return false;
-        const actif = (f) => f.op === "cut" || booleanModeOf(f) !== "none";
-        return (node.functions3d || []).some(actif)
-            || (node.children || []).some((child) => this._hasBoolean(child));
-    }
-
     /** Les zones de matière, rangées par pièce — ce que le viewer peint. */
     get zonesByPiece() {
         return this.state.model?.zones?.zonesByPiece || {};
@@ -411,6 +392,18 @@ export class ConfiguratorPage extends Component {
      */
     getResolvedSolidsByNodeId() {
         return this._solids || new Map();
+    }
+
+    /**
+     * Les corps CUITS, par pièce — ce que le viewer monte SANS passer par les esquisses.
+     *
+     * ⚠️ Cette prop MANQUAIT à la page (relevé du 2026-09-22) : la cuisson n'y arrivant
+     * pas (`toViewModel` la laissait tomber), personne ne l'avait vu. Sans elle, un corps
+     * cuit repasse par le groupe de son esquisse et reçoit la matrice du plan une seconde
+     * fois — le quart de tour mesuré sur le bras du JeNo dans l'éditeur.
+     */
+    getResolvedBakedSolids() {
+        return this._bakedSolids || new Map();
     }
 
     /**

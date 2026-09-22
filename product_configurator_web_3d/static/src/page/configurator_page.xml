@@ -70,6 +70,7 @@
                               resolvedTreeSerial="state.sceneSerial"
                               getResolvedWorldByNodeId.bind="getResolvedWorldByNodeId"
                               getResolvedSolidsByNodeId.bind="getResolvedSolidsByNodeId"
+                              getResolvedBakedSolids.bind="getResolvedBakedSolids"
                               rootPieceId="rootPieceId"
                               rootNodeId="rootNodeId"
                               onSelectSketch="() => {}"

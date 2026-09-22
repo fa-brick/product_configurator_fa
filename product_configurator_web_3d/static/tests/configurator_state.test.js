@@ -72,6 +72,51 @@ describe("la SORTIE de la page — l'URL du produit", () => {
     });
 });
 
+describe("⚠️ la CUISSON et l'AMBIANCE traversent la mise en forme", () => {
+    // Le serveur les émettait, la page les lisait, et `toViewModel` — une liste blanche —
+    // les laissait tomber : le chemin des GLB cuits n'avait JAMAIS tourné sur la page
+    // publique, et l'ambiance n'atteignait pas le viewer ([[L-212]]). Relevé le 2026-09-22.
+    test("les pièces cuites arrivent telles quelles", () => {
+        const baked = { c12: { attachmentId: 77, faces: { f3d_7: [] } } };
+        expect(toViewModel({ ...PAYLOAD, baked }).baked).toEqual(baked);
+    });
+
+    test("l'ambiance aussi", () => {
+        const ambience = { toneMapping: "aces", exposure: 1.2 };
+        expect(toViewModel({ ...PAYLOAD, ambience }).ambience).toEqual(ambience);
+    });
+
+    test("absentes, elles valent `null` — la page sait quoi en faire", () => {
+        const model = toViewModel(PAYLOAD);
+        expect(model.baked).toBeNull();
+        expect(model.ambience).toBeNull();
+    });
+
+    test("⚠️ TOUT ce que la page lit sur le modèle est produit ici", () => {
+        // La garde de classe : une clé lue par la page et absente de cette liste blanche
+        // vaut `undefined` sans une erreur — c'est exactement comment la cuisson et
+        // l'ambiance se sont perdues. Les commentaires sont retirés avant de chercher
+        // ([[L-352]]).
+        const { readFileSync } = require("node:fs");
+        const { join } = require("node:path");
+        const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
+        const page = strip(readFileSync(join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8"));
+        const template = readFileSync(join(__dirname, "..", "src", "page", "configurator_page.xml"), "utf8")
+            .replace(/<!--[\s\S]*?-->/g, " ");
+        const state = strip(readFileSync(join(__dirname, "..", "src", "configurator_state.js"), "utf8"));
+        const read = new Set();
+        for (const src of [page, template]) {
+            for (const m of src.matchAll(/\bmodel(?:\?\.|\.)(\w+)/g)) read.add(m[1]);
+        }
+        const body = state.slice(state.indexOf("export function toViewModel"),
+                                 state.indexOf("export function sameDefinition"));
+        // ⓘ `clé: valeur` comme `clé,` (raccourci), et la branche d'erreur, indentée d'un cran.
+        const produced = new Set([...body.matchAll(/^\s{8,12}(\w+)(?::|,\s*$)/gm)].map((m) => m[1]));
+        expect(read.size).toBeGreaterThan(8);
+        expect([...read].filter((k) => !produced.has(k))).toEqual([]);
+    });
+});
+
 describe("⚠️ la 3D ne se reconstruit QUE si la recette a changé", () => {
     test("une définition identique garde sa RÉFÉRENCE", () => {
         // C'est la règle qui coûte le plus cher si on l'oublie : le viewer décide de

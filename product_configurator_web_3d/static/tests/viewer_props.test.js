@@ -76,6 +76,14 @@ describe("la page publique et son viewer", () => {
         expect(tag).toContain("getResolvedSolidsByNodeId");
     });
 
+    test("elle passe les CORPS CUITS — sinon un quart de tour sur chaque pièce servie", () => {
+        // ⚠️ Cette prop MANQUAIT (relevé du 2026-09-22), et personne ne l'avait vu parce
+        // que la cuisson n'atteignait pas la page (`toViewModel` la laissait tomber).
+        // Sans elle, un corps cuit repasse par le groupe de son esquisse et reçoit la
+        // matrice du plan une seconde fois (mesuré sur le bras, dans l'éditeur).
+        expect(viewerTag()).toContain("getResolvedBakedSolids.bind");
+    });
+
     test("elle passe l'identité de la PIÈCE racine — sinon aucune matière", () => {
         // Les zones sont rangées par pièce (D-166) : sans cet identifiant, elles
         // ne trouvent personne et la racine reste grise.

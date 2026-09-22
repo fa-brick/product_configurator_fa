@@ -16,13 +16,16 @@
         <!-- ⓘ `cart` : ouvert DEPUIS LA BOUTIQUE, terminer veut dire mettre au
              panier — et le bouton le dit. La même page ouverte par un lien de
              courriel ou depuis un devis garde « Terminer ». -->
+        <!-- ⓘ **LA CROIX EST DESCENDUE DANS LA PAGE** (2026-09-22). Tant qu'elle vivait
+             ici, elle manquait partout où l'on arrive par NAVIGATION — la grille de la
+             boutique, un courriel, un clic donné avant la fin de la préparation —, c'est-à-
+             dire sur la page que ce composant existe justement pour éviter. Un seul endroit
+             la dessine désormais ; l'overlay ne lui donne que ce qu'il est seul à savoir :
+             fermer REND SON URL à la fiche, et c'est l'historique qui referme, jamais un
+             état de plus à tenir des deux côtés. -->
         <ConfiguratorPage token="state.token" initialState="state.initialState"
-                          cart="true"/>
-        <!-- Fermer REND SON URL à la fiche : c'est l'historique qui referme, jamais
-             un état de plus à tenir d'un côté et de l'autre. -->
-        <button class="o_cfg3d_overlay_close"
-                t-on-click="() => this.close()"
-                aria-label="Close">×</button>
+                          cart="true"
+                          onClose="() => this.close()"/>
     </div>
 </t>
 </templates>

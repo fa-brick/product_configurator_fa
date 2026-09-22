@@ -92,6 +92,26 @@ describe("la page publique et son viewer", () => {
         expect(tag).toContain('showSketchLines="false"');
     });
 
+    test("⚠️ elle REFERME la boucle de sélection — les deux props, ou aucune", () => {
+        // `onSelectPiece` est l'aller (souris ET doigt, par `onTouchEnd`) ; `selectedSketchId`
+        // est le retour, et la seule chose qui allume le contour de SÉLECTION. Sans le
+        // retour, seul le SURVOL peignait — donc jamais au doigt, qui ne survole pas
+        // (relevé de Gerry, 2026-09-22 : « actif sur desktop, pas sur mobile »).
+        expect(tag).toContain("onSelectPiece");
+        expect(tag).toContain('selectedSketchId="state.selectedNodeId"');
+    });
+
+    test("⚠️ l'identité désignée voyage TELLE QUELLE, sans normalisation", () => {
+        // Le viewer rend un `nodeId` de placement (chaîne) ou un `pieceId` (nombre), et
+        // sait lire les deux. L'analyser ici allumerait TOUTES les poses d'un modèle au
+        // lieu de celle qu'on a touchée — défaut mesuré dans l'éditeur le 2026-09-13.
+        const SRC = readFileSync(
+            join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
+        const bloc = SRC.slice(SRC.indexOf("onSelectPiece(id) {"),
+                               SRC.indexOf("onSelectPiece(id) {") + 120);
+        expect(bloc).toContain("this.state.selectedNodeId = id ?? null;");
+    });
+
     test("elle passe les zones de matière", () => {
         expect(tag).toContain("zonesByPiece");
     });
@@ -201,5 +221,67 @@ describe("l'AMBIANCE du produit atteint le viewer", () => {
         expect(ligne).toContain("base.group_public");
         // Lecture SEULE : un visiteur ne règle pas l'ambiance d'un produit.
         expect(ligne.trim().endsWith("1,0,0,0")).toBe(true);
+    });
+});
+
+
+describe("LA SORTIE de la page — la croix, et pour ses DEUX hôtes", () => {
+    const XML = readFileSync(
+        join(__dirname, "..", "src", "page", "configurator_page.xml"), "utf8");
+    const SOURCE = readFileSync(
+        join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
+
+    test("c'est la PAGE qui dessine la croix, pas son hôte", () => {
+        // ⚠️ Tant qu'elle vivait dans l'overlay de la boutique, elle manquait partout où
+        // l'on arrive par NAVIGATION — la grille, un courriel, un clic donné avant la fin
+        // de la préparation. Mesuré le 2026-09-22 : zéro croix dans `/configurator/<jeton>`.
+        expect(XML).toContain('class="o_cfg3d_close"');
+        expect(XML).toContain('t-if="canClose"');
+    });
+
+    test("la sortie vient de l'HÔTE ou de l'ÉTAT — les deux, jamais l'un seul", () => {
+        const bloc = SOURCE.slice(SOURCE.indexOf("get canClose()"),
+                                  SOURCE.indexOf("onCloseClick()"));
+        expect(bloc).toContain("this.props.onClose");
+        expect(bloc).toContain("productUrl");
+    });
+
+    test("⚠️ l'hôte qui a DÉJÀ un cadre n'en reçoit pas une SECONDE", () => {
+        // Le dialogue du back-office porte la croix d'Odoo, et son pied a été retiré pour
+        // cela. Une croix de plus ferait de surcroît quitter le back-office pour la
+        // boutique — le seul geste que ce dialogue existe pour éviter.
+        const ACTION = readFileSync(
+            join(__dirname, "..", "src", "page", "configurator_action.xml"), "utf8");
+        expect(ACTION).toContain('closable="false"');
+        const bloc = SOURCE.slice(SOURCE.indexOf("get canClose()"),
+                                  SOURCE.indexOf("onCloseClick()"));
+        expect(bloc).toContain("this.props.closable === false");
+    });
+
+    test("⚠️ l'HISTORIQUE ne referme pas une page atteinte par navigation", () => {
+        // `history.back()` y retomberait sur `/configurator/start/<produit>`, qui crée une
+        // configuration NEUVE et renvoie ici : une boucle, pas une sortie. C'est pour cela
+        // que le serveur donne l'URL du produit.
+        const bloc = SOURCE.slice(SOURCE.indexOf("onCloseClick()"),
+                                  SOURCE.indexOf("// ── Libellés"));
+        expect(bloc).not.toContain("history");
+    });
+});
+
+describe("la hauteur de la page sur un TÉLÉPHONE", () => {
+    const SCSS = readFileSync(
+        join(__dirname, "..", "src", "page", "configurator_page.scss"), "utf8");
+
+    test("⚠️ `dvh` — sinon le pied de page passe sous la barre du navigateur", () => {
+        // `100vh` est la hauteur écran BARRES MASQUÉES : le prix et le bouton tombaient
+        // dans une bande que rien ne permettait d'atteindre, le corps étant verrouillé.
+        expect(SCSS).toContain("height: 100vh;\n    height: 100dvh;");
+    });
+
+    test("le repli `vh` reste — un navigateur sans `dvh` garde ce qu'il avait", () => {
+        const i = SCSS.indexOf("height: 100vh;");
+        const j = SCSS.indexOf("height: 100dvh;");
+        expect(i).toBeGreaterThan(-1);
+        expect(j).toBeGreaterThan(i);
     });
 });

@@ -91,6 +91,11 @@ export function toViewModel(payload, previous = null) {
         // de lire aucun des modèles qui les portent.
         zones: payload.zones || null,
         productId: payload.productId || null,
+        // ⓘ **LA SORTIE de la page atteinte par un lien** — la fiche du produit. Elle vient
+        // du serveur parce que la route de la page ne résout pas le jeton (D-190), et elle
+        // vaut `null` sur une base sans site : la croix ne se dessine alors pas, plutôt que
+        // de mener nulle part.
+        productUrl: payload.productUrl || null,
     };
 }
 

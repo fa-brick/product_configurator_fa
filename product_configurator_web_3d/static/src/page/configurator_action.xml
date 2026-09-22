@@ -5,9 +5,14 @@
         <!-- ⓘ Le cadre du dialogue est celui d'Odoo : cette classe ne sert qu'à
              borner la hauteur de la page, faite pour un écran entier. -->
         <div class="o_cfg3d_action">
+            <!-- ⓘ `closable="false"` : le dialogue d'Odoo porte DÉJÀ sa croix — c'est
+                 même pour cela que son pied a été retiré (*« le Ok est inutile car la
+                 croix est présente »*, Gerry, 2026-09-07). La page en dessinerait une
+                 seconde, qui ferait de surcroît quitter le back-office. -->
             <ConfiguratorPage t-if="token"
                               token="token"
                               initialState="initialState"
+                              closable="false"
                               onConfirmed="() => this.onConfirmed()"/>
         </div>
     </t>

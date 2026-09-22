@@ -24,17 +24,6 @@ body.o_cfg3d_locked {
     }
 }
 
-.o_cfg3d_overlay_close {
-    position: absolute;
-    top: 12px;
-    right: 16px;
-    z-index: 1;
-    border: 0;
-    background: transparent;
-    font-size: 28px;
-    line-height: 1;
-    cursor: pointer;
-    opacity: 0.5;
-
-    &:hover { opacity: 1; }
-}
+/* ⓘ `.o_cfg3d_overlay_close` a été RETIRÉE le 2026-09-22 : la croix appartient désormais à
+   la page (`.o_cfg3d_close`, `configurator_page.scss`), qui la dessine pour ses deux hôtes.
+   Elle n'est pas oubliée ici — elle n'a plus de bouton à habiller. */

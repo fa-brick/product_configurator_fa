@@ -58,6 +58,20 @@ describe("toViewModel — la réponse du serveur, mise en forme", () => {
     });
 });
 
+describe("la SORTIE de la page — l'URL du produit", () => {
+    test("elle traverse la mise en forme telle quelle", () => {
+        const model = toViewModel({ ...PAYLOAD, productUrl: "/shop/porte-42" });
+        expect(model.productUrl).toBe("/shop/porte-42");
+    });
+
+    test("⚠️ `null` quand le serveur n'en donne pas — et NON `undefined`", () => {
+        // Le gabarit teste `canClose` : une absence doit valoir « pas de sortie », pas
+        // « clé manquante ». Une base sans site (`website` absent) est ce cas-là, et la
+        // croix ne doit alors pas se dessiner plutôt que mener nulle part.
+        expect(toViewModel(PAYLOAD).productUrl).toBeNull();
+    });
+});
+
 describe("⚠️ la 3D ne se reconstruit QUE si la recette a changé", () => {
     test("une définition identique garde sa RÉFÉRENCE", () => {
         // C'est la règle qui coûte le plus cher si on l'oublie : le viewer décide de

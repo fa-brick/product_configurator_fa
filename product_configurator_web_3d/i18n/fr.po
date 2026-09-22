@@ -12,6 +12,16 @@ msgstr ""
 
 #. module: product_configurator_web_3d
 #. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.xml:0
+# ⓘ Arrivée ici le 2026-09-22 avec la croix elle-même, qui a quitté l'overlay de
+# la boutique pour la page — laquelle sert aussi ceux qui arrivent par un lien.
+# ⚠️ `aria-label` et `title` sont traduits par Odoo dans un gabarit OWL
+# (`OWL_TRANSLATED_ATTRS`) : la chaîne est bien atteinte, par cette référence-ci.
+msgid "Close"
+msgstr "Fermer"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
 #: code:addons/product_configurator_web_3d/static/src/configurator_state.js:0
 msgid "%s is configuring. Take over to make a change."
 msgstr "%s est en train de configurer. Prenez la main pour modifier."

@@ -451,6 +451,18 @@ class ProductConfigSession(models.Model):
             },
         }
 
+    def _web_product_url(self):
+        """L'adresse publique du produit — ou `None` s'il n'y a pas de site.
+
+        ⚠️ **Le champ n'existe QUE si `website` est installé** (`website.published.mixin`),
+        et ce module n'en dépend pas — il sert aussi un back-office sans boutique. On teste
+        donc sa présence : absent, la page ne dessine pas de croix, plutôt que d'en dessiner
+        une qui ne mène nulle part.
+        """
+        self.ensure_one()
+        tmpl = self.product_tmpl_id
+        return tmpl.website_url if "website_url" in tmpl._fields else None
+
     def web_state(self):
         """Tout ce qu'il faut à la page, en UNE réponse.
 
@@ -473,6 +485,16 @@ class ProductConfigSession(models.Model):
             # La VARIANTE née de la confirmation, quand elle existe : c'est par elle
             # qu'une boutique met la configuration au panier.
             "productId": self.product_id.id or None,
+            # ⚠️ **LA SORTIE — sans elle, la page atteinte par un LIEN est une porte fermée.**
+            # La croix ne vivait que dans l'overlay de la fiche produit ; qui arrive par la
+            # grille de la boutique, par un courriel ou par un clic donné avant la fin de la
+            # préparation n'avait aucun moyen de revenir (relevé de Gerry, 2026-09-22).
+            #
+            # ⓘ Elle vient d'ICI et non du navigateur : revenir en arrière retomberait sur
+            # `/configurator/start/<produit>`, qui crée une configuration NEUVE et renvoie
+            # sur la page — une boucle. Et la route de la page ne résout pas le jeton, ce
+            # que D-190 lui interdit précisément.
+            "productUrl": self._web_product_url(),
             # Qui conduit (D-255). ⓘ Toujours présent, même libre : la page doit
             # pouvoir dire « personne » sans distinguer « absent » de « vide ».
             "hand": self._hand_state(),

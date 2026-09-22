@@ -4,7 +4,21 @@
 .o_cfg3d_page {
     display: flex;
     align-items: stretch;
+    /* ⚠️ **`dvh` ET NON `vh` — c'est tout le pied de page qui en dépend.** Sur un
+       téléphone, `100vh` est la hauteur de l'écran BARRES MASQUÉES : 60 à 120 px de plus
+       que ce qu'on voit. Et comme le corps est verrouillé pendant que le configurateur est
+       ouvert (`o_cfg3d_locked`), rien ne permet de défiler jusqu'en bas — le prix et le
+       bouton tombaient donc SOUS la barre du navigateur, hors d'atteinte (relevé de Gerry,
+       2026-09-22 ; mesuré en 412 × 915 : pied à 818 → 915, soit les 97 derniers pixels).
+
+       ⓘ Les DEUX lignes sont nécessaires, dans cet ordre : la première est le repli des
+       navigateurs qui ignorent `dvh` — ils gardent le comportement d'avant —, la seconde
+       la remplace partout ailleurs.
+
+       ⚠️ Ne pas céder à `min()` / `max()` pour raffiner : libsass les prend pour les
+       siens et fait tomber le BUNDLE ENTIER ([[L-302]], [[L-353]]). */
     height: 100vh;
+    height: 100dvh;
     /* ⚠️ OPAQUE ET AU-DESSUS : c'est ce qui efface le tourniquet du premier instant,
        rendu par le serveur en dessous. Sans fond, il transparaîtrait entre les deux
        colonnes ; sans `position`, le `z-index` ne s'appliquerait pas. */
@@ -53,7 +67,9 @@
 /* Le pied : le prix et le geste, toujours sous les yeux. */
 .o_cfg3d_footer {
     flex: 0 0 auto;
-    padding: 12px 16px;
+    /* ⓘ La barre de GESTE d'un téléphone sans bouton d'accueil recouvre les derniers
+       pixels : `env()` les rend, et vaut zéro partout ailleurs. */
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     background: #fff;
 }
@@ -238,6 +254,32 @@
    se confondre avec les boutons de valeur, tous en ligne au-dessus. */
 .o_cfg3d_confirm {
     width: 100%;
+}
+
+/* ── LA SORTIE ──────────────────────────────────────────────────────────────
+   ⚠️ **ELLE APPARTIENT À LA PAGE, ET NON À L'OVERLAY DE LA BOUTIQUE.** Tant qu'elle
+   vivait là-haut, elle manquait partout où l'on arrive par NAVIGATION : la vignette de
+   la grille (un vrai lien, qui navigue toujours), un lien reçu par courriel, ou un clic
+   donné avant que la préparation ait abouti. Mesuré le 2026-09-22 —
+   `/configurator/<jeton>` ne contenait aucune croix, et le visiteur n'avait aucune sortie
+   (relevé de Gerry : « visible sur mobile, pas sur desktop » — ce n'était pas l'écran qui
+   changeait, c'était le CHEMIN D'ENTRÉE).
+
+   ⓘ Mêmes coordonnées que celle qu'elle remplace : rien ne bouge à l'écran.
+   ⚠️ `z-index: 3` — la photo d'attente est à 2 (`.o_cfg3d_loading`) et la recouvrirait. */
+.o_cfg3d_close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    z-index: 3;
+    border: 0;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.5;
+
+    &:hover { opacity: 1; }
 }
 
 .o_cfg3d_error { margin: 15vh auto; text-align: center; }

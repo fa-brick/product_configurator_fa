@@ -6,6 +6,20 @@
          vient voir, et le lien arrive souvent par courriel. -->
     <div class="o_cfg3d_page">
 
+        <!-- ⚠️ **LA SORTIE — et elle manquait à qui arrive par un LIEN.** La croix ne vivait
+             que dans l'overlay de la fiche produit ; la grille de la boutique, un courriel
+             et le clic donné trop tôt mènent tous à cette page-ci, où rien ne ramenait au
+             produit (relevé de Gerry, 2026-09-22 ; vérifié : zéro croix dans le HTML de
+             `/configurator/<jeton>`).
+
+             ⓘ **Un seul endroit décide désormais**, et il sert les deux hôtes : l'overlay
+             passe sa fermeture par `onClose`, la page atteinte par navigation retombe sur
+             l'URL du produit que l'état porte. Le dialogue du back-office, lui, n'a ni
+             l'un ni l'autre — il se ferme par son propre cadre, et n'affiche donc rien. -->
+        <button t-if="canClose" class="o_cfg3d_close"
+                t-on-click="() => this.onCloseClick()"
+                aria-label="Close" title="Close">×</button>
+
         <div t-if="state.model and state.model.error" class="o_cfg3d_error">
             <p t-esc="state.model.message"/>
         </div>
@@ -45,6 +59,12 @@
                      dessin sert à ÉDITER ; ici on ne peut rien modifier, et ses
                      traits faisaient passer la gravure « JENO » pour un contour
                      rouge posé sur la plaque (Gerry, 2026-09-07). -->
+                <!-- ⚠️ **LES DEUX MOITIÉS D'UN MÊME GESTE, et elles ne valent que POSÉES
+                     ENSEMBLE** : `onSelectPiece` est ce que le viewer publie au clic comme
+                     à la tape, `selectedSketchId` la seule chose qui allume son contour de
+                     SÉLECTION. N'en passer qu'une laisse la boucle ouverte — l'état d'avant
+                     le 2026-09-22, où le contour cyan n'était allumé nulle part et où seul
+                     le SURVOL peignait, donc jamais au doigt (Gerry). -->
                 <PartViewer3D sketchItems="sketchItems"
                               pieces="state.pieces"
                               resolvedTreeSerial="state.sceneSerial"
@@ -53,6 +73,8 @@
                               rootPieceId="rootPieceId"
                               rootNodeId="rootNodeId"
                               onSelectSketch="() => {}"
+                              onSelectPiece="(id) => this.onSelectPiece(id)"
+                              selectedSketchId="state.selectedNodeId"
                               displayMode="'realistic'"
                               ambience="ambience"
                               showPlanes="false"

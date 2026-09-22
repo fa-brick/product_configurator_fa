@@ -16,18 +16,17 @@ msgid "<i class=\"fa fa-cube me-2\"/>Configure"
 msgstr "<i class=\"fa fa-cube me-2\"/>Configurer"
 
 #. module: product_configurator_web_sale
-#. odoo-javascript
-#: code:addons/product_configurator_web_sale/static/src/overlay/configurator_overlay.xml:0
-# ⚠️ La source disait « Fermer » : une chaîne FRANÇAISE dans un `aria-label`,
-# contraire à la règle du dépôt. Corrigée le 2026-09-06, et le français
-# revient ici, à sa place.
-msgid "Close"
-msgstr "Fermer"
-
-#. module: product_configurator_web_sale
 #: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.products_item_configure
 msgid "Configure"
 msgstr "Configurer"
+
+#. module: product_configurator_web_sale
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.product_configure_button
+# ⓘ Le prix d'un produit non configuré n'est pas ferme : il s'annonce comme un
+# plancher. Le mot vit dans une VUE, d'où la référence `model_terms` — une
+# référence de la mauvaise nature n'atteint jamais la chaîne ([[L-299]]).
+msgid "From"
+msgstr "À partir de"
 
 #. module: product_configurator_web_sale
 #: model:ir.model,name:product_configurator_web_sale.model_product_template

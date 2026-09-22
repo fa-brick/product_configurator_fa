@@ -62,6 +62,17 @@ export class ConfiguratorPage extends Component {
         // qui doit poser la variante sur sa ligne et se refermer (D-259). Absent
         // sur une page pleine : il n'y a personne à qui rendre la main.
         onConfirmed: { type: Function, optional: true },
+        // ⓘ **LA SORTIE DE L'HÔTE, quand il en a une.** L'overlay de la boutique referme
+        // par l'HISTORIQUE — c'est lui la source de vérité, l'URL ne doit jamais mentir sur
+        // ce que l'écran montre. Absent, la page cherche sa sortie dans l'état.
+        onClose: { type: Function, optional: true },
+        // ⚠️ **L'HÔTE QUI A DÉJÀ UN CADRE LE DIT ICI.** Le dialogue du back-office porte la
+        // croix d'Odoo — son pied a même été retiré pour cela (*« le Ok est inutile car la
+        // croix est présente »*, Gerry, 2026-09-07). Sans ce démenti, la page en dessinerait
+        // une SECONDE par-dessus, et celle-ci ferait quitter le back-office pour la
+        // boutique. ⓘ Le défaut par défaut est de DESSINER : la page sans hôte — celle du
+        // lien reçu — est justement celle qui n'a personne pour la fermer.
+        closable: { type: Boolean, optional: true },
     };
 
     setup() {
@@ -75,6 +86,10 @@ export class ConfiguratorPage extends Component {
             // reconstruction n'est pas une attente, c'est une mise à jour, et
             // recouvrir la 3D à chaque clic la ferait clignoter.
             ready: false,
+            // ⓘ **CE QUE LE DOIGT DÉSIGNE dans la 3D** — voir `onSelectPiece`. `null` tant
+            // que rien n'est touché, et le vide y ramène : on désigne une pièce, on ne
+            // s'engage à rien.
+            selectedNodeId: null,
         });
         this._worlds = new Map();
         // ⚠️ **LA GRAINE — ce qui évite de reconstruire DOUZE pièces pour en changer une.**
@@ -606,6 +621,62 @@ export class ConfiguratorPage extends Component {
             this.state.reason = _t(
                 "This configuration is confirmed, but the cart could not be updated.");
         }
+    }
+
+    /**
+     * LE CONTOUR — ce qu'un clic, ou une TAPE, vient de désigner dans la scène.
+     *
+     * ⚠️ **L'aller existait, le retour manquait.** Le viewer publie déjà ce qu'on touche
+     * (`onSelectPiece`, nourri aussi bien par la souris que par `onTouchEnd`), mais il
+     * n'allume son contour de SÉLECTION que d'après une prop — `selectedSketchId`. La page
+     * ne passait ni l'un ni l'autre : le contour cyan n'était donc allumé NULLE PART, ni au
+     * bureau ni au téléphone.
+     *
+     * ⓘ Ce qu'on voyait au bureau était le contour de SURVOL, orange, que le viewer allume
+     * tout seul au passage de la souris. **Un doigt ne survole pas** — d'où « ça marche sur
+     * desktop et pas sur mobile » (Gerry, 2026-09-22), qui n'était pas une histoire de
+     * tactile mais de boucle non refermée. L'éditeur, lui, la referme depuis toujours
+     * (`onSelectPiece` → `state.selectedNodeId` → `selectedSketchId`) : c'est pourquoi la
+     * sélection y répond au doigt.
+     *
+     * ⚠️ **L'identité voyage TELLE QUELLE.** Le viewer rend soit le `nodeId` d'un placement
+     * (une chaîne), soit un `pieceId` (un nombre) quand la pièce n'a pas de placement, et
+     * `_selectedSubtreeGroups` sait lire les deux. L'analyser ici — pour « normaliser » —
+     * allumerait toutes les poses d'un modèle au lieu de celle qu'on a touchée, défaut
+     * mesuré dans l'éditeur le 2026-09-13.
+     *
+     * ⓘ `null` arrive quand le clic tombe dans le VIDE : le viewer le publie, et il
+     * éteint. C'est le geste attendu, et il ne coûte rien à écrire.
+     */
+    onSelectPiece(id) {
+        this.state.selectedNodeId = id ?? null;
+    }
+
+    /**
+     * Y a-t-il une sortie ? — et c'est bien la question, pas « est-on dans un overlay ».
+     *
+     * ⚠️ **Une page atteinte par NAVIGATION n'a pas d'historique exploitable** : revenir en
+     * arrière retombe sur `/configurator/start/<produit>`, qui crée une configuration NEUVE
+     * et renvoie ici — une boucle, pas une sortie. Le retour est donc l'URL du PRODUIT, et
+     * seul le serveur peut la donner : la route de la page ne résout pas le jeton, et ne
+     * doit pas le faire (D-190).
+     *
+     * ⓘ Rien à afficher quand il n'y a rien à fermer : le dialogue du back-office se ferme
+     * par son propre cadre, et un lien mort n'a pas de produit où revenir.
+     */
+    get canClose() {
+        if (this.props.closable === false) return false;
+        return !!this.props.onClose || !!this.state.model?.productUrl;
+    }
+
+    /** Fermer : rendre la main à l'hôte s'il en a demandé une, sinon revenir au produit. */
+    onCloseClick() {
+        if (this.props.onClose) {
+            this.props.onClose();
+            return;
+        }
+        const url = this.state.model?.productUrl;
+        if (url) browser.location.href = url;
     }
 
     // ── Libellés — remontés du gabarit, où `_t()` n'est pas résoluble ────────

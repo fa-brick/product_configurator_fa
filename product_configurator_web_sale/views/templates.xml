@@ -35,16 +35,50 @@
             </div>
         </xpath>
 
-        <!-- 2. Le panier s'efface. Le formulaire, lui, RESTE : un produit
-             configurable qui a déjà des variantes en montre le prix et les
-             options, et c'est bien. Seul le bouton d'achat direct s'en va —
-             sans quoi la page en offrirait deux, qui ne mènent pas au même
-             endroit. -->
+        <!-- 2. Le panier s'efface — sans quoi la page offrirait deux gestes qui ne
+             mènent pas au même endroit. -->
         <xpath expr="//div[@id='add_to_cart_wrap']" position="attributes">
             <attribute name="t-if">not product.config_ok</attribute>
         </xpath>
 
-        <!-- 3. ⚠️ Et le message qui MENT s'arrête. « Cette combinaison n'existe
+        <!-- 3. ⚠️ **ET LES QUESTIONS S'EFFACENT AVEC LUI** (arbitrage Gerry, 2026-09-22).
+             Le pari d'origine était qu'un produit configurable n'a pas de variante, donc
+             pas de sélecteur : il tombe dès qu'une configuration en a créé une. Mesuré le
+             2026-09-22 sur le serveur d'essai — la fiche du JeNo affichait « Type de
+             TopPlate » et « Type de MiddlePlate », c'est-à-dire les QUESTIONS DU
+             CONFIGURATEUR, posées une seconde fois.
+
+             Trois défauts en un, et le dernier est le pire : la même question a deux
+             mémoires ; le choix n'est suivi d'aucun bouton, puisqu'on vient de le retirer ;
+             et la forme « carte » y est dégradée en pastilles par notre propre repli
+             ci-dessous. Le configurateur est le seul endroit où l'on répond.
+
+             ⓘ Le PRIX reste — voir le point 4. C'est la seule chose que la fiche ait
+             encore à dire d'un produit qu'on n'a pas configuré. -->
+        <xpath expr="//t[@t-call='website_sale.variants']" position="attributes">
+            <attribute name="t-if">not product.config_ok</attribute>
+        </xpath>
+
+        <!-- 4. LE PRIX DEVIENT UN « À PARTIR DE » (D-093 le disait déjà de la donnée).
+             Un produit qu'on n'a pas encore configuré n'a pas de prix ferme : l'annoncer
+             comme tel promet un montant que la configuration démentira.
+
+             ⚠️ **CE QUE CE MONTANT EST, EXACTEMENT** : le prix de la combinaison PAR
+             DÉFAUT, tel qu'Odoo le calcule — remises et taxes comprises. Pour un produit
+             tarifé par GRILLE c'est déjà le minimum, `_refresh_grid_list_price` ayant mis
+             le plus bas de la grille dans le `list_price` (D-093). Il ne l'est PAS encore
+             quand des réponses portent un `price_extra` : le vrai plancher demande alors de
+             chercher la combinaison admissible la moins chère, ce que personne ne sait
+             faire ici — une exclusion peut rendre invalide le « moins cher de chaque
+             question ». ⓘ Lot à part, à trancher avec Gerry.
+
+             ⓘ Rien quand le prix est nul : « À partir de 0 € » est pire que le silence. -->
+        <xpath expr="//t[@t-call='website_sale.product_price']" position="before">
+            <span t-if="product.config_ok and combination_info['price']"
+                  class="o_cfg3d_from me-1 text-muted">From</span>
+        </xpath>
+
+        <!-- 5. ⚠️ Et le message qui MENT s'arrête. « Cette combinaison n'existe
              pas » est la retombée du `t-else` d'Odoo : vrai pour un produit
              ordinaire sans variante vendable, FAUX pour un produit
              configurable, dont c'est l'état normal avant la première

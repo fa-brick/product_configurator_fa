@@ -77,6 +77,16 @@ export class ConfiguratorPage extends Component {
             ready: false,
         });
         this._worlds = new Map();
+        // ⚠️ **LA GRAINE — ce qui évite de reconstruire DOUZE pièces pour en changer une.**
+        // `build()` repart sans rien : une permutation refaisait donc tout l'arbre, CSG
+        // compris, alors qu'une seule pose est neuve. Mesuré le 2026-09-22 sur le JeNo, au
+        // travers du serveur d'essai : 2 742 ms sans graine, **1 616 ms avec**, et les
+        // douze autres pièces annoncées « semée » à 0 ms. C'est la mécanique que l'éditeur
+        // emploie depuis le 2026-09-19 (`model3d_editor.js`), au même appel près.
+        //
+        // ⓘ `null` au départ, et non une carte vide : la première construction n'a rien à
+        // emprunter, et le moteur distingue « pas de graine » de « graine sans rien ».
+        this._sharedParts = null;
         // ⚠️ UN IDENTIFIANT PAR ONGLET, pas par utilisateur : la même personne
         // peut ouvrir la même configuration deux fois, et c'est bien l'onglet
         // qui conduit. `randomUUID` n'existe QUE dans un contexte sécurisé
@@ -280,6 +290,7 @@ export class ConfiguratorPage extends Component {
             // avant, et le constructeur ne fait plus que la consulter. C'est ce que
             // l'éditeur fait de ses géométries importées, et pour la même raison.
             const loaded = await this._loadBaked(THREE, baked);
+            const sharedOut = new Map();
             const tree = build(
                 buildable, scope || {},
                 // ⓘ **La substitution est une ENVELOPPE, pas une bifurcation.** Un nœud
@@ -289,8 +300,23 @@ export class ConfiguratorPage extends Component {
                 // toujours sur la construction.
                 (node, nodeScope, wt) => bakedPart(THREE, node, wt, loaded)
                     || buildPart(THREE, node, nodeScope, wt, { CSG }),
-                { THREE },
+                // ⚠️ **CARTE NEUVE EN SORTIE, jamais la graine elle-même.** Ce qui n'a pas
+                // servi à cette passe ne repasse pas : c'est ce qui borne le cache à
+                // l'arbre courant au lieu de le laisser enfler en retenant des géométries
+                // que le viewer croit libérées.
+                //
+                // ⚠️ **`bakedParts` ENTRE DANS LA CLÉ, et ce n'est pas décoratif.** Une
+                // pose servie par son GLB n'a pas la géométrie d'une pose construite, et
+                // rien dans sa recette ne le dit. Sans ce drapeau, une pièce cuite à la
+                // passe d'avant serait rendue telle quelle à une passe qui, elle, n'a plus
+                // son fichier — la géométrie cuite survivrait à sa cuisson.
+                { THREE, bakedParts: loaded,
+                  sharedSeed: this._sharedParts, sharedOut },
             );
+            // ⓘ Retenue APRÈS coup, donc jamais en cas d'échec : une passe qui a levé n'a
+            // rien à léguer, et la graine d'avant — dont les clés portent la recette —
+            // reste bonne pour la suivante.
+            this._sharedParts = sharedOut;
             this._worlds = worldByNodeId(tree);
             // ⚠️ **LES VOLUMES DU MOTEUR** — percés, chanfreinés, fusionnés. Le viewer
             // sait refaire une extrusion depuis son dessin, mais pas ceux-là : ils

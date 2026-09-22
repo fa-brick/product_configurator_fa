@@ -18,6 +18,88 @@ import { _t } from "@web/core/l10n/translation";
  * refaire. On garde donc l'ancienne quand elle n'a pas changé.
  */
 
+/** Une question, telle que la page la rend — de la racine ou d'un placement. */
+function toQuestion(line) {
+    return {
+        id: line.id,
+        name: line.name,
+        required: !!line.required,
+        multi: !!line.multi,
+        // ⓘ Le repli est `radio`, comme chez Odoo : une question sans forme
+        // déclarée reste une question, elle ne disparaît pas.
+        displayType: line.displayType || "radio",
+        values: (line.values || []).map(toValue),
+    };
+}
+
+/** `{ nodeId → placement }` — un placement porte son lien, son nom et ses questions. */
+function toPlacements(raw) {
+    const out = {};
+    for (const [nodeId, placement] of Object.entries(raw || {})) {
+        out[nodeId] = {
+            nodeId,
+            linkId: placement.linkId ?? null,
+            label: placement.label || "",
+            questions: (placement.questions || []).map(toQuestion),
+        };
+    }
+    return out;
+}
+
+/**
+ * Le PLACEMENT réglable d'une pièce de la scène, ou `null` — D-333.
+ *
+ * ⚠️ Une COPIE de répétition n'a pas de lien propre (`linkId: null`) : elle se règle par
+ * le lien de sa SOURCE (`sourceLinkId`), dont elle partage les réponses (D-332, v1).
+ * Sans cette lecture, aucune copie ne serait sélectionnable, et rien ne le dirait.
+ *
+ * @param {object} model  le modèle de la page (`toViewModel`)
+ * @param {Array} pieces  la projection du moteur (`projectAssemblyPieces`)
+ * @param {string} nodeId l'identité de la pose
+ */
+export function placementOf(model, pieces, nodeId) {
+    const placements = (model && model.placements) || {};
+    const piece = (pieces || []).find((p) => p.key === nodeId);
+    if (!piece) return null;
+    const linkId = piece.linkId ?? piece.sourceLinkId ?? null;
+    return (linkId != null && placements[`c${linkId}`]) || null;
+}
+
+/** Les poses SÉLECTIONNABLES — celles qui ont un placement réglable (arbitrage Gerry). */
+export function selectableNodeIds(model, pieces) {
+    return new Set((pieces || []).filter((p) => placementOf(model, pieces, p.key)).map((p) => p.key));
+}
+
+/**
+ * La LIGNÉE d'une pose — les noms, de l'assemblage le plus haut à la pièce — par la
+ * parenté que le moteur publie (`parentKey`, D-331). La racine de l'arbre, qui n'est pas
+ * une pièce projetée, n'y figure pas : c'est le produit lui-même, nommé ailleurs.
+ */
+export function selectionPath(pieces, nodeId) {
+    const byKey = new Map((pieces || []).map((p) => [p.key, p]));
+    const path = [];
+    let key = nodeId;
+    for (let depth = 0; key != null && byKey.has(key) && depth <= byKey.size; depth++) {
+        const piece = byKey.get(key);
+        path.unshift({ nodeId: piece.key, label: piece.label || "" });
+        key = piece.parentKey ?? null;
+    }
+    return path;
+}
+
+/**
+ * Ce qu'il faut envoyer pour répondre à une question d'un PLACEMENT — mêmes refus que
+ * `answerFor`, et le lien en plus (D-332).
+ */
+export function answerForPlacement(model, placement, questionId, valueId) {
+    if (!model || model.error || model.closed || !placement) return null;
+    const question = (placement.questions || []).find((q) => q.id === questionId);
+    const value = question?.values.find((v) => v.id === valueId);
+    if (!value || !value.available) return null;
+    if (value.chosen && !question.multi) return null;
+    return { attribute_id: questionId, value_id: valueId, link_id: placement.linkId };
+}
+
 /** Ce que la page montre pour une valeur — et pourquoi elle est éteinte, s'il y a lieu. */
 function toValue(raw) {
     return {
@@ -67,16 +149,12 @@ export function toViewModel(payload, previous = null) {
         productName: payload.productName || "",
         price: payload.price || 0,
         closed: payload.state && payload.state !== "draft",
-        questions: (payload.attributes || []).map((line) => ({
-            id: line.id,
-            name: line.name,
-            required: !!line.required,
-            multi: !!line.multi,
-            // ⓘ Le repli est `radio`, comme chez Odoo : une question sans forme
-            // déclarée reste une question, elle ne disparaît pas.
-            displayType: line.displayType || "radio",
-            values: (line.values || []).map(toValue),
-        })),
+        questions: (payload.attributes || []).map(toQuestion),
+        // ⚠️ **LES PLACEMENTS RÉGLABLES** (D-332, D-333) : les pièces posées dont des
+        // questions restent à répondre — et elles seules. C'est la vérité UNIQUE de
+        // « sélectionnable » sur cette page ; leurs questions ont la forme de celles de
+        // la racine, et se rendent avec le même gabarit.
+        placements: toPlacements(payload.placements),
         definition,
         scope: payload.scope || {},
         // ⓘ Toujours un objet : « personne ne conduit » se lit `{holder: null}`,

@@ -227,6 +227,26 @@ class ProductConfiguratorWeb3D(http.Controller):
         return {"ok": True}
 
     @http.route(
+        "/configurator/select", type="json", auth="public", methods=["POST"],
+        website=False, csrf=False,
+    )
+    def select(self, token=None, holder=None, node_id=None, isolated=False, **kwargs):
+        """La SÉLECTION de qui conduit — partagée comme sa caméra (D-333, D-256).
+
+        ⚠️ Seul le porteur de la main diffuse, et rien n'est ÉCRIT : une sélection est un
+        geste qui passe, pas un état de la configuration. Qui regarde reçoit le nœud et
+        l'isolation, et ignore son propre écho ([[L-256]] côté page).
+        """
+        session = self._session(token)
+        if not session:
+            return {"error": "unknown_session"}
+        if not session._hand_belongs_to(holder):
+            return {"error": "not_holding"}
+        session._bus_send("configurator_selection",
+                          {"holder": holder, "nodeId": node_id or None, "isolated": bool(isolated)})
+        return {"ok": True}
+
+    @http.route(
         "/configurator/confirm", type="json", auth="public", methods=["POST"],
         website=False, csrf=False,
     )
@@ -255,7 +275,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         website=False, csrf=False,
     )
     def set_value(self, token=None, attribute_id=None, value_id=None, holder=None,
-                  **kwargs):
+                  link_id=None, **kwargs):
         """Répondre à une question, et recevoir l'état qui en découle.
 
         ⚠️ **AUCUNE FOURCHE, NULLE PART** — et depuis D-253, plus nulle part
@@ -283,6 +303,11 @@ class ProductConfiguratorWeb3D(http.Controller):
             # Une valeur qui n'appartient pas à la question posée n'est pas une
             # réponse : la retenir écrirait une configuration que rien ne relit.
             return {"error": "unknown_value"}
+        # ⚠️ **UNE RÉPONSE PAR PLACEMENT** (D-332) : la même route, un lien en plus. Ce
+        # qui est éditable pour ce lien est dit par la DÉFINITION, et la session le
+        # vérifie ; une question fixée par l'auteur est refusée comme une valeur inconnue.
+        if link_id:
+            return session.web_set_child_value(int(link_id), value)
         # ⚠️ **UNE QUESTION MULTIPLE S'AJOUTE, LES AUTRES REMPLACENT.** C'est la
         # seule forme d'affichage dont la règle serveur diffère : une case cochée
         # s'ajoute aux précédentes, et re-cliquer la décoche. Jusqu'ici, `multi`

@@ -65,8 +65,24 @@
                      SÉLECTION. N'en passer qu'une laisse la boucle ouverte — l'état d'avant
                      le 2026-09-22, où le contour cyan n'était allumé nulle part et où seul
                      le SURVOL peignait, donc jamais au doigt (Gerry). -->
-                <PartViewer3D sketchItems="sketchItems"
-                              pieces="state.pieces"
+                <!-- ⓘ Le NOM de la pose sous le pointeur — et rien pour une pièce qui ne
+                     se sélectionne pas (arbitrage Gerry, 2026-09-23). -->
+                <div t-if="hoverLabel" class="o_cfg3d_hover" t-esc="hoverLabel"/>
+                <!-- ⓘ Isolée : un bouton pour revenir à tout. -->
+                <button t-if="state.selection.isolated and state.selection.nodeId"
+                        class="btn btn-sm btn-secondary o_cfg3d_showall"
+                        t-on-click="() => this.onExitIsolation()" t-esc="showAllLabel"/>
+                <!-- ⚠️ LA SÉLECTION (D-333) : `pieces` est le sous-arbre isolé ou tout ;
+                     `selectableNodeIds` dit au viewer ce qu'un clic peut désigner ;
+                     `selectedNodeIds` allume le contour ; les trois rappels remontent
+                     clic, double clic et survol. -->
+                <PartViewer3D sketchItems="viewerSketchItems"
+                              pieces="viewerPieces"
+                              selectedNodeIds="selectedNodeIds"
+                              selectableNodeIds="selectableNodeIds"
+                              onSelectPiece.bind="onSelectPiece"
+                              onActivatePiece.bind="onActivatePiece"
+                              onHoverPiece.bind="onHoverPiece"
                               resolvedTreeSerial="state.sceneSerial"
                               getResolvedWorldByNodeId.bind="getResolvedWorldByNodeId"
                               getResolvedSolidsByNodeId.bind="getResolvedSolidsByNodeId"
@@ -78,7 +94,6 @@
                               rootNodeId="rootNodeId"
                               onSelectSketch="() => {}"
                               onSelectPiece="(id) => this.onSelectPiece(id)"
-                              selectedSketchId="state.selectedNodeId"
                               displayMode="'realistic'"
                               ambience="ambience"
                               showPlanes="false"
@@ -111,111 +126,37 @@
                             t-esc="takeHandLabel"/>
                 </div>
 
-                <t t-foreach="questions" t-as="question" t-key="question.id">
-                    <section class="o_cfg3d_question">
-                        <h2 t-esc="question.name"/>
-                        <!-- ⚠️ **LA QUESTION PREND LA FORME QU'ON LUI A DONNÉE.**
-                             `display_type` est réglé en back-office depuis toujours ;
-                             la page l'ignorait et rendait un bouton pour tout
-                             (constat de Gerry, 2026-09-06). Cinq formes viennent
-                             d'Odoo, la sixième — la CARTE — a été ajoutée pour les
-                             réponses qui désignent un produit ou une matière : on
-                             reconnaît une pièce à sa forme avant de lire son nom.
+                <!-- ── LA PIÈCE SÉLECTIONNÉE — ses questions, à la place de celles du produit
+                     (D-333 : « en un clic, éditer ses questions »). Le fil d'Ariane dit
+                     d'où elle vient ; « Retour au produit » rend la main aux questions de
+                     la racine. -->
+                <section t-if="selectedPlacement" class="o_cfg3d_piece">
+                    <nav class="o_cfg3d_crumbs">
+                        <t t-foreach="selectionPath" t-as="crumb" t-key="crumb.nodeId">
+                            <span t-if="!crumb_first" class="o_cfg3d_crumb_sep">›</span>
+                            <span class="o_cfg3d_crumb" t-esc="crumb.label"/>
+                        </t>
+                    </nav>
+                    <h2 class="o_cfg3d_piece_title" t-esc="selectedPlacement.label"/>
+                    <t t-foreach="selectedPlacement.questions" t-as="question" t-key="question.id">
+                        <t t-call="product_configurator_web_3d.Question">
+                            <t t-set="placementNodeId" t-value="state.selection.nodeId"/>
+                        </t>
+                    </t>
+                    <button class="btn btn-sm btn-link o_cfg3d_back"
+                            t-on-click="() => this.onClearSelection()" t-esc="backToProductLabel"/>
+                </section>
 
-                             ⓘ Le geste, lui, ne change JAMAIS : `onPick`. Ce qui
-                             change est ce que l'œil reçoit. -->
-
-                        <!-- ── LA CARTE : une vignette, son libellé dessous ── -->
-                        <div t-if="question.displayType === 'card'"
-                             class="o_cfg3d_cards">
-                            <t t-foreach="question.values" t-as="value" t-key="value.id">
-                                <button class="o_cfg3d_card"
-                                        t-att-class="{
-                                            'o_cfg3d_card--chosen': value.chosen,
-                                            'o_cfg3d_card--muted': value.muted }"
-                                        t-on-click="() => this.onPick(question.id, value)">
-                                    <!-- ⚠️ **PAS DE CADRE SANS IMAGE.** Une vignette promise
-                                         et vide est pire qu'une absence : elle se lit comme
-                                         un chargement en panne. Une valeur qui ne désigne
-                                         rien n'a pas d'image, et la carte se réduit alors à
-                                         son libellé (relevé de Gerry, 2026-09-07). -->
-                                    <span t-if="value.image" class="o_cfg3d_card_shot">
-                                        <img t-att-src="value.image" t-att-alt="value.name"/>
-                                    </span>
-                                    <span class="o_cfg3d_card_label" t-esc="value.name"/>
-                                </button>
-                            </t>
-                        </div>
-
-                        <!-- ── LA COULEUR : la pastille, et le nom au survol ── -->
-                        <div t-elif="question.displayType === 'color'"
-                             class="o_cfg3d_swatches">
-                            <t t-foreach="question.values" t-as="value" t-key="value.id">
-                                <button class="o_cfg3d_swatch"
-                                        t-att-class="{
-                                            'o_cfg3d_swatch--chosen': value.chosen,
-                                            'o_cfg3d_swatch--muted': value.muted }"
-                                        t-att-title="value.name"
-                                        t-att-style="value.color ? 'background-color: ' + value.color : ''"
-                                        t-on-click="() => this.onPick(question.id, value)">
-                                    <img t-if="value.image" t-att-src="value.image"
-                                         t-att-alt="value.name"/>
-                                </button>
-                            </t>
-                        </div>
-
-                        <!-- ── LA LISTE : pour les questions à longue réponse ── -->
-                        <select t-elif="question.displayType === 'select'"
-                                class="o_cfg3d_select form-select"
-                                t-on-change="(ev) => this.onSelect(question, ev)">
-                            <!-- ⚠️ Sans cette ligne vide, un menu deroulant montre sa
-                                 PREMIERE valeur comme si elle etait choisie : la
-                                 question parait repondue alors qu'elle ne l'est pas. -->
-                            <option value="" t-att-selected="!this.isAnswered(question)">
-                                <t t-esc="chooseLabel"/>
-                            </option>
-                            <t t-foreach="question.values" t-as="value" t-key="value.id">
-                                <option t-att-value="value.id"
-                                        t-att-selected="value.chosen"
-                                        t-esc="value.name"/>
-                            </t>
-                        </select>
-
-                        <!-- ── LES CASES : une question qui accepte PLUSIEURS
-                             réponses. ⚠️ C'est la seule forme dont la règle
-                             SERVEUR diffère : répondre AJOUTE au lieu de
-                             remplacer. -->
-                        <div t-elif="question.displayType === 'multi'"
-                             class="o_cfg3d_checks">
-                            <t t-foreach="question.values" t-as="value" t-key="value.id">
-                                <label class="o_cfg3d_check"
-                                       t-att-class="{ 'o_cfg3d_check--muted': value.muted }">
-                                    <input type="checkbox" t-att-checked="value.chosen"
-                                           t-on-change="() => this.onPick(question.id, value)"/>
-                                    <span t-esc="value.name"/>
-                                </label>
-                            </t>
-                        </div>
-
-                        <!-- ── RADIO ET PASTILLES : la forme d'origine ── -->
-                        <div t-else="" class="o_cfg3d_values">
-                            <t t-foreach="question.values" t-as="value" t-key="value.id">
-                                <!-- ⚠️ Une valeur ÉTEINTE reste un bouton : c'est D-178,
-                                     un appui doit pouvoir en donner la raison. `disabled`
-                                     interdirait l'appui, donc la raison. -->
-                                <button class="o_cfg3d_value"
-                                        t-att-class="{
-                                            'o_cfg3d_value--chosen': value.chosen,
-                                            'o_cfg3d_value--muted': value.muted }"
-                                        t-on-click="() => this.onPick(question.id, value)">
-                                    <span t-esc="value.name"/>
-                                </button>
-                            </t>
-                        </div>
-                    </section>
+                <!-- ⓘ Les questions du PRODUIT — par le MÊME gabarit qu'une pièce. -->
+                <t t-if="!selectedPlacement">
+                    <t t-foreach="questions" t-as="question" t-key="question.id">
+                        <t t-call="product_configurator_web_3d.Question">
+                            <t t-set="placementNodeId" t-value="null"/>
+                        </t>
+                    </t>
                 </t>
 
-                <p t-if="!questions.length and !state.loading" class="o_cfg3d_note"
+                <p t-if="!questions.length and !state.loading and !selectedPlacement" class="o_cfg3d_note"
                    t-esc="emptyLabel"/>
 
                 <!-- La raison d'un refus, là où le doigt vient de se poser. -->
@@ -245,5 +186,112 @@
             </aside>
         </t>
     </div>
+</t>
+
+<!-- ⓘ UNE QUESTION — de la racine (`placementNodeId` nul) ou d'un placement sélectionné
+     (D-333). Un seul gabarit : ce qui change est le lien qui part avec la réponse,
+     jamais la forme. ⚠️ Un gabarit NOMMÉ, appelé de l'autre — pas un auto-appel ([[L-027]]). -->
+<t t-name="product_configurator_web_3d.Question">
+    <section class="o_cfg3d_question">
+        <h2 t-esc="question.name"/>
+        <!-- ⚠️ **LA QUESTION PREND LA FORME QU'ON LUI A DONNÉE.**
+             `display_type` est réglé en back-office depuis toujours ;
+             la page l'ignorait et rendait un bouton pour tout
+             (constat de Gerry, 2026-09-06). Cinq formes viennent
+             d'Odoo, la sixième — la CARTE — a été ajoutée pour les
+             réponses qui désignent un produit ou une matière : on
+             reconnaît une pièce à sa forme avant de lire son nom.
+
+             ⓘ Le geste, lui, ne change JAMAIS : `onPick`. Ce qui
+             change est ce que l'œil reçoit. -->
+
+        <!-- ── LA CARTE : une vignette, son libellé dessous ── -->
+        <div t-if="question.displayType === 'card'"
+             class="o_cfg3d_cards">
+            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                <button class="o_cfg3d_card"
+                        t-att-class="{
+                            'o_cfg3d_card--chosen': value.chosen,
+                            'o_cfg3d_card--muted': value.muted }"
+                        t-on-click="() => this.onAnswer(placementNodeId, question.id, value)">
+                    <!-- ⚠️ **PAS DE CADRE SANS IMAGE.** Une vignette promise
+                         et vide est pire qu'une absence : elle se lit comme
+                         un chargement en panne. Une valeur qui ne désigne
+                         rien n'a pas d'image, et la carte se réduit alors à
+                         son libellé (relevé de Gerry, 2026-09-07). -->
+                    <span t-if="value.image" class="o_cfg3d_card_shot">
+                        <img t-att-src="value.image" t-att-alt="value.name"/>
+                    </span>
+                    <span class="o_cfg3d_card_label" t-esc="value.name"/>
+                </button>
+            </t>
+        </div>
+
+        <!-- ── LA COULEUR : la pastille, et le nom au survol ── -->
+        <div t-elif="question.displayType === 'color'"
+             class="o_cfg3d_swatches">
+            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                <button class="o_cfg3d_swatch"
+                        t-att-class="{
+                            'o_cfg3d_swatch--chosen': value.chosen,
+                            'o_cfg3d_swatch--muted': value.muted }"
+                        t-att-title="value.name"
+                        t-att-style="value.color ? 'background-color: ' + value.color : ''"
+                        t-on-click="() => this.onAnswer(placementNodeId, question.id, value)">
+                    <img t-if="value.image" t-att-src="value.image"
+                         t-att-alt="value.name"/>
+                </button>
+            </t>
+        </div>
+
+        <!-- ── LA LISTE : pour les questions à longue réponse ── -->
+        <select t-elif="question.displayType === 'select'"
+                class="o_cfg3d_select form-select"
+                t-on-change="(ev) => this.onAnswerSelect(placementNodeId, question, ev)">
+            <!-- ⚠️ Sans cette ligne vide, un menu deroulant montre sa
+                 PREMIERE valeur comme si elle etait choisie : la
+                 question parait repondue alors qu'elle ne l'est pas. -->
+            <option value="" t-att-selected="!this.isAnswered(question)">
+                <t t-esc="chooseLabel"/>
+            </option>
+            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                <option t-att-value="value.id"
+                        t-att-selected="value.chosen"
+                        t-esc="value.name"/>
+            </t>
+        </select>
+
+        <!-- ── LES CASES : une question qui accepte PLUSIEURS
+             réponses. ⚠️ C'est la seule forme dont la règle
+             SERVEUR diffère : répondre AJOUTE au lieu de
+             remplacer. -->
+        <div t-elif="question.displayType === 'multi'"
+             class="o_cfg3d_checks">
+            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                <label class="o_cfg3d_check"
+                       t-att-class="{ 'o_cfg3d_check--muted': value.muted }">
+                    <input type="checkbox" t-att-checked="value.chosen"
+                           t-on-change="() => this.onAnswer(placementNodeId, question.id, value)"/>
+                    <span t-esc="value.name"/>
+                </label>
+            </t>
+        </div>
+
+        <!-- ── RADIO ET PASTILLES : la forme d'origine ── -->
+        <div t-else="" class="o_cfg3d_values">
+            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                <!-- ⚠️ Une valeur ÉTEINTE reste un bouton : c'est D-178,
+                     un appui doit pouvoir en donner la raison. `disabled`
+                     interdirait l'appui, donc la raison. -->
+                <button class="o_cfg3d_value"
+                        t-att-class="{
+                            'o_cfg3d_value--chosen': value.chosen,
+                            'o_cfg3d_value--muted': value.muted }"
+                        t-on-click="() => this.onAnswer(placementNodeId, question.id, value)">
+                    <span t-esc="value.name"/>
+                </button>
+            </t>
+        </div>
+    </section>
 </t>
 </templates>

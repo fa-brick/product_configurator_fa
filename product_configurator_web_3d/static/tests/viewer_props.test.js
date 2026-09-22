@@ -95,6 +95,23 @@ describe("la page publique et son viewer", () => {
         expect(tag).toContain('perforationsByPiece="state.postBuild.perforations"');
     });
 
+    test("⚠️ elle passe la SÉLECTION au viewer, et en reçoit clic, double clic et survol (D-333)", () => {
+        const tag = viewerTag();
+        expect(tag).toContain('pieces="viewerPieces"');                 // isolé, ou tout
+        expect(tag).toContain('selectedNodeIds="selectedNodeIds"');
+        expect(tag).toContain('selectableNodeIds="selectableNodeIds"');
+        expect(tag).toContain('onSelectPiece.bind="onSelectPiece"');
+        expect(tag).toContain('onActivatePiece.bind="onActivatePiece"');
+        expect(tag).toContain('onHoverPiece.bind="onHoverPiece"');
+    });
+
+    test("les questions du produit et celles d'une pièce passent par le MÊME gabarit", () => {
+        expect(TEMPLATE.match(/t-call="product_configurator_web_3d.Question"/g)).toHaveLength(2);
+        expect(TEMPLATE).toContain('t-name="product_configurator_web_3d.Question"');
+        // Plus aucun `onPick` direct dans le gabarit : une seule porte, `onAnswer`.
+        expect(TEMPLATE.replace(/<!--[\s\S]*?-->/g, "")).not.toContain("this.onPick(");
+    });
+
     test("elle passe l'identité de la PIÈCE racine — sinon aucune matière", () => {
         // Les zones sont rangées par pièce (D-166) : sans cet identifiant, elles
         // ne trouvent personne et la racine reste grise.
@@ -111,24 +128,28 @@ describe("la page publique et son viewer", () => {
         expect(tag).toContain('showSketchLines="false"');
     });
 
-    test("⚠️ elle REFERME la boucle de sélection — les deux props, ou aucune", () => {
-        // `onSelectPiece` est l'aller (souris ET doigt, par `onTouchEnd`) ; `selectedSketchId`
-        // est le retour, et la seule chose qui allume le contour de SÉLECTION. Sans le
-        // retour, seul le SURVOL peignait — donc jamais au doigt, qui ne survole pas
-        // (relevé de Gerry, 2026-09-22 : « actif sur desktop, pas sur mobile »).
-        expect(tag).toContain("onSelectPiece");
-        expect(tag).toContain('selectedSketchId="state.selectedNodeId"');
+    test("⚠️ elle REFERME la boucle de sélection — l'aller ET le retour", () => {
+        // `onSelectPiece` est l'aller (souris ET doigt) ; `selectedNodeIds` est le retour,
+        // et la seule chose qui allume le contour de SÉLECTION. Sans le retour, seul le
+        // SURVOL peignait — donc jamais au doigt, qui ne survole pas (relevé de Gerry,
+        // 2026-09-22 : « actif sur desktop, pas sur mobile »). Depuis D-333 le retour passe
+        // par la prop de PIÈCES, plus par celle des esquisses.
+        expect(tag).toContain('onSelectPiece.bind="onSelectPiece"');
+        expect(tag).toContain('selectedNodeIds="selectedNodeIds"');
+        expect(tag).not.toContain("selectedSketchId=");
     });
 
     test("⚠️ l'identité désignée voyage TELLE QUELLE, sans normalisation", () => {
-        // Le viewer rend un `nodeId` de placement (chaîne) ou un `pieceId` (nombre), et
-        // sait lire les deux. L'analyser ici allumerait TOUTES les poses d'un modèle au
-        // lieu de celle qu'on a touchée — défaut mesuré dans l'éditeur le 2026-09-13.
+        // Le viewer rend le `nodeId` de la POSE cliquée. L'analyser ici allumerait TOUTES
+        // les poses d'un modèle au lieu de celle qu'on a touchée — défaut mesuré dans
+        // l'éditeur le 2026-09-13. Une seule définition de `onSelectPiece`, aussi : deux
+        // méthodes du même nom, et c'est la dernière qui gagne en silence (2026-09-23).
         const SRC = readFileSync(
             join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
-        const bloc = SRC.slice(SRC.indexOf("onSelectPiece(id) {"),
-                               SRC.indexOf("onSelectPiece(id) {") + 120);
-        expect(bloc).toContain("this.state.selectedNodeId = id ?? null;");
+        expect(SRC.match(/^    onSelectPiece\(/gm)).toHaveLength(1);
+        const bloc = SRC.slice(SRC.indexOf("    onSelectPiece(nodeId) {"),
+                               SRC.indexOf("    onSelectPiece(nodeId) {") + 220);
+        expect(bloc).toContain("this._select(nodeId && this.selectableNodeIds.has(nodeId) ? nodeId : null");
     });
 
     test("elle passe les zones de matière", () => {

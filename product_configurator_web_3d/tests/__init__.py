@@ -6,3 +6,4 @@ from . import test_confirm
 from . import test_live
 from . import test_hand
 from . import test_placement_condition
+from . import test_placements  # noqa: F401  (D-332)

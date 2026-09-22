@@ -5,7 +5,8 @@
  * disait : *« le fork n'a aucun harnais de test JS »*. Il en a un, et la page naît sous
  * tests plutôt que l'inverse.
  */
-import { toViewModel, answerFor, reasonFor, sameDefinition, confirmError, handState, handMessage }
+import { toViewModel, answerFor, reasonFor, sameDefinition, confirmError, handState, handMessage,
+         placementOf, selectableNodeIds, selectionPath, answerForPlacement }
     from "@product_configurator_web_3d/configurator_state";
 
 const PAYLOAD = {
@@ -293,5 +294,68 @@ describe("la forme d'une question, et la réponse multiple", () => {
             ] }],
         });
         expect(answerFor(modele, 3, 9)).toBe(null);
+    });
+});
+
+describe("les PLACEMENTS réglables — ce qui se sélectionne, et ce qu'on y répond (D-332, D-333)", () => {
+    const PLACEMENTS = {
+        c11: { linkId: 11, label: "Poignée", questions: [{
+            id: 5, name: "Couleur de poignée", multi: false, displayType: "color",
+            values: [{ id: 50, name: "Blanc", available: true, chosen: true },
+                     { id: 51, name: "Noir", available: true, chosen: false },
+                     { id: 52, name: "Rouge", available: false, chosen: false }],
+        }] },
+    };
+    const model = () => toViewModel({ ...PAYLOAD, placements: PLACEMENTS });
+    /** La projection du moteur : un sous-ensemble, sa poignée, une copie, un rail piloté. */
+    const PIECES = [
+        { key: "c10", pieceId: 1, nodeId: "c10", label: "Sous-ensemble", linkId: 10, sourceLinkId: 10, parentKey: "m1" },
+        { key: "c11", pieceId: 2, nodeId: "c11", label: "Poignée", linkId: 11, sourceLinkId: 11, parentKey: "c10" },
+        { key: "c11/f5/occ_001", pieceId: 2, nodeId: "c11/f5/occ_001", label: "Poignée", linkId: null,
+          sourceLinkId: 11, occurrence: { of: "c11" }, parentKey: "c10" },
+        { key: "c12", pieceId: 3, nodeId: "c12", label: "Rail", linkId: 12, sourceLinkId: 12, parentKey: "c10" },
+    ];
+
+    test("les placements traversent la mise en forme, avec la forme d'une question", () => {
+        const placement = model().placements.c11;
+        expect(placement.linkId).toBe(11);
+        expect(placement.label).toBe("Poignée");
+        expect(placement.questions[0].displayType).toBe("color");
+        expect(placement.questions[0].values[2].muted).toBe(true);
+    });
+
+    test("absents, `{}` — jamais `undefined`", () => {
+        expect(toViewModel(PAYLOAD).placements).toEqual({});
+    });
+
+    test("⚠️ seules les pièces à questions éditables sont sélectionnables — le rail ne l'est pas", () => {
+        expect([...selectableNodeIds(model(), PIECES)].sort()).toEqual(["c11", "c11/f5/occ_001"]);
+    });
+
+    test("⚠️ une COPIE se règle par le lien de sa source", () => {
+        expect(placementOf(model(), PIECES, "c11/f5/occ_001")?.linkId).toBe(11);
+        expect(placementOf(model(), PIECES, "c12")).toBeNull();
+        expect(placementOf(model(), PIECES, "nulle-part")).toBeNull();
+    });
+
+    test("la lignée remonte par la parenté, du plus haut à la pièce", () => {
+        expect(selectionPath(PIECES, "c11/f5/occ_001").map((p) => p.label))
+            .toEqual(["Sous-ensemble", "Poignée"]);
+        expect(selectionPath(PIECES, "c10").map((p) => p.nodeId)).toEqual(["c10"]);
+        expect(selectionPath(PIECES, "inconnu")).toEqual([]);
+    });
+
+    test("répondre sur un placement envoie le LIEN avec la valeur", () => {
+        const m = model();
+        expect(answerForPlacement(m, m.placements.c11, 5, 51))
+            .toEqual({ attribute_id: 5, value_id: 51, link_id: 11 });
+    });
+
+    test("⚠️ mêmes refus que pour la racine : déjà choisie, indisponible, session close", () => {
+        const m = model();
+        expect(answerForPlacement(m, m.placements.c11, 5, 50)).toBeNull();   // déjà choisie
+        expect(answerForPlacement(m, m.placements.c11, 5, 52)).toBeNull();   // indisponible
+        expect(answerForPlacement({ ...m, closed: true }, m.placements.c11, 5, 51)).toBeNull();
+        expect(answerForPlacement(m, null, 5, 51)).toBeNull();
     });
 });

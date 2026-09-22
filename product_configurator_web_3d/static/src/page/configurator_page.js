@@ -39,8 +39,11 @@ import { getGLTFLoader, getDRACOLoader, DRACO_DECODER_PATH }
 // ne portaient pas le drapeau `baked` — ni la session ni `bakedSolidsByNode` ne les
 // auraient reconnus.
 import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
-import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage }
+import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
+         placementOf, selectableNodeIds, selectionPath, answerForPlacement }
     from "@product_configurator_web_3d/configurator_state";
+// Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
+import { subtreeOf } from "@product_editor/engine/builder/project_items";
 
 // Fenêtre de partage de la caméra. 150 ms : sous le seuil où un mouvement
 // paraît saccadé à qui regarde, au-dessus de la cadence d'une orbite au doigt.
@@ -88,6 +91,12 @@ export class ConfiguratorPage extends Component {
             // du 2026-09-22). Le moteur les publie désormais avec l'arbre (D-330) ; la
             // page ne fait que les passer au viewer.
             postBuild: { byNode: {}, byPiece: {}, perforations: {} },
+            // ── LA SÉLECTION (D-333) ──────────────────────────────────────────
+            // Une seule pose à la fois ; `isolated` quand un double clic l'a ouverte
+            // seule. `hover` : la pose sous le pointeur, pour la nommer — jamais une
+            // pièce non sélectionnable (arbitrage Gerry, 2026-09-23).
+            selection: { nodeId: null, isolated: false },
+            hover: null,
             // ⚠️ FAUX tant que la première scène n'est pas construite : c'est ce qui
             // tient la photo devant. Il ne repasse jamais à faux ensuite — une
             // reconstruction n'est pas une attente, c'est une mise à jour, et
@@ -96,7 +105,6 @@ export class ConfiguratorPage extends Component {
             // ⓘ **CE QUE LE DOIGT DÉSIGNE dans la 3D** — voir `onSelectPiece`. `null` tant
             // que rien n'est touché, et le vide y ramène : on désigne une pièce, on ne
             // s'engage à rien.
-            selectedNodeId: null,
         });
         this._worlds = new Map();
         this._solids = new Map();
@@ -192,13 +200,25 @@ export class ConfiguratorPage extends Component {
                 serial: (this.state.cameraApply?.serial ?? 0) + 1,
             };
         };
+        /** La sélection de celui qui conduit — partagée comme sa caméra (D-333). */
+        const onSelection = ({ holder, nodeId, isolated }) => {
+            if (holder === this.holder) return;                    // son propre écho
+            this._select(nodeId || null, !!isolated, { broadcast: false });
+        };
         bus.addChannel(channel);
         bus.subscribe("configurator_state", onRemote);
         bus.subscribe("configurator_camera", onCamera);
+        bus.subscribe("configurator_selection", onSelection);
+        // Échap désélectionne — en phase de CAPTURE : un service de raccourcis peut
+        // avaler les écoutes en phase bulle ([[L-005]]).
+        const onKey = (ev) => { if (ev.key === "Escape" && this.state.selection.nodeId) this.onClearSelection(); };
+        document.addEventListener("keydown", onKey, true);
         onWillUnmount(() => {
             bus.unsubscribe("configurator_state", onRemote);
             bus.unsubscribe("configurator_camera", onCamera);
+            bus.unsubscribe("configurator_selection", onSelection);
             bus.deleteChannel(channel);
+            document.removeEventListener("keydown", onKey, true);
         });
     }
 
@@ -335,6 +355,12 @@ export class ConfiguratorPage extends Component {
             this._bakedSolids = bakedSolids;
             this.state.pieces = pieces;
             this.state.postBuild = postBuild;
+            // ⓘ Une permutation peut faire disparaître la pose sélectionnée : la sélection
+            // tombe alors, plutôt que de désigner un nœud que personne ne montre.
+            const selected = this.state.selection.nodeId;
+            if (selected && !pieces.some((p) => p.key === selected)) {
+                this._select(null, false, { broadcast: false });
+            }
             this.state.sceneSerial++;
             // ⓘ La photo s'efface quand la SCÈNE est là — la caméra, elle, a été
             // demandée dès que l'état est arrivé.
@@ -412,6 +438,165 @@ export class ConfiguratorPage extends Component {
      */
     getResolvedBakedSolids() {
         return this._bakedSolids || new Map();
+    }
+
+    // ── LA SÉLECTION — D-331 / D-332 / D-333 ──────────────────────────────
+
+    /** Les poses que le client PEUT désigner : celles qui ont des questions à répondre. */
+    get selectableNodeIds() {
+        // ⓘ Memoïsé sur ses deux entrées : le viewer compare cette prop par identité, et
+        // un Set neuf à chaque rendu lui ferait relire la sélection en boucle ([[L-315]]).
+        const model = this.state.model, pieces = this.state.pieces;
+        if (this._selectableFor?.model !== model || this._selectableFor?.pieces !== pieces) {
+            this._selectableFor = { model, pieces, ids: selectableNodeIds(model, pieces) };
+        }
+        return this._selectableFor.ids;
+    }
+
+    /** La pose sélectionnée, sous la forme que le viewer attend — une liste. */
+    get selectedNodeIds() {
+        const id = this.state.selection.nodeId;
+        if (this._selectedFor?.id !== id) this._selectedFor = { id, list: id ? [id] : [] };
+        return this._selectedFor.list;
+    }
+
+    /** Le placement réglable de la pose sélectionnée — ses questions. */
+    get selectedPlacement() {
+        const id = this.state.selection.nodeId;
+        return id ? placementOf(this.state.model, this.state.pieces, id) : null;
+    }
+
+    /** La lignée de la pose sélectionnée, du plus haut au plus bas. */
+    get selectionPath() {
+        const id = this.state.selection.nodeId;
+        return id ? selectionPath(this.state.pieces, id) : [];
+    }
+
+    /** Le nom de la pose sous le pointeur — muet sur ce qui ne se sélectionne pas. */
+    get hoverLabel() {
+        const id = this.state.hover;
+        if (!id || id === this.state.selection.nodeId) return "";
+        return this.state.pieces.find((p) => p.key === id)?.label || "";
+    }
+
+    /**
+     * Les pièces que le viewer MONTE : toutes, ou le seul sous-arbre isolé (D-333).
+     *
+     * ⚠️ **La même référence tant que rien ne change** : le viewer reconstruit sa scène
+     * quand cette prop change d'identité ([[L-315]]), et l'isolation ne coûte que cette
+     * reconstruction-là — jamais une passe du moteur.
+     */
+    get viewerPieces() {
+        const { nodeId, isolated } = this.state.selection;
+        const pieces = this.state.pieces;
+        if (!isolated || !nodeId) return pieces;
+        if (this._isolatedFor?.pieces !== pieces || this._isolatedFor?.nodeId !== nodeId) {
+            const keep = subtreeOf(pieces, nodeId);
+            this._isolatedFor = { pieces, nodeId, list: pieces.filter((p) => keep.has(p.key)) };
+        }
+        return this._isolatedFor.list;
+    }
+
+    /** Isolé sur un enfant, la RACINE ne se dessine pas non plus. */
+    get viewerSketchItems() {
+        const { nodeId, isolated } = this.state.selection;
+        return isolated && nodeId ? [] : this.sketchItems;
+    }
+
+    /**
+     * Un clic dans la 3D — ou dans le vide, qui désélectionne (`null`).
+     *
+     * ⚠️ **La boucle se REFERME par `selectedNodeIds`** : le viewer n'allume le contour de
+     * sélection que par ses props, et sans le retour seul le SURVOL peignait — donc jamais
+     * au doigt, qui ne survole pas (relevé de Gerry, 2026-09-22 : « actif sur desktop, pas
+     * sur mobile »). Cette boucle remplace celle du 2026-09-22 (`state.selectedNodeId` →
+     * `selectedSketchId`), qui allumait tout ce qu'on touchait sans rien en faire.
+     *
+     * ⚠️ **L'identité voyage TELLE QUELLE** : le viewer rend le `nodeId` de la POSE cliquée,
+     * et l'analyser ici allumerait toutes les poses d'un modèle au lieu de celle qu'on a
+     * touchée (mesuré dans l'éditeur le 2026-09-13).
+     */
+    onSelectPiece(nodeId) {
+        this._select(nodeId && this.selectableNodeIds.has(nodeId) ? nodeId : null,
+                     nodeId ? this.state.selection.isolated : false);
+    }
+
+    /** Le double clic : la pièce s'ouvre SEULE, cadrée. */
+    onActivatePiece(nodeId) {
+        if (!nodeId || !this.selectableNodeIds.has(nodeId)) return;
+        this._select(nodeId, true);
+    }
+
+    onHoverPiece(nodeId) {
+        this.state.hover = nodeId || null;
+    }
+
+    /** « Voir tout » : quitter l'isolation, garder la sélection. */
+    onExitIsolation() {
+        this._select(this.state.selection.nodeId, false);
+    }
+
+    /** « Retour au produit » : plus de sélection, plus d'isolation. */
+    onClearSelection() {
+        this._select(null, false);
+    }
+
+    _select(nodeId, isolated, { broadcast = true } = {}) {
+        const before = this.state.selection;
+        if (before.nodeId === nodeId && before.isolated === isolated) return;
+        this.state.selection = { nodeId, isolated };
+        this.state.reason = null;
+        if (isolated && nodeId) this._frameOn(nodeId);
+        // ⚠️ Partagée comme la caméra (D-256) : seul qui tient la main diffuse, et ce
+        // qui vient du fil ne se rediffuse pas — sinon deux pages se renverraient la
+        // même sélection à tour de rôle.
+        if (broadcast && this.hand.mine) {
+            this._call("/configurator/select", { node_id: nodeId, isolated });
+        }
+    }
+
+    /**
+     * Cadrer la pose isolée : la cible se déplace sur elle, la distance s'ajuste, les
+     * angles restent ceux du moment — on ouvre une pièce, on ne change pas de point de vue.
+     */
+    _frameOn(nodeId) {
+        const pose = this._lastPose || this.state.model?.camera?.pose;
+        if (!pose) return;
+        this.state.cameraApply = {
+            move: true, pose, fitDistance: true, target: { nodeId },
+            serial: (this.state.cameraApply?.serial ?? 0) + 1,
+        };
+    }
+
+    /**
+     * Répondre à une question — de la RACINE (`nodeId` nul) ou du PLACEMENT sélectionné.
+     *
+     * ⓘ Une seule porte pour les deux : ce qui change est le lien qui part avec la
+     * réponse, jamais le geste.
+     */
+    async onAnswer(nodeId, questionId, value) {
+        if (!nodeId) return this.onPick(questionId, value);
+        if (this.watching) {
+            this.state.reason = this.handLabel;
+            return;
+        }
+        const payload = answerForPlacement(this.state.model, this.selectedPlacement, questionId, value.id);
+        if (!payload) {
+            this.state.reason = reasonFor(value);
+            return;
+        }
+        this.state.reason = null;
+        this.state.loading = true;
+        const next = await this._call("/configurator/set_value", payload);
+        await this._applyModel(next);
+        this.state.loading = false;
+    }
+
+    /** La liste déroulante d'un placement — même porte que `onSelect` pour la racine. */
+    onAnswerSelect(nodeId, question, ev) {
+        const chosenId = Number(ev.target.value);
+        const value = question.values.find((v) => v.id === chosenId);
+        if (value) this.onAnswer(nodeId, question.id, value);
     }
 
     /**
@@ -501,6 +686,8 @@ export class ConfiguratorPage extends Component {
     }
 
     get takeHandLabel() { return _t("Take over"); }
+    get backToProductLabel() { return _t("Back to product"); }
+    get showAllLabel() { return _t("Show all"); }
 
     /**
      * Prendre la main — et le dire à ceux qui regardent.
@@ -527,8 +714,10 @@ export class ConfiguratorPage extends Component {
      * tous les envoyer : ce qui compte est où l'on s'arrête, pas le trajet.
      */
     onCameraPose(pose) {
-        if (!this.hand.mine || !pose) return;
+        if (!pose) return;
+        // Retenue pour tous : c'est la pose d'où l'on cadrera une pièce isolée.
         this._lastPose = pose;
+        if (!this.hand.mine) return;
         if (this._poseTimer) return;
         this._poseTimer = browser.setTimeout(() => {
             this._poseTimer = null;
@@ -624,34 +813,6 @@ export class ConfiguratorPage extends Component {
         }
     }
 
-    /**
-     * LE CONTOUR — ce qu'un clic, ou une TAPE, vient de désigner dans la scène.
-     *
-     * ⚠️ **L'aller existait, le retour manquait.** Le viewer publie déjà ce qu'on touche
-     * (`onSelectPiece`, nourri aussi bien par la souris que par `onTouchEnd`), mais il
-     * n'allume son contour de SÉLECTION que d'après une prop — `selectedSketchId`. La page
-     * ne passait ni l'un ni l'autre : le contour cyan n'était donc allumé NULLE PART, ni au
-     * bureau ni au téléphone.
-     *
-     * ⓘ Ce qu'on voyait au bureau était le contour de SURVOL, orange, que le viewer allume
-     * tout seul au passage de la souris. **Un doigt ne survole pas** — d'où « ça marche sur
-     * desktop et pas sur mobile » (Gerry, 2026-09-22), qui n'était pas une histoire de
-     * tactile mais de boucle non refermée. L'éditeur, lui, la referme depuis toujours
-     * (`onSelectPiece` → `state.selectedNodeId` → `selectedSketchId`) : c'est pourquoi la
-     * sélection y répond au doigt.
-     *
-     * ⚠️ **L'identité voyage TELLE QUELLE.** Le viewer rend soit le `nodeId` d'un placement
-     * (une chaîne), soit un `pieceId` (un nombre) quand la pièce n'a pas de placement, et
-     * `_selectedSubtreeGroups` sait lire les deux. L'analyser ici — pour « normaliser » —
-     * allumerait toutes les poses d'un modèle au lieu de celle qu'on a touchée, défaut
-     * mesuré dans l'éditeur le 2026-09-13.
-     *
-     * ⓘ `null` arrive quand le clic tombe dans le VIDE : le viewer le publie, et il
-     * éteint. C'est le geste attendu, et il ne coûte rien à écrire.
-     */
-    onSelectPiece(id) {
-        this.state.selectedNodeId = id ?? null;
-    }
 
     /**
      * Y a-t-il une sortie ? — et c'est bien la question, pas « est-on dans un overlay ».

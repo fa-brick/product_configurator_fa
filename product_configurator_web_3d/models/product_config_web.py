@@ -11,11 +11,35 @@ questions, leurs réponses possibles, le prix et la définition 3D. Elle ne reç
 ni identifiant interne de session, ni jeton d'une autre, ni rien qui permette
 d'énumérer : le jeton entre, il ne ressort pas.
 """
-from odoo import api, models
+import logging
+
+from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class ProductConfigSession(models.Model):
     _inherit = "product.config.session"
+
+    # ── LES RÉPONSES PAR PLACEMENT — D-332 ──────────────────────────────────
+    #
+    # `value_ids` porte les réponses de la RACINE. Un enfant posé par un lien a ses propres
+    # questions ; celles que l'auteur n'a pas fixées sur le lien se répondent ICI, par lien :
+    # `{"<id de lien>": {"<id d'attribut>": <id de valeur>}}`. ⚠️ Les clés d'un `Json` sont
+    # des CHAÎNES ([[L-219]]) : tout lecteur les convertit, jamais ne les compare brutes.
+    #
+    # ⓘ Une OCCURRENCE de répétition partage les réponses de son lien source — répondre
+    # par copie est le cas de D-175, plus tard.
+    child_values = fields.Json(
+        string="Answers per placement", default=lambda self: {},
+        help="Answers of the client to the questions of a placed part, per link.",
+    )
+    # La VARIANTE de chaque placement répondu, née à la confirmation — `{"<lien>": id}`.
+    # ⚠️ Sans effet commercial tant que 7-9/7-10 ne sont pas faites : retenue, pas commandée.
+    child_variants = fields.Json(
+        string="Variants per placement", default=lambda self: {},
+        help="Variant derived at confirmation for each answered placement.",
+    )
 
     def _web_attribute_lines(self):
         """Les questions du produit, avec ce qui reste disponible.
@@ -311,6 +335,260 @@ class ProductConfigSession(models.Model):
         self._ensure_access_token()
         return "/configurator/%s/image" % self.access_token
 
+    def _web_link_answers(self):
+        """`{lien → {attribut → réponse}}` — ce que le moteur attend PAR PLACEMENT (D-332).
+
+        ⚠️ La même règle de forme que `_web_values` : une question NUMÉRIQUE reçoit le NOM
+        de la valeur (l'identifiant y entrerait comme un nombre faux, [[L-219]] côté 3D),
+        une DISCRÈTE son identifiant. Une valeur disparue n'entre pas.
+        """
+        self.ensure_one()
+        Value = self.env["product.attribute.value"]
+        out = {}
+        for link_key, answers in (self.child_values or {}).items():
+            try:
+                link_id = int(link_key)
+            except (TypeError, ValueError):
+                continue
+            resolved = {}
+            for attr_key, value_id in (answers or {}).items():
+                value = Value.browse(int(value_id)).exists() if value_id else Value
+                if not value:
+                    continue
+                resolved[value.attribute_id.id] = (
+                    value.name if value.attribute_id.is_numeric() else value.id
+                )
+            if resolved:
+                out[link_id] = resolved
+        return out
+
+    def _web_placements(self, model3d, definition, values):
+        """Les PLACEMENTS que le client peut régler — `{nodeId → {linkId, label,
+        questions}}` — et eux seuls (D-332, D-333).
+
+        ⚠️ **La vérité de « sélectionnable » vient de la DÉFINITION** (`editableAttributeIds`,
+        posé par l'éditeur : les questions du gabarit que l'auteur n'a pas fixées). La
+        redire ici ferait deux règles pour une même pièce ([[L-034]]). Un placement sans
+        question éditable n'apparaît pas : le rail piloté par son parent ne se sélectionne
+        pas, et le survol ne le nomme pas (arbitrage Gerry, 2026-09-23).
+
+        ⓘ Les questions ont la MÊME forme que celles de la racine (`_web_attribute_lines`) :
+        la page les rend avec le code qu'elle a déjà. La disponibilité se demande au même
+        évaluateur, sur le gabarit de l'ENFANT et ses propres réponses.
+        """
+        self.ensure_one()
+        if not definition:
+            return {}
+        Model3d = self.env["product.model3d"].sudo()
+        Session = self.env["product.config.session"].sudo()
+        variants = model3d._resolve_swap_variants(values) if model3d else {}
+        child_values = self.child_values or {}
+        out = {}
+
+        def walk(node):
+            for child in node.get("children") or []:
+                editable = child.get("editableAttributeIds") or []
+                link_id = child.get("linkId")
+                if editable and link_id:
+                    out[child["id"]] = self._web_placement(
+                        Model3d, Session, child, link_id, editable,
+                        child_values.get(str(link_id)) or child_values.get(link_id) or {},
+                        variants)
+                walk(child)
+
+        walk(definition)
+        return out
+
+    def _web_placement(self, Model3d, Session, node, link_id, editable, answers, variants):
+        piece = Model3d.browse(node.get("model3dId")).exists()
+        link = self.env["product.model3d.component"].sudo().browse(link_id).exists()
+        tmpl = piece.product_tmpl_id
+        variant = link._swapped_variant(variants) if link else None
+        by_attr = {
+            ptav.attribute_id.id: ptav.product_attribute_value_id.id
+            for ptav in (variant.product_template_attribute_value_ids if variant else [])
+        }
+        # Ce que le client a choisi, sinon ce que la VARIANTE désignée porte, sinon le
+        # défaut de la ligne — la même pile que `_child_node`, lue pour cocher.
+        chosen_ids = []
+        for line in tmpl.attribute_line_ids:
+            attr_id = line.attribute_id.id
+            picked = (answers.get(str(attr_id)) or answers.get(attr_id)
+                      or by_attr.get(attr_id)
+                      or (line.default_val.id if "default_val" in line._fields and line.default_val else None))
+            if picked:
+                chosen_ids.append(int(picked))
+        questions = []
+        for line in tmpl.attribute_line_ids.sorted():
+            if line.attribute_id.id not in editable:
+                continue
+            values = line._configurator_value_ids()
+            try:
+                available = set(Session.values_available(
+                    check_val_ids=values.ids, value_ids=list(chosen_ids), custom_vals={},
+                    product_tmpl_id=tmpl.id, product_template_attribute_line_id=line.id))
+            except Exception:  # noqa: BLE001 — un évaluateur qui tombe ne doit pas cacher la question
+                _logger.warning("placement %s: availability could not be evaluated", link_id,
+                                exc_info=True)
+                available = set(values.ids)
+            questions.append({
+                "id": line.attribute_id.id,
+                "name": line.attribute_id.name,
+                "required": bool(line.required),
+                "multi": bool(line.multi),
+                "displayType": line.attribute_id.display_type,
+                "values": [{
+                    "id": value.id,
+                    "name": value.display_value or value.name,
+                    "available": value.id in available,
+                    "chosen": value.id in chosen_ids,
+                    "color": value.html_color or None,
+                    "image": ("/configurator/value/%s/image" % value.id
+                              if self._web_value_has_image(value) else None),
+                } for value in values],
+            })
+        return {
+            "nodeId": node["id"],
+            "linkId": link_id,
+            "label": node.get("label") or tmpl.display_name or "",
+            "questions": questions,
+        }
+
+    def web_set_child_value(self, link_id, value):
+        """Répondre à une question d'un PLACEMENT — D-332.
+
+        ⚠️ Refusé si la question n'est pas ÉDITABLE pour ce lien : c'est la définition qui
+        le dit, et un client ne défait pas ce que l'auteur a fixé. Une question à réponses
+        MULTIPLES bascule la valeur ; les autres la remplacent.
+        """
+        self.ensure_one()
+        model3d = self._web_model3d()
+        values = self._web_values()
+        definition = model3d.to_definition(values, link_answers=self._web_link_answers()) if model3d else None
+        placements = self._web_placements(model3d, definition, values)
+        placement = placements.get("c%s" % int(link_id))
+        question = next((q for q in (placement or {}).get("questions", [])
+                         if q["id"] == value.attribute_id.id), None)
+        if not question:
+            return {"error": "unknown_value"}
+        answers = dict((self.child_values or {}).get(str(int(link_id))) or {})
+        key = str(value.attribute_id.id)
+        if question["multi"]:
+            current = answers.get(key)
+            kept = list(current) if isinstance(current, list) else ([current] if current else [])
+            answers[key] = ([v for v in kept if v != value.id] if value.id in kept
+                            else kept + [value.id])
+        else:
+            answers[key] = value.id
+        child_values = dict(self.child_values or {})
+        child_values[str(int(link_id))] = answers
+        self.write({"child_values": child_values})
+        # ⓘ Un `write` sur `value_ids` prévient ceux qui regardent ; celui-ci doit le faire
+        # de lui-même — la même diffusion, l'état complet.
+        self._notify_configuration_changed()
+        return self.web_state()
+
+    def _web_confirm_children(self):
+        """La VARIANTE de chaque placement RÉPONDU naît à la confirmation — D-332.
+
+        Le même geste que pour la racine (D-190) : un gabarit, des réponses, une variante.
+        ⚠️ Retenue sur la session (`child_variants`), SANS effet commercial dans ce lot :
+        la commande, la nomenclature et le prix des composants sont 7-9/7-10.
+
+        ⚠️ Une variante qui ne peut pas naître (réponse d'auteur par FORMULE, que le
+        serveur ne résout pas ; gabarit sans variantes) est consignée, jamais bloquante :
+        la confirmation de la racine ne dépend pas d'un enfant.
+        """
+        self.ensure_one()
+        model3d = self._web_model3d()
+        if not model3d:
+            return {}
+        values = self._web_values()
+        definition = model3d.to_definition(values, link_answers=self._web_link_answers())
+        placements = self._web_placements(model3d, definition, values)
+        born = {}
+        for placement in placements.values():
+            link_id = placement["linkId"]
+            answered = (self.child_values or {}).get(str(link_id))
+            if not answered:
+                continue
+            child_model_id = self._web_placement_model_id(definition, placement["nodeId"])
+            tmpl = self.env["product.model3d"].sudo().browse(child_model_id).product_tmpl_id
+            if not tmpl:
+                continue
+            value_ids = []
+            for question in placement["questions"]:
+                value_ids += [v["id"] for v in question["values"] if v["chosen"]]
+            # Les questions FIXÉES par l'auteur (hors `questions`) : leur valeur résolue
+            # entre aussi, quand c'est une valeur et non une formule.
+            node_overrides = self._web_placement_overrides(definition, placement["nodeId"])
+            for attr_key, binding in node_overrides.items():
+                if not isinstance(binding, dict) or "value" not in binding:
+                    continue
+                attribute = self.env["product.attribute"].browse(int(attr_key)).exists()
+                if not attribute or attribute.id in {q["id"] for q in placement["questions"]}:
+                    continue
+                value = attribute.resolve_answer(binding["value"])
+                if value:
+                    value_ids.append(value.id)
+            # ⓘ **Par le cœur d'Odoo, pas par une session de l'enfant.** La recherche de
+            # variante d'OCA (`search_variant`) ne retrouve pas celles qu'Odoo engendre
+            # lui-même à la création des lignes d'attribut : elle en CRÉAIT une seconde, et
+            # la contrainte d'unicité de la combinaison tombait au vidage — mesuré. Le cœur
+            # sait retrouver une combinaison (`_get_variant_for_combination`) et la créer
+            # pour un attribut dynamique (`_create_product_variant`).
+            #
+            # ⚠️ **SOUS UN POINT DE SAUVEGARDE, et VIDÉ avant d'être retenu** : une erreur
+            # SQL attrapée sans point de sauvegarde laisse la transaction en échec, et un
+            # identifiant retenu avant le vidage désigne une ligne qu'un repli a effacée.
+            wanted = set(value_ids)
+            combination = tmpl.attribute_line_ids.product_template_value_ids.filtered(
+                lambda ptav: ptav.product_attribute_value_id.id in wanted)
+            try:
+                with self.env.cr.savepoint():
+                    variant = (tmpl._get_variant_for_combination(combination)
+                               or tmpl._create_product_variant(combination, log_warning=True))
+                    if not variant:
+                        raise ValueError("no variant for this combination")
+                    self.env.flush_all()
+                born[str(link_id)] = variant.id
+            except Exception:  # noqa: BLE001
+                _logger.warning("placement %s: the child variant could not be born", link_id,
+                                exc_info=True)
+        if born:
+            self.write({"child_variants": born})
+        return born
+
+    @api.model
+    def _web_placement_model_id(self, definition, node_id):
+        found = None
+
+        def walk(node):
+            nonlocal found
+            for child in node.get("children") or []:
+                if child.get("id") == node_id:
+                    found = child.get("model3dId")
+                    return
+                walk(child)
+
+        walk(definition or {})
+        return found
+
+    @api.model
+    def _web_placement_overrides(self, definition, node_id):
+        found = {}
+
+        def walk(node):
+            nonlocal found
+            for child in node.get("children") or []:
+                if child.get("id") == node_id:
+                    found = child.get("attributeOverrides") or {}
+                    return
+                walk(child)
+
+        walk(definition or {})
+        return found
+
     def _web_values(self):
         """`{attribut → réponse}` — la forme que le moteur 3D attend (D-163).
 
@@ -405,6 +683,7 @@ class ProductConfigSession(models.Model):
                 "missing": missing.attribute_id.mapped("name"),
             }
         self.action_confirm()
+        self._web_confirm_children()
         self._web_after_confirm()
         return self.web_state()
 
@@ -476,7 +755,8 @@ class ProductConfigSession(models.Model):
         # ⓘ UNE SEULE FOIS : la définition est l'objet le plus cher de cette
         # réponse, et les matières s'y appuient pour savoir quelles pièces la
         # scène contient. La recalculer serait la payer deux fois par clic.
-        definition = model3d.to_definition(values) if model3d else None
+        definition = (model3d.to_definition(values, link_answers=self._web_link_answers())
+                      if model3d else None)
         return {
             "productName": self.product_tmpl_id.display_name,
             "state": self.state,
@@ -520,4 +800,6 @@ class ProductConfigSession(models.Model):
             # reçu par courriel, souvent sur un téléphone, et c'est la règle de cette
             # méthode.
             "baked": model3d.baked_parts(values) if model3d else {},
+            # Les PLACEMENTS que le client peut régler — et eux seuls (D-332, D-333).
+            "placements": self._web_placements(model3d, definition, values) if model3d else {},
         }

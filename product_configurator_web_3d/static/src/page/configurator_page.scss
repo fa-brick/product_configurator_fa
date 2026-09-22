@@ -283,3 +283,32 @@
 }
 
 .o_cfg3d_error { margin: 15vh auto; text-align: center; }
+
+/* ── LA SÉLECTION (D-333) ─────────────────────────────────────────────────── */
+
+/* Le nom de la pose sous le pointeur — posé dans un coin du viewer, pas sous le doigt :
+   un cartouche qui suit le pointeur cacherait ce qu'on veut voir. */
+.o_cfg3d_hover {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    padding: 4px 10px;
+    font-size: 13px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.85);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.o_cfg3d_showall {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    z-index: 2;
+}
+
+.o_cfg3d_piece { margin-bottom: 16px; }
+.o_cfg3d_crumbs { font-size: 12px; opacity: 0.7; margin-bottom: 4px; }
+.o_cfg3d_crumb_sep { margin: 0 4px; }
+.o_cfg3d_piece_title { font-size: 16px; margin-bottom: 12px; }
+.o_cfg3d_back { padding-left: 0; }

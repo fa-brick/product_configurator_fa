@@ -83,6 +83,11 @@ export class ConfiguratorPage extends Component {
             // Les ENFANTS de l'assemblage, et le compteur qui dit au viewer que
             // les poses ont changé (il ne relit pas une Map par référence).
             pieces: [], sceneSerial: 0,
+            // ⚠️ **LES PASSES FINALES — gravures et perforations — MANQUAIENT ICI**, et sept
+            // gravures du JeNo étaient invisibles sur cette page, sans une erreur (relevé
+            // du 2026-09-22). Le moteur les publie désormais avec l'arbre (D-330) ; la
+            // page ne fait que les passer au viewer.
+            postBuild: { byNode: {}, byPiece: {}, perforations: {} },
             // ⚠️ FAUX tant que la première scène n'est pas construite : c'est ce qui
             // tient la photo devant. Il ne repasse jamais à faux ensuite — une
             // reconstruction n'est pas une attente, c'est une mise à jour, et
@@ -293,6 +298,7 @@ export class ConfiguratorPage extends Component {
     async _buildScene(definition, scope, baked = null) {
         if (!definition) {
             this.state.pieces = [];
+            this.state.postBuild = { byNode: {}, byPiece: {}, perforations: {} };
             this._worlds = new Map();
             this._solids = new Map();
             this._bakedSolids = new Map();
@@ -313,7 +319,7 @@ export class ConfiguratorPage extends Component {
             // gardé sur la page, pour une sonde — jamais envoyé, une durée est une
             // propriété de la machine.
             const chronicle = createChronicle();
-            const { worlds, solids, baked: bakedSolids, pieces } =
+            const { worlds, solids, baked: bakedSolids, pieces, postBuild } =
                 this._session.build(buildable, scope || {}, { bakedParts, chronicle });
             this._lastBuild = chronicle.snapshot();
             this._worlds = worlds;
@@ -328,6 +334,7 @@ export class ConfiguratorPage extends Component {
             // du plan une seconde fois — un quart de tour (mesuré sur le bras, 2026-09-19).
             this._bakedSolids = bakedSolids;
             this.state.pieces = pieces;
+            this.state.postBuild = postBuild;
             this.state.sceneSerial++;
             // ⓘ La photo s'efface quand la SCÈNE est là — la caméra, elle, a été
             // demandée dès que l'état est arrivé.
@@ -339,6 +346,7 @@ export class ConfiguratorPage extends Component {
             // ne dit qu'elle est fausse. On le DIT donc au moins dans la console.
             console.warn("[configurateur] la scène n'a pas pu être construite :", e);
             this.state.pieces = [];
+            this.state.postBuild = { byNode: {}, byPiece: {}, perforations: {} };
             this._worlds = new Map();
             this._solids = new Map();
             this._bakedSolids = new Map();

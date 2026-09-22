@@ -84,6 +84,17 @@ describe("la page publique et son viewer", () => {
         expect(viewerTag()).toContain("getResolvedBakedSolids.bind");
     });
 
+    test("⚠️ elle passe les PASSES FINALES — sept gravures manquaient, sans une erreur", () => {
+        // Relevé du 2026-09-22 sur le JeNo : sept `engrave` visibles et complètes dans la
+        // définition, aucune à l'écran — le gabarit ne passait aucune de ces trois props.
+        // Cette garde avait été écrite « pour cette famille exacte » et ne les vérifiait
+        // pas. Le moteur les publie avec l'arbre (D-330) ; la page les passe.
+        const tag = viewerTag();
+        expect(tag).toContain('engravingsByPiece="state.postBuild.byPiece"');
+        expect(tag).toContain('engravingsByNode="state.postBuild.byNode"');
+        expect(tag).toContain('perforationsByPiece="state.postBuild.perforations"');
+    });
+
     test("elle passe l'identité de la PIÈCE racine — sinon aucune matière", () => {
         // Les zones sont rangées par pièce (D-166) : sans cet identifiant, elles
         // ne trouvent personne et la racine reste grise.

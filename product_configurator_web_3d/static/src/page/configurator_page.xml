@@ -65,24 +65,21 @@
                      SÉLECTION. N'en passer qu'une laisse la boucle ouverte — l'état d'avant
                      le 2026-09-22, où le contour cyan n'était allumé nulle part et où seul
                      le SURVOL peignait, donc jamais au doigt (Gerry). -->
-                <!-- ⓘ Le NOM de la pose sous le pointeur — et rien pour une pièce qui ne
-                     se sélectionne pas (arbitrage Gerry, 2026-09-23). -->
-                <div t-if="hoverLabel" class="o_cfg3d_hover" t-esc="hoverLabel"/>
                 <!-- ⓘ Isolée : un bouton pour revenir à tout. -->
                 <button t-if="state.selection.isolated and state.selection.nodeId"
                         class="btn btn-sm btn-secondary o_cfg3d_showall"
                         t-on-click="() => this.onExitIsolation()" t-esc="showAllLabel"/>
                 <!-- ⚠️ LA SÉLECTION (D-333) : `pieces` est le sous-arbre isolé ou tout ;
-                     `selectableNodeIds` dit au viewer ce qu'un clic peut désigner ;
-                     `selectedNodeIds` allume le contour ; les trois rappels remontent
-                     clic, double clic et survol. -->
+                     `selectableNodeIds` dit au viewer ce qu'un clic peut désigner — et ce
+                     qu'un survol CONTOURE en orange, comme dans l'éditeur, sans nom
+                     (arbitrage Gerry, 2026-09-23) ; `selectedNodeIds` allume le contour de
+                     sélection ; les deux rappels remontent clic et double clic. -->
                 <PartViewer3D sketchItems="viewerSketchItems"
                               pieces="viewerPieces"
                               selectedNodeIds="selectedNodeIds"
                               selectableNodeIds="selectableNodeIds"
                               onSelectPiece.bind="onSelectPiece"
                               onActivatePiece.bind="onActivatePiece"
-                              onHoverPiece.bind="onHoverPiece"
                               resolvedTreeSerial="state.sceneSerial"
                               getResolvedWorldByNodeId.bind="getResolvedWorldByNodeId"
                               getResolvedSolidsByNodeId.bind="getResolvedSolidsByNodeId"

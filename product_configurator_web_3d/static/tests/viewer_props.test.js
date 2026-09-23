@@ -102,7 +102,13 @@ describe("la page publique et son viewer", () => {
         expect(tag).toContain('selectableNodeIds="selectableNodeIds"');
         expect(tag).toContain('onSelectPiece.bind="onSelectPiece"');
         expect(tag).toContain('onActivatePiece.bind="onActivatePiece"');
-        expect(tag).toContain('onHoverPiece.bind="onHoverPiece"');
+    });
+
+    test("⚠️ le survol ne NOMME rien — le contour orange du viewer suffit, comme dans l'éditeur", () => {
+        // Arbitrage Gerry (2026-09-23) : pas de cartouche avec le nom de la pièce. Le viewer
+        // contoure en orange ce qu'un clic pourrait désigner, et rien d'autre.
+        expect(viewerTag()).not.toContain("onHoverPiece");
+        expect(TEMPLATE.replace(/<!--[\s\S]*?-->/g, "")).not.toContain("o_cfg3d_hover");
     });
 
     test("les questions du produit et celles d'une pièce passent par le MÊME gabarit", () => {

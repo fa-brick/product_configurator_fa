@@ -93,10 +93,10 @@ export class ConfiguratorPage extends Component {
             postBuild: { byNode: {}, byPiece: {}, perforations: {} },
             // ── LA SÉLECTION (D-333) ──────────────────────────────────────────
             // Une seule pose à la fois ; `isolated` quand un double clic l'a ouverte
-            // seule. `hover` : la pose sous le pointeur, pour la nommer — jamais une
-            // pièce non sélectionnable (arbitrage Gerry, 2026-09-23).
+            // seule. Le SURVOL, lui, ne passe pas par la page : le viewer contoure en
+            // orange ce qu'un clic pourrait désigner, comme dans l'éditeur, et ne nomme
+            // rien (arbitrage Gerry, 2026-09-23).
             selection: { nodeId: null, isolated: false },
-            hover: null,
             // ⚠️ FAUX tant que la première scène n'est pas construite : c'est ce qui
             // tient la photo devant. Il ne repasse jamais à faux ensuite — une
             // reconstruction n'est pas une attente, c'est une mise à jour, et
@@ -472,13 +472,6 @@ export class ConfiguratorPage extends Component {
         return id ? selectionPath(this.state.pieces, id) : [];
     }
 
-    /** Le nom de la pose sous le pointeur — muet sur ce qui ne se sélectionne pas. */
-    get hoverLabel() {
-        const id = this.state.hover;
-        if (!id || id === this.state.selection.nodeId) return "";
-        return this.state.pieces.find((p) => p.key === id)?.label || "";
-    }
-
     /**
      * Les pièces que le viewer MONTE : toutes, ou le seul sous-arbre isolé (D-333).
      *
@@ -525,10 +518,6 @@ export class ConfiguratorPage extends Component {
     onActivatePiece(nodeId) {
         if (!nodeId || !this.selectableNodeIds.has(nodeId)) return;
         this._select(nodeId, true);
-    }
-
-    onHoverPiece(nodeId) {
-        this.state.hover = nodeId || null;
     }
 
     /** « Voir tout » : quitter l'isolation, garder la sélection. */

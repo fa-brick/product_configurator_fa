@@ -309,7 +309,22 @@ class ProductConfigSession(models.Model):
             "fov": camera.fov,
             "projection": camera.projection,
             "fitDistance": camera.fit_distance,
+            # ⓘ LA CIBLE fait partie de la vue (D-116). Sans elle, la page posait la
+            # pose sans centre — et une pièce isolée puis quittée gardait le centre de
+            # la pièce. Gerry (2026-09-23) : « lorsque l'on quitte, il faut revenir à
+            # la vue caméra en cours, qui donnera la target ».
+            "target": self._web_camera_target(camera),
         }
+
+    def _web_camera_target(self, camera):
+        """La cible d'une vue, telle que le viewer la résout : un NŒUD `c<linkId>`, la
+        MATIÈRE (`root`) ou l'ORIGINE. Miroir de `_resolveCameraTarget` de l'éditeur —
+        `root` et `origin` ne sont pas la même chose (D-116)."""
+        if camera.target_kind == "piece" and camera.target_link_id:
+            return {"nodeId": "c%d" % camera.target_link_id.id}
+        if camera.target_kind == "root":
+            return {"root": True}
+        return {"origin": True}
 
     def _web_image(self):
         """L'image du produit — ce qu'on montre PENDANT que la 3D se construit.

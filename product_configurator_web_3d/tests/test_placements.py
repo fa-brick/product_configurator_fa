@@ -128,3 +128,21 @@ class TestPlacements(TransactionCase):
     def test_sans_reponse_aucune_variante_d_enfant(self):
         self.session.web_confirm()
         self.assertFalse(self.session.child_variants)
+
+    # ── LA VUE CAMÉRA porte sa CIBLE (D-116) ───────────────────────────────
+    # Gerry (2026-09-23) : « lorsque l'on quitte [l'isolation], il faut revenir à la vue
+    # caméra en cours qui donnera la target » — donc la vue servie doit la porter.
+    def _camera(self, **vals):
+        return self.env["product.model3d.camera"].create({
+            "name": "Vue", "model3d_id": self.porte.id, "is_thumbnail": True, **vals})
+
+    def test_la_vue_servie_vise_le_PLACEMENT_de_sa_cible(self):
+        self._camera(target_kind="piece", target_link_id=self.link_poignee.id)
+        self.assertEqual(self.session.web_state()["camera"]["target"],
+                         {"nodeId": "c%s" % self.link_poignee.id})
+
+    def test_la_vue_servie_vise_la_matiere_ou_l_origine(self):
+        camera = self._camera(target_kind="root")
+        self.assertEqual(self.session.web_state()["camera"]["target"], {"root": True})
+        camera.target_kind = "origin"
+        self.assertEqual(self.session.web_state()["camera"]["target"], {"origin": True})

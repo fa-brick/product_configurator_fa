@@ -62,6 +62,17 @@ describe("la vue par défaut de la page", () => {
         // l'attente d'une pose, et la pose d'une construction.
         expect(bodyAfter("_settleCamera() {")).not.toContain("state.ready = true");
     });
+
+    test("quitter l'isolation RAMÈNE la vue caméra en cours — celle du produit, avec sa cible", () => {
+        // Gerry (2026-09-23) : le double clic vise la pièce ; en quittant, la vue en cours
+        // rend sa cible. La vue vient du serveur AVEC `target` ; sans vue, la matière.
+        const select = bodyAfter("_select(nodeId, isolated, { broadcast = true } = {}) {");
+        expect(select).toContain("if (isolated && nodeId) this._frameOn(nodeId);");
+        expect(select).toContain("else if (before.isolated) this._returnToView();");
+        const back = bodyAfter("_returnToView() {");
+        expect(back).toContain("this.state.model?.camera");
+        expect(back).toContain("target: { root: true }");
+    });
 });
 
 describe("la page publique et son viewer", () => {

@@ -528,6 +528,7 @@ export class ConfiguratorPage extends Component {
         this.state.selection = { nodeId, isolated };
         this.state.reason = null;
         if (isolated && nodeId) this._frameOn(nodeId);
+        else if (before.isolated) this._returnToView();
         // ⚠️ Partagée comme la caméra (D-256) : seul qui tient la main diffuse, et ce
         // qui vient du fil ne se rediffuse pas — sinon deux pages se renverraient la
         // même sélection à tour de rôle.
@@ -547,6 +548,21 @@ export class ConfiguratorPage extends Component {
             move: true, pose, fitDistance: true, target: { nodeId },
             serial: (this.state.cameraApply?.serial ?? 0) + 1,
         };
+    }
+
+    /**
+     * Quitter l'isolation : revenir à la VUE CAMÉRA EN COURS — celle du produit, qui
+     * porte sa cible. Gerry (2026-09-23) : « lors du double clic la target est la pièce,
+     * lorsque l'on quitte, il faut revenir à la vue caméra en cours qui donnera la
+     * target ». Sans vue enregistrée, la pose du moment vise de nouveau toute la matière.
+     */
+    _returnToView() {
+        const view = this.state.model?.camera;
+        const req = view ? { ...view, move: true }
+            : this._lastPose ? { move: true, pose: this._lastPose, fitDistance: true, target: { root: true } }
+            : null;
+        if (!req) return;
+        this.state.cameraApply = { ...req, serial: (this.state.cameraApply?.serial ?? 0) + 1 };
     }
 
     /**

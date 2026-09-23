@@ -40,7 +40,7 @@ import { getGLTFLoader, getDRACOLoader, DRACO_DECODER_PATH }
 // auraient reconnus.
 import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
 import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
-         placementOf, selectableNodeIds, selectionPath, answerForPlacement }
+         placementOf, selectableNodeIds, answerForPlacement }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -464,12 +464,6 @@ export class ConfiguratorPage extends Component {
     get selectedPlacement() {
         const id = this.state.selection.nodeId;
         return id ? placementOf(this.state.model, this.state.pieces, id) : null;
-    }
-
-    /** La lignée de la pose sélectionnée, du plus haut au plus bas. */
-    get selectionPath() {
-        const id = this.state.selection.nodeId;
-        return id ? selectionPath(this.state.pieces, id) : [];
     }
 
     /**

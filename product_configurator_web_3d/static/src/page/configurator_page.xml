@@ -107,7 +107,22 @@
                      qu'on vient chercher — le prix et le geste — ne doit jamais partir
                      hors de l'écran (demande de Gerry, 2026-09-06). -->
                 <div class="o_cfg3d_scroll">
-                <h1 class="o_cfg3d_title" t-esc="state.model and state.model.productName"/>
+                <!-- ⓘ L'EN-TÊTE dit où l'on est : le produit, ou — une pièce sélectionnée —
+                     la FLÈCHE de retour suivie du nom de la pièce (maquette de Gerry,
+                     2026-09-23). Pas de fil d'Ariane, pas de bouton en bas : la flèche est
+                     le seul retour, et la croix reste celle de la page. -->
+                <h1 t-if="selectedPlacement" class="o_cfg3d_title o_cfg3d_title--piece">
+                    <button class="o_cfg3d_backarrow"
+                            t-on-click="() => this.onClearSelection()"
+                            t-att-title="backToProductLabel" t-att-aria-label="backToProductLabel">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+                             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 12H4M11 5l-7 7 7 7"/>
+                        </svg>
+                    </button>
+                    <span t-esc="selectedPlacement.label"/>
+                </h1>
+                <h1 t-else="" class="o_cfg3d_title" t-esc="state.model and state.model.productName"/>
 
                 <div t-if="state.model and state.model.closed" class="o_cfg3d_closed"
                      t-esc="closedLabel"/>
@@ -124,24 +139,14 @@
                 </div>
 
                 <!-- ── LA PIÈCE SÉLECTIONNÉE — ses questions, à la place de celles du produit
-                     (D-333 : « en un clic, éditer ses questions »). Le fil d'Ariane dit
-                     d'où elle vient ; « Retour au produit » rend la main aux questions de
-                     la racine. -->
+                     (D-333 : « en un clic, éditer ses questions »). Le retour est la flèche
+                     de l'en-tête, ci-dessus. -->
                 <section t-if="selectedPlacement" class="o_cfg3d_piece">
-                    <nav class="o_cfg3d_crumbs">
-                        <t t-foreach="selectionPath" t-as="crumb" t-key="crumb.nodeId">
-                            <span t-if="!crumb_first" class="o_cfg3d_crumb_sep">›</span>
-                            <span class="o_cfg3d_crumb" t-esc="crumb.label"/>
-                        </t>
-                    </nav>
-                    <h2 class="o_cfg3d_piece_title" t-esc="selectedPlacement.label"/>
                     <t t-foreach="selectedPlacement.questions" t-as="question" t-key="question.id">
                         <t t-call="product_configurator_web_3d.Question">
                             <t t-set="placementNodeId" t-value="state.selection.nodeId"/>
                         </t>
                     </t>
-                    <button class="btn btn-sm btn-link o_cfg3d_back"
-                            t-on-click="() => this.onClearSelection()" t-esc="backToProductLabel"/>
                 </section>
 
                 <!-- ⓘ Les questions du PRODUIT — par le MÊME gabarit qu'une pièce. -->

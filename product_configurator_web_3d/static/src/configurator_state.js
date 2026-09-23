@@ -71,23 +71,6 @@ export function selectableNodeIds(model, pieces) {
 }
 
 /**
- * La LIGNÉE d'une pose — les noms, de l'assemblage le plus haut à la pièce — par la
- * parenté que le moteur publie (`parentKey`, D-331). La racine de l'arbre, qui n'est pas
- * une pièce projetée, n'y figure pas : c'est le produit lui-même, nommé ailleurs.
- */
-export function selectionPath(pieces, nodeId) {
-    const byKey = new Map((pieces || []).map((p) => [p.key, p]));
-    const path = [];
-    let key = nodeId;
-    for (let depth = 0; key != null && byKey.has(key) && depth <= byKey.size; depth++) {
-        const piece = byKey.get(key);
-        path.unshift({ nodeId: piece.key, label: piece.label || "" });
-        key = piece.parentKey ?? null;
-    }
-    return path;
-}
-
-/**
  * Ce qu'il faut envoyer pour répondre à une question d'un PLACEMENT — mêmes refus que
  * `answerFor`, et le lien en plus (D-332).
  */

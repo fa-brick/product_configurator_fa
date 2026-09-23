@@ -111,6 +111,19 @@ describe("la page publique et son viewer", () => {
         expect(TEMPLATE.replace(/<!--[\s\S]*?-->/g, "")).not.toContain("o_cfg3d_hover");
     });
 
+    test("⚠️ une pièce sélectionnée : la FLÈCHE de retour puis son nom en en-tête — ni fil d'Ariane, ni bouton en bas", () => {
+        // Maquette de Gerry (2026-09-23) : l'en-tête montre la navigation, les questions
+        // de la pièce viennent dessous.
+        const body = TEMPLATE.replace(/<!--[\s\S]*?-->/g, "");
+        const head = body.slice(body.indexOf('o_cfg3d_title--piece'), body.indexOf('t-else="" class="o_cfg3d_title"'));
+        expect(head).toContain('class="o_cfg3d_backarrow"');
+        expect(head).toContain('this.onClearSelection()');
+        expect(head).toContain('t-esc="selectedPlacement.label"');
+        expect(body).not.toContain("o_cfg3d_crumbs");
+        expect(body).not.toContain("o_cfg3d_back\"");
+        expect(body).not.toContain("o_cfg3d_piece_title");
+    });
+
     test("les questions du produit et celles d'une pièce passent par le MÊME gabarit", () => {
         expect(TEMPLATE.match(/t-call="product_configurator_web_3d.Question"/g)).toHaveLength(2);
         expect(TEMPLATE).toContain('t-name="product_configurator_web_3d.Question"');

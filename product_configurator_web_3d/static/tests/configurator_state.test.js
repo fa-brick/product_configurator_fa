@@ -6,7 +6,7 @@
  * tests plutôt que l'inverse.
  */
 import { toViewModel, answerFor, reasonFor, sameDefinition, confirmError, handState, handMessage,
-         placementOf, selectableNodeIds, selectionPath, answerForPlacement }
+         placementOf, selectableNodeIds, answerForPlacement }
     from "@product_configurator_web_3d/configurator_state";
 
 const PAYLOAD = {
@@ -336,13 +336,6 @@ describe("les PLACEMENTS réglables — ce qui se sélectionne, et ce qu'on y r�
         expect(placementOf(model(), PIECES, "c11/f5/occ_001")?.linkId).toBe(11);
         expect(placementOf(model(), PIECES, "c12")).toBeNull();
         expect(placementOf(model(), PIECES, "nulle-part")).toBeNull();
-    });
-
-    test("la lignée remonte par la parenté, du plus haut à la pièce", () => {
-        expect(selectionPath(PIECES, "c11/f5/occ_001").map((p) => p.label))
-            .toEqual(["Sous-ensemble", "Poignée"]);
-        expect(selectionPath(PIECES, "c10").map((p) => p.nodeId)).toEqual(["c10"]);
-        expect(selectionPath(PIECES, "inconnu")).toEqual([]);
     });
 
     test("répondre sur un placement envoie le LIEN avec la valeur", () => {

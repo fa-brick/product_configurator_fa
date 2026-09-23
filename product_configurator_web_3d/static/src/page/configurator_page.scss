@@ -294,7 +294,22 @@
 }
 
 .o_cfg3d_piece { margin-bottom: 16px; }
-.o_cfg3d_crumbs { font-size: 12px; opacity: 0.7; margin-bottom: 4px; }
-.o_cfg3d_crumb_sep { margin: 0 4px; }
-.o_cfg3d_piece_title { font-size: 16px; margin-bottom: 12px; }
-.o_cfg3d_back { padding-left: 0; }
+
+/* L'en-tête d'une pièce sélectionnée : la flèche de retour, puis son nom (maquette de
+   Gerry, 2026-09-23). La flèche est un bouton nu, de la couleur du texte. */
+.o_cfg3d_title--piece {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.o_cfg3d_backarrow {
+    border: 0;
+    background: transparent;
+    padding: 2px;
+    line-height: 0;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.7;
+
+    &:hover { opacity: 1; }
+}

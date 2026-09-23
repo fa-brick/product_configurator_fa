@@ -274,7 +274,7 @@
     z-index: 3;
     border: 0;
     background: transparent;
-    font-size: 28px;
+    font-size: 20px;
     line-height: 1;
     cursor: pointer;
     opacity: 0.5;
@@ -305,8 +305,9 @@
 .o_cfg3d_backarrow {
     border: 0;
     background: transparent;
-    padding: 2px;
-    line-height: 0;
+    padding: 2px 4px;
+    font-size: 18px;
+    line-height: 1;
     color: inherit;
     cursor: pointer;
     opacity: 0.7;

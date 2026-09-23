@@ -117,6 +117,11 @@ describe("la page publique et son viewer", () => {
         const body = TEMPLATE.replace(/<!--[\s\S]*?-->/g, "");
         const head = body.slice(body.indexOf('o_cfg3d_title--piece'), body.indexOf('t-else="" class="o_cfg3d_title"'));
         expect(head).toContain('class="o_cfg3d_backarrow"');
+        // Flèche et croix : les icônes Font Awesome des bundles d'Odoo, pas un SVG à nous.
+        expect(head).toContain('class="fa fa-arrow-left"');
+        expect(head).not.toContain("<svg");
+        expect(body.slice(body.indexOf('class="o_cfg3d_close"'), body.indexOf("</button>", body.indexOf('class="o_cfg3d_close"'))))
+            .toContain('class="fa fa-times"');
         expect(head).toContain('this.onClearSelection()');
         expect(head).toContain('t-esc="selectedPlacement.label"');
         expect(body).not.toContain("o_cfg3d_crumbs");

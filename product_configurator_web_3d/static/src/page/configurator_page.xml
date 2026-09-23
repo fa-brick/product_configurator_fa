@@ -18,7 +18,7 @@
              l'un ni l'autre — il se ferme par son propre cadre, et n'affiche donc rien. -->
         <button t-if="canClose" class="o_cfg3d_close"
                 t-on-click="() => this.onCloseClick()"
-                aria-label="Close" title="Close">×</button>
+                aria-label="Close" title="Close"><i class="fa fa-times" role="img"/></button>
 
         <div t-if="state.model and state.model.error" class="o_cfg3d_error">
             <p t-esc="state.model.message"/>
@@ -110,15 +110,14 @@
                 <!-- ⓘ L'EN-TÊTE dit où l'on est : le produit, ou — une pièce sélectionnée —
                      la FLÈCHE de retour suivie du nom de la pièce (maquette de Gerry,
                      2026-09-23). Pas de fil d'Ariane, pas de bouton en bas : la flèche est
-                     le seul retour, et la croix reste celle de la page. -->
+                     le seul retour, et la croix reste celle de la page. Flèche et croix sont
+                     les icônes Font Awesome que les bundles d'Odoo servent déjà (Gerry,
+                     2026-09-23) — pas de SVG à nous. -->
                 <h1 t-if="selectedPlacement" class="o_cfg3d_title o_cfg3d_title--piece">
                     <button class="o_cfg3d_backarrow"
                             t-on-click="() => this.onClearSelection()"
                             t-att-title="backToProductLabel" t-att-aria-label="backToProductLabel">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
-                             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M20 12H4M11 5l-7 7 7 7"/>
-                        </svg>
+                        <i class="fa fa-arrow-left" role="img"/>
                     </button>
                     <span t-esc="selectedPlacement.label"/>
                 </h1>

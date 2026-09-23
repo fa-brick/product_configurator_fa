@@ -117,16 +117,19 @@ describe("la page publique et son viewer", () => {
         const body = TEMPLATE.replace(/<!--[\s\S]*?-->/g, "");
         const head = body.slice(body.indexOf('o_cfg3d_title--piece'), body.indexOf('t-else="" class="o_cfg3d_title"'));
         expect(head).toContain('class="o_cfg3d_backarrow"');
-        // Flèche et croix : les icônes Font Awesome des bundles d'Odoo, pas un SVG à nous.
-        expect(head).toContain('class="fa fa-arrow-left"');
+        // Flèche et croix : les icônes Odoo (`oi`) des bundles, pas un SVG à nous.
+        expect(head).toContain('class="oi oi-arrow-left"');
         expect(head).not.toContain("<svg");
         expect(body.slice(body.indexOf('class="o_cfg3d_close"'), body.indexOf("</button>", body.indexOf('class="o_cfg3d_close"'))))
-            .toContain('class="fa fa-times"');
+            .toContain('class="oi oi-close"');
         expect(head).toContain('this.onClearSelection()');
         expect(head).toContain('t-esc="selectedPlacement.label"');
         expect(body).not.toContain("o_cfg3d_crumbs");
         expect(body).not.toContain("o_cfg3d_back\"");
         expect(body).not.toContain("o_cfg3d_piece_title");
+        // Isolée par double clic : pas de bouton « voir tout », la flèche ramène à la racine.
+        expect(body).not.toContain("o_cfg3d_showall");
+        expect(body).not.toContain("onExitIsolation");
     });
 
     test("les questions du produit et celles d'une pièce passent par le MÊME gabarit", () => {

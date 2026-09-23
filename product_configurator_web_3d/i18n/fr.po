@@ -221,9 +221,3 @@ msgstr "gestion des messages websocket"
 #: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
 msgid "Back to product"
 msgstr "Retour au produit"
-
-#. module: product_configurator_web_3d
-#. odoo-javascript
-#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
-msgid "Show all"
-msgstr "Voir tout"

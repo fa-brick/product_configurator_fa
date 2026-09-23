@@ -18,7 +18,7 @@
              l'un ni l'autre — il se ferme par son propre cadre, et n'affiche donc rien. -->
         <button t-if="canClose" class="o_cfg3d_close"
                 t-on-click="() => this.onCloseClick()"
-                aria-label="Close" title="Close"><i class="fa fa-times" role="img"/></button>
+                aria-label="Close" title="Close"><i class="oi oi-close" role="img"/></button>
 
         <div t-if="state.model and state.model.error" class="o_cfg3d_error">
             <p t-esc="state.model.message"/>
@@ -65,10 +65,8 @@
                      SÉLECTION. N'en passer qu'une laisse la boucle ouverte — l'état d'avant
                      le 2026-09-22, où le contour cyan n'était allumé nulle part et où seul
                      le SURVOL peignait, donc jamais au doigt (Gerry). -->
-                <!-- ⓘ Isolée : un bouton pour revenir à tout. -->
-                <button t-if="state.selection.isolated and state.selection.nodeId"
-                        class="btn btn-sm btn-secondary o_cfg3d_showall"
-                        t-on-click="() => this.onExitIsolation()" t-esc="showAllLabel"/>
+                <!-- ⓘ Isolée : pas de bouton « voir tout » — la flèche de l'en-tête du
+                     panneau ramène à la racine (Gerry, 2026-09-23). -->
                 <!-- ⚠️ LA SÉLECTION (D-333) : `pieces` est le sous-arbre isolé ou tout ;
                      `selectableNodeIds` dit au viewer ce qu'un clic peut désigner — et ce
                      qu'un survol CONTOURE en orange, comme dans l'éditeur, sans nom
@@ -111,13 +109,13 @@
                      la FLÈCHE de retour suivie du nom de la pièce (maquette de Gerry,
                      2026-09-23). Pas de fil d'Ariane, pas de bouton en bas : la flèche est
                      le seul retour, et la croix reste celle de la page. Flèche et croix sont
-                     les icônes Font Awesome que les bundles d'Odoo servent déjà (Gerry,
+                     les icônes Odoo (`oi`, traits fins) que les bundles servent déjà (Gerry,
                      2026-09-23) — pas de SVG à nous. -->
                 <h1 t-if="selectedPlacement" class="o_cfg3d_title o_cfg3d_title--piece">
                     <button class="o_cfg3d_backarrow"
                             t-on-click="() => this.onClearSelection()"
                             t-att-title="backToProductLabel" t-att-aria-label="backToProductLabel">
-                        <i class="fa fa-arrow-left" role="img"/>
+                        <i class="oi oi-arrow-left" role="img"/>
                     </button>
                     <span t-esc="selectedPlacement.label"/>
                 </h1>

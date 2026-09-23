@@ -508,18 +508,16 @@ export class ConfiguratorPage extends Component {
                      nodeId ? this.state.selection.isolated : false);
     }
 
-    /** Le double clic : la pièce s'ouvre SEULE, cadrée. */
+    /** Le double clic : la pièce s'ouvre SEULE, cadrée, son panneau à droite. */
     onActivatePiece(nodeId) {
         if (!nodeId || !this.selectableNodeIds.has(nodeId)) return;
         this._select(nodeId, true);
     }
 
-    /** « Voir tout » : quitter l'isolation, garder la sélection. */
-    onExitIsolation() {
-        this._select(this.state.selection.nodeId, false);
-    }
-
-    /** « Retour au produit » : plus de sélection, plus d'isolation. */
+    /**
+     * La flèche de l'en-tête : plus de sélection, plus d'isolation — retour à la racine.
+     * ⓘ C'est le SEUL retour : le bouton « voir tout » a été retiré (Gerry, 2026-09-23).
+     */
     onClearSelection() {
         this._select(null, false);
     }
@@ -670,8 +668,6 @@ export class ConfiguratorPage extends Component {
 
     get takeHandLabel() { return _t("Take over"); }
     get backToProductLabel() { return _t("Back to product"); }
-    get showAllLabel() { return _t("Show all"); }
-
     /**
      * Prendre la main — et le dire à ceux qui regardent.
      *

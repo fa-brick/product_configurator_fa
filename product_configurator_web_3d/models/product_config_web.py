@@ -321,10 +321,29 @@ class ProductConfigSession(models.Model):
         MATIÈRE (`root`) ou l'ORIGINE. Miroir de `_resolveCameraTarget` de l'éditeur —
         `root` et `origin` ne sont pas la même chose (D-116)."""
         if camera.target_kind == "piece" and camera.target_link_id:
-            return {"nodeId": "c%d" % camera.target_link_id.id}
+            # ⚠️ L'identité du NŒUD que le lien pose, lue dans la définition (D-349) : un
+            # lien imbriqué s'appelle `c10/c11`, et `c<lien>` ne le trouverait pas.
+            return {"nodeId": self._web_node_id_of_link(camera.target_link_id)}
         if camera.target_kind == "root":
             return {"root": True}
         return {"origin": True}
+
+    def _web_node_id_of_link(self, link):
+        """Le nœud de la PREMIÈRE pose d'un lien dans la définition — `c<lien>` à défaut,
+        l'identité d'un enfant direct. Une caméra vise une place, pas une pose."""
+        model3d = self._web_model3d()
+        definition = model3d.to_definition() if model3d else None
+
+        def walk(node):
+            for child in (node or {}).get("children") or []:
+                if child.get("linkId") == link.id:
+                    return child.get("id")
+                hit = walk(child)
+                if hit:
+                    return hit
+            return None
+
+        return walk(definition) or "c%d" % link.id
 
     def _web_image(self):
         """L'image du produit — ce qu'on montre PENDANT que la 3D se construit.
@@ -481,7 +500,12 @@ class ProductConfigSession(models.Model):
         values = self._web_values()
         definition = model3d.to_definition(values, link_answers=self._web_link_answers()) if model3d else None
         placements = self._web_placements(model3d, definition, values)
-        placement = placements.get("c%s" % int(link_id))
+        # ⚠️ Par le LIEN, jamais par un `c<lien>` recomposé : les placements sont rangés
+        # sous l'id du nœud, qui porte le chemin de sa pose quand il est imbriqué
+        # (D-349, `c10/c11`). Deux poses d'un même sous-assemblage partagent le lien de
+        # leurs enfants, et donc leurs réponses (D-332, v1) — la première suffit.
+        placement = next((p for p in placements.values()
+                          if p.get("linkId") == int(link_id)), None)
         question = next((q for q in (placement or {}).get("questions", [])
                          if q["id"] == value.attribute_id.id), None)
         if not question:

@@ -61,8 +61,11 @@ export function placementOf(model, pieces, nodeId) {
     const placements = (model && model.placements) || {};
     const piece = (pieces || []).find((p) => p.key === nodeId);
     if (!piece) return null;
-    const linkId = piece.linkId ?? piece.sourceLinkId ?? null;
-    return (linkId != null && placements[`c${linkId}`]) || null;
+    // ⚠️ **PAR L'IDENTITÉ DE NŒUD, jamais recomposée depuis le lien.** Les placements sont
+    // rangés sous l'`id` du nœud de la définition ; depuis D-349 un nœud IMBRIQUÉ porte le
+    // chemin de sa pose (`c10/c11`), et `c${linkId}` ne le nomme plus. La clé de la pièce
+    // EST cet id ; une copie de répétition renvoie à celui de sa source (`occurrence.of`).
+    return placements[piece.key] || placements[piece.occurrence?.of] || null;
 }
 
 /** Les poses SÉLECTIONNABLES — celles qui ont un placement réglable (arbitrage Gerry). */

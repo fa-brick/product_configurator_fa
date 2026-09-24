@@ -338,6 +338,21 @@ describe("les PLACEMENTS réglables — ce qui se sélectionne, et ce qu'on y r�
         expect(placementOf(model(), PIECES, "nulle-part")).toBeNull();
     });
 
+    test("⚠️ un placement IMBRIQUÉ se trouve par son CHEMIN, jamais par `c<lien>` (D-349)", () => {
+        // Deux poses d'un même sous-ensemble : la poignée a le MÊME lien sous les deux,
+        // et le serveur range chaque placement sous l'identité de sa pose.
+        const nested = toViewModel({ ...PAYLOAD, placements: {
+            "c10/c11": { ...PLACEMENTS.c11, label: "Poignée gauche" },
+            "c20/c11": { ...PLACEMENTS.c11, label: "Poignée droite" },
+        } });
+        const pieces = [
+            { key: "c10/c11", nodeId: "c10/c11", linkId: 11, parentKey: "c10" },
+            { key: "c20/c11", nodeId: "c20/c11", linkId: 11, parentKey: "c20" },
+        ];
+        expect(placementOf(nested, pieces, "c10/c11")?.label).toBe("Poignée gauche");
+        expect(placementOf(nested, pieces, "c20/c11")?.label).toBe("Poignée droite");
+    });
+
     test("répondre sur un placement envoie le LIEN avec la valeur", () => {
         const m = model();
         expect(answerForPlacement(m, m.placements.c11, 5, 51))

@@ -839,6 +839,10 @@ class ProductConfigSession(models.Model):
             # reçu par courriel, souvent sur un téléphone, et c'est la règle de cette
             # méthode.
             "baked": model3d.baked_parts(values) if model3d else {},
+            # ⚠️ **LES FICHIERS IMPORTÉS, avec leur URL à jeton** — hors de la définition
+            # pour la même raison que la cuisson. Sans eux, toute pièce de fichier était un
+            # volume VIDE sur la page : les inserts du JeNo manquaient (Gerry, 2026-09-24).
+            "imported": model3d.imported_files(values) if model3d else {},
             # Les PLACEMENTS que le client peut régler — et eux seuls (D-332, D-333).
             "placements": self._web_placements(model3d, definition, values) if model3d else {},
         }

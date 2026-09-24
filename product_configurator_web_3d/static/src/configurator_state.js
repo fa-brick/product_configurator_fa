@@ -169,6 +169,9 @@ export function toViewModel(payload, previous = null) {
         // et sous des gardes vertes qui lisaient le TEXTE de la page, jamais la donnée.
         // Relevé le 2026-09-22 sur le JeNo : `baked: null`, `ambience: non`.
         baked: payload.baked || null,
+        // ⚠️ Même maillon, même piège : un champ servi que cette recopie oublie n'atteint
+        // jamais la page ([[L-357]]). Les fichiers importés, et leur URL à jeton.
+        imported: payload.imported || null,
         ambience: payload.ambience || null,
     };
 }

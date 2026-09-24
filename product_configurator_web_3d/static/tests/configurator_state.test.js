@@ -82,6 +82,14 @@ describe("⚠️ la CUISSON et l'AMBIANCE traversent la mise en forme", () => {
         expect(toViewModel({ ...PAYLOAD, baked }).baked).toEqual(baked);
     });
 
+    test("⚠️ les fichiers IMPORTÉS aussi, avec leur URL à jeton (2026-09-24)", () => {
+        // La page ne lisait aucun fichier importé : les inserts du JeNo y manquaient. Même
+        // maillon que la cuisson, même piège si la recopie l'oublie ([[L-357]]).
+        const imported = { 6984: "/web/content/6984?access_token=abc" };
+        expect(toViewModel({ ...PAYLOAD, imported }).imported).toEqual(imported);
+        expect(toViewModel(PAYLOAD).imported).toBeNull();
+    });
+
     test("l'ambiance aussi", () => {
         const ambience = { toneMapping: "aces", exposure: 1.2 };
         expect(toViewModel({ ...PAYLOAD, ambience }).ambience).toEqual(ambience);

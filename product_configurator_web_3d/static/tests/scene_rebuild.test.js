@@ -52,7 +52,14 @@ describe("la scène se construit par la SESSION du moteur (D-329)", () => {
         const corps = buildScene();
         expect(corps.indexOf("await this._loadBaked(baked)"))
             .toBeLessThan(corps.indexOf("this._session.build("));
-        expect(corps).toContain("{ bakedParts, chronicle }");
+        expect(corps).toContain("{ bakedParts, importedGeometries, chronicle }");
+    });
+
+    test("⚠️ les fichiers IMPORTÉS aussi — sans eux, une pièce de fichier est un volume vide", () => {
+        // La page ne les lisait pas du tout : les inserts du JeNo y manquaient (2026-09-24).
+        const corps = buildScene();
+        expect(corps.indexOf("await this._loadImported(buildable, imported)"))
+            .toBeLessThan(corps.indexOf("this._session.build("));
     });
 
     test("les QUATRE projections viennent de la session — aucune n'est refaite ici", () => {

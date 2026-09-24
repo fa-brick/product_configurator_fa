@@ -33,8 +33,10 @@ import { createBuildSession } from "@product_editor/engine/builder/build_session
 import { createChronicle } from "@product_editor/engine/builder/build_chronicle";
 import { getThree } from "@product_editor/engine/three/three_init";
 import { getCSG } from "@product_editor/engine/three/csg_init";
-import { getGLTFLoader, getDRACOLoader, DRACO_DECODER_PATH }
+import { getGLTFLoader, getDRACOLoader, getSTLLoader, DRACO_DECODER_PATH }
     from "@product_editor/engine/three/loaders_init";
+import { collectGlbAttachments, extractImportedGeometries }
+    from "@product_editor/engine/three/imported_geometries";
 // ⚠️ Le MÊME lecteur de fichier cuit que l'éditeur : la page avait le sien, dont les corps
 // ne portaient pas le drapeau `baked` — ni la session ni `bakedSolidsByNode` ne les
 // auraient reconnus.
@@ -154,7 +156,7 @@ export class ConfiguratorPage extends Component {
         onMounted(() => {
             const model = this.state.model;
             if (model && !model.error) {
-                this._buildScene(model.definition, model.scope, model.baked);
+                this._buildScene(model.definition, model.scope, model.baked, model.imported);
             } else {
                 this.state.ready = true;
             }
@@ -251,7 +253,7 @@ export class ConfiguratorPage extends Component {
         const sameValues = previous
             && JSON.stringify(model.scope) === JSON.stringify(previous.scope);
         if (!sameRecipe || !sameValues) {
-            await this._buildScene(model.definition, model.scope, model.baked);
+            await this._buildScene(model.definition, model.scope, model.baked, model.imported);
         }
     }
 
@@ -281,6 +283,51 @@ export class ConfiguratorPage extends Component {
      * ⓘ Le décodeur Draco n'est chargé que s'il y a quelque chose à décoder : une page
      * sans pièce cuite ne doit pas payer son téléchargement.
      */
+    /**
+     * Les pièces IMPORTÉES : lire leurs fichiers et en tirer les géométries que le moteur
+     * cherche — par le MÊME code que l'éditeur (`imported_geometries.js`).
+     *
+     * ⚠️ **La page ne les lisait pas du tout** : sans `importedGeometries`, la session rend
+     * un volume vide pour chaque pièce de fichier — les inserts du JeNo manquaient à tout
+     * client, sans une erreur (Gerry, 2026-09-24). Les URL portent leur jeton : un
+     * visiteur anonyme n'a pas d'autre droit sur la pièce jointe ([[L-377]]).
+     *
+     * ⓘ Un fichier est lu UNE fois pour la vie de la page — une serrure de douze pièces,
+     * c'est un téléchargement — et un échec n'est pas mémorisé : il se retente au tour
+     * suivant ([[L-323]]).
+     */
+    async _loadImported(buildable, imported) {
+        const wanted = [...collectGlbAttachments(buildable)];
+        if (!wanted.length) return this._importedGeometries || null;
+        this._importedGeometries = this._importedGeometries || new Map();
+        this._importedRead = this._importedRead || new Set();
+        const todo = wanted.filter((id) => !this._importedRead.has(id));
+        if (!todo.length) return this._importedGeometries;
+        try {
+            const { GLTFLoader } = await getGLTFLoader();
+            const { STLLoader } = await getSTLLoader();
+            const THREE = this._session.THREE;
+            await Promise.all(todo.map(async (attachmentId) => {
+                try {
+                    const url = (imported || {})[String(attachmentId)]
+                        || `/web/content/${attachmentId}`;
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const buffer = await response.arrayBuffer();
+                    await extractImportedGeometries(THREE, { GLTFLoader, STLLoader }, buffer,
+                                                    attachmentId, buildable,
+                                                    this._importedGeometries);
+                    this._importedRead.add(attachmentId);
+                } catch (e) {
+                    console.warn(`[page] fichier importé ${attachmentId} illisible :`, e);
+                }
+            }));
+        } catch (e) {
+            console.warn("[page] lecteur de fichiers importés indisponible :", e);
+        }
+        return this._importedGeometries;
+    }
+
     async _loadBaked(baked) {
         const loaded = new Map();
         const entries = Object.entries(baked || {});
@@ -292,7 +339,10 @@ export class ConfiguratorPage extends Component {
             const loader = new GLTFLoader().setDRACOLoader(decoder);
             await Promise.all(entries.map(async ([nodeId, entry]) => {
                 try {
-                    const response = await fetch(`/web/content/${entry.attachmentId}`);
+                    // ⚠️ L'URL SERVIE porte le jeton d'accès : sans lui, un visiteur
+                    // anonyme reçoit un 404 et la pièce manque (2026-09-24). Le repli
+                    // sur l'identifiant nu ne vaut que pour un serveur plus ancien.
+                    const response = await fetch(entry.url || `/web/content/${entry.attachmentId}`);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     const buffer = await response.arrayBuffer();
                     const gltf = await new Promise((resolve, reject) =>
@@ -315,7 +365,7 @@ export class ConfiguratorPage extends Component {
         return loaded;
     }
 
-    async _buildScene(definition, scope, baked = null) {
+    async _buildScene(definition, scope, baked = null, imported = null) {
         if (!definition) {
             this.state.pieces = [];
             this.state.postBuild = { byNode: {}, byPiece: {}, perforations: {} };
@@ -335,12 +385,14 @@ export class ConfiguratorPage extends Component {
             // SYNCHRONE, et charger un fichier ne l'est pas. On remplit donc la table
             // avant, et la session ne fait plus que la consulter.
             const bakedParts = await this._loadBaked(baked);
+            const importedGeometries = await this._loadImported(buildable, imported);
             // ⓘ Le moteur se mesure PENDANT qu'il construit ([[D-094]]) : le relevé est
             // gardé sur la page, pour une sonde — jamais envoyé, une durée est une
             // propriété de la machine.
             const chronicle = createChronicle();
             const { worlds, solids, baked: bakedSolids, pieces, postBuild } =
-                this._session.build(buildable, scope || {}, { bakedParts, chronicle });
+                this._session.build(buildable, scope || {},
+                                    { bakedParts, importedGeometries, chronicle });
             this._lastBuild = chronicle.snapshot();
             this._worlds = worlds;
             // ⚠️ **LES VOLUMES DU MOTEUR** — percés, chanfreinés, fusionnés. Le viewer

@@ -29,7 +29,107 @@ function toQuestion(line) {
         // déclarée reste une question, elle ne disparaît pas.
         displayType: line.displayType || "radio",
         values: (line.values || []).map(toValue),
+        // ⓘ **LA SAISIE LIBRE** (D-353) : la forme du champ, ou `null` quand la question
+        // se répond par sa liste. C'est ELLE qui décide du champ, avant `displayType` —
+        // aucune forme d'affichage nouvelle (lot C abandonné le 2026-09-08).
+        free: line.free ? toFreeField(line.free) : null,
+        // Ce que le client a TAPÉ, tel que le serveur l'a rangé — `null` s'il a choisi.
+        customValue: line.customValue ?? null,
     };
+}
+
+/** La forme d'un champ de saisie — `null` partout où rien n'est déclaré. */
+function toFreeField(raw) {
+    return {
+        numeric: !!raw.numeric,
+        unit: raw.unit || "",
+        // ⚠️ `?? null` et non `|| null` : une borne à ZÉRO est une vraie borne.
+        min: raw.min ?? null,
+        max: raw.max ?? null,
+        step: raw.step || null,
+        maxLength: raw.maxLength || null,
+        regexp: raw.regexp || null,
+    };
+}
+
+/**
+ * Ce que le champ de saisie AFFICHE : la saisie, sinon la valeur choisie — ou rien.
+ *
+ * ⓘ Pour une valeur choisie, la forme RANGÉE (`raw`, « 150 ») et non le libellé
+ * (« 150 mm ») : le champ se retape, et l'unité y reviendrait à chaque correction.
+ * L'unité s'écrit à côté du champ.
+ *
+ * @param {object} question
+ * @param {string} [decimalPoint] le séparateur décimal du visiteur — « , » en français
+ */
+export function freeText(question, decimalPoint = ".") {
+    if (!question) return "";
+    const chosen = (question.values || []).find((v) => v.chosen);
+    const text = question.customValue ?? chosen?.raw ?? chosen?.name ?? "";
+    const shown = String(text);
+    // ⓘ Le serveur range le nombre avec un POINT (D-160) ; on le rend dans la langue du
+    // visiteur, qui a pu taper « 2,5 » et ne doit pas voir sa virgule disparaître.
+    return question.free?.numeric && decimalPoint !== "."
+        ? shown.replace(".", decimalPoint)
+        : shown;
+}
+
+/**
+ * La contrainte, sous le champ — « 600 → 1200 mm », « 20 characters max ».
+ *
+ * La même règle que l'éditeur (`_boundsLabel`) : rien quand rien n'est borné, et une borne
+ * à zéro est une borne.
+ */
+export function boundsLabel(question) {
+    const free = question?.free;
+    if (!free) return "";
+    if (!free.numeric) {
+        return free.maxLength ? _t("%s characters max", free.maxLength) : "";
+    }
+    const low = free.min;
+    const high = free.max;
+    if (low === null && high === null) return "";
+    const unit = free.unit ? ` ${free.unit}` : "";
+    if (low !== null && high !== null) return `${low} → ${high}${unit}`;
+    return low !== null ? `≥ ${low}${unit}` : `≤ ${high}${unit}`;
+}
+
+/**
+ * Les SUGGESTIONS d'un champ de saisie : les valeurs que la question offre déjà.
+ *
+ * ⓘ Choisir une suggestion est un CLIC sur la valeur — elle repart par son identifiant,
+ * jamais par son libellé. Une valeur éteinte n'est pas proposée : la suggérer inviterait
+ * à un choix que le serveur refuserait.
+ */
+export function freeSuggestions(question, request = "") {
+    const needle = String(request || "").trim().toLowerCase();
+    return (question?.values || [])
+        .filter((v) => v.available)
+        .filter((v) => !needle || String(v.name).toLowerCase().includes(needle))
+        .map((v) => ({ label: v.name, value: v.id }));
+}
+
+/**
+ * Ce qu'il faut envoyer pour une SAISIE — ou `null` si rien ne doit partir.
+ *
+ * ⚠️ **Une saisie identique à la réponse en cours ne part pas** : quitter un champ qu'on
+ * n'a pas modifié ferait reconstruire la 3D et la diffuser à tous ceux qui regardent,
+ * pour rien (D-253).
+ *
+ * ⓘ Une saisie VIDE part : c'est le geste qui efface la réponse tapée.
+ *
+ * @param {object} model
+ * @param {object} question
+ * @param {string} raw ce que le champ contient
+ * @param {object} [placement] le placement sélectionné, pour une question d'enfant
+ */
+export function customAnswerFor(model, question, raw, placement = null, decimalPoint = ".") {
+    if (!model || model.error || model.closed || !question?.free) return null;
+    const text = String(raw ?? "").trim();
+    if (text === freeText(question, decimalPoint).trim()) return null;
+    const payload = { attribute_id: question.id, custom_value: text };
+    if (placement) payload.link_id = placement.linkId;
+    return payload;
 }
 
 /** `{ nodeId → placement }` — un placement porte son lien, son nom et ses questions. */
@@ -91,6 +191,9 @@ function toValue(raw) {
     return {
         id: raw.id,
         name: raw.name,
+        // La forme RANGÉE — le nombre nu d'une question numérique (D-160). C'est elle
+        // qu'un champ de saisie affiche ; le libellé, lui, porte l'unité.
+        raw: raw.raw ?? null,
         // La pastille et la vignette, telles que le serveur les range. `null` veut
         // dire « il n'y en a pas » — jamais « on ne sait pas ».
         color: raw.color || null,
@@ -263,6 +366,25 @@ export function confirmError(payload) {
         return handMessage({ free: false, mine: false, label: payload.hand?.label });
     }
     return _t("This configuration link is not valid any more.");
+}
+
+/**
+ * Ce que la page DIT quand une SAISIE est refusée — ou `null` si elle a été retenue.
+ *
+ * ⚠️ Comme pour la confirmation, un refus n'est PAS un état : le passer à `toViewModel`
+ * effacerait la page pour « ce lien n'est plus valable », alors qu'il suffit de corriger
+ * un nombre. Le message d'une saisie invalide vient du SERVEUR, déjà traduit : c'est lui
+ * qui connaît la borne, le pas, la condition qui l'impose et la valeur la plus proche.
+ */
+export function customError(payload) {
+    if (!payload || !payload.error) return null;
+    if (payload.error === "invalid_custom") {
+        return payload.message || _t("This answer is not accepted.");
+    }
+    if (payload.error === "custom_not_allowed") {
+        return _t("This question does not accept a typed answer.");
+    }
+    return confirmError(payload);
 }
 
 /**

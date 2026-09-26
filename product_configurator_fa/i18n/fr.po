@@ -67,3 +67,21 @@ msgstr "Format"
 #: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__value_type__material
 msgid "Material"
 msgstr "Matière"
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid "'%(val)s' is not a number for '%(name)s'."
+msgstr "« %(val)s » n'est pas un nombre pour « %(name)s »."
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid "'%(name)s' accepts at most %(count)s characters."
+msgstr "« %(name)s » accepte au plus %(count)s caractères."
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid "'%(val)s' does not have the format expected for '%(name)s'."
+msgstr "« %(val)s » n'a pas le format attendu pour « %(name)s »."

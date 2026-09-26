@@ -204,8 +204,34 @@
              ⓘ Le geste, lui, ne change JAMAIS : `onPick`. Ce qui
              change est ce que l'œil reçoit. -->
 
+        <!-- ── LA SAISIE LIBRE (D-353) : la question qui autorise l'ajout ──
+             ⚠️ **ELLE PASSE AVANT LA FORME D'AFFICHAGE**, et ce n'en est pas une de
+             plus : une forme inconnue disparaît sans erreur des pages d'Odoo (lot C
+             abandonné, 2026-09-08). Le discriminant est l'AJOUT, lu sur la ligne ; la
+             liste de la question devient la liste des SUGGESTIONS.
+             ⓘ Un nombre appelle le pavé numérique (`inputmode="decimal"`), jamais un
+             `type="number"`, qui mange la virgule ([[L-218]]). -->
+        <t t-if="question.free">
+            <div class="o_cfg3d_free">
+                <NumberAutoComplete t-if="question.free.numeric"
+                    value="this.freeText(question)"
+                    sources="this.freeSources(question)"
+                    onSelect="(option) => this.onFreeSelect(placementNodeId, question, option)"
+                    onChange="(ev) => this.onFreeChange(placementNodeId, question, ev.inputValue)"/>
+                <AutoComplete t-else=""
+                    value="this.freeText(question)"
+                    sources="this.freeSources(question)"
+                    onSelect="(option) => this.onFreeSelect(placementNodeId, question, option)"
+                    onChange="(ev) => this.onFreeChange(placementNodeId, question, ev.inputValue)"/>
+                <span t-if="question.free.unit" class="o_cfg3d_free_unit"
+                      t-esc="question.free.unit"/>
+            </div>
+            <div t-if="this.freeBounds(question)" class="o_cfg3d_free_hint"
+                 t-esc="this.freeBounds(question)"/>
+        </t>
+
         <!-- ── LA CARTE : une vignette, son libellé dessous ── -->
-        <div t-if="question.displayType === 'card'"
+        <div t-elif="question.displayType === 'card'"
              class="o_cfg3d_cards">
             <t t-foreach="question.values" t-as="value" t-key="value.id">
                 <button class="o_cfg3d_card"

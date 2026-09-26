@@ -22,6 +22,12 @@ import { useService } from "@web/core/utils/hooks";
 import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
 import { rpc } from "@web/core/network/rpc";
+import { localization } from "@web/core/l10n/localization";
+// ⓘ **LA SAISIE LIBRE** (D-353) : les deux composants de l'éditeur, pour la même raison —
+// `AutoComplete` pour le texte, `NumberAutoComplete` (`inputmode="decimal"`, jamais
+// `type="number"`, qui mange la virgule — [[L-218]]) pour le nombre.
+import { AutoComplete } from "@web/core/autocomplete/autocomplete";
+import { NumberAutoComplete } from "@product_editor/components/number_autocomplete/number_autocomplete";
 import { PartViewer3D } from "@product_editor/components/part_viewer_3d/part_viewer_3d";
 import { projectSketchItems } from "@product_editor/engine/builder/project_items";
 import { toBuildable } from "@product_editor/engine/builder/to_buildable";
@@ -42,7 +48,8 @@ import { collectGlbAttachments, extractImportedGeometries }
 // auraient reconnus.
 import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
 import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
-         placementOf, selectableNodeIds, answerForPlacement }
+         placementOf, selectableNodeIds, answerForPlacement,
+         freeText, boundsLabel, freeSuggestions, customAnswerFor, customError }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -51,9 +58,17 @@ import { subtreeOf } from "@product_editor/engine/builder/project_items";
 // paraît saccadé à qui regarde, au-dessus de la cadence d'une orbite au doigt.
 const CAMERA_SHARE_MS = 150;
 
+// ⚠️ **LE DÉLAI D'UNE SAISIE.** Cliquer une suggestion fait d'abord partir le `change` du
+// champ — avec le texte PARTIEL tapé (« 15 ») —, puis le choix (« 150 mm ») : c'est
+// l'ordre des événements d'`AutoComplete` (le `mousedown` de l'option ôte le focus).
+// Sans délai, deux réponses partiraient en course, et la première pouvait afficher un
+// refus (« 15 est sous le minimum ») pour un geste qui n'en demandait aucun. Le choix
+// d'une suggestion ANNULE la saisie en attente.
+const FREE_ANSWER_DELAY_MS = 200;
+
 export class ConfiguratorPage extends Component {
     static template = "product_configurator_web_3d.ConfiguratorPage";
-    static components = { PartViewer3D };
+    static components = { PartViewer3D, AutoComplete, NumberAutoComplete };
     static props = {
         token: { type: String },
         // ⓘ L'état DÉJÀ PRIS, quand quelqu'un l'a demandé avant nous : la fiche
@@ -216,6 +231,8 @@ export class ConfiguratorPage extends Component {
         const onKey = (ev) => { if (ev.key === "Escape" && this.state.selection.nodeId) this.onClearSelection(); };
         document.addEventListener("keydown", onKey, true);
         onWillUnmount(() => {
+            // Une saisie en attente ne part plus vers une page qui n'est plus là.
+            browser.clearTimeout(this._freeTimer);
             bus.unsubscribe("configurator_state", onRemote);
             bus.unsubscribe("configurator_camera", onCamera);
             bus.unsubscribe("configurator_selection", onSelection);
@@ -637,6 +654,61 @@ export class ConfiguratorPage extends Component {
         this.state.reason = null;
         this.state.loading = true;
         const next = await this._call("/configurator/set_value", payload);
+        await this._applyModel(next);
+        this.state.loading = false;
+    }
+
+    // ── LA SAISIE LIBRE — D-353 ──────────────────────────────────────────────
+
+    /** Ce que le champ affiche — dans le séparateur décimal du visiteur. */
+    freeText(question) {
+        return freeText(question, localization.decimalPoint);
+    }
+
+    /** La contrainte sous le champ — « 600 → 1200 mm », « 20 characters max ». */
+    freeBounds(question) {
+        return boundsLabel(question);
+    }
+
+    /** Les suggestions : les valeurs que la question offre déjà, filtrées sur la frappe. */
+    freeSources(question) {
+        return [{ options: (request) => freeSuggestions(question, request) }];
+    }
+
+    /** Une suggestion CHOISIE est un clic sur la valeur — et elle annule la saisie en attente. */
+    onFreeSelect(nodeId, question, option) {
+        browser.clearTimeout(this._freeTimer);
+        const value = question.values.find((v) => v.id === option.value);
+        if (value) this.onAnswer(nodeId, question.id, value);
+    }
+
+    /** Le champ a changé — la saisie part après un court délai (`FREE_ANSWER_DELAY_MS`). */
+    onFreeChange(nodeId, question, raw) {
+        browser.clearTimeout(this._freeTimer);
+        this._freeTimer = browser.setTimeout(
+            () => this._sendFreeAnswer(nodeId, question, raw), FREE_ANSWER_DELAY_MS);
+    }
+
+    async _sendFreeAnswer(nodeId, question, raw) {
+        if (this.watching) {
+            this.state.reason = this.handLabel;
+            return;
+        }
+        const placement = nodeId ? this.selectedPlacement : null;
+        const payload = customAnswerFor(
+            this.state.model, question, raw, placement, localization.decimalPoint);
+        if (!payload) return;
+        this.state.reason = null;
+        this.state.loading = true;
+        const next = await this._call("/configurator/set_value", payload);
+        // ⚠️ Un refus n'efface RIEN : la page reste, et dit pourquoi — la borne, le pas,
+        // la valeur la plus proche, tels que le serveur les formule.
+        const refusal = customError(next);
+        if (refusal) {
+            this.state.loading = false;
+            this.state.reason = refusal;
+            return;
+        }
         await this._applyModel(next);
         this.state.loading = false;
     }

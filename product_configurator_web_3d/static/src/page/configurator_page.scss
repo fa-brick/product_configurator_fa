@@ -236,6 +236,34 @@
 
 .o_cfg3d_select { font-size: 13px; }
 
+/* ── LA SAISIE LIBRE (D-353) ───────────────────────────────────────────────
+   ⚠️ Le champ d'`AutoComplete` porte `o_input`, dont le style vit dans les VUES du
+   back-office (`views/fields/fields.scss`) : sur le site il n'en a AUCUN. On lui donne
+   donc ici l'allure des boutons de valeur voisins — même bord, même rayon, même corps. */
+.o_cfg3d_free {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .o-autocomplete { flex: 1 1 auto; }
+    .o-autocomplete--input {
+        width: 100%;
+        font-size: 13px;
+        padding: 6px 10px;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+        background: transparent;
+
+        &:focus {
+            outline: none;
+            border-color: $o-brand-primary;
+            box-shadow: 0 0 0 2px rgba($o-brand-primary, 0.15);
+        }
+    }
+}
+.o_cfg3d_free_unit { font-size: 13px; opacity: 0.7; }
+.o_cfg3d_free_hint { margin-top: 4px; font-size: 12px; opacity: 0.7; }
+
 /* Le bandeau de conduite : il informe ET il agit, donc les deux tiennent sur une
    ligne, à hauteur de regard des questions qu'il gèle. */
 .o_cfg3d_hand {

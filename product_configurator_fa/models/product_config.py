@@ -1,6 +1,5 @@
 import logging
 import secrets
-from ast import literal_eval
 from collections.abc import Iterable
 from datetime import timedelta
 from itertools import chain
@@ -1024,11 +1023,18 @@ class ProductConfigSession(models.Model):
         "product_tmpl_id.attribute_line_ids.value_ids",
         "product_tmpl_id.attribute_line_ids.product_template_value_ids",
         "product_tmpl_id.attribute_line_ids." "product_template_value_ids.price_extra",
+        # ⚠️ **LES SAISIES AUSSI** (D-353). Une largeur TAPÉE n'entrait ni dans le
+        # calcul ni dans ses dépendances : la grille voyait « pas de largeur »,
+        # affichait le prix de départ, et la ligne de devis partait à ce prix.
+        "custom_value_ids",
+        "custom_value_ids.value",
     )
     def _compute_cfg_price(self):
         for session in self:
             if session.product_tmpl_id:
-                price = session.get_cfg_price()
+                price = session.get_cfg_price(
+                    custom_vals=session._get_custom_vals_dict()
+                )
             else:
                 price = 0.00
             session.price = price
@@ -1046,7 +1052,14 @@ class ProductConfigSession(models.Model):
         custom_vals = {}
         for val in self.custom_value_ids:
             if val.attribute_id.custom_type in ["float", "integer"]:
-                custom_vals[val.attribute_id.id] = literal_eval(val.value)
+                # ⚠️ `parse_number`, plus `literal_eval` : la seconde refuse « 2,5 »
+                # et faisait tomber toute la lecture de la session ([[L-218]]). Un
+                # nombre illisible reste une CHAÎNE, que la validation refuse avec
+                # un message — jamais une absence, qui retomberait sur le défaut.
+                number = val.attribute_id.parse_number(val.value)
+                custom_vals[val.attribute_id.id] = (
+                    number if number is not None else val.value
+                )
             elif val.attribute_id.custom_type == "binary":
                 custom_vals[val.attribute_id.id] = val.attachment_ids
             else:
@@ -1667,7 +1680,7 @@ class ProductConfigSession(models.Model):
         # La saisie libre devient une VALEUR d'attribut ici, et pas avant :
         # une configuration abandonnée ne doit rien laisser derrière elle
         # (D-082). C'est ce qui rend la variante distinguable en stock (D-081).
-        value_ids = self._resolve_numeric_custom_vals(value_ids, custom_vals)
+        value_ids = self._resolve_custom_vals(value_ids, custom_vals)
 
         duplicates = self.search_variant(
             value_ids=value_ids, product_tmpl_id=self.product_tmpl_id
@@ -1688,12 +1701,17 @@ class ProductConfigSession(models.Model):
 
         return variant
 
-    def _resolve_numeric_custom_vals(self, value_ids, custom_vals):
-        """Range les saisies numériques en valeurs d'attribut — D-081.
+    def _resolve_custom_vals(self, value_ids, custom_vals):
+        """Range les saisies en valeurs d'attribut — D-081, étendu au texte par D-353.
 
         Rend les `value_ids` augmentés. La session, elle, n'est PAS modifiée :
-        elle garde le nombre en clair, qui est la trace de ce que le client a
+        elle garde la saisie en clair, qui est la trace de ce que le client a
         tapé, et le seul enregistrement neuf est celui qu'exige la variante.
+
+        ⓘ **C'est ICI, à la confirmation, que la valeur naît** — et pas avant
+        (Gerry, 2026-09-25 : *« la valeur d'attribut devrait s'ajouter quand la
+        configuration est terminée ; en attendant elle reste stockée dans la
+        session »*). Une configuration abandonnée ne laisse rien au catalogue.
         """
         self.ensure_one()
         resolved = list(value_ids or [])
@@ -1703,7 +1721,7 @@ class ProductConfigSession(models.Model):
                 continue
             if not attribute._resolves_to_values():
                 continue
-            value = line.resolve_numeric_value(custom_vals[attribute.id])
+            value = line.resolve_custom_value(custom_vals[attribute.id])
             if value and value.id not in resolved:
                 resolved.append(value.id)
         return resolved

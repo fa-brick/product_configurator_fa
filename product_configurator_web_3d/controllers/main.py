@@ -41,7 +41,17 @@ class ProductConfiguratorWeb3D(http.Controller):
         jeton, et il a lieu ici — en un seul endroit, que les deux routes
         traversent.
         """
-        return request.env["product.config.session"].sudo()._find_by_access_token(token)
+        session = request.env["product.config.session"].sudo()._find_by_access_token(token)
+        # ⚠️ **DANS LA LANGUE DU VISITEUR** (D-353). Ces routes JSON ne sont pas des routes
+        # de site : elles tournent dans la langue de l'utilisateur PUBLIC (en_US), alors que
+        # la page, elle, s'affiche dans celle du site. Un refus de saisie — « 'abc' n'est
+        # pas un nombre » — tombait donc en anglais sous une page française (mesuré le
+        # 2026-09-25). La page pose `frontend_lang` ; on le lit, s'il désigne une langue
+        # ACTIVE — sans quoi un cookie forgé choisirait n'importe quoi.
+        lang = request.cookies.get("frontend_lang")
+        if session and lang and lang in dict(request.env["res.lang"].get_installed()):
+            session = session.with_context(lang=lang)
+        return session
 
     @http.route(
         "/configurator/<string:token>", type="http", auth="public", website=True,
@@ -275,7 +285,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         website=False, csrf=False,
     )
     def set_value(self, token=None, attribute_id=None, value_id=None, holder=None,
-                  link_id=None, **kwargs):
+                  link_id=None, custom_value=None, **kwargs):
         """Répondre à une question, et recevoir l'état qui en découle.
 
         ⚠️ **AUCUNE FOURCHE, NULLE PART** — et depuis D-253, plus nulle part
@@ -298,6 +308,12 @@ class ProductConfiguratorWeb3D(http.Controller):
         if not (session._hand_belongs_to(holder) or session._hand_is_free()):
             return {"error": "not_holding", "hand": session._hand_state()}
         session._take_hand(holder)
+        # ⓘ **UNE SAISIE** (D-353) : la même route, une autre forme de réponse. Tout —
+        # l'autorisation, la réutilisation d'une valeur offerte, la validation — se décide
+        # dans la session ; la route ne fait qu'aiguiller. `None` veut dire « pas une
+        # saisie » ; une chaîne VIDE, elle, efface la réponse tapée.
+        if custom_value is not None:
+            return session.web_set_custom_value(attribute_id, custom_value, link_id=link_id)
         value = request.env["product.attribute.value"].sudo().browse(int(value_id or 0))
         if not value.exists() or value.attribute_id.id != int(attribute_id or 0):
             # Une valeur qui n'appartient pas à la question posée n'est pas une

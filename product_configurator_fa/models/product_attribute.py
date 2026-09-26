@@ -1,3 +1,5 @@
+import logging
+import re
 from ast import literal_eval
 from datetime import timedelta
 
@@ -5,6 +7,8 @@ from psycopg2 import IntegrityError
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 # ⓘ `product.attribute.bound.mixin` a MIGRÉ vers `product_attribute_advanced`.
@@ -594,16 +598,123 @@ class ProductAttribute(models.Model):
     # seul formateur, porté par l'ATTRIBUT.
 
     def _resolves_to_values(self):
-        """Un nombre saisi sur cet attribut se RANGE-t-il en valeur d'attribut ?
+        """Une saisie sur cet attribut se RANGE-t-elle en valeur d'attribut ?
 
         La question n'a pas besoin d'un champ neuf : `create_variant` la porte
         déjà. En `no_variant`, la valeur ne peut pas entrer dans l'identité
         d'une variante — la ranger ne servirait à rien. Partout ailleurs, elle
         le peut, et c'est tout l'objet de D-081 : le stock ne sait distinguer
         deux portes que par leurs valeurs d'attribut.
+
+        ⚠️ **LE TEXTE AUSSI, depuis D-353** (Gerry, 2026-09-25 : *« comme pour le
+        nombre, le texte ajoute une valeur à l'attribut »*). Seul le libellé est
+        concerné : une réponse qui désigne un produit ou une matière ne se tape pas
+        au clavier. Et le `no_variant` reste la porte des saisies qui ne doivent
+        pas devenir un article — des prénoms, une dédicace : elles restent sur la
+        ligne de commande, par la session.
         """
         self.ensure_one()
-        return self._is_numeric_custom() and self.create_variant != "no_variant"
+        return self.value_type == "value" and self.create_variant != "no_variant"
+
+    @api.model
+    def normalize_custom_text(self, raw):
+        """Un texte saisi, débarrassé de ses espaces en trop — ou `""`.
+
+        ⓘ Pas de changement de casse : une valeur NEUVE garde l'écriture du client
+        (« Chêne massif »). C'est la COMPARAISON qui ignore la casse, pas le
+        rangement (`find_custom_value`).
+        """
+        if raw in (None, False):
+            return ""
+        return " ".join(str(raw).split())
+
+    def canonical_custom_answer(self, raw):
+        """La forme RANGÉE d'une saisie, nombre ou texte — ou `None` si elle est vide.
+
+        ⚠️ Un nombre illisible ressort tel quel : c'est `validate_custom_val` qui le
+        refuse, avec un message. Le ranger à `None` ferait croire à une absence de
+        réponse, et la question retomberait en silence sur son défaut ([[L-218]]).
+        """
+        self.ensure_one()
+        if self.is_numeric():
+            text = self.normalize_custom_text(raw)
+            return self.canonical_custom_value(text) if text else None
+        return self.normalize_custom_text(raw) or None
+
+    def find_custom_value(self, raw, values=None):
+        """La valeur EXISTANTE qu'une saisie désigne — ou un ensemble vide.
+
+        ⚠️ **COMPARER AVANT DE CRÉER** (D-353, arbitrage 2). Un nombre se compare sur
+        sa forme canonique (`18`, `18,0` et ` 18 ` sont une seule valeur, D-160) ;
+        un texte, espaces réduits et **casse ignorée** — « chêne » reprend « Chêne ».
+
+        ⚠️ **Le libellé dans la langue du visiteur ET en anglais.** L'index d'unicité
+        porte sur `name->>'en_US'` au caractère près : il empêche le doublon exact,
+        pas « Paul » contre « paul », ni une valeur saisie en français dont le terme
+        source est anglais. C'est donc ici, et non en base, que se décide la
+        réutilisation.
+
+        :param values: où chercher — par défaut TOUTES les valeurs de l'attribut,
+            archivées comprises (une valeur qui revient est la même valeur).
+        """
+        self.ensure_one()
+        Value = self.env["product.attribute.value"]
+        if values is None:
+            values = Value.with_context(active_test=False).search(
+                [("attribute_id", "=", self.id)]
+            )
+        wanted = self.canonical_custom_answer(raw)
+        if wanted is None:
+            return Value
+        if self.is_numeric():
+            number = self.parse_number(wanted)
+            if number is None:
+                return Value
+
+            def same(value):
+                return any(
+                    self.parse_number(name) == number
+                    for name in (value.name, value.with_context(lang="en_US").name)
+                )
+        else:
+            needle = wanted.casefold()
+
+            def same(value):
+                return any(
+                    self.normalize_custom_text(name).casefold() == needle
+                    for name in (value.name, value.with_context(lang="en_US").name)
+                )
+
+        return values.filtered(same)[:1]
+
+    def resolve_custom_value(self, raw):
+        """Rend LA valeur d'attribut d'une saisie — nombre ou texte — en la créant au besoin.
+
+        La même règle pour les deux (D-353) : réutiliser d'abord, créer ensuite,
+        ressusciter une valeur archivée plutôt que la doubler. Le nombre garde son
+        chemin, qui pose sa forme canonique et sa séquence.
+        """
+        self.ensure_one()
+        Value = self.env["product.attribute.value"]
+        if self.is_numeric():
+            number = self.parse_number(self.canonical_custom_answer(raw))
+            return self.resolve_numeric_value(number) if number is not None else Value
+        text = self.canonical_custom_answer(raw)
+        if not text:
+            return Value
+        existing = self.find_custom_value(text)
+        if existing:
+            if not existing.active:
+                existing.sudo().active = True
+            return existing
+        vals = {"attribute_id": self.id, "name": text, "configurator_generated": True}
+        try:
+            with self.env.cr.savepoint():
+                return Value.sudo().create(vals).with_env(self.env)
+        except IntegrityError:
+            # Le même texte, écrit au même instant par quelqu'un d'autre : la base
+            # a tranché, on reprend ce qu'elle a gardé.
+            return self.find_custom_value(text)
 
     def resolve_numeric_value(self, number):
         """Rend LA valeur d'attribut qui porte ce nombre — en la créant au besoin.
@@ -1192,19 +1303,87 @@ class ProductAttributeLine(models.Model):
             self.sudo().write({"value_ids": [(4, value.id)]})
         return value
 
+    def resolve_custom_value(self, raw):
+        """Rend la valeur d'une saisie — nombre ou texte — et l'ATTACHE à cette ligne.
+
+        Même geste que `resolve_numeric_value`, étendu au texte (D-353) : sans
+        l'attachement, la valeur n'aurait pas de ptav et aucune variante ne la
+        porterait.
+        """
+        self.ensure_one()
+        value = self.attribute_id.resolve_custom_value(raw)
+        if value and value not in self.value_ids:
+            self.sudo().write({"value_ids": [(4, value.id)]})
+        return value
+
+    def offered_value_for(self, raw):
+        """La valeur DÉJÀ OFFERTE par cette ligne que la saisie désigne — ou rien.
+
+        ⓘ Taper « 18 » quand « 18 » est dans la liste n'est pas un ajout, c'est un
+        CHOIX (D-353) : la saisie se range alors comme un clic sur la valeur, et
+        rien de neuf n'attend la confirmation.
+        """
+        self.ensure_one()
+        return self.attribute_id.find_custom_value(raw, values=self.value_ids)
+
     def validate_custom_val(self, val, value_ids=None, custom_vals=None):
-        """Refuse une saisie hors bornes — D-077, et sur la LIGNE, D-089.
+        """Refuse une saisie hors bornes, hors format ou trop longue.
+
+        D-077, et sur la LIGNE, D-089 : bornes et pas d'un nombre. D-353 : longueur
+        maxi et expression régulière d'un texte — jusqu'ici tenues par le seul
+        navigateur de l'éditeur, alors que la page du configurateur est PUBLIQUE.
 
         ⚠️ Le configurateur REFUSE là où le moteur borne (D-040 B) : il traite
         une saisie humaine, dont la valeur engage une commande.
+
+        ⚠️ **Un nombre se lit par `parse_number`, jamais par `literal_eval`** : la
+        seconde refuse « 2,5 », ce que tape un clavier français ([[L-218]]).
         """
         self.ensure_one()
-        if self.attribute_id.custom_type not in ("integer", "float"):
+        attribute = self.attribute_id
+        if attribute.is_numeric():
+            number = attribute.parse_number(val)
+            if number is None:
+                raise ValidationError(
+                    self.env._(
+                        "'%(val)s' is not a number for '%(name)s'.",
+                        val=val,
+                        name=attribute.name,
+                    )
+                )
+            message = self._bounds_error(number, self._get_bounds(value_ids, custom_vals))
+            if message:
+                raise ValidationError(message)
             return
-        val = literal_eval(str(val))
-        message = self._bounds_error(val, self._get_bounds(value_ids, custom_vals))
-        if message:
-            raise ValidationError(message)
+        if attribute.value_type != "value":
+            return
+        text = attribute.normalize_custom_text(val)
+        if self.max_length and len(text) > self.max_length:
+            raise ValidationError(
+                self.env._(
+                    "'%(name)s' accepts at most %(count)s characters.",
+                    name=attribute.name,
+                    count=self.max_length,
+                )
+            )
+        if self.regexp and text:
+            try:
+                accepted = re.fullmatch(self.regexp, text)
+            except re.error:
+                # ⓘ Un motif mal écrit est une faute de l'AUTEUR : la reprocher au
+                # client le bloquerait sans rien qu'il puisse corriger.
+                _logger.warning(
+                    "Invalid accepted format %r on line %s: ignored", self.regexp, self.id
+                )
+                accepted = True
+            if not accepted:
+                raise ValidationError(
+                    self.env._(
+                        "'%(val)s' does not have the format expected for '%(name)s'.",
+                        val=text,
+                        name=attribute.name,
+                    )
+                )
 
     @api.depends(
         "required", "custom", "product_tmpl_id", "product_tmpl_id.config_step_line_ids"

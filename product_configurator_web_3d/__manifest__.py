@@ -50,6 +50,13 @@
             # La PAGE elle-même — après le viewer qu'elle monte et la projection qu'elle
             # appelle : l'ordre d'un bundle est significatif (L-001 côté éditeur).
             "product_configurator_web_3d/static/src/configurator_state.js",
+            # ⚠️ **LE CHAMP DE SAISIE D'UN NOMBRE** (D-353) — un composant de l'éditeur,
+            # déclaré par lui dans le seul bundle du BACK-OFFICE. La page l'importe : absent
+            # d'ici, l'import ne résout pas et le bundle ENTIER du site tombe, en accusant
+            # la page ([[L-150]]). ⓘ Pas dans le sous-bundle du viewer, dont c'est la
+            # fermeture des imports : ce n'est pas le viewer qui s'en sert.
+            "product_editor/static/src/components/number_autocomplete/number_autocomplete.xml",
+            "product_editor/static/src/components/number_autocomplete/number_autocomplete.js",
             "product_configurator_web_3d/static/src/page/configurator_page.scss",
             "product_configurator_web_3d/static/src/page/configurator_page.xml",
             "product_configurator_web_3d/static/src/page/configurator_page.js",

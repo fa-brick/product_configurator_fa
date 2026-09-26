@@ -1421,3 +1421,21 @@ msgstr ""
 #: code:addons/product_configurator_fa/models/product.py:0
 msgid "You cannot have a duplicate configuration for the same value"
 msgstr ""
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid "'%(val)s' is not a number for '%(name)s'."
+msgstr ""
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid "'%(name)s' accepts at most %(count)s characters."
+msgstr ""
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid "'%(val)s' does not have the format expected for '%(name)s'."
+msgstr ""

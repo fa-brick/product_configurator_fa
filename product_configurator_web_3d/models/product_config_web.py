@@ -14,6 +14,7 @@ d'énumérer : le jeton entre, il ne ressort pas.
 import logging
 
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -40,6 +41,15 @@ class ProductConfigSession(models.Model):
         string="Variants per placement", default=lambda self: {},
         help="Variant derived at confirmation for each answered placement.",
     )
+    # Les SAISIES LIBRES par placement — `{"<lien>": {"<attribut>": "<saisie rangée>"}}`
+    # (D-353). ⚠️ **Un champ À PART, pas dans `child_values`** : tous les lecteurs de
+    # celui-ci attendent un IDENTIFIANT de valeur (`int(value_id)`), et une chaîne y
+    # glissée les ferait tomber — ou pire, lire « 1500 » comme la valeur n° 1500.
+    child_custom_values = fields.Json(
+        string="Typed answers per placement", default=lambda self: {},
+        help="Free answers typed by the client for a placed part, per link. They "
+             "become attribute values only when the configuration is confirmed.",
+    )
 
     def _web_attribute_lines(self):
         """Les questions du produit, avec ce qui reste disponible.
@@ -51,13 +61,16 @@ class ProductConfigSession(models.Model):
         """
         self.ensure_one()
         chosen = self.value_ids.ids
+        typed = self._web_root_custom()
+        custom_vals = self._get_custom_vals_dict()
         out = []
         for line in self.product_tmpl_id.attribute_line_ids.sorted():
-            values = line._configurator_value_ids()
+            values = self._web_offered_values(line)
             available = set(
                 self.values_available(
                     check_val_ids=values.ids,
                     value_ids=chosen,
+                    custom_vals=custom_vals,
                     product_template_attribute_line_id=line.id,
                 )
             )
@@ -66,6 +79,10 @@ class ProductConfigSession(models.Model):
                 "name": line.attribute_id.name,
                 "required": bool(line.required),
                 "multi": bool(line.multi),
+                # ⓘ **LA SAISIE LIBRE** (D-353) — la forme du champ, ou `None` quand la
+                # question se répond par sa liste ; et ce que le client a déjà tapé.
+                "free": self._web_free_field(line),
+                "customValue": typed.get(line.attribute_id.id),
                 # ⚠️ **LA FORME QU'ON A DONNÉE À LA QUESTION.** Réglée en
                 # back-office depuis toujours, elle n'était pas servie : la page
                 # rendait un bouton pour tout, quel que soit le type. Cinq
@@ -83,6 +100,9 @@ class ProductConfigSession(models.Model):
                         # Sur toute autre question, le formateur rend le libellé
                         # inchangé — il n'y a rien à ajouter à « Chêne ».
                         "name": value.display_value or value.name,
+                        # ⓘ La forme RANGÉE (« 150 »), que le champ de saisie
+                        # affiche quand la valeur est choisie (D-353).
+                        "raw": value.name,
                         # ⚠️ La valeur INDISPONIBLE est rendue quand même, marquée.
                         # C'est D-168 et D-178 : on la grise, et un appui dira
                         # pourquoi. La retirer ici ôterait à la page le moyen de
@@ -105,6 +125,200 @@ class ProductConfigSession(models.Model):
                 ],
             })
         return out
+
+    # ── LA SAISIE LIBRE — D-353 ─────────────────────────────────────────────
+
+    @api.model
+    def _web_free_field(self, line):
+        """La forme du CHAMP DE SAISIE d'une question — ou `None` si elle se répond par sa liste.
+
+        ⚠️ **Le discriminant est l'AJOUT, lu sur la LIGNE**, jamais une nouvelle forme
+        d'affichage : une forme inconnue disparaît sans erreur des pages d'Odoo, et le
+        lot C qui en ajoutait une a été abandonné pour cette raison (2026-09-08).
+
+        ⓘ Trois exclusions, chacune pour sa raison : une question MULTIPLE garde ses cases
+        (hors v1, D-353 arbitrage 5) ; une réponse qui désigne un PRODUIT ou une MATIÈRE ne
+        se tape pas au clavier ; une question sans ajout n'a que sa liste.
+
+        La forme vient d'`answer_field` (D-244) — ce que l'éditeur lit déjà. La redire
+        ici ferait deux descriptions d'un même champ, libres de diverger ([[L-034]]).
+        """
+        attribute = line.attribute_id
+        if not line.custom or line.multi or attribute.value_type != "value":
+            return None
+        spec = line.answer_field or {}
+        numeric = bool(spec.get("numeric"))
+        return {
+            "numeric": numeric,
+            "unit": spec.get("unit_label") or "",
+            # ⓘ `None` pour « pas de borne » : une borne à zéro est une vraie borne.
+            "min": spec.get("min_val") if numeric and spec.get("has_min_val") else None,
+            "max": spec.get("max_val") if numeric and spec.get("has_max_val") else None,
+            "step": (spec.get("step") or None) if numeric else None,
+            "maxLength": spec.get("max_length") or None,
+            "regexp": spec.get("regexp") or None,
+        }
+
+    def _web_offered_values(self, line):
+        """Les valeurs qu'une question OFFRE — sans la valeur « Custom » d'OCA.
+
+        ⚠️ `_configurator_value_ids()` ajoute cette valeur spéciale à toute ligne qui
+        autorise l'ajout : c'est le jeton par lequel l'ancien assistant ouvrait son champ.
+        Elle appartient à un AUTRE attribut, et la page la rendait comme une réponse —
+        un bouton « Custom » sur chaque question de la Caisse, qu'on ne pouvait que
+        refuser (relevé le 2026-09-25). Ici, la saisie a son propre champ.
+        """
+        return line._configurator_value_ids() - self.get_custom_value_id()
+
+    def _web_root_custom(self):
+        """`{attribut → saisie rangée}` — ce que le client a TAPÉ à la racine."""
+        self.ensure_one()
+        return {
+            record.attribute_id.id: record.value
+            for record in self.custom_value_ids
+            if record.value not in (None, False, "")
+        }
+
+    def _web_child_custom(self, link_id):
+        """`{attribut → saisie rangée}` d'un placement — clés entières ([[L-219]])."""
+        self.ensure_one()
+        raw = (self.child_custom_values or {}).get(str(int(link_id))) or {}
+        out = {}
+        for attr_key, text in raw.items():
+            try:
+                out[int(attr_key)] = text
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    @api.model
+    def _web_parsed_custom(self, typed):
+        """`{attribut → nombre ou texte}` — la forme qu'attendent bornes et conditions."""
+        out = {}
+        for attr_id, text in (typed or {}).items():
+            attribute = self.env["product.attribute"].browse(attr_id).exists()
+            if not attribute:
+                continue
+            number = attribute.parse_number(text) if attribute.is_numeric() else None
+            out[attr_id] = number if number is not None else text
+        return out
+
+    def web_set_custom_value(self, attribute_id, raw, link_id=None):
+        """Répondre à une question par SAISIE — à la racine ou pour un placement (D-353).
+
+        Dans l'ordre, et chaque étape pour sa raison :
+
+        1. **la question accepte-t-elle une saisie ?** — sur la LIGNE (et, pour un
+           placement, seulement si la définition la dit éditable, comme D-332) ;
+        2. **la saisie désigne-t-elle une valeur DÉJÀ OFFERTE ?** Alors c'est un CHOIX,
+           rangé comme un clic : rien de neuf n'attend la confirmation ;
+        3. **est-elle valide ?** — bornes et pas d'un nombre, longueur et format d'un
+           texte, **au serveur** : la route est publique ;
+        4. **la ranger dans la session**, jamais au catalogue. La valeur d'attribut naît à
+           la CONFIRMATION (Gerry, 2026-09-25), réutilisée si elle existe déjà.
+
+        Une saisie VIDE efface la réponse tapée.
+
+        :returns: l'état complet, ou `{"error": code, "message": texte}` — le message est
+            déjà traduit, et c'est lui que la page affiche.
+        """
+        self.ensure_one()
+        attribute = self.env["product.attribute"].browse(int(attribute_id or 0)).exists()
+        if not attribute:
+            return {"error": "unknown_value"}
+        raw = self._web_strip_unit(attribute, raw)
+        if link_id:
+            return self._web_set_child_custom(int(link_id), attribute, raw)
+        line = self.product_tmpl_id.attribute_line_ids.filtered(
+            lambda l: l.attribute_id == attribute
+        )[:1]
+        if not line or not self._web_free_field(line):
+            return {"error": "custom_not_allowed"}
+        text = attribute.canonical_custom_answer(raw)
+        offered = line.offered_value_for(raw) if text is not None else None
+        try:
+            if offered:
+                self.update_config({attribute.id: offered.id}, {attribute.id: False})
+            elif text is None:
+                self.update_config({}, {attribute.id: False})
+            else:
+                custom_vals = dict(self._get_custom_vals_dict())
+                custom_vals.update(self._web_parsed_custom({attribute.id: text}))
+                line.validate_custom_val(
+                    text, value_ids=self.value_ids.ids, custom_vals=custom_vals
+                )
+                self.update_config({attribute.id: False}, {attribute.id: text})
+        except ValidationError as exc:
+            return {"error": "invalid_custom", "message": str(exc.args[0] if exc.args else exc)}
+        # ⓘ La trace de D-253 ne regarde que les valeurs CHOISIES : une saisie seule ne
+        # préviendrait personne. Même geste que `web_set_child_value`.
+        self._notify_configuration_changed()
+        return self.web_state()
+
+    @api.model
+    def _web_strip_unit(self, attribute, raw):
+        """« 180 mm » → « 180 » : l'unité que le client a tapée par habitude.
+
+        ⓘ Le champ l'affiche à côté de lui, et la liste de suggestions la porte : il
+        est naturel de la retaper. La refuser ferait dire « pas un nombre » à une
+        largeur parfaitement claire.
+        """
+        if raw in (None, False) or not attribute.is_numeric() or not attribute.uom_id:
+            return raw
+        text = str(raw).strip()
+        unit = attribute.uom_id.name or ""
+        if unit and text.lower().endswith(unit.lower()):
+            text = text[: -len(unit)].strip()
+        return text
+
+    def _web_set_child_custom(self, link_id, attribute, raw):
+        """La saisie d'un PLACEMENT — mêmes étapes, rangée par lien (D-332, D-353)."""
+        model3d = self._web_model3d()
+        values = self._web_values()
+        definition = (model3d.to_definition(values, link_answers=self._web_link_answers())
+                      if model3d else None)
+        placements = self._web_placements(model3d, definition, values)
+        placement = next((p for p in placements.values()
+                          if p.get("linkId") == link_id), None)
+        question = next((q for q in (placement or {}).get("questions", [])
+                         if q["id"] == attribute.id), None)
+        if not question:
+            return {"error": "unknown_value"}
+        if not question.get("free"):
+            return {"error": "custom_not_allowed"}
+        model_id = self._web_placement_model_id(definition, placement["nodeId"])
+        tmpl = self.env["product.model3d"].sudo().browse(model_id).product_tmpl_id
+        line = tmpl.attribute_line_ids.filtered(lambda l: l.attribute_id == attribute)[:1]
+        key = str(link_id)
+        answers = dict((self.child_values or {}).get(key) or {})
+        typed = dict((self.child_custom_values or {}).get(key) or {})
+        text = attribute.canonical_custom_answer(raw)
+        offered = line.offered_value_for(raw) if text is not None else None
+        attr_key = str(attribute.id)
+        if offered:
+            answers[attr_key] = offered.id
+            typed.pop(attr_key, None)
+        elif text is None:
+            typed.pop(attr_key, None)
+        else:
+            chosen = [v["id"] for q in placement["questions"] for v in q["values"]
+                      if v["chosen"] and q["id"] != attribute.id]
+            parsed = self._web_parsed_custom(self._web_child_custom(link_id))
+            parsed.update(self._web_parsed_custom({attribute.id: text}))
+            try:
+                line.validate_custom_val(text, value_ids=chosen, custom_vals=parsed)
+            except ValidationError as exc:
+                return {"error": "invalid_custom",
+                        "message": str(exc.args[0] if exc.args else exc)}
+            answers.pop(attr_key, None)
+            typed[attr_key] = text
+        child_values = dict(self.child_values or {})
+        child_values[key] = answers
+        child_custom = dict(self.child_custom_values or {})
+        child_custom[key] = typed
+        self.write({"child_values": child_values, "child_custom_values": child_custom})
+        self._notify_configuration_changed()
+        return self.web_state()
 
     @api.model
     def _web_value_has_image(self, value):
@@ -394,6 +608,17 @@ class ProductConfigSession(models.Model):
                 )
             if resolved:
                 out[link_id] = resolved
+        # ⚠️ **LES SAISIES D'UN PLACEMENT ENTRENT AUSSI** (D-353) — sans quoi une cote
+        # tapée pour un enfant n'atteindrait jamais sa géométrie. La saisie rangée est
+        # déjà la forme brute que `to_scope_entry` sait lire (le nombre nu, D-160).
+        for link_key in (self.child_custom_values or {}):
+            try:
+                link_id = int(link_key)
+            except (TypeError, ValueError):
+                continue
+            typed = self._web_child_custom(link_id)
+            if typed:
+                out.setdefault(link_id, {}).update(typed)
         return out
 
     def _web_placements(self, model3d, definition, values):
@@ -442,11 +667,17 @@ class ProductConfigSession(models.Model):
             ptav.attribute_id.id: ptav.product_attribute_value_id.id
             for ptav in (variant.product_template_attribute_value_ids if variant else [])
         }
+        # ⓘ Une question répondue par SAISIE n'a pas de valeur cochée : la pile
+        # ci-dessous retomberait sinon sur la variante ou le défaut, et la page
+        # montrerait deux réponses à la fois (D-353).
+        typed = self._web_child_custom(link_id)
         # Ce que le client a choisi, sinon ce que la VARIANTE désignée porte, sinon le
         # défaut de la ligne — la même pile que `_child_node`, lue pour cocher.
         chosen_ids = []
         for line in tmpl.attribute_line_ids:
             attr_id = line.attribute_id.id
+            if attr_id in typed:
+                continue
             picked = (answers.get(str(attr_id)) or answers.get(attr_id)
                       or by_attr.get(attr_id)
                       or (line.default_val.id if "default_val" in line._fields and line.default_val else None))
@@ -456,10 +687,11 @@ class ProductConfigSession(models.Model):
         for line in tmpl.attribute_line_ids.sorted():
             if line.attribute_id.id not in editable:
                 continue
-            values = line._configurator_value_ids()
+            values = self._web_offered_values(line)
             try:
                 available = set(Session.values_available(
-                    check_val_ids=values.ids, value_ids=list(chosen_ids), custom_vals={},
+                    check_val_ids=values.ids, value_ids=list(chosen_ids),
+                    custom_vals=self._web_parsed_custom(typed),
                     product_tmpl_id=tmpl.id, product_template_attribute_line_id=line.id))
             except Exception:  # noqa: BLE001 — un évaluateur qui tombe ne doit pas cacher la question
                 _logger.warning("placement %s: availability could not be evaluated", link_id,
@@ -470,10 +702,13 @@ class ProductConfigSession(models.Model):
                 "name": line.attribute_id.name,
                 "required": bool(line.required),
                 "multi": bool(line.multi),
+                "free": self._web_free_field(line),
+                "customValue": typed.get(line.attribute_id.id),
                 "displayType": line.attribute_id.display_type,
                 "values": [{
                     "id": value.id,
                     "name": value.display_value or value.name,
+                    "raw": value.name,
                     "available": value.id in available,
                     "chosen": value.id in chosen_ids,
                     "color": value.html_color or None,
@@ -548,7 +783,8 @@ class ProductConfigSession(models.Model):
         born = {}
         for placement in placements.values():
             link_id = placement["linkId"]
-            answered = (self.child_values or {}).get(str(link_id))
+            typed = self._web_child_custom(link_id)
+            answered = (self.child_values or {}).get(str(link_id)) or typed
             if not answered:
                 continue
             child_model_id = self._web_placement_model_id(definition, placement["nodeId"])
@@ -558,6 +794,17 @@ class ProductConfigSession(models.Model):
             value_ids = []
             for question in placement["questions"]:
                 value_ids += [v["id"] for v in question["values"] if v["chosen"]]
+            # ⓘ **La saisie devient une VALEUR ICI, à la confirmation** (D-353) — réutilisée
+            # si elle existe, créée sinon, rattachée à la ligne de l'enfant. Un attribut
+            # `no_variant` n'en fait pas : sa saisie reste dans la session.
+            for attr_id, text in typed.items():
+                line = tmpl.attribute_line_ids.filtered(
+                    lambda l, a=attr_id: l.attribute_id.id == a)[:1]
+                if not line or not line.attribute_id._resolves_to_values():
+                    continue
+                value = line.resolve_custom_value(text)
+                if value:
+                    value_ids.append(value.id)
             # Les questions FIXÉES par l'auteur (hors `questions`) : leur valeur résolue
             # entre aussi, quand c'est une valeur et non une formule.
             node_overrides = self._web_placement_overrides(definition, placement["nodeId"])
@@ -647,12 +894,19 @@ class ProductConfigSession(models.Model):
         peuvent porter le même libellé sur deux attributs différents.
         """
         self.ensure_one()
-        return {
+        values = {
             value.attribute_id.id: (
                 value.name if value.attribute_id.is_numeric() else value.id
             )
             for value in self.value_ids
         }
+        # ⚠️ **ET CE QUE LE CLIENT A TAPÉ** (D-353) — une largeur saisie doit changer la
+        # pièce. Un nombre entre par sa forme rangée ; un TEXTE qui ne désigne aucune
+        # valeur ne résout rien (`to_scope_entry` rend `None`) : sa clé reste hors de la
+        # portée, et une condition qui le cite est ignorée plutôt que fausse (D-150).
+        for attr_id, text in self._web_root_custom().items():
+            values.setdefault(attr_id, text)
+        return values
 
     def _web_missing_attributes(self):
         """Les questions OBLIGATOIRES restées sans réponse.
@@ -669,9 +923,14 @@ class ProductConfigSession(models.Model):
         """
         self.ensure_one()
         chosen = self.value_ids
+        # ⓘ Une question répondue par SAISIE est répondue (D-353) : sans cette ligne, une
+        # largeur obligatoire tapée bloquerait la confirmation, faute de valeur cochée.
+        typed = self._web_root_custom()
         missing = self.env["product.template.attribute.line"]
         for line in self.product_tmpl_id.attribute_line_ids:
             if not line.required or not line._is_visible(value_ids=chosen):
+                continue
+            if line.attribute_id.id in typed:
                 continue
             if not (line._configurator_value_ids() & chosen):
                 missing |= line
@@ -800,7 +1059,9 @@ class ProductConfigSession(models.Model):
             "productName": self.product_tmpl_id.display_name,
             "state": self.state,
             "attributes": self._web_attribute_lines(),
-            "price": self.get_cfg_price(),
+            # ⚠️ AVEC les saisies (D-353) : une largeur tapée doit changer le prix
+            # comme la même largeur choisie dans la liste.
+            "price": self.get_cfg_price(custom_vals=self._get_custom_vals_dict()),
             # La VARIANTE née de la confirmation, quand elle existe : c'est par elle
             # qu'une boutique met la configuration au panier.
             "productId": self.product_id.id or None,

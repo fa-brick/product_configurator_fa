@@ -289,6 +289,23 @@ class PriceGrid(BaseCommon):
         )
         self.assertAlmostEqual(price, 480 + 120.75, places=2)
 
+    def test_14bis_the_session_PRICE_follows_what_was_TYPED(self):
+        """⚠️ D-353 : le prix de la session — celui que la page affiche et que la ligne
+        de devis reçoit — ignorait les saisies. La grille voyait « pas de largeur » et
+        l'on retombait sur le prix de départ (200), sans un mot."""
+        session = self.env["product.config.session"].create(
+            {"product_tmpl_id": self.template.id, "user_id": self.env.user.id}
+        )
+        Custom = self.env["product.config.session.custom.value"]
+        width = Custom.create({"attribute_id": self.attr_width.id,
+                               "cfg_session_id": session.id, "value": "2 300"})
+        Custom.create({"attribute_id": self.attr_height.id,
+                       "cfg_session_id": session.id, "value": "2100"})
+        self.assertEqual(session.price, 480)
+        # ⓘ Et il SUIT : changer la saisie recalcule, virgule décimale comprise.
+        width.value = "2600,0"
+        self.assertEqual(session.price, 540)
+
     # ── le champ informatif ──────────────────────────────────────────────────
 
     def test_15_the_stored_grid_price_is_refreshed_nightly(self):

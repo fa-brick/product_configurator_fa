@@ -13,3 +13,5 @@ from . import product_product_web3d
 from . import ir_websocket
 # La condition d'un EMPLACEMENT, écrite dans le dialogue du configurateur (D-267).
 from . import placement_condition
+# Les traductions JS de la page, servies au SITE (D-353).
+from . import ir_http

@@ -151,6 +151,10 @@ class TestPlacementCondition(TransactionCase):
 
     # ── LE CHEMIN COMPLET, PAR L'ASSISTANT ───────────────────────────────
 
+    def test_avec_le_pont_une_condition_PEUT_s_ecrire(self):
+        """⚠️ C'est ce qui fait exister l'icône de condition dans l'éditeur (D-364)."""
+        self.assertTrue(self.env["product.model3d.component"].can_edit_conditions())
+
     def test_l_emplacement_ouvre_le_dialogue_du_CONFIGURATEUR(self):
         action = self.lien.action_edit_condition()
         self.assertEqual(action["res_model"], "product.configurator.condition")

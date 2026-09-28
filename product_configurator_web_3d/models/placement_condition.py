@@ -36,7 +36,7 @@ condition du configurateur porte un `numeric_value`, et notre moteur les évalua
 (D-080). Une question numérique se répond en SAISISSANT : c'est cette réponse que la
 comparaison lit.
 """
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 # Les deux préfixes sont identiques de part et d'autre ; on le VÉRIFIE plutôt que de le
@@ -169,6 +169,15 @@ class ProductModel3DComponent(models.Model):
                 "This assembly is not linked to a product yet: a condition tests the "
                 "questions of a product."))
         return self.env["product.configurator.condition"].open_for_component(self, produit)
+
+    @api.model
+    def can_edit_conditions(self):
+        """Oui : le pont sait ouvrir le dialogue des conditions (D-364).
+
+        ⓘ C'est ce qui fait apparaître l'icône de condition dans l'éditeur 3D. Sans ce
+        module, `product_editor` répond `False` et l'icône n'existe pas.
+        """
+        return True
 
 
 class ProductConfiguratorCondition(models.TransientModel):

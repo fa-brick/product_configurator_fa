@@ -211,21 +211,12 @@ export class ConfiguratorPage extends Component {
      * ce qu'il change apparaît chez le client sans qu'il ait à recharger. C'est la
      * contrepartie de la fourche supprimée — on partage, donc on montre.
      *
-     * ⚠️ **L'écho de sa PROPRE modification revient aussi**, et on l'applique comme
-     * les autres. C'est sans effet : le message porte l'état complet du serveur, qui
-     * est justement celui qu'on vient d'appliquer. Filtrer l'auteur coûterait un
-     * identifiant de plus sur le fil, pour rien.
+     * ⓘ Le bus ne porte plus qu'un SIGNAL, `{author}` : voir `_onRemoteChange`.
      */
     _listenToOthers() {
         const bus = useService("bus_service");
         const channel = `product.config.session_${this.props.token}`;
-        const onRemote = (payload) => {
-            // ⓘ Le même chemin que la réponse d'un clic : le modèle PRÉCÉDENT est
-            // passé, donc la définition est conservée quand la recette n'a pas
-            // changé — un spectateur ne reconstruit pas sa géométrie pour une
-            // couleur (D-191).
-            this._applyModel(payload);
-        };
+        const onRemote = (message) => this._onRemoteChange(message);
         /**
          * Le point de vue de celui qui conduit — D-256.
          *
@@ -266,6 +257,44 @@ export class ConfiguratorPage extends Component {
             // Les workers du décodeur ne s'arrêtent qu'ici ([[L-449]]).
             this._dracoDecoder?.dispose();
         });
+    }
+
+    /**
+     * Quelqu'un a changé la configuration : RELIRE l'état — sauf si c'est nous ([[L-451]]).
+     *
+     * ⚠️ **Le bus portait l'état complet**, environ 500 Ko sur le JeNo, et l'écho revenait
+     * aussi à l'AUTEUR, qui l'avait déjà reçu en réponse : une seconde application, un
+     * second `web_state()` côté serveur, 500 Ko de plus dans `bus_bus` à chaque clic. Il
+     * ne porte plus que l'auteur. Le nôtre s'ignore ; un autre — ou aucun, pour une
+     * écriture du backend — fait relire `/configurator/state`, qui rend ce que la page
+     * appliquait. Le chemin reste celui d'un clic : `_applyModel` garde la définition
+     * quand la recette n'a pas changé (D-191).
+     *
+     * ⚠️ **UNE lecture à la fois.** Deux signaux rapprochés lanceraient deux lectures dont
+     * la première pourrait répondre APRÈS la seconde, et réinstaller un état dépassé. Un
+     * signal reçu pendant une lecture en demande une de plus, après elle — une seule,
+     * quel que soit leur nombre.
+     */
+    async _onRemoteChange(message) {
+        const author = message?.author || null;
+        if (author && author === this.holder) return;
+        if (this._remoteReading) {
+            this._remoteAgain = true;
+            return;
+        }
+        this._remoteReading = true;
+        try {
+            do {
+                this._remoteAgain = false;
+                const next = await this._call("/configurator/state");
+                await this._applyModel(next);
+            } while (this._remoteAgain);
+        } catch (error) {
+            // Une relecture manquée n'est pas une panne : le signal suivant relira.
+            console.warn("[configurateur] l'état partagé n'a pas pu être relu :", error);
+        } finally {
+            this._remoteReading = false;
+        }
     }
 
     _call(route, params = {}) {

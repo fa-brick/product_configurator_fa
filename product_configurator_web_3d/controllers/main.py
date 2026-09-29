@@ -32,8 +32,13 @@ from odoo.http import request
 
 class ProductConfiguratorWeb3D(http.Controller):
 
-    def _session(self, token):
+    def _session(self, token, holder=None):
         """La session que ce jeton désigne, ou un ensemble vide.
+
+        ⓘ **Le PORTEUR voyage dans le contexte** (`cfg_author`) : c'est lui que la
+        diffusion nomme comme auteur du changement, pour que sa propre page ne relise
+        pas un état qu'elle vient de recevoir en réponse ([[L-451]]). Une écriture venue
+        d'ailleurs — le formulaire du backend — n'a pas d'auteur : tout le monde relit.
 
         ⚠️ `sudo` est **nécessaire et suffisant** : l'utilisateur public n'a aucun
         droit sur `product.config.session`, et lui en donner par une règle
@@ -51,6 +56,8 @@ class ProductConfiguratorWeb3D(http.Controller):
         lang = request.cookies.get("frontend_lang")
         if session and lang and lang in dict(request.env["res.lang"].get_installed()):
             session = session.with_context(lang=lang)
+        if session and holder:
+            session = session.with_context(cfg_author=holder)
         return session
 
     @http.route(
@@ -205,7 +212,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         que le client aurait touché un bouton. Ce qui compte est que l'autre le
         VOIE — d'où la diffusion qui suit.
         """
-        session = self._session(token)
+        session = self._session(token, holder)
         if not session:
             return {"error": "unknown_session"}
         if not holder:
@@ -230,7 +237,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         configuration, c'est un geste qui passe. La stocker ferait d'un regard
         une donnée, et d'un devis un objet qui change sans que rien ne change.
         """
-        session = self._session(token)
+        session = self._session(token, holder)
         if not session:
             return {"error": "unknown_session"}
         if not session._hand_belongs_to(holder):
@@ -249,7 +256,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         geste qui passe, pas un état de la configuration. Qui regarde reçoit le nœud et
         l'isolation, et ignore son propre écho ([[L-256]] côté page).
         """
-        session = self._session(token)
+        session = self._session(token, holder)
         if not session:
             return {"error": "unknown_session"}
         if not session._hand_belongs_to(holder):
@@ -270,7 +277,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         pas l'identité de l'appelant mais l'état de la session — une
         configuration close ne se re-confirme pas.
         """
-        session = self._session(token)
+        session = self._session(token, holder)
         if not session:
             return {"error": "unknown_session"}
         if session.state != "draft":
@@ -302,7 +309,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         ⚠️ Une session **confirmée** ne se modifie plus : elle a donné sa variante,
         et la changer sous une commande déjà passée serait pire qu'un refus.
         """
-        session = self._session(token)
+        session = self._session(token, holder)
         if not session:
             return {"error": "unknown_session"}
         if session.state != "draft":

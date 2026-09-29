@@ -39,23 +39,34 @@ class TestLive(TransactionCase):
 
     # ── CE QUI PART SUR LE FIL ───────────────────────────────────────────
 
-    def test_une_modification_DIFFUSE_l_etat_complet(self):
-        """⚠️ L'état complet, pas un delta : c'est ce que la page sait déjà
-        appliquer, avec le code qu'elle a — donc rien de neuf à écrire côté
-        client, et rien qui puisse diverger de `/configurator/state`."""
+    def test_une_modification_DIFFUSE_un_SIGNAL_et_non_l_etat(self):
+        """⚠️ Un signal, plus l'état complet (L-451) : le message portait tout
+        `web_state()` — environ 500 Ko sur le JeNo —, calculé une seconde fois dans
+        le `write` et rangé dans `bus_bus` à chaque clic. Les spectateurs relisent
+        `/configurator/state`."""
         envois = []
         with patch.object(
             type(self.session), "_bus_send",
             lambda records, kind, message, **kw: envois.append((kind, message)),
+        ), patch.object(
+            type(self.session), "web_state",
+            side_effect=AssertionError("web_state ne doit plus être calculé pour le bus"),
         ):
             self.session.write({"value_ids": [(6, 0, self.noir.ids)]})
-        self.assertEqual(len(envois), 1)
-        kind, message = envois[0]
-        self.assertEqual(kind, "configurator_state")
-        self.assertEqual(message["productName"], self.tmpl.display_name)
-        self.assertIn("attributes", message)
-        # ⓘ Le jeton n'est PAS dans ce qui circule — il entre, il ne sort pas.
-        self.assertNotIn(self.session.access_token, str(message))
+        self.assertEqual(envois, [("configurator_state", {"author": None})])
+
+    def test_le_signal_NOMME_l_auteur_que_la_route_a_pose(self):
+        """L'onglet qui a agi ignore son propre signal : il a déjà l'état en réponse.
+        ⓘ Le porteur n'est pas un secret (voir `_hand_state`) ; le jeton d'accès, si."""
+        envois = []
+        with patch.object(
+            type(self.session), "_bus_send",
+            lambda records, kind, message, **kw: envois.append(message),
+        ):
+            self.session.with_context(cfg_author="onglet-1").write(
+                {"value_ids": [(6, 0, self.noir.ids)]})
+        self.assertEqual(envois, [{"author": "onglet-1"}])
+        self.assertNotIn(self.session.access_token, str(envois))
 
     def test_une_ecriture_qui_ne_CHANGE_rien_ne_diffuse_rien(self):
         self.session.write({"value_ids": [(6, 0, self.blanc.ids)]})

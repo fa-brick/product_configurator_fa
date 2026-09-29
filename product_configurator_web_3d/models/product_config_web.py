@@ -859,7 +859,7 @@ class ProductConfigSession(models.Model):
         child_values[str(int(link_id))] = answers
         self.write({"child_values": child_values})
         # ⓘ Un `write` sur `value_ids` prévient ceux qui regardent ; celui-ci doit le faire
-        # de lui-même — la même diffusion, l'état complet.
+        # de lui-même — le même signal (L-451).
         self._notify_configuration_changed()
         return self.web_state()
 
@@ -1272,21 +1272,25 @@ class ProductConfigSession(models.Model):
         return missing
 
     def _notify_configuration_changed(self):
-        """Diffuser le nouvel état à tous ceux qui regardent — D-253.
+        """Prévenir ceux qui regardent que la configuration a changé — D-253.
 
-        ⓘ On envoie **l'état complet**, pas un delta : c'est exactement ce que
-        `/configurator/state` rend, donc la page l'applique avec le code qu'elle
-        a déjà — et `toViewModel(next, previous)` garde la définition quand la
-        recette n'a pas changé, si bien qu'un spectateur ne reconstruit pas sa
-        géométrie pour un changement de couleur (D-191).
+        ⚠️ **UN SIGNAL, PLUS L'ÉTAT COMPLET** ([[L-451]], 2026-09-29). Le message
+        portait tout `web_state()` — environ 500 Ko sur le JeNo, définition 3D
+        comprise — et il coûtait trois fois :
+          · un second `web_state()` à CHAQUE clic, calculé dans le `write` (0,47 s
+            sur 0,66 s au profil), en plus de celui de la réponse ;
+          · une ligne d'environ 500 Ko dans `bus_bus` à chaque clic ;
+          · un envoi websocket NON compressé à chaque spectateur — y compris à
+            l'auteur, qui venait de recevoir le même état en réponse.
 
-        ⚠️ Le prix de cette simplicité est la TAILLE du message : la définition
-        3D voyage à chaque clic, pour chaque spectateur. Acceptable tant qu'on
-        regarde à deux ou trois ; à revoir si une présentation se joue devant
-        une salle.
+        Le signal nomme l'AUTEUR (le porteur de l'onglet qui a agi, `cfg_author`,
+        posé par la route) : sa page l'ignore, les autres relisent
+        `/configurator/state`, qui rend exactement ce qu'elles appliquaient. Sans
+        auteur — une écriture du backend —, tout le monde relit.
         """
         self.ensure_one()
-        self._bus_send("configurator_state", self.web_state())
+        self._bus_send("configurator_state",
+                       {"author": self.env.context.get("cfg_author") or None})
         return super()._notify_configuration_changed()
 
     def _web_after_confirm(self):

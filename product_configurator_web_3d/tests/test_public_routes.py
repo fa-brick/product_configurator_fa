@@ -6,6 +6,7 @@ de 32 octets ne protège rien. Et une chose qui doit **ne pas** arriver — la
 fourche à chaque clic, qui ferait perdre sa configuration au visiteur.
 """
 import json
+from unittest.mock import patch
 
 from odoo import Command
 from odoo.tests import HttpCase, tagged
@@ -91,6 +92,23 @@ class TestPublicRoutes(HttpCase):
         self.assertEqual(out, {"error": "unknown_value"})
 
     # ── CE QUI DOIT MARCHER ──────────────────────────────────────────────
+
+    def test_le_signal_d_une_reponse_nomme_son_PORTEUR(self):
+        """⚠️ C'est la route qui sait QUI agit : sans elle, la page de l'auteur
+        relirait l'état qu'elle vient de recevoir en réponse (L-451)."""
+        self.session._ensure_access_token()
+        envois = []
+        with patch.object(
+            type(self.session), "_bus_send",
+            lambda records, kind, message, **kw: envois.append((kind, message)),
+        ):
+            out = self._call("/configurator/set_value",
+                             token=self.session.access_token, holder="onglet-7",
+                             attribute_id=self.attribute.id, value_id=self.noir.id)
+        self.assertIn("attributes", out)
+        self.assertIn(("configurator_state", {"author": "onglet-7"}), envois)
+        self.assertTrue(all(message == {"author": "onglet-7"} for _, message in envois))
+
 
     def test_un_jeton_valide_rend_SA_configuration(self):
         state = self._call("/configurator/state", token=self.session.access_token)

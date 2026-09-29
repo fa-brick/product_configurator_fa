@@ -16,6 +16,8 @@ import {
     reorderRowValues,
     reorderRows,
 } from "../src/js/configurator_tree.esm.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const ARBRE = [
     {kind: "attribute", id: 1, name: "Type de Camplate", values: [
@@ -270,5 +272,18 @@ describe("Le point de dépôt se calcule sur la liste PLATE, pas sur les voisins
 
     test("⚠️ rien en dessous : une étape qui n'ouvre rien n'existe pas", () => {
         expect(attributeLineIdBelow(RANGEES, 4)).toBe(null);
+    });
+});
+
+describe("Le nom d'une question s'affiche UNE fois (D-368)", () => {
+    // ⚠️ Récidive de L-145 : le badge « Vendue à part », posé entre le `<a t-if>` du nom et
+    // son `<t t-else>`, lui volait son « sinon » — chaque nom s'affichait deux fois (constat
+    // de Gerry, 2026-09-29). Le `t-else` doit suivre IMMÉDIATEMENT le lien.
+    test("le t-else du nom suit directement le lien de la question", () => {
+        const xml = readFileSync(join(__dirname, "..", "src", "js", "configurator_tree.xml"), "utf8");
+        const start = xml.indexOf(`<a t-if="row.kind === 'attribute'"`);
+        const close = xml.indexOf("</a>", start) + "</a>".length;
+        const next = xml.slice(close).trimStart();
+        expect(next.startsWith(`<t t-else="" t-esc="row.name"/>`)).toBe(true);
     });
 });

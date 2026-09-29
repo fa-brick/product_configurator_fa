@@ -174,11 +174,13 @@
                        t-on-click.prevent="() => this.openLine(row)">
                         <t t-esc="row.name"/>
                     </a>
+                    <t t-else="" t-esc="row.name"/>
                     <!-- ⓘ D-368 — une question VENDUE À PART se voit dans l'arbre : sa
-                         réponse ne fait pas le prix de ce produit, elle ajoute une ligne. -->
+                         réponse ne fait pas le prix de ce produit, elle ajoute une ligne.
+                         ⚠️ APRÈS le `t-else` : posé entre le `t-if` et lui, il lui volait son
+                         « sinon », et chaque nom s'affichait deux fois (constat de Gerry). -->
                     <span t-if="row.kind === 'attribute' and row.sale_separately"
                           class="badge text-bg-light ms-1">Sold separately</span>
-                    <t t-else="" t-esc="row.name"/>
                 </span>
             </td>
             <td class="o_config_conditions" t-on-click="() => this.openCondition(row)">

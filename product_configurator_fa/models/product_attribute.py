@@ -1122,6 +1122,64 @@ class ProductAttributeLine(models.Model):
         "the attribute's setting applies.",
     )
 
+    # ─ VENDUE À PART — D-368 (option B de Gerry) ────────────────────────────
+    #
+    # ⓘ Le couple PRODUIT + QUESTION porte la nature commerciale d'une option : le même
+    # bumper est consommé par un produit et vendu à part avec un autre. C'est ce qui ferme
+    # le point ouvert de D-109. La pièce, elle, reste dans l'assemblage 3D (permutation,
+    # présence, positions) : c'est la QUESTION qui dit comment elle se vend.
+    sale_separately = fields.Boolean(
+        string="Sold separately",
+        help="The product each answer designates goes on its OWN quotation line, linked to "
+        "this product's line — outside this product's price, variant and bill of "
+        "materials. Requires a question whose values designate products, and that "
+        "creates no variant.",
+    )
+
+    sale_separately_warning = fields.Char(
+        compute="_compute_sale_separately_warning",
+        string="Sold separately — warning",
+    )
+
+    @api.depends("sale_separately", "value_ids", "value_ids.product_id")
+    def _compute_sale_separately_warning(self):
+        """Les produits qui ne pourraient pas ALLER au panier — R4.6 de D-368.
+
+        ⚠️ Une ligne à part se pose par la route du panier, qui refuse un produit non
+        vendable ou non publié (`_is_add_to_cart_allowed`). Le dire ICI, au réglage, plutôt
+        que de laisser la page découvrir le refus au moment de commander.
+        ⓘ La publication n'existe qu'avec la boutique : lue seulement si le champ existe.
+        """
+        for line in self:
+            if not line.sale_separately:
+                line.sale_separately_warning = False
+                continue
+            blocked = []
+            for value in line.value_ids.filtered("product_id"):
+                tmpl = value.product_id.sudo().product_tmpl_id
+                if not tmpl.sale_ok or ("is_published" in tmpl._fields and not tmpl.is_published):
+                    blocked.append(value.product_id.sudo().display_name)
+            line.sale_separately_warning = (
+                self.env._("Cannot be ordered as it stands (not for sale, or not published "
+                           "on the website): %s", ", ".join(blocked)) if blocked else False)
+
+    @api.constrains("sale_separately", "attribute_id")
+    def _check_sale_separately(self):
+        """Ce qu'une question vendue à part exige — et le refus DIT quoi faire (D-077)."""
+        for line in self.filtered("sale_separately"):
+            attribute = line.attribute_id
+            if "value_type" in attribute._fields and attribute.value_type != "product":
+                raise ValidationError(self.env._(
+                    "“%s” cannot be sold separately: its answers must designate products. "
+                    "Set the attribute's value type to Product first.",
+                    attribute.display_name))
+            if attribute.create_variant != "no_variant":
+                raise ValidationError(self.env._(
+                    "“%s” cannot be sold separately while it creates variants: the answer "
+                    "would be counted twice, once in this product and once on its own "
+                    "line. Set the attribute's variant creation to “Never”.",
+                    attribute.display_name))
+
     def _unavailable_display(self):
         """`grey` ou `hide` : ce que la page fait d'une valeur indisponible — D-168.
 

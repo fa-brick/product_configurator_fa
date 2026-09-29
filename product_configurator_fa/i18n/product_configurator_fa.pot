@@ -1477,3 +1477,49 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:product_configurator_fa.product_template_attribute_line_form_config
 msgid "As the attribute"
 msgstr ""
+
+#. module: product_configurator_fa
+#. odoo-javascript
+#: code:addons/product_configurator_fa/static/src/js/configurator_tree.xml:0
+#: model:ir.model.fields,field_description:product_configurator_fa.field_product_template_attribute_line__sale_separately
+msgid "Sold separately"
+msgstr ""
+
+#. module: product_configurator_fa
+#: model:ir.model.fields,help:product_configurator_fa.field_product_template_attribute_line__sale_separately
+msgid ""
+"The product each answer designates goes on its OWN quotation line, linked to"
+" this product's line — outside this product's price, variant and bill of "
+"materials. Requires a question whose values designate products, and that "
+"creates no variant."
+msgstr ""
+
+#. module: product_configurator_fa
+#: model:ir.model.fields,field_description:product_configurator_fa.field_product_template_attribute_line__sale_separately_warning
+msgid "Sold separately — warning"
+msgstr ""
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid ""
+"“%s” cannot be sold separately: its answers must designate products. Set the"
+" attribute's value type to Product first."
+msgstr ""
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid ""
+"“%s” cannot be sold separately while it creates variants: the answer would "
+"be counted twice, once in this product and once on its own line. Set the "
+"attribute's variant creation to “Never”."
+msgstr ""
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid ""
+"Cannot be ordered as it stands (not for sale, or not published on the "
+"website): %s"
+msgstr ""

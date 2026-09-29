@@ -763,6 +763,11 @@
                     <field name="dimension_role" />
                     <field name="price_mode" />
                     <field name="unavailable_display" placeholder="As the attribute" />
+                    <field name="sale_separately" />
+                    <div colspan="2" class="alert alert-warning mb-0" role="alert"
+                         invisible="not sale_separately_warning">
+                        <field name="sale_separately_warning" nolabel="1" readonly="1"/>
+                    </div>
                     <field name="visibility_domain_id" />
                 </group>
                 <group

@@ -1794,6 +1794,13 @@ class ProductConfigSession(models.Model):
         price_extra = 0.0
         attr_val_obj = self.env["product.attribute.value"]
         av_ids = attr_val_obj.browse(value_ids)
+        # ⚠️ **UNE QUESTION VENDUE À PART N'ENTRE PAS DANS LE PRIX** (D-368) : sa pièce a sa
+        # propre ligne de devis, la compter ici la ferait payer deux fois (D-106). Filtré
+        # dans les deux TOTAUX — celui-ci et `_compute_product_price_extra` — et non dans
+        # `get_attribute_value_extra_prices`, qui sert aussi à AFFICHER le prix d'une valeur.
+        apart = product_tmpl._sale_separately_attribute_ids()
+        if apart:
+            av_ids = av_ids.filtered(lambda v: v.attribute_id.id not in apart)
         extra_prices = attr_val_obj.get_attribute_value_extra_prices(
             product_tmpl_id=product_tmpl.id, pt_attr_value_ids=av_ids
         )
@@ -1967,6 +1974,7 @@ class ProductConfigSession(models.Model):
             custom_vals = self._get_custom_vals_dict()
 
         image = self.get_config_image(value_ids)
+        value_ids = self._variant_value_ids(value_ids)
         ptav_ids = self.env["product.template.attribute.value"].search(
             [
                 ("product_tmpl_id", "=", self.product_tmpl_id.id),
@@ -2217,6 +2225,7 @@ class ProductConfigSession(models.Model):
         if value_ids is None:
             value_ids = self.value_ids.ids
 
+        value_ids = self._variant_value_ids(value_ids, product_tmpl_id)
         domain = [
             ("product_tmpl_id", "=", product_tmpl_id.id),
             ("config_ok", "=", True),
@@ -2525,6 +2534,26 @@ class ProductConfigSession(models.Model):
         return True
 
     @api.model
+    def _variant_value_ids(self, value_ids, product_tmpl_id=None):
+        """Les valeurs qui entrent dans la VARIANTE — sans celles d'une question vendue à part.
+
+        ⚠️ **D-368 : la pièce vendue à part a sa propre ligne.** Sa valeur n'entre ni dans
+        la variante du produit (deux JeNo aux bumpers différents sont le MÊME JeNo), ni
+        donc dans sa nomenclature, que `_fa_mrp` bâtit sur les valeurs de la variante.
+
+        ⚠️ **Et SEULEMENT celles-là.** Le chemin d'OCA fait entrer TOUTE valeur cochée
+        dans la variante, `no_variant` compris — là où le cœur d'Odoo l'exclut. Le
+        corriger en général fusionnerait des variantes existantes : la Boite de Jenga de
+        configdb porte ses dimensions en `no_variant`, et le fork n'écrit pas ces valeurs
+        sur la ligne de devis (relevé le 2026-09-29). Hors périmètre, signalé.
+        """
+        tmpl = product_tmpl_id or self.product_tmpl_id
+        apart = tmpl._sale_separately_attribute_ids() if tmpl else set()
+        if not apart:
+            return value_ids
+        values = self.env["product.attribute.value"].browse(value_ids)
+        return [v.id for v in values if v.attribute_id.id not in apart]
+
     def search_variant(self, value_ids=None, product_tmpl_id=None):
         """Searches product.variants with given value_ids and custom values
         given in the custom_vals dict
@@ -2549,6 +2578,8 @@ class ProductConfigSession(models.Model):
                         "without product_tmpl_id kwarg"
                     )
                 )
+        # ⓘ AVANT le comptage d'en bas : une variante n'a pas de valeur vendue à part.
+        value_ids = self._variant_value_ids(value_ids, product_tmpl_id)
 
         domain = self.get_variant_search_domain(
             product_tmpl_id=product_tmpl_id, value_ids=value_ids

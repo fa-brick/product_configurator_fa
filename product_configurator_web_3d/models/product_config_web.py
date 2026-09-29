@@ -861,15 +861,21 @@ class ProductConfigSession(models.Model):
         return self.web_state()
 
     def _web_confirm_children(self):
-        """La VARIANTE de chaque placement RÉPONDU naît à la confirmation — D-332.
+        """La VARIANTE des pièces posées naît à la confirmation — D-332, D-368.
 
         Le même geste que pour la racine (D-190) : un gabarit, des réponses, une variante.
-        ⚠️ Retenue sur la session (`child_variants`), SANS effet commercial dans ce lot :
-        la commande, la nomenclature et le prix des composants sont 7-9/7-10.
+        ⓘ Deux sortes de pièces la reçoivent : celle que le client a RÉPONDUE (D-332), et
+        celle qu'une question VENDUE À PART permute (D-368) — touchée ou non, elle part sur
+        sa propre ligne de devis, et il lui faut un article.
 
-        ⚠️ Une variante qui ne peut pas naître (réponse d'auteur par FORMULE, que le
-        serveur ne résout pas ; gabarit sans variantes) est consignée, jamais bloquante :
-        la confirmation de la racine ne dépend pas d'un enfant.
+        ⚠️ **LA COMBINAISON EST COMPLÈTE** : chaque question du gabarit reçoit la réponse que
+        la pièce DONNE (`_node_answers` — défaut, variante désignée, suivi, lien, client).
+        Avant D-368 on n'envoyait que les questions éditables et les valeurs fixées : une
+        question SUIVIE manquait, la combinaison était incomplète, et aucune variante ne
+        naissait — sans erreur visible (l'écart de D-332).
+
+        ⚠️ Une variante qui ne peut pas naître est consignée, jamais bloquante : la
+        confirmation de la racine ne dépend pas d'un enfant.
         """
         self.ensure_one()
         model3d = self._web_model3d()
@@ -877,71 +883,187 @@ class ProductConfigSession(models.Model):
             return {}
         values = self._web_values()
         definition = model3d.to_definition(values, link_answers=self._web_link_answers())
-        placements = self._web_placements(model3d, definition, values)
+        Model3d = self.env["product.model3d"].sudo()
+        answers_by_node = Model3d._node_answers(definition, model3d.get_attribute_scope(values))
+        apart = self.product_tmpl_id._sale_separately_attribute_ids()
+        Link = self.env["product.model3d.component"].sudo()
         born = {}
-        for placement in placements.values():
-            link_id = placement["linkId"]
+
+        def children(node):
+            for child in node.get("children") or []:
+                yield child
+                yield from children(child)
+
+        for node in children(definition or {}):
+            link_id = node.get("linkId")
+            if not link_id or str(link_id) in born:
+                continue
             typed = self._web_child_custom(link_id)
             answered = (self.child_values or {}).get(str(link_id)) or typed
-            if not answered:
+            link = Link.browse(link_id).exists()
+            sold = bool(link and link.swap_attribute_id.id in apart)
+            if not (answered or sold):
                 continue
-            child_model_id = self._web_placement_model_id(definition, placement["nodeId"])
-            tmpl = self.env["product.model3d"].sudo().browse(child_model_id).product_tmpl_id
+            tmpl = Model3d.browse(node.get("model3dId")).product_tmpl_id
             if not tmpl:
                 continue
-            value_ids = []
-            for question in placement["questions"]:
-                value_ids += [v["id"] for v in question["values"] if v["chosen"]]
-            # ⓘ **La saisie devient une VALEUR ICI, à la confirmation** (D-353) — réutilisée
-            # si elle existe, créée sinon, rattachée à la ligne de l'enfant. Un attribut
-            # `no_variant` n'en fait pas : sa saisie reste dans la session.
-            for attr_id, text in typed.items():
-                line = tmpl.attribute_line_ids.filtered(
-                    lambda l, a=attr_id: l.attribute_id.id == a)[:1]
-                if not line or not line.attribute_id._resolves_to_values():
-                    continue
-                value = line.resolve_custom_value(text)
-                if value:
-                    value_ids.append(value.id)
-            # Les questions FIXÉES par l'auteur (hors `questions`) : leur valeur résolue
-            # entre aussi, quand c'est une valeur et non une formule.
-            node_overrides = self._web_placement_overrides(definition, placement["nodeId"])
-            for attr_key, binding in node_overrides.items():
-                if not isinstance(binding, dict) or "value" not in binding:
-                    continue
-                attribute = self.env["product.attribute"].browse(int(attr_key)).exists()
-                if not attribute or attribute.id in {q["id"] for q in placement["questions"]}:
-                    continue
-                value = attribute.resolve_answer(binding["value"])
-                if value:
-                    value_ids.append(value.id)
-            # ⓘ **Par le cœur d'Odoo, pas par une session de l'enfant.** La recherche de
-            # variante d'OCA (`search_variant`) ne retrouve pas celles qu'Odoo engendre
-            # lui-même à la création des lignes d'attribut : elle en CRÉAIT une seconde, et
-            # la contrainte d'unicité de la combinaison tombait au vidage — mesuré. Le cœur
-            # sait retrouver une combinaison (`_get_variant_for_combination`) et la créer
-            # pour un attribut dynamique (`_create_product_variant`).
-            #
-            # ⚠️ **SOUS UN POINT DE SAUVEGARDE, et VIDÉ avant d'être retenu** : une erreur
-            # SQL attrapée sans point de sauvegarde laisse la transaction en échec, et un
-            # identifiant retenu avant le vidage désigne une ligne qu'un repli a effacée.
-            wanted = set(value_ids)
-            combination = tmpl.attribute_line_ids.product_template_value_ids.filtered(
-                lambda ptav: ptav.product_attribute_value_id.id in wanted)
-            try:
-                with self.env.cr.savepoint():
-                    variant = (tmpl._get_variant_for_combination(combination)
-                               or tmpl._create_product_variant(combination, log_warning=True))
-                    if not variant:
-                        raise ValueError("no variant for this combination")
-                    self.env.flush_all()
+            value_ids = self._web_child_value_ids(
+                tmpl, answers_by_node.get(node.get("id")) or {}, typed, node, link_id)
+            variant = self._web_child_variant(tmpl, value_ids, link_id)
+            if variant:
                 born[str(link_id)] = variant.id
-            except Exception:  # noqa: BLE001
-                _logger.warning("placement %s: the child variant could not be born", link_id,
-                                exc_info=True)
         if born:
             self.write({"child_variants": born})
         return born
+
+    def _web_child_value_ids(self, tmpl, resolved, typed, node, link_id):
+        """Les valeurs de la combinaison d'une pièce : une par question de son gabarit."""
+        marker = self.env["product.model3d"].ATTRIBUTE_MARKER
+        formulas = {str(key) for key, binding in (node.get("attributeOverrides") or {}).items()
+                    if isinstance(binding, dict) and "expr" in binding}
+        value_ids = []
+        for line in tmpl.attribute_line_ids:
+            attribute = line.attribute_id
+            # ⓘ **La saisie devient une VALEUR ICI, à la confirmation** (D-353) — réutilisée
+            # si elle existe, créée sinon, rattachée à la ligne de l'enfant. Un attribut
+            # `no_variant` n'en fait pas : sa saisie reste dans la session.
+            if attribute.id in typed:
+                if attribute._resolves_to_values():
+                    value = line.resolve_custom_value(typed[attribute.id])
+                    if value:
+                        value_ids.append(value.id)
+                continue
+            if str(attribute.id) in formulas:
+                # ⚠️ Une FORMULE ne se résout qu'au moteur : la pièce prend la réponse d'en
+                # dessous (son défaut, sa variante). Dit dans le journal, pas en silence.
+                _logger.info("placement %s: “%s” is computed by a formula; its variant takes "
+                             "the answer below it", link_id, attribute.display_name)
+            value_id = self._web_value_of_entry(line, resolved.get(marker + str(attribute.id)))
+            if value_id:
+                value_ids.append(value_id)
+        return value_ids
+
+    def _web_child_variant(self, tmpl, value_ids, link_id):
+        """La variante de cette combinaison — retrouvée, sinon créée — ou rien.
+
+        ⓘ **Par le cœur d'Odoo, pas par une session de l'enfant.** La recherche de variante
+        d'OCA (`search_variant`) ne retrouve pas celles qu'Odoo engendre lui-même à la
+        création des lignes d'attribut : elle en CRÉAIT une seconde, et la contrainte
+        d'unicité de la combinaison tombait au vidage — mesuré. Le cœur sait retrouver une
+        combinaison (`_get_variant_for_combination`) et la créer pour un attribut
+        dynamique (`_create_product_variant`).
+
+        ⚠️ **SOUS UN POINT DE SAUVEGARDE, et VIDÉ avant d'être retenu** : une erreur SQL
+        attrapée sans point de sauvegarde laisse la transaction en échec, et un identifiant
+        retenu avant le vidage désigne une ligne qu'un repli a effacée.
+        """
+        wanted = set(value_ids)
+        combination = tmpl.attribute_line_ids.product_template_value_ids.filtered(
+            lambda ptav: ptav.product_attribute_value_id.id in wanted)
+        try:
+            with self.env.cr.savepoint():
+                variant = (tmpl._get_variant_for_combination(combination)
+                           or tmpl._create_product_variant(combination, log_warning=True))
+                if not variant:
+                    raise ValueError("no variant for this combination")
+                self.env.flush_all()
+            return variant
+        except Exception:  # noqa: BLE001
+            _logger.warning("placement %s: the child variant could not be born", link_id,
+                            exc_info=True)
+            return self.env["product.product"]
+
+    def web_separate_lines(self, definition=None):
+        """Les lignes de devis À PART de cette configuration — D-368.
+
+        `[{attributeId, valueId, linkId, name, productId, qty, price}]` : une par question
+        vendue à part dont la réponse désigne un produit. « Sans bumper » (sans produit)
+        n'en donne aucune.
+
+        ⓘ **L'article et son prix** : la variante née à la confirmation (`child_variants`) ;
+        avant, celle de la COMBINAISON que la pièce répond (sa matière comprise — la couleur
+        du bumper change son prix si la valeur porte un supplément), sinon celle que la
+        valeur désigne. ⓘ **La quantité** v1 : le nombre de liens permutés par la question
+        dans la scène ; les répétitions et les miroirs viendront du décompte du moteur
+        (lot 6, D-359).
+        """
+        self.ensure_one()
+        apart = self.product_tmpl_id._sale_separately_attribute_ids()
+        if not apart:
+            return []
+        model3d = self._web_model3d()
+        values = self._web_values()
+        if definition is None and model3d:
+            definition = model3d.to_definition(values, link_answers=self._web_link_answers())
+        Model3d = self.env["product.model3d"].sudo()
+        Link = self.env["product.model3d.component"].sudo()
+        answers_by_node = (Model3d._node_answers(definition, model3d.get_attribute_scope(values))
+                           if model3d else {})
+        nodes_by_attr = {}
+
+        def walk(node):
+            for child in node.get("children") or []:
+                link = Link.browse(child.get("linkId") or 0).exists()
+                if link and link.swap_attribute_id.id in apart:
+                    nodes_by_attr.setdefault(link.swap_attribute_id.id, []).append(child)
+                walk(child)
+
+        walk(definition or {})
+        variants = self.child_variants or {}
+        Product = self.env["product.product"].sudo()
+        out = []
+        for value in self.value_ids.filtered(lambda v: v.attribute_id.id in apart):
+            if not value.product_id:
+                continue
+            nodes = nodes_by_attr.get(value.attribute_id.id) or []
+            product, price, name = value.product_id.sudo(), None, None
+            if nodes:
+                node = nodes[0]
+                link_id = node.get("linkId")
+                if str(link_id) in variants:
+                    product = Product.browse(variants[str(link_id)])
+                else:
+                    tmpl = Model3d.browse(node.get("model3dId")).product_tmpl_id
+                    if tmpl:
+                        value_ids = self._web_child_value_ids(
+                            tmpl, answers_by_node.get(node.get("id")) or {},
+                            self._web_child_custom(link_id), node, link_id)
+                        found, price, name = self._web_combination(tmpl, value_ids)
+                        # ⚠️ Sans variante encore née, AUCUN article : retomber sur celui de
+                        # la valeur afficherait « Bumper (Bleu) » au prix du Rouge.
+                        product = found or self.env["product.product"]
+            out.append({
+                "attributeId": value.attribute_id.id,
+                "valueId": value.id,
+                "linkId": nodes[0].get("linkId") if nodes else None,
+                "name": product.display_name if product else name,
+                "productId": product.id or None,
+                "qty": max(len({n.get("linkId") for n in nodes}), 1),
+                "price": price if price is not None else product._get_contextual_price(),
+            })
+        return out
+
+    @api.model
+    def _web_combination(self, tmpl, value_ids):
+        """`(variante existante | vide, prix, nom)` d'une combinaison — SANS créer la variante.
+
+        ⓘ Une variante dynamique n'existe qu'une fois commandée : afficher un prix ne doit
+        pas en créer une. Sans elle, le prix est celui du gabarit plus les suppléments de
+        la combinaison, par la liste de prix — la même voie que `get_cfg_price`
+        (`current_attributes_price_extra`).
+        """
+        wanted = set(value_ids)
+        combination = tmpl.attribute_line_ids.product_template_value_ids.filtered(
+            lambda ptav: ptav.product_attribute_value_id.id in wanted)
+        variant = tmpl._get_variant_for_combination(combination)
+        if variant:
+            return variant, variant._get_contextual_price(), variant.display_name
+        extra = sum(combination.mapped("price_extra"))
+        # ⓘ Le nom que la variante PORTERA — la règle du cœur (`_get_combination_name`).
+        label = combination._get_combination_name()
+        return (self.env["product.product"],
+                tmpl.with_context(current_attributes_price_extra=[extra])._get_contextual_price(),
+                "%s (%s)" % (tmpl.display_name, label) if label else tmpl.display_name)
 
     @api.model
     def _web_placement_model_id(self, definition, node_id):

@@ -170,6 +170,30 @@ class ProductModel3DComponent(models.Model):
                 "questions of a product."))
         return self.env["product.configurator.condition"].open_for_component(self, produit)
 
+    def customer_answers_ordered(self):
+        """Oui si une question VENDUE À PART permute ce lien — D-368.
+
+        ⓘ La réponse du client sur cette pièce part alors avec la variante de sa propre ligne
+        de devis. Sinon, la pièce est INTÉGRÉE, et son choix n'atteint pas la variante du
+        produit tant que D-354 n'existe pas : l'éditeur l'alerte.
+
+        ⓘ Le réglage est sur la ligne du produit RACINE ; le lien peut être posé dans un
+        groupe sans produit. On lit donc la ligne du produit parent s'il pose la question,
+        sinon toute ligne qui la déclare vendue à part.
+        """
+        self.ensure_one()
+        attribute = self.swap_attribute_id
+        if not attribute:
+            return False
+        Line = self.env["product.template.attribute.line"].sudo()
+        tmpl = self.parent_id.product_tmpl_id
+        own = tmpl.attribute_line_ids.filtered(lambda l: l.attribute_id == attribute)[:1] \
+            if tmpl else Line
+        if own:
+            return bool(own.sale_separately)
+        return bool(Line.search_count([("attribute_id", "=", attribute.id),
+                                       ("sale_separately", "=", True)], limit=1))
+
     @api.model
     def can_edit_conditions(self):
         """Oui : le pont sait ouvrir le dialogue des conditions (D-364).

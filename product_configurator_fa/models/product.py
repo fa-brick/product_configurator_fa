@@ -114,6 +114,14 @@ class ProductTemplate(models.Model):
     # qui l'ouvre. C'est l'affichage qui en tire un bandeau — ce qui est
     # exactement ce que la forme (A) promettait, *« le bandeau pourra venir plus
     # tard sans toucher au modèle »*.
+    def _sale_separately_attribute_ids(self):
+        """Les questions de ce produit VENDUES À PART — `set` d'identifiants (D-368).
+
+        ⓘ Le seul lecteur du réglage côté produit : le prix, la variante et la page le
+        demandent ici, plutôt que de refiltrer les lignes chacun à sa façon.
+        """
+        return set(self.attribute_line_ids.filtered("sale_separately").attribute_id.ids)
+
     def get_configurator_tree(self):
         """L'arbre à afficher — étapes, attributs, valeurs, conditions.
 
@@ -149,6 +157,8 @@ class ProductTemplate(models.Model):
                 "facets": ligne.visibility_domain_id._facet_data(),
                 "domain_id": ligne.visibility_domain_id.id,
                 "camera": ligne._configurator_camera_name(),
+                # ⓘ D-368 — la question donne une ligne de devis À PART.
+                "sale_separately": bool(ligne.sale_separately),
                 "values": [
                     {
                         "kind": "value",
@@ -1344,6 +1354,11 @@ class ProductProduct(models.Model):
             value_ids = (
                 product.product_template_attribute_value_ids.product_attribute_value_id
             )
+            # ⓘ D-368 — même exclusion que `get_cfg_price` : une variante née AVANT le
+            # réglage peut encore porter la valeur d'une question vendue à part.
+            apart = product.product_tmpl_id._sale_separately_attribute_ids()
+            if apart:
+                value_ids = value_ids.filtered(lambda v: v.attribute_id.id not in apart)
             extra_prices = attribute_value_obj.get_attribute_value_extra_prices(
                 product_tmpl_id=product.product_tmpl_id.id, pt_attr_value_ids=value_ids
             )

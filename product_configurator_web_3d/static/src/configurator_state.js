@@ -155,6 +155,12 @@ function toPlacements(raw) {
  * le lien de sa SOURCE (`sourceLinkId`), dont elle partage les réponses (D-332, v1).
  * Sans cette lecture, aucune copie ne serait sélectionnable, et rien ne le dirait.
  *
+ * ⚠️ **La source est `sourceKey`, publiée par le moteur (D-375)** — et non `occurrence.of`,
+ * qui ne fait qu'UN pas : la copie d'une copie (le quatrième bras du JeNo, deux miroirs
+ * enchaînés) a pour `of` une autre copie, que les placements ne connaissent pas. Elle
+ * n'était donc pas sélectionnable. `occurrence.of` ne reste lu que pour une projection
+ * d'avant D-375.
+ *
  * @param {object} model  le modèle de la page (`toViewModel`)
  * @param {Array} pieces  la projection du moteur (`projectAssemblyPieces`)
  * @param {string} nodeId l'identité de la pose
@@ -167,7 +173,33 @@ export function placementOf(model, pieces, nodeId) {
     // rangés sous l'`id` du nœud de la définition ; depuis D-349 un nœud IMBRIQUÉ porte le
     // chemin de sa pose (`c10/c11`), et `c${linkId}` ne le nomme plus. La clé de la pièce
     // EST cet id ; une copie de répétition renvoie à celui de sa source (`occurrence.of`).
-    return placements[piece.key] || placements[piece.occurrence?.of] || null;
+    return placements[piece.key] || placements[piece.sourceKey]
+        || placements[piece.occurrence?.of] || null;
+}
+
+/**
+ * La FAMILLE d'une pose : toutes les poses du même placement — l'original, ses copies de
+ * répétition et de miroir, et les copies de ses copies (D-375).
+ *
+ * Arbitrage de Gerry (2026-09-29) : *« la sélection d'une occurrence sélectionne les autres
+ * ainsi que l'original »*. Elles partagent leurs réponses (D-332, D-175 fermé) : allumer
+ * la seule pose touchée laisserait croire qu'une couleur choisie ne vaut que pour elle.
+ *
+ * ⓘ Deux LIENS vers la même pièce ne sont pas une famille : chacun a ses réponses.
+ *
+ * @param {Array} pieces   la projection du moteur (`projectAssemblyPieces`)
+ * @param {string} nodeId  la pose touchée
+ * @returns {Array<string>} les clés de la famille, la pose touchée EN TÊTE
+ */
+export function familyOf(pieces, nodeId) {
+    if (!nodeId) return [];
+    const touched = (pieces || []).find((p) => p.key === nodeId);
+    const source = touched?.sourceKey;
+    if (!source) return [nodeId];
+    const others = (pieces || [])
+        .filter((p) => p.sourceKey === source && p.key !== nodeId)
+        .map((p) => p.key);
+    return [nodeId, ...others];
 }
 
 /** Les poses SÉLECTIONNABLES — celles qui ont un placement réglable (arbitrage Gerry). */

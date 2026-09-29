@@ -5,9 +5,15 @@ la porte. Ce qui est éprouvé : la ligne à part (article, quantité, prix), la
 poignée qui naît à la confirmation MÊME si le client ne l'a pas touchée — avec la couleur
 suivie —, et ce que l'éditeur apprend pour alerter sur une pièce intégrée.
 """
+import shutil
+import sys
+from unittest import skipUnless
+
 from odoo import Command
 from odoo.api import call_kw
 from odoo.tests import TransactionCase, tagged
+
+HAS_NODE = bool(shutil.which("node") or shutil.which("nodejs"))
 
 
 @tagged("post_install", "-at_install")
@@ -110,3 +116,72 @@ class TestSaleSeparatelyPage(TransactionCase):
         self.assertEqual(len(state["separateLines"]), 1)
         self.assertEqual(state["total"], state["price"] + 10.0)
         self.assertEqual(self._session(self.black, self.none).web_state()["separateLines"], [])
+
+    # ── La QUANTITÉ compte les POSES — répétitions et miroirs (D-375) ─────────────
+    # ⚠️ Le moteur compte, dans Node : ces tests sont sautés sans lui, sauf celui du repli.
+
+    def setUp(self):
+        super().setUp()
+        count_module = sys.modules[type(self.env["product.model3d"])._count_poses.__module__]
+        count_module._MEMORY.clear()
+        self.Function = self.env["product.model3d.function.assembly"]
+
+    def _mirror(self):
+        return self.Function.create({
+            "model3d_id": self.door.id, "op": "mirror", "link_ids": [Command.set(self.link.ids)],
+            "params": {"mirrorX": {"value": True}, "axisX": {"value": 400}},
+        })
+
+    @skipUnless(HAS_NODE, "Node.js is not installed")
+    def test_une_repetition_multiplie_la_quantite(self):
+        self.Function.create({
+            "model3d_id": self.door.id, "op": "repeat", "link_ids": [Command.set(self.link.ids)],
+            "params": {"xCount": {"expr": "1 + 2", "default": 1}, "pitchX": {"value": 100}},
+        })
+        lines = self._session(self.black, self.handle_value).web_separate_lines()
+        self.assertEqual([line["qty"] for line in lines], [3])
+
+    @skipUnless(HAS_NODE, "Node.js is not installed")
+    def test_le_miroir_d_une_piece_REVERSIBLE_reste_sur_sa_ligne(self):
+        self.handle.reversible = "reversible"
+        self._mirror()
+        lines = self._session(self.black, self.handle_value).web_separate_lines()
+        self.assertEqual([line["qty"] for line in lines], [2])
+
+    @skipUnless(HAS_NODE, "Node.js is not installed")
+    def test_le_miroir_d_une_piece_CHIRALE_passe_sous_son_jumeau(self):
+        """La poignée gauche a pour image la droite : deux lignes, la même couleur."""
+        right_tmpl = self.env["product.template"].create({
+            "name": "Poignée droite", "list_price": 12.0,
+            "attribute_line_ids": [Command.create({
+                "attribute_id": self.color.id,
+                "value_ids": [Command.set((self.white | self.black).ids)],
+            })],
+        })
+        self.handle.reversible = "chiral"
+        self.env["product.model3d"].create({
+            "name": "Poignée droite", "product_tmpl_id": right_tmpl.id,
+            "mirror_source_id": self.handle.id,
+        })
+        self._mirror()
+        session = self._session(self.black, self.handle_value)
+        lines = session.web_separate_lines()
+        self.assertEqual([(line["qty"], bool(line.get("mirrored"))) for line in lines],
+                         [(1, False), (1, True)])
+        self.assertEqual(lines[1]["price"], 12.0)
+        # ⓘ Avant la confirmation, le jumeau n'a pas encore d'article ; après, sa variante
+        # naît dans la couleur de l'original.
+        session._web_confirm_children()
+        twin = self.env["product.product"].browse(session.web_separate_lines()[1]["productId"])
+        self.assertEqual(twin.product_tmpl_id, right_tmpl)
+        self.assertEqual(twin.product_template_attribute_value_ids.product_attribute_value_id,
+                         self.black)
+
+    def test_sans_node_la_quantite_d_avant_et_le_journal_le_dit(self):
+        self._mirror()
+        self.env["ir.config_parameter"].sudo().set_param(
+            "product_editor.node_path", "/nonexistent/node")
+        with self.assertLogs(level="WARNING") as logs:
+            lines = self._session(self.black, self.handle_value).web_separate_lines()
+        self.assertEqual([line["qty"] for line in lines], [1])
+        self.assertTrue(any("one per placement" in message for message in logs.output))

@@ -48,7 +48,7 @@ import { collectGlbAttachments, extractImportedGeometries }
 // auraient reconnus.
 import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
 import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
-         placementOf, selectableNodeIds, answerForPlacement,
+         placementOf, selectableNodeIds, familyOf, answerForPlacement,
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
@@ -536,10 +536,19 @@ export class ConfiguratorPage extends Component {
         return this._selectableFor.ids;
     }
 
-    /** La pose sélectionnée, sous la forme que le viewer attend — une liste. */
+    /**
+     * La pose sélectionnée ET sa famille, sous la forme que le viewer attend — une liste.
+     *
+     * ⓘ D-375 : toucher une copie allume l'original et toutes les copies — elles partagent
+     * leurs réponses (`familyOf`). La sélection, elle, garde la pose TOUCHÉE : c'est elle
+     * qu'on diffuse et qu'on cadre en premier.
+     */
     get selectedNodeIds() {
         const id = this.state.selection.nodeId;
-        if (this._selectedFor?.id !== id) this._selectedFor = { id, list: id ? [id] : [] };
+        const pieces = this.state.pieces;
+        if (this._selectedFor?.id !== id || this._selectedFor?.pieces !== pieces) {
+            this._selectedFor = { id, pieces, list: familyOf(pieces, id) };
+        }
         return this._selectedFor.list;
     }
 
@@ -561,7 +570,9 @@ export class ConfiguratorPage extends Component {
         const pieces = this.state.pieces;
         if (!isolated || !nodeId) return pieces;
         if (this._isolatedFor?.pieces !== pieces || this._isolatedFor?.nodeId !== nodeId) {
-            const keep = subtreeOf(pieces, nodeId);
+            // ⓘ Isolée, la FAMILLE entière se montre (D-375) : les quatre bumpers des bras,
+            // pas celui qu'on a touché seul.
+            const keep = subtreeOf(pieces, familyOf(pieces, nodeId));
             this._isolatedFor = { pieces, nodeId, list: pieces.filter((p) => keep.has(p.key)) };
         }
         return this._isolatedFor.list;
@@ -627,8 +638,12 @@ export class ConfiguratorPage extends Component {
     _frameOn(nodeId) {
         const pose = this._lastPose || this.state.model?.camera?.pose;
         if (!pose) return;
+        // ⓘ La cible est la FAMILLE (D-375) : le viewer cadre l'union de ses poses
+        // (`_selectedSubtreeGroups` accepte une liste). Seule, une pose reste un nœud.
+        const family = familyOf(this.state.pieces, nodeId);
         this.state.cameraApply = {
-            move: true, pose, fitDistance: true, target: { nodeId },
+            move: true, pose, fitDistance: true,
+            target: { nodeId: family.length > 1 ? family : nodeId },
             serial: (this.state.cameraApply?.serial ?? 0) + 1,
         };
     }

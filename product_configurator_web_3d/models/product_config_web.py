@@ -986,9 +986,13 @@ class ProductConfigSession(models.Model):
         ⓘ **L'article et son prix** : la variante née à la confirmation (`child_variants`) ;
         avant, celle de la COMBINAISON que la pièce répond (sa matière comprise — la couleur
         du bumper change son prix si la valeur porte un supplément), sinon celle que la
-        valeur désigne. ⓘ **La quantité** v1 : le nombre de liens permutés par la question
-        dans la scène ; les répétitions et les miroirs viendront du décompte du moteur
-        (lot 6, D-359).
+        valeur désigne.
+
+        ⓘ **La quantité** (D-375) : le nombre de POSES des liens permutés par la question,
+        répétitions et miroirs compris — le moteur les compte, dans Node
+        (`product.model3d._count_poses`). Une pose RÉFLÉCHIE d'une pièce chirale qui a un
+        jumeau passe sur une ligne à part, sous l'article du jumeau (D-074, D-357). Sans
+        décompte (Node absent), la quantité d'avant : le nombre de liens — dit au journal.
         """
         self.ensure_one()
         apart = self.product_tmpl_id._sale_separately_attribute_ids()
@@ -1012,6 +1016,12 @@ class ProductConfigSession(models.Model):
                 walk(child)
 
         walk(definition or {})
+        poses = None
+        if model3d and nodes_by_attr:
+            poses = Model3d._count_poses(definition, model3d.get_attribute_scope(values))
+            if poses is None:
+                _logger.warning("session %s: the engine did not count the poses; parts sold "
+                                "separately are counted one per placement", self.id)
         variants = self.child_variants or {}
         Product = self.env["product.product"].sudo()
         # ⚠️ **LA MÊME LISTE DE PRIX QUE LE PRODUIT** (`get_cfg_price`) : sans elle, la page
@@ -1023,31 +1033,84 @@ class ProductConfigSession(models.Model):
             if not value.product_id:
                 continue
             nodes = nodes_by_attr.get(value.attribute_id.id) or []
+            straight, reflected = self._web_pose_counts(nodes, poses)
             product, price, name = value.product_id.sudo(), None, None
+            twin = None
             if nodes:
                 node = nodes[0]
                 link_id = node.get("linkId")
+                model = Model3d.browse(node.get("model3dId")).exists()
+                tmpl = model.product_tmpl_id
+                value_ids = []
+                if tmpl:
+                    value_ids = self._web_child_value_ids(
+                        tmpl, answers_by_node.get(node.get("id")) or {},
+                        self._web_child_custom(link_id), node, link_id)
                 if str(link_id) in variants:
                     product = Product.browse(variants[str(link_id)])
-                else:
-                    tmpl = Model3d.browse(node.get("model3dId")).product_tmpl_id
-                    if tmpl:
-                        value_ids = self._web_child_value_ids(
-                            tmpl, answers_by_node.get(node.get("id")) or {},
-                            self._web_child_custom(link_id), node, link_id)
-                        found, price, name = self._web_combination(tmpl, value_ids, pricelist)
-                        # ⚠️ Sans variante encore née, AUCUN article : retomber sur celui de
-                        # la valeur afficherait « Bumper (Bleu) » au prix du Rouge.
-                        product = found or self.env["product.product"]
-            out.append({
-                "attributeId": value.attribute_id.id,
-                "valueId": value.id,
-                "linkId": nodes[0].get("linkId") if nodes else None,
-                "name": product.display_name if product else name,
-                "productId": product.id or None,
-                "qty": max(len({n.get("linkId") for n in nodes}), 1),
-                "price": price if price is not None else self._web_price(product, pricelist),
-            })
+                elif tmpl:
+                    found, price, name = self._web_combination(tmpl, value_ids, pricelist)
+                    # ⚠️ Sans variante encore née, AUCUN article : retomber sur celui de
+                    # la valeur afficherait « Bumper (Bleu) » au prix du Rouge.
+                    product = found or self.env["product.product"]
+                if reflected:
+                    twin = self._web_twin_line(model, value_ids, str(link_id) in variants,
+                                               pricelist, link_id)
+                if not twin:
+                    straight, reflected = straight + reflected, 0
+            base = {"attributeId": value.attribute_id.id, "valueId": value.id,
+                    "linkId": nodes[0].get("linkId") if nodes else None}
+            # ⓘ Toujours au moins une : une pièce choisie se vend, même sans pose
+            # dans la scène (option sans 3D, nature ④).
+            if straight or not twin:
+                out.append(dict(base,
+                                name=product.display_name if product else name,
+                                productId=product.id or None,
+                                qty=max(straight, 1),
+                                price=price if price is not None
+                                else self._web_price(product, pricelist)))
+            if twin:
+                out.append(dict(base, mirrored=True, qty=reflected, **twin))
+        return out
+
+    @api.model
+    def _web_pose_counts(self, nodes, poses):
+        """`(droites, réfléchies)` — les poses de ces nœuds, ou un par nœud sans décompte."""
+        if poses is None:
+            return len({n.get("linkId") for n in nodes}), 0
+        keys = {n.get("id") for n in nodes}
+        mine = [p for p in poses if p.get("sourceKey") in keys]
+        reflected = sum(1 for p in mine if p.get("mirrored"))
+        return len(mine) - reflected, reflected
+
+    def _web_twin_line(self, model, value_ids, confirmed, pricelist, link_id):
+        """L'article de l'IMAGE d'une pièce chirale — `{name, productId, price}`, ou rien.
+
+        ⓘ **La règle de l'éditeur** (`_imageArticle`, D-357) : une pièce `chiral` qui a un
+        jumeau (`mirror_source_id`) a pour image ce jumeau ; réversible, ou chirale sans
+        jumeau encore, elle-même — rien à scinder. Le jumeau reçoit la MÊME combinaison :
+        la matière suit le parent sur les deux côtés (R2), un gant gauche rouge a pour image
+        un gant droit rouge.
+
+        ⚠️ Sa variante ne NAÎT qu'une fois la pièce confirmée — comme celle de l'original :
+        afficher un prix ne crée pas d'article.
+        """
+        if not model or model.reversible != "chiral":
+            return None
+        twin_tmpl = self.env["product.model3d"].sudo().search(
+            [("mirror_source_id", "=", model.id)], limit=1).product_tmpl_id
+        if not twin_tmpl:
+            return None
+        if confirmed:
+            product = self._web_child_variant(twin_tmpl, value_ids, link_id)
+            return {"name": product.display_name if product else twin_tmpl.display_name,
+                    "productId": product.id or None,
+                    "price": self._web_price(product or twin_tmpl, pricelist)}
+        found, price, name = self._web_combination(twin_tmpl, value_ids, pricelist)
+        return {"name": found.display_name if found else name,
+                "productId": found.id or None,
+                "price": price if price is not None else self._web_price(found, pricelist)}
+
         return out
 
     def _web_sold_separately_ptav_ids(self):

@@ -6,7 +6,7 @@
  * tests plutôt que l'inverse.
  */
 import { toViewModel, answerFor, reasonFor, sameDefinition, confirmError, handState, handMessage,
-         placementOf, selectableNodeIds, answerForPlacement }
+         placementOf, selectableNodeIds, familyOf, answerForPlacement }
     from "@product_configurator_web_3d/configurator_state";
 
 const PAYLOAD = {
@@ -373,6 +373,53 @@ describe("les PLACEMENTS réglables — ce qui se sélectionne, et ce qu'on y r�
         expect(answerForPlacement(m, m.placements.c11, 5, 52)).toBeNull();   // indisponible
         expect(answerForPlacement({ ...m, closed: true }, m.placements.c11, 5, 51)).toBeNull();
         expect(answerForPlacement(m, null, 5, 51)).toBeNull();
+    });
+});
+
+describe("⚠️ la FAMILLE d'une pose — l'original, ses copies, et les copies de ses copies (D-375)", () => {
+    const PLACEMENTS = { "c4/c6": { linkId: 6, label: "Bumper", questions: [] } };
+    const model = () => toViewModel({ ...PAYLOAD, placements: PLACEMENTS });
+    /** Les bras du JeNo : deux miroirs enchaînés, la quatrième pose copie une copie. */
+    const PIECES = [
+        { key: "c4", sourceKey: "c4", parentKey: "m1" },
+        { key: "c4/c6", sourceKey: "c4/c6", parentKey: "c4" },
+        { key: "c4/f7/occ_001", sourceKey: "c4", occurrence: { of: "c4" }, parentKey: "m1" },
+        { key: "c4/f7/occ_001/c6", sourceKey: "c4/c6", occurrence: { of: "c4/c6" },
+          parentKey: "c4/f7/occ_001" },
+        { key: "c4/f8/occ_001", sourceKey: "c4", occurrence: { of: "c4" }, parentKey: "m1" },
+        { key: "c4/f8/occ_001/c6", sourceKey: "c4/c6", occurrence: { of: "c4/c6" },
+          parentKey: "c4/f8/occ_001" },
+        { key: "c4/f7/occ_001/f8/occ_001", sourceKey: "c4",
+          occurrence: { of: "c4/f7/occ_001" }, parentKey: "m1" },
+        { key: "c4/f7/occ_001/f8/occ_001/c6", sourceKey: "c4/c6",
+          occurrence: { of: "c4/f7/occ_001/c6" }, parentKey: "c4/f7/occ_001/f8/occ_001" },
+        { key: "c9", sourceKey: "c9", parentKey: "m1" },
+    ];
+    const BUMPERS = ["c4/c6", "c4/f7/occ_001/c6", "c4/f8/occ_001/c6", "c4/f7/occ_001/f8/occ_001/c6"];
+
+    test("⚠️ la copie d'une COPIE se règle par le placement de l'original", () => {
+        // Son `occurrence.of` est une copie, que les placements ne connaissent pas.
+        expect(placementOf(model(), PIECES, "c4/f7/occ_001/f8/occ_001/c6")?.linkId).toBe(6);
+        expect([...selectableNodeIds(model(), PIECES)].sort()).toEqual([...BUMPERS].sort());
+    });
+
+    test("toucher N'IMPORTE QUELLE pose allume les quatre bumpers, la touchée en tête", () => {
+        for (const touched of BUMPERS) {
+            const family = familyOf(PIECES, touched);
+            expect(family[0]).toBe(touched);
+            expect([...family].sort()).toEqual([...BUMPERS].sort());
+        }
+    });
+
+    test("une pièce sans copie est sa propre famille ; rien de touché, rien d'allumé", () => {
+        expect(familyOf(PIECES, "c9")).toEqual(["c9"]);
+        expect(familyOf(PIECES, null)).toEqual([]);
+        expect(familyOf(PIECES, "inconnue")).toEqual(["inconnue"]);
+    });
+
+    test("deux LIENS vers la même pièce ne sont PAS une famille", () => {
+        const twoLinks = [{ key: "c1", sourceKey: "c1" }, { key: "c2", sourceKey: "c2" }];
+        expect(familyOf(twoLinks, "c1")).toEqual(["c1"]);
     });
 });
 

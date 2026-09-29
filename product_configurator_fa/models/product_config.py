@@ -1623,6 +1623,14 @@ class ProductConfigSession(models.Model):
                     .mapped("default_val")
                     .ids
                 )
+                # ⚠️ **UN DÉFAUT INDISPONIBLE N'EST PAS UNE RÉPONSE — on l'écarte, on ne bloque
+                # pas** (constat de Gerry, 2026-09-29) : « Configurer » tombait en erreur
+                # parce que le défaut de « Bumper Avant » (Ciné) n'est offert qu'avec une Cam
+                # plate Ciné, et que celle par défaut est Classic. Un défaut est un réglage
+                # d'auteur ; incompatible avec les autres défauts, il ne s'applique pas, comme
+                # une réponse devenue indisponible se retire (`write`).
+                default_val_ids = self._available_default_val_ids(
+                    product_tmpl, default_val_ids)
                 value_ids = vals.get("value_ids")
                 if value_ids:
                     default_val_ids += value_ids[0][2]
@@ -1635,7 +1643,9 @@ class ProductConfigSession(models.Model):
                     # TODO: Remove if cond when PR with
                     # raise error on github is merged
                 except ValidationError as exc:
-                    raise ValidationError(self.env._("%s") % exc.name) from exc
+                    # ⚠️ `exc.name` n'existe plus depuis Odoo 16 : le relais levait une
+                    # `AttributeError` et cachait le vrai message (mesuré le 2026-09-29).
+                    raise ValidationError(exc.args[0] if exc.args else str(exc)) from exc
                 except Exception as exc:
                     raise ValidationError(
                         self.env._(
@@ -1673,7 +1683,7 @@ class ProductConfigSession(models.Model):
         try:
             self.validate_configuration()
         except ValidationError as exc:
-            raise ValidationError(self.env._("%s") % exc.name) from exc
+            raise ValidationError(exc.args[0] if exc.args else str(exc)) from exc
         except Exception as exc:
             raise ValidationError(self.env._("Invalid Configuration")) from exc
 
@@ -2603,6 +2613,16 @@ class ProductConfigSession(models.Model):
         return session
 
     @api.model
+    @api.model
+    def _available_default_val_ids(self, product_tmpl, val_ids):
+        """Les valeurs PAR DÉFAUT qui restent disponibles ensemble — les autres s'écartent."""
+        if not val_ids:
+            return val_ids
+        available = set(self.values_available(
+            check_val_ids=val_ids, value_ids=val_ids, custom_vals={},
+            product_tmpl_id=product_tmpl.id))
+        return [v for v in val_ids if v in available]
+
     def create_get_session(
         self, product_tmpl_id, parent_id=None, force_create=False, user_id=None
     ):

@@ -30,3 +30,4 @@ from . import test_line_flag_columns
 from . import test_numeric_condition
 from . import test_free_text_values  # noqa: F401  (D-353)
 from . import test_sale_separately  # noqa: F401  (D-368)
+from . import test_default_values  # noqa: F401  (constat de Gerry, 2026-09-29)

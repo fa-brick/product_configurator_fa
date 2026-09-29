@@ -18,10 +18,17 @@
                 <field name="swatch_mark" widget="radio" options="{'horizontal': True}"
                        invisible="display_type != 'swatch'"/>
             </xpath>
+            <!-- ⓘ Ordre voulu par Gerry (2026-09-29) : MATIÈRE, valeur, aperçu. La
+                 matière est ce qu'on choisit ; le nom de la valeur la nomme, et la
+                 miniature la confirme. -->
+            <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="before">
+                <field
+                    name="material_id"
+                    column_invisible="parent.value_type != 'material'"
+                    options="{'no_create': True}"
+                />
+            </xpath>
             <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="after">
-                <!-- ⓘ La miniature D'ABORD : c'est elle qui sert à choisir — « la
-                     miniature de la matière sert à la sélection de la matière ». Le nom
-                     vient après, il confirme ce que l'œil a déjà décidé. -->
                 <field
                     name="material_preview"
                     widget="image"
@@ -29,11 +36,6 @@
                     class="oe_avatar text-start float-none"
                     column_invisible="parent.value_type != 'material'"
                     readonly="1"
-                />
-                <field
-                    name="material_id"
-                    column_invisible="parent.value_type != 'material'"
-                    options="{'no_create': True}"
                 />
             </xpath>
         </field>

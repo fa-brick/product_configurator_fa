@@ -906,7 +906,9 @@ export class ConfiguratorPage extends Component {
      */
     async onConfirm() {
         this.state.loading = true;
-        const next = await this._call("/configurator/confirm");
+        // ⓘ D-368 — dans le dialogue du devis, c'est l'hôte qui pose les lignes rattachées.
+        const next = await this._call("/configurator/confirm",
+                                      { client_lines: !!this.props.onConfirmed });
         this.state.loading = false;
         const refusal = confirmError(next);
         if (refusal) {

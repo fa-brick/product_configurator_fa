@@ -1523,3 +1523,11 @@ msgid ""
 "Cannot be ordered as it stands (not for sale, or not published on the "
 "website): %s"
 msgstr ""
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid ""
+"“%s” cannot be sold separately while it is required: a part sold separately "
+"is an option, which can be left out. Untick “Required” first."
+msgstr ""

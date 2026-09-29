@@ -68,6 +68,16 @@ class ProductConfigSession(models.Model):
         })
         return True
 
+    def _release_hand(self):
+        """Rendre la main — quand la configuration se FERME, ou se ROUVRE (D-371).
+
+        ⚠️ Avant D-371 une configuration confirmée ne se rouvrait jamais, et garder la main
+        deux minutes de plus ne gênait personne. Rouverte depuis sa ligne de devis, elle se
+        heurtait au dialogue qu'on venait de fermer : « X est en train de configurer » — le
+        même commercial contre lui-même (mesuré par .probe_d369_reconfig.mjs).
+        """
+        self.sudo().write({"hand_holder": False, "hand_label": False, "hand_since": False})
+
     def _hand_state(self):
         """Ce que la page doit savoir de la main — et rien de plus.
 

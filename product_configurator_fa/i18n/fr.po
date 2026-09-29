@@ -185,3 +185,14 @@ msgid ""
 msgstr ""
 "Ne peut pas être commandé en l'état (non vendable, ou non publié sur le "
 "site) : %s"
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid ""
+"“%s” cannot be sold separately while it is required: a part sold separately "
+"is an option, which can be left out. Untick “Required” first."
+msgstr ""
+"« %s » ne peut pas être vendue à part tant qu'elle est obligatoire : une "
+"pièce vendue à part est une option, qu'on peut laisser de côté. Décochez "
+"d'abord « Obligatoire »."

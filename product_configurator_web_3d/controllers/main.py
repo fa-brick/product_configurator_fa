@@ -95,6 +95,8 @@ class ProductConfiguratorWeb3D(http.Controller):
         session = self._session(token)
         if not session:
             return {"error": "unknown_session"}
+        # ⓘ D-371 — le LIEN d'un devis encore ouvert rouvre sa configuration, comme la ligne.
+        session.sudo()._web_reopen_if_open_quote()
         return session.web_state()
 
     @http.route(
@@ -260,7 +262,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         "/configurator/confirm", type="json", auth="public", methods=["POST"],
         website=False, csrf=False,
     )
-    def confirm(self, token=None, holder=None, **kwargs):
+    def confirm(self, token=None, holder=None, client_lines=False, **kwargs):
         """Terminer la configuration — la seule route qui la FERME.
 
         ⚠️ Le porteur du jeton confirme, et c'est cohérent avec tout le reste :
@@ -278,7 +280,10 @@ class ProductConfiguratorWeb3D(http.Controller):
         # moindre changement de valeur — à plus forte raison.
         if not (session._hand_belongs_to(holder) or session._hand_is_free()):
             return {"error": "not_holding", "hand": session._hand_state()}
-        return session.web_confirm()
+        # ⓘ D-368 — `client_lines` : le DIALOGUE du devis pose lui-même les lignes rattachées
+        # (pièces vendues à part) dans le formulaire qu'il tient ; le serveur ne les pose que
+        # pour une confirmation venue du LIEN, sinon elles le seraient deux fois.
+        return session.with_context(cfg_client_lines=bool(client_lines)).web_confirm()
 
     @http.route(
         "/configurator/set_value", type="json", auth="public", methods=["POST"],

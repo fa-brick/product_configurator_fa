@@ -68,6 +68,12 @@ class SaleSeparately(BaseCommon):
         with self.assertRaisesRegex(ValidationError, "designate products"):
             line.sale_separately = True
 
+    def test_une_question_OBLIGATOIRE_ne_se_vend_pas_a_part(self):
+        """D-371 (Gerry) : une option se retire — une question obligatoire, non."""
+        self.line.required = True
+        with self.assertRaisesRegex(ValidationError, "required"):
+            self.line.sale_separately = True
+
     # ── le prix ─────────────────────────────────────────────────────────────
     def test_integree_la_piece_fait_le_prix_du_produit(self):
         """Ce qui existait : une valeur qui désigne un produit ajoute son prix."""

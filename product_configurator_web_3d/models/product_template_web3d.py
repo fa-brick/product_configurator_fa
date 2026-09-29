@@ -39,6 +39,10 @@ class ProductTemplate(models.Model):
         self.ensure_one()
         Session = self.env["product.config.session"]
         session = Session.browse(session_id).exists() if session_id else Session
+        # ⓘ D-371 — une ligne de DEVIS se corrige : sa configuration, confirmée, se rouvre
+        # tant que le devis n'est pas une commande.
+        if session:
+            session._web_reopen_if_open_quote()
         if not session:
             session = Session.create_get_session(self.id, force_create=True)
         session._ensure_access_token()

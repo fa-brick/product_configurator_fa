@@ -1163,11 +1163,18 @@ class ProductAttributeLine(models.Model):
                 self.env._("Cannot be ordered as it stands (not for sale, or not published "
                            "on the website): %s", ", ".join(blocked)) if blocked else False)
 
-    @api.constrains("sale_separately", "attribute_id")
+    @api.constrains("sale_separately", "attribute_id", "required")
     def _check_sale_separately(self):
         """Ce qu'une question vendue à part exige — et le refus DIT quoi faire (D-077)."""
         for line in self.filtered("sale_separately"):
             attribute = line.attribute_id
+            # ⓘ D-371 (Gerry) : une question OBLIGATOIRE ne peut pas se trouver sur une ligne
+            # séparée — une option se retire, et supprimer sa ligne du devis la désélectionne.
+            if line.required:
+                raise ValidationError(self.env._(
+                    "“%s” cannot be sold separately while it is required: a part sold "
+                    "separately is an option, which can be left out. Untick “Required” "
+                    "first.", attribute.display_name))
             if "value_type" in attribute._fields and attribute.value_type != "product":
                 raise ValidationError(self.env._(
                     "“%s” cannot be sold separately: its answers must designate products. "

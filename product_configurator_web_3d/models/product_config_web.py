@@ -1233,6 +1233,21 @@ class ProductConfigSession(models.Model):
         """
         return True
 
+    def _web_reopen_if_open_quote(self):
+        """Rouvrir une configuration CONFIRMÉE tant que son devis n'est pas une commande — D-371.
+
+        ⓘ **Rien n'est joué au stade du devis** (Gerry, 2026-09-29) : la variante d'une ligne
+        n'est qu'un nom posé sur des réponses, et c'est la COMMANDE qui l'engage. D-190
+        fermait la configuration dès sa confirmation ; c'est désormais la commande qui la
+        verrouille.
+
+        Sans le module de vente, rien ne dit qu'un devis existe : la configuration reste
+        close, comme avant. `product_configurator_web_3d_sale` répond pour les lignes de devis.
+
+        :returns: vrai si la configuration a été rouverte
+        """
+        return False
+
     def web_confirm(self):
         """Terminer la configuration : la variante naît, la session se ferme.
 
@@ -1252,6 +1267,8 @@ class ProductConfigSession(models.Model):
         self.action_confirm()
         self._web_confirm_children()
         self._web_after_confirm()
+        # ⓘ Close, la configuration n'a plus de conducteur : la main est rendue (D-371).
+        self._release_hand()
         return self.web_state()
 
     def action_open_3d_page(self):

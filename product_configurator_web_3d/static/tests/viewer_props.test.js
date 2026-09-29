@@ -194,20 +194,19 @@ describe("la page publique et son viewer", () => {
         expect(tag).toContain("zonesByPiece");
     });
 
-    test("⚠️ et PLUS `zoneMaterialsByNode` — la prop a été retirée, pas oubliée", () => {
-        // Elle alimentait les EXCEPTIONS de matière par placement, parties avec les canaux
-        // de réponses le 2026-09-08 (D-268, commit 5fd3b4d) : sans canal, il n'y a plus
-        // rien à apparier. Le viewer ne la déclare plus non plus.
+    test("⚠️ `zoneMaterialsByNode` REVIENT — par décision (D-368), et non par oubli", () => {
+        // ⓘ **LE RETOUR, TEL QUE CE TEST LE DEMANDAIT.** Elle était partie avec les canaux de
+        // réponses (D-268) ; elle revient parce qu'une pièce posée répond de nouveau par
+        // ELLE-MÊME — elle suit sa racine, ou le client lui choisit sa propre couleur — et
+        // que sa matière pilotée doit le montrer (`_web_zone_overrides_by_node`). Le viewer
+        // la déclare de nouveau (`zoneMaterialsByNode`, `_zoneMaterialFor`).
         //
-        // ⚠️ **Ce test l'a réclamée pendant SEPT JOURS**, rouge et muet — le commit qui
-        // retirait la prop n'a pas touché à son test, et la suite Jest de ce dépôt n'est
-        // pas dans le réflexe. C'est la seconde fois en une semaine dans ce projet, après
-        // deux tests de caméra restés rouges quatre jours pour la même raison.
-        //
-        // ⓘ Il reste ici en NÉGATIF plutôt que d'être effacé : si la prop revient un jour,
-        // c'est une décision, et elle doit se voir.
-        expect(tag).not.toContain("zoneMaterialsByNode");
+        // ⚠️ Ce test l'avait réclamée en NÉGATIF depuis son retrait (D-268, 5fd3b4d),
+        // après être resté SEPT JOURS rouge et muet : le commit qui retirait la prop
+        // n'avait pas touché à son test. Il la réclame désormais en positif.
+        expect(tag).toContain('zoneMaterialsByNode="zoneMaterialsByNode"');
     });
+
 });
 
 

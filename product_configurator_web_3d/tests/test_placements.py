@@ -103,6 +103,24 @@ class TestPlacements(TransactionCase):
         child = next(c for c in definition["children"] if c["linkId"] == self.link_poignee.id)
         self.assertEqual(child["attributeOverrides"][str(self.couleur.id)], {"value": self.noir.id})
 
+    def test_la_poignee_coche_la_couleur_SUIVIE_de_la_porte(self):
+        """D-368 : la porte pose AUSSI la couleur — la poignée la suit d'office, et la page
+        coche ce que le moteur construit. Le client peut ensuite en choisir une autre."""
+        self.env["product.template.attribute.line"].create({
+            "product_tmpl_id": self.porte_tmpl.id, "attribute_id": self.couleur.id,
+            "value_ids": [Command.set((self.blanc | self.noir).ids)],
+        })
+        self.session.write({"value_ids": [Command.set(self.noir.ids)]})
+        key = "c%s" % self.link_poignee.id
+
+        def chosen(state):
+            question = state["placements"][key]["questions"][0]
+            return [v["id"] for v in question["values"] if v["chosen"]]
+
+        self.assertEqual(chosen(self.session.web_state()), [self.noir.id])
+        self.assertEqual(chosen(self.session.web_set_child_value(self.link_poignee.id, self.blanc)),
+                         [self.blanc.id])
+
     def test_repondre_a_ce_que_l_auteur_a_fixe_est_REFUSE(self):
         self.assertEqual(self.session.web_set_child_value(self.link_rail.id, self.courte),
                          {"error": "unknown_value"})

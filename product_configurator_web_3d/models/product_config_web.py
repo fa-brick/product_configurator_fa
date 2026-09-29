@@ -502,6 +502,19 @@ class ProductConfigSession(models.Model):
         # Les EXCEPTIONS par placement (D-175) : deux barreaux du même lien
         # peuvent rendre autre chose.
 
+        # ── PAR POSE : ce que CHAQUE pièce répond (D-368) ───────────────────
+        #
+        # ⚠️ Ce qui précède résout une zone par PIÈCE, avec les réponses de la RACINE. Une
+        # pièce posée répond pourtant à SES questions : elle SUIT la racine, ou son lien
+        # la fixe, ou le client l'a choisie pour elle seule (D-332). Sans ce calque, le
+        # bumper du JeNo resterait à la couleur générale quand le client lui en donne une
+        # autre — exactement ce que l'éditeur évite avec `_resolveZoneMaterialsByNode`.
+        # ⓘ Le calque ne porte que les ÉCARTS, et le viewer le lit déjà
+        # (`zoneMaterialsByNode`, `_zoneMaterialFor`).
+        overlay_ids = self._web_zone_overrides_by_node(model3d, definition, values, rows, rendered)
+        for by_zone in overlay_ids.values():
+            needed.update(material_id for material_id in by_zone.values() if material_id)
+
         materials = self._web_materials(needed)
         for zones in zones_by_piece.values():
             for zone in zones:
@@ -510,7 +523,62 @@ class ProductConfigSession(models.Model):
             "zonesByPiece": zones_by_piece,
             # Par ID : la page y puise sans que la même fiche voyage deux fois.
             "materials": materials,
+            "byNode": {
+                node_id: {str(zone_id): (materials.get(material_id) or None) if material_id else None
+                          for zone_id, material_id in by_zone.items()}
+                for node_id, by_zone in overlay_ids.items()
+            },
         }
+
+    def _web_zone_overrides_by_node(self, model3d, definition, values, rows, rendered):
+        """`{nodeId → {zoneId → matière | None}}` — les poses qui rendent AUTRE chose que
+        leur pièce, parce qu'elles répondent autre chose que la racine (D-368).
+
+        ⓘ Groupé par (pièce, réponses aux questions PILOTES) : dix vis d'une même teinte
+        coûtent une résolution, pas dix — la règle du calque de l'éditeur.
+        """
+        driven = {}
+        for row in rows:
+            if row["driver_attribute_id"] and row["model3d_id"]:
+                driven.setdefault(row["model3d_id"][0], []).append(row)
+        if not driven or not model3d:
+            return {}
+        Model3d = self.env["product.model3d"].sudo()
+        answers_by_node = Model3d._node_answers(definition, model3d.get_attribute_scope(values))
+        marker = Model3d.ATTRIBUTE_MARKER
+        groups = {}
+
+        def walk(node):
+            for child in node.get("children") or []:
+                piece_id = child.get("model3dId")
+                if piece_id in driven and child.get("id") in answers_by_node:
+                    drivers = {r["driver_attribute_id"][0] for r in driven[piece_id]}
+                    answers = {
+                        int(key[len(marker):]): value
+                        for key, value in answers_by_node[child["id"]].items()
+                        if key.startswith(marker) and int(key[len(marker):]) in drivers
+                    }
+                    signature = (piece_id, tuple(sorted(answers.items())))
+                    groups.setdefault(signature, []).append(child["id"])
+                walk(child)
+
+        walk(definition or {})
+        out = {}
+        for (piece_id, answers), node_ids in groups.items():
+            try:
+                resolved = Model3d.browse(piece_id).resolve_zone_materials(dict(answers)) or {}
+            except Exception:  # noqa: BLE001 — une correspondance illisible ne noircit rien (D-150)
+                continue
+            for row in driven[piece_id]:
+                if row["id"] not in resolved and str(row["id"]) not in resolved:
+                    continue
+                material_id = resolved.get(row["id"], resolved.get(str(row["id"]))) or None
+                default_id = row["material_id"][0] if row["material_id"] else None
+                if material_id == rendered.get(row["id"], rendered.get(str(row["id"]), default_id)):
+                    continue
+                for node_id in node_ids:
+                    out.setdefault(node_id, {})[row["id"]] = material_id
+        return out
 
     def _web_camera(self, model3d):
         """La vue PAR DÉFAUT de la pièce — celle d'où sa vignette a été prise.
@@ -660,6 +728,12 @@ class ProductConfigSession(models.Model):
         Session = self.env["product.config.session"].sudo()
         variants = model3d._resolve_swap_variants(values) if model3d else {}
         child_values = self.child_values or {}
+        # ⓘ D-368 — ce que chaque pièce RÉPOND, par la pile du moteur relue au serveur :
+        # défauts, variante désignée, réponse SUIVIE d'un ancêtre, réponse du lien et du
+        # client. Sans elle, la page cocherait la couleur par défaut d'un bumper que le
+        # moteur construit à la couleur du JeNo.
+        answers_by_node = Model3d._node_answers(
+            definition, model3d.get_attribute_scope(values) if model3d else {})
         out = {}
 
         def walk(node):
@@ -670,13 +744,14 @@ class ProductConfigSession(models.Model):
                     out[child["id"]] = self._web_placement(
                         Model3d, Session, child, link_id, editable,
                         child_values.get(str(link_id)) or child_values.get(link_id) or {},
-                        variants)
+                        variants, answers_by_node.get(child["id"]) or {})
                 walk(child)
 
         walk(definition)
         return out
 
-    def _web_placement(self, Model3d, Session, node, link_id, editable, answers, variants):
+    def _web_placement(self, Model3d, Session, node, link_id, editable, answers, variants,
+                       resolved=None):
         piece = Model3d.browse(node.get("model3dId")).exists()
         link = self.env["product.model3d.component"].sudo().browse(link_id).exists()
         tmpl = piece.product_tmpl_id
@@ -689,14 +764,18 @@ class ProductConfigSession(models.Model):
         # ci-dessous retomberait sinon sur la variante ou le défaut, et la page
         # montrerait deux réponses à la fois (D-353).
         typed = self._web_child_custom(link_id)
-        # Ce que le client a choisi, sinon ce que la VARIANTE désignée porte, sinon le
-        # défaut de la ligne — la même pile que `_child_node`, lue pour cocher.
+        # Ce que le client a choisi, sinon ce que la pièce RÉPOND (`resolved` : la pile du
+        # moteur, suivi compris — D-368), sinon la VARIANTE désignée, sinon le défaut de la
+        # ligne.
+        resolved = resolved or {}
         chosen_ids = []
         for line in tmpl.attribute_line_ids:
             attr_id = line.attribute_id.id
             if attr_id in typed:
                 continue
             picked = (answers.get(str(attr_id)) or answers.get(attr_id)
+                      or self._web_value_of_entry(
+                          line, resolved.get(line.attribute_id.scope_key()))
                       or by_attr.get(attr_id)
                       or (line.default_val.id if "default_val" in line._fields and line.default_val else None))
             if picked:
@@ -878,6 +957,33 @@ class ProductConfigSession(models.Model):
 
         walk(definition or {})
         return found
+
+    @api.model
+    def _web_value_of_entry(self, line, entry):
+        """La VALEUR d'une ligne qui porte cette réponse de portée — ou rien — D-368.
+
+        ⓘ Une entrée de portée est l'IDENTIFIANT de la valeur pour une question discrète, et
+        le NOMBRE pour une question numérique (`to_scope_entry`, D-080). La page coche une
+        valeur : on retrouve donc la valeur offerte qui porte ce nombre ou cet identifiant.
+        Une réponse qu'aucune valeur offerte ne porte (une saisie, un nombre hors liste) ne
+        coche rien — plutôt qu'une voisine plausible.
+        """
+        if entry is None or entry is False:
+            return None
+        values = line.value_ids
+        if line.attribute_id.is_numeric():
+            for value in values:
+                try:
+                    if float(str(value.name).replace(",", ".")) == float(entry):
+                        return value.id
+                except (TypeError, ValueError):
+                    continue
+            return None
+        try:
+            entry = int(entry)
+        except (TypeError, ValueError):
+            return None
+        return entry if entry in values.ids else None
 
     @api.model
     def _web_placement_overrides(self, definition, node_id):

@@ -54,6 +54,9 @@ import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
 
+/** Le calque par pose VIDE — une seule instance (voir `zoneMaterialsByNode`). */
+const NO_NODE_MATERIALS = Object.freeze({});
+
 // Fenêtre de partage de la caméra. 150 ms : sous le seuil où un mouvement
 // paraît saccadé à qui regarde, au-dessus de la cadence d'une orbite au doigt.
 const CAMERA_SHARE_MS = 150;
@@ -484,6 +487,17 @@ export class ConfiguratorPage extends Component {
     /** Les zones de matière, rangées par pièce — ce que le viewer peint. */
     get zonesByPiece() {
         return this.state.model?.zones?.zonesByPiece || {};
+    }
+
+    /**
+     * Le calque PAR POSE (D-368) : la matière d'une pièce qui répond autre chose que la
+     * racine — un bumper à qui le client a donné sa propre couleur. Le viewer le lit
+     * par-dessus `zonesByPiece`, comme dans l'éditeur.
+     */
+    get zoneMaterialsByNode() {
+        // ⚠️ Une constante, pas `{}` : le viewer compare le calque par IDENTITÉ, et un objet
+        // neuf à chaque rendu le ferait repeindre à chaque rendu ([[L-420]]).
+        return this.state.model?.zones?.byNode || NO_NODE_MATERIALS;
     }
 
     /** `Map(nodeId → worldTransform)` — le viewer POSE les enfants avec. */

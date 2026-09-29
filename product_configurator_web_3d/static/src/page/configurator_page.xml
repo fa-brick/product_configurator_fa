@@ -96,6 +96,7 @@
                               hideViewGizmo="true"
                               showSketchLines="false"
                               zonesByPiece="zonesByPiece"
+                              zoneMaterialsByNode="zoneMaterialsByNode"
                               cameraApply="state.cameraApply"
                               onCameraPose="(pose) => this.onCameraPose(pose)"/>
             </div>

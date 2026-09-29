@@ -74,6 +74,7 @@ class ProductConfigSession(models.Model):
                     product_template_attribute_line_id=line.id,
                 )
             )
+            values = self._web_shown_values(line, values, available, chosen)
             out.append({
                 "id": line.attribute_id.id,
                 "name": line.attribute_id.name,
@@ -103,10 +104,9 @@ class ProductConfigSession(models.Model):
                         # ⓘ La forme RANGÉE (« 150 »), que le champ de saisie
                         # affiche quand la valeur est choisie (D-353).
                         "raw": value.name,
-                        # ⚠️ La valeur INDISPONIBLE est rendue quand même, marquée.
-                        # C'est D-168 et D-178 : on la grise, et un appui dira
-                        # pourquoi. La retirer ici ôterait à la page le moyen de
-                        # le faire.
+                        # ⚠️ La valeur INDISPONIBLE est rendue quand même, marquée —
+                        # sauf si sa question la MASQUE (`_web_shown_values`, D-168).
+                        # Grisée, un appui dira pourquoi (D-178).
                         "available": value.id in available,
                         "chosen": value.id in chosen,
                         # La PASTILLE d'une valeur de couleur — telle qu'Odoo la
@@ -169,6 +169,24 @@ class ProductConfigSession(models.Model):
         refuser (relevé le 2026-09-25). Ici, la saisie a son propre champ.
         """
         return line._configurator_value_ids() - self.get_custom_value_id()
+
+    @api.model
+    def _web_shown_values(self, line, values, available, chosen):
+        """Les valeurs que la page MONTRE : toutes, ou seulement les disponibles — D-168.
+
+        ⓘ Filtré ICI plutôt que dans la page : une seule règle, rien d'envoyé pour
+        rien (un nuancier de 213 teintes), et les formes sans marque de grisé — la
+        liste déroulante, les suggestions de saisie — en profitent sans changer.
+
+        ⚠️ **Une valeur CHOISIE reste montrée**, même indisponible. À la racine, cela
+        n'arrive pas (`write` de la session retire ce qui ne l'est plus) ; sur une
+        pièce posée, si : la réponse du placement n'est pas élaguée. La cacher ferait
+        une question répondue sans réponse visible.
+        """
+        if line._unavailable_display() != "hide":
+            return values
+        chosen = set(chosen)
+        return values.filtered(lambda v: v.id in available or v.id in chosen)
 
     def _web_root_custom(self):
         """`{attribut → saisie rangée}` — ce que le client a TAPÉ à la racine."""
@@ -697,6 +715,7 @@ class ProductConfigSession(models.Model):
                 _logger.warning("placement %s: availability could not be evaluated", link_id,
                                 exc_info=True)
                 available = set(values.ids)
+            values = self._web_shown_values(line, values, available, chosen_ids)
             questions.append({
                 "id": line.attribute_id.id,
                 "name": line.attribute_id.name,

@@ -1439,3 +1439,41 @@ msgstr ""
 #: code:addons/product_configurator_fa/models/product_attribute.py:0
 msgid "'%(val)s' does not have the format expected for '%(name)s'."
 msgstr ""
+
+#. module: product_configurator_fa
+#: model:ir.model.fields,field_description:product_configurator_fa.field_product_attribute__unavailable_display
+#: model:ir.model.fields,field_description:product_configurator_fa.field_product_template_attribute_line__unavailable_display
+msgid "Unavailable values"
+msgstr ""
+
+#. module: product_configurator_fa
+#: model:ir.model.fields,help:product_configurator_fa.field_product_attribute__unavailable_display
+msgid ""
+"What the configurator does with a value that the current choices rule out. "
+"Greyed out: it stays visible, and a tap says why. Hidden: it is not shown at"
+" all. A product line can override this setting."
+msgstr ""
+
+#. module: product_configurator_fa
+#: model:ir.model.fields,help:product_configurator_fa.field_product_template_attribute_line__unavailable_display
+msgid ""
+"Overrides the attribute's setting for this product only. Empty: the "
+"attribute's setting applies."
+msgstr ""
+
+#. module: product_configurator_fa
+#: model:ir.model.fields.selection,name:product_configurator_fa.selection__product_attribute__unavailable_display__grey
+#: model:ir.model.fields.selection,name:product_configurator_fa.selection__product_template_attribute_line__unavailable_display__grey
+msgid "Greyed out"
+msgstr ""
+
+#. module: product_configurator_fa
+#: model:ir.model.fields.selection,name:product_configurator_fa.selection__product_attribute__unavailable_display__hide
+#: model:ir.model.fields.selection,name:product_configurator_fa.selection__product_template_attribute_line__unavailable_display__hide
+msgid "Hidden"
+msgstr ""
+
+#. module: product_configurator_fa
+#: model_terms:ir.ui.view,arch_db:product_configurator_fa.product_template_attribute_line_form_config
+msgid "As the attribute"
+msgstr ""

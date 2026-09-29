@@ -8,3 +8,4 @@ from . import test_hand
 from . import test_placement_condition
 from . import test_placements  # noqa: F401  (D-332)
 from . import test_free_answer  # noqa: F401  (D-353)
+from . import test_unavailable_display  # noqa: F401  (D-168, D-368)

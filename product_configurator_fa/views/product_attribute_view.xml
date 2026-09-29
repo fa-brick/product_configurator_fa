@@ -144,6 +144,9 @@
                  avec la mesure ; le `help` du champ, lui, reste exact. -->
             <xpath expr="//group[@name='sale_main_fields']/field[@name='create_variant']" position="after">
                 <field name="price_mode" string="Extra price mode" />
+                <!-- ⓘ D-168 : un VRAI réglage, pas une semence — les lignes vides
+                     en héritent. Sa place est donc ici, hors du bloc « Defaults ». -->
+                <field name="unavailable_display" />
             </xpath>
 
             <xpath expr="//group[@name='sale_main_fields']" position="after">
@@ -759,6 +762,7 @@
                 <group name="configurator_pricing" string="Configurator">
                     <field name="dimension_role" />
                     <field name="price_mode" />
+                    <field name="unavailable_display" placeholder="As the attribute" />
                     <field name="visibility_domain_id" />
                 </group>
                 <group

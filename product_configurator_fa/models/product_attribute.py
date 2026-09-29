@@ -556,6 +556,24 @@ class ProductAttribute(models.Model):
         help="Default mode for the extra price of this attribute's values. "
         "Set on each product line, which is what actually applies.",
     )
+    # ─ GRISER OU MASQUER — D-168, écrit par D-368 ───────────────────────────
+    #
+    # ⚠️ **PAS UNE SEMENCE**, contrairement aux quatre ci-dessus. Une semence n'est
+    # lue qu'à l'onchange de la ligne, et `create()` l'oublie (2 lignes sur 12
+    # portent `required` dans fabk18). Ici la LIGNE HÉRITE tant qu'elle est vide :
+    # changer l'attribut change tous les produits qui ne l'ont pas surchargé. C'est
+    # la règle de D-168 — « Couleur masque ses indisponibles partout, sauf sur le
+    # produit qui préfère les griser ». Un seul lecteur : `_unavailable_display()`
+    # de la ligne.
+    unavailable_display = fields.Selection(
+        selection=[("grey", "Greyed out"), ("hide", "Hidden")],
+        default="grey",
+        required=True,
+        string="Unavailable values",
+        help="What the configurator does with a value that the current choices rule "
+        "out. Greyed out: it stays visible, and a tap says why. Hidden: it is not "
+        "shown at all. A product line can override this setting.",
+    )
 
     # TODO prevent the same attribute from being defined twice on the
     # attribute lines
@@ -1096,6 +1114,24 @@ class ProductAttributeLine(models.Model):
         help="How the extra price of this attribute's values is read on this "
         "product: a flat amount, or a rate per square meter",
     )
+    # ⓘ VIDE = COMME L'ATTRIBUT (D-168) : la ligne ne décide que si on la règle.
+    unavailable_display = fields.Selection(
+        selection=[("grey", "Greyed out"), ("hide", "Hidden")],
+        string="Unavailable values",
+        help="Overrides the attribute's setting for this product only. Empty: "
+        "the attribute's setting applies.",
+    )
+
+    def _unavailable_display(self):
+        """`grey` ou `hide` : ce que la page fait d'une valeur indisponible — D-168.
+
+        ⓘ Le SEUL lecteur de la règle : la ligne si elle est réglée, sinon
+        l'attribut, sinon le grisé — ce que la page a toujours fait.
+        """
+        self.ensure_one()
+        return (self.unavailable_display
+                or self.attribute_id.unavailable_display
+                or "grey")
 
     visibility_domain_id = fields.Many2one(
         comodel_name="product.config.domain",

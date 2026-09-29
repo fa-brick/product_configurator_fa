@@ -204,8 +204,81 @@
     overflow: hidden;
 }
 
+/* ── LA GRANDE PASTILLE ──────────────────────────────────────────────────── */
+/* ⓘ Le PADDING de la grille est la place de l'anneau : dessiné en ombre autour du disque,
+   il serait rogné par un conteneur qui défile s'il touchait son bord. */
+.o_cfg3d_bigswatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    gap: 12px 8px;
+    padding: 6px 4px;
+}
+
+.o_cfg3d_bigswatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    text-align: center;
+
+    &--muted { opacity: 0.4; }
+}
+
+.o_cfg3d_bigswatch_disc {
+    position: relative;
+    display: block;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.06);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+    transition: box-shadow 0.12s;
+
+    img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* ⚠️ Le survol ne vise que les pastilles NON choisies : `:hover` pèse plus lourd que la
+       classe, et la souris reste sur celle qu'on vient de cliquer — l'anneau disparaissait
+       jusqu'à ce qu'elle s'en aille (mesuré au pixel sur une copie de fabk18). */
+    .o_cfg3d_bigswatch:not(.o_cfg3d_bigswatch--chosen):hover & {
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+    }
+    /* L'ANNEAU — seulement quand l'attribut le choisit (sinon c'est la coche). */
+    .o_cfg3d_bigswatches--ring .o_cfg3d_bigswatch--chosen & {
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px $o-brand-primary;
+    }
+}
+
+/* La coche : blanche sur un voile, lisible sur un bois clair comme sur un noir. */
+.o_cfg3d_bigswatch_check {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.28);
+    color: #fff;
+    font-size: 20px;
+}
+
+.o_cfg3d_bigswatch_label {
+    font-size: 12px;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
+    .o_cfg3d_bigswatch--chosen & { font-weight: 600; }
+}
+
 /* ── LA COULEUR ─────────────────────────────────────────────────────────── */
-.o_cfg3d_swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+/* ⓘ Le PADDING est la place de l'anneau de sélection (voir `--chosen`). */
+.o_cfg3d_swatches { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px; }
 
 .o_cfg3d_swatch {
     width: 32px;
@@ -218,7 +291,11 @@
 
     img { width: 100%; height: 100%; object-fit: cover; }
 
-    &--chosen { outline: 2px solid $o-brand-primary; outline-offset: 2px; }
+    /* ⚠️ **UNE OMBRE, PAS UN `outline`** (constat de Gerry, 2026-09-29 : « la bordure de
+       sélection ne s'applique pas »). La pastille qu'on vient de cliquer garde le FOCUS, et
+       le reboot de Bootstrap efface l'outline de tout élément focalisé à la souris
+       (`:focus:not(:focus-visible) { outline: 0 }`) — la classe était là, l'anneau non. */
+    &--chosen { box-shadow: 0 0 0 2px #fff, 0 0 0 4px $o-brand-primary; }
     &--muted { opacity: 0.4; }
 }
 

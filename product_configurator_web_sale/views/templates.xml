@@ -116,6 +116,11 @@
                position="attributes">
             <attribute name="t-elif">attribute.display_type in ('pills', 'card')</attribute>
         </xpath>
+        <!-- ⓘ La GRANDE PASTILLE (D-368 suite, 2026-09-29) : sa parente est la « Couleur ». -->
+        <xpath expr="//t[@t-elif=&quot;attribute.display_type == 'color'&quot;]"
+               position="attributes">
+            <attribute name="t-elif">attribute.display_type in ('color', 'swatch')</attribute>
+        </xpath>
     </template>
 
 </odoo>

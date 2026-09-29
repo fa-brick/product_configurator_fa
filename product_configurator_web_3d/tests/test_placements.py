@@ -79,7 +79,7 @@ class TestPlacements(TransactionCase):
     def test_la_question_a_la_forme_de_celles_de_la_racine(self):
         question = self._placements()["c%s" % self.link_poignee.id]["questions"][0]
         self.assertEqual(sorted(question), ["customValue", "displayType", "free", "id", "multi",
-                                            "name", "required", "values"])
+                                            "name", "required", "swatchMark", "values"])
         self.assertEqual(sorted(question["values"][0]),
                          ["available", "chosen", "color", "id", "image", "name", "raw"])
         # ⓘ Et les MÊMES clés qu'une question de la racine : la page les rend avec un seul

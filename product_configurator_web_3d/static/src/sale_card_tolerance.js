@@ -30,7 +30,7 @@ import {
 // choisi, et le refus casse le rendu en mode développeur.
 const forme = ProductTemplateAttributeLine.props.attribute.shape.display_type;
 const acceptaitAvant = forme.validate;
-forme.validate = (type) => type === "card" || acceptaitAvant(type);
+forme.validate = (type) => type === "card" || type === "swatch" || acceptaitAvant(type);
 
 patch(ProductTemplateAttributeLine.prototype, {
     getPTAVTemplate() {

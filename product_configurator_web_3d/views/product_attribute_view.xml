@@ -13,6 +13,11 @@
         <field name="model">product.attribute</field>
         <field name="inherit_id" ref="product.product_attribute_view_form" />
         <field name="arch" type="xml">
+            <!-- ⓘ La MARQUE du choix, sous la forme qu'elle concerne — et seulement pour elle. -->
+            <xpath expr="//field[@name='display_type'][@widget='radio']" position="after">
+                <field name="swatch_mark" widget="radio" options="{'horizontal': True}"
+                       invisible="display_type != 'swatch'"/>
+            </xpath>
             <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="after">
                 <!-- ⓘ La miniature D'ABORD : c'est elle qui sert à choisir — « la
                      miniature de la matière sert à la sélection de la matière ». Le nom

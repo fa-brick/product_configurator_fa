@@ -90,6 +90,8 @@ class ProductConfigSession(models.Model):
                 # formes chez Odoo, plus la « carte » — une vignette et son
                 # libellé — qui manquait pour une valeur désignant un produit.
                 "displayType": line.attribute_id.display_type,
+                # ⓘ La marque du choix d'une grande pastille : coche ou anneau.
+                "swatchMark": line.attribute_id.swatch_mark,
                 "values": [
                     {
                         "id": value.id,
@@ -803,6 +805,7 @@ class ProductConfigSession(models.Model):
                 "free": self._web_free_field(line),
                 "customValue": typed.get(line.attribute_id.id),
                 "displayType": line.attribute_id.display_type,
+                "swatchMark": line.attribute_id.swatch_mark,
                 "values": [{
                     "id": value.id,
                     "name": value.display_value or value.name,

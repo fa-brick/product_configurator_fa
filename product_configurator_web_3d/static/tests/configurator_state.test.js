@@ -391,3 +391,12 @@ describe("le TOTAL et les lignes À PART (D-368)", () => {
         expect(model.separateLines).toEqual([]);
     });
 });
+
+describe("la MARQUE du choix d'une grande pastille", () => {
+    test("la coche par défaut, l'anneau si l'attribut le dit", () => {
+        const line = { id: 1, name: "Bois", displayType: "swatch", values: [] };
+        expect(toViewModel({ attributes: [line] }).questions[0].swatchMark).toBe("check");
+        expect(toViewModel({ attributes: [{ ...line, swatchMark: "ring" }] }).questions[0].swatchMark)
+            .toBe("ring");
+    });
+});

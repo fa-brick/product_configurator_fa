@@ -28,6 +28,8 @@ function toQuestion(line) {
         // ⓘ Le repli est `radio`, comme chez Odoo : une question sans forme
         // déclarée reste une question, elle ne disparaît pas.
         displayType: line.displayType || "radio",
+        // ⓘ La marque du choix d'une grande pastille — la coche si rien n'est dit.
+        swatchMark: line.swatchMark === "ring" ? "ring" : "check",
         values: (line.values || []).map(toValue),
         // ⓘ **LA SAISIE LIBRE** (D-353) : la forme du champ, ou `null` quand la question
         // se répond par sa liste. C'est ELLE qui décide du champ, avant `displayType` —

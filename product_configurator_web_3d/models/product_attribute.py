@@ -120,9 +120,25 @@ class ProductAttribute(models.Model):
     # boutique). Et son dialogue de vente est pire : il VALIDE `display_type`
     # contre une liste fermée puis choisit son gabarit par un `switch` sans
     # `default`. ⏳ Non traité — il y faut un module-pont dépendant de `sale`.
+    # ⓘ **LA GRANDE PASTILLE** (demande de Gerry, 2026-09-29) : un disque illustré de la
+    # matière ou de la teinte, son nom dessous — la « Couleur » d'Odoo en plus grand et
+    # nommée, parce que 32 px ne montrent pas un bois. Mêmes deux rustines que la carte :
+    # la boutique la rend en « Couleur » (`variants_card_fallback`), le dialogue de vente
+    # l'accepte (`sale_card_tolerance.js`).
     display_type = fields.Selection(
-        selection_add=[("card", "Card")],
-        ondelete={"card": "set default"},
+        selection_add=[("card", "Card"), ("swatch", "Large swatch")],
+        ondelete={"card": "set default", "swatch": "set default"},
+    )
+    # ⓘ **LA MARQUE DU CHOIX d'une grande pastille** — l'anneau OU la coche, jamais les deux
+    # (Gerry, 2026-09-29 : « les deux ne vont pas ensemble »). Sur l'ATTRIBUT (option A) :
+    # la coche pour des bois, l'anneau pour une texture dont elle cacherait le détail.
+    swatch_mark = fields.Selection(
+        selection=[("check", "Checkmark"), ("ring", "Ring")],
+        default="check",
+        required=True,
+        string="Selection mark",
+        help="How a large swatch shows that it is chosen: a checkmark in its centre, or a "
+        "ring around it. The name below turns bold in both cases.",
     )
 
 

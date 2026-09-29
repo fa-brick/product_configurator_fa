@@ -245,3 +245,32 @@ msgstr "Cette question n'accepte pas de réponse saisie."
 #: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
 msgid "These parts could not be added to the cart: %s"
 msgstr "Ces pièces n'ont pas pu être ajoutées au panier : %s"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__display_type__swatch
+msgid "Large swatch"
+msgstr "Grande pastille"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields,field_description:product_configurator_web_3d.field_product_attribute__swatch_mark
+msgid "Selection mark"
+msgstr "Marque de sélection"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields,help:product_configurator_web_3d.field_product_attribute__swatch_mark
+msgid ""
+"How a large swatch shows that it is chosen: a checkmark in its centre, or a "
+"ring around it. The name below turns bold in both cases."
+msgstr ""
+"Comment une grande pastille montre qu'elle est choisie : une coche en son "
+"centre, ou un anneau autour. Le nom dessous passe en gras dans les deux cas."
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__swatch_mark__check
+msgid "Checkmark"
+msgstr "Coche"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__swatch_mark__ring
+msgid "Ring"
+msgstr "Anneau"

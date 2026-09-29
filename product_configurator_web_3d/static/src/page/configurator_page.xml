@@ -254,6 +254,36 @@
         </div>
 
         <!-- ── LA COULEUR : la pastille, et le nom au survol ── -->
+        <!-- ── LA GRANDE PASTILLE : un disque illustré, son nom dessous ──
+             ⓘ Demande de Gerry (2026-09-29) : la « Couleur » est trop petite pour montrer
+             une texture, et le choix doit se VOIR — coche au centre, anneau à la couleur
+             du thème, nom en gras. ⚠️ La coche OU l'anneau, jamais les deux (Gerry) : la
+             marque se règle sur l'attribut (`swatchMark`). L'anneau est une OMBRE, dans la
+             marge que la grille réserve : un contour déborde, et un cadre qui défile le
+             rogne. -->
+        <div t-elif="question.displayType === 'swatch'"
+             class="o_cfg3d_bigswatches"
+             t-att-class="'o_cfg3d_bigswatches--' + question.swatchMark">
+            <t t-foreach="question.values" t-as="value" t-key="value.id">
+                <button class="o_cfg3d_bigswatch"
+                        t-att-class="{
+                            'o_cfg3d_bigswatch--chosen': value.chosen,
+                            'o_cfg3d_bigswatch--muted': value.muted }"
+                        t-att-title="value.name"
+                        t-on-click="() => this.onAnswer(placementNodeId, question.id, value)">
+                    <span class="o_cfg3d_bigswatch_disc"
+                          t-att-style="value.color ? 'background-color: ' + value.color : ''">
+                        <img t-if="value.image" t-att-src="value.image" t-att-alt="value.name"/>
+                        <span t-if="value.chosen and question.swatchMark === 'check'"
+                              class="o_cfg3d_bigswatch_check">
+                            <i class="fa fa-check"/>
+                        </span>
+                    </span>
+                    <span class="o_cfg3d_bigswatch_label" t-esc="value.name"/>
+                </button>
+            </t>
+        </div>
+
         <div t-elif="question.displayType === 'color'"
              class="o_cfg3d_swatches">
             <t t-foreach="question.values" t-as="value" t-key="value.id">

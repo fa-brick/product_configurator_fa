@@ -237,6 +237,11 @@ export function toViewModel(payload, previous = null) {
         error: null,
         productName: payload.productName || "",
         price: payload.price || 0,
+        // ⓘ D-368 — le TOTAL affiché (le produit plus ses lignes à part), et ces lignes,
+        // qui partent au devis ou au panier rattachées à celle du produit.
+        total: payload.total ?? payload.price ?? 0,
+        separateLines: payload.separateLines || [],
+        noVariantPtavIds: payload.noVariantPtavIds || [],
         closed: payload.state && payload.state !== "draft",
         questions: (payload.attributes || []).map(toQuestion),
         // ⚠️ **LES PLACEMENTS RÉGLABLES** (D-332, D-333) : les pièces posées dont des

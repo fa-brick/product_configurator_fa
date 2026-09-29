@@ -375,3 +375,19 @@ describe("les PLACEMENTS réglables — ce qui se sélectionne, et ce qu'on y r�
         expect(answerForPlacement(m, null, 5, 51)).toBeNull();
     });
 });
+
+describe("le TOTAL et les lignes À PART (D-368)", () => {
+    test("la page lit le total, et garde les lignes pour le devis ou le panier", () => {
+        const lines = [{ productId: 7, name: "Bumper Ciné (Rouge)", qty: 1, price: 15 }];
+        const model = toViewModel({ price: 100, total: 115, separateLines: lines });
+        expect(model.total).toBe(115);
+        expect(model.price).toBe(100);
+        expect(model.separateLines).toEqual(lines);
+    });
+
+    test("sans total servi, c'est le prix — une réponse d'avant D-368 reste lisible", () => {
+        const model = toViewModel({ price: 100 });
+        expect(model.total).toBe(100);
+        expect(model.separateLines).toEqual([]);
+    });
+});

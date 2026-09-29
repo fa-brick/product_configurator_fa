@@ -791,7 +791,9 @@ export class ConfiguratorPage extends Component {
 
     /** Le prix, tel qu'il se lit — une somme, pas un détail (D-176). */
     get price() {
-        return this.state.model?.price || 0;
+        // ⓘ Le TOTAL (D-368) : le produit plus ses pièces vendues à part — le détail se
+        // lit au panier et au devis (Gerry, 2026-09-28).
+        return this.state.model?.total ?? this.state.model?.price ?? 0;
     }
 
     reasonFor(value) {
@@ -916,7 +918,8 @@ export class ConfiguratorPage extends Component {
         // ⚠️ APRÈS `_applyModel` : c'est lui qui pose la variante née de la
         // confirmation dans l'état, et c'est elle que l'hôte attend.
         if (this.props.onConfirmed) {
-            this.props.onConfirmed({ productId: this.state.model?.productId });
+            this.props.onConfirmed({ productId: this.state.model?.productId,
+                                     separateLines: this.state.model?.separateLines || [] });
             return;
         }
         await this._addToCart();
@@ -936,14 +939,44 @@ export class ConfiguratorPage extends Component {
         if (!this.props.cart) return;
         const productId = this.state.model?.productId;
         if (!productId) return;
+        let main;
         try {
-            await rpc("/shop/cart/update_json", { product_id: productId, add_qty: 1 });
-            browser.location.href = "/shop/cart";
+            main = await rpc("/shop/cart/update_json", {
+                product_id: productId, add_qty: 1,
+                // ⓘ D-368 — la réponse réelle aux questions vendues à part, sinon la boutique
+                // y met leur première valeur (« Sans bumper »).
+                no_variant_attribute_value_ids: this.state.model?.noVariantPtavIds || [],
+            });
         } catch (e) {
             console.warn("[configurateur] mise au panier impossible :", e);
             this.state.reason = _t(
                 "This configuration is confirmed, but the cart could not be updated.");
+            return;
         }
+        // ⓘ **LES PIÈCES VENDUES À PART** (D-368) : chacune sur SA ligne, RATTACHÉE à celle
+        // du produit (`linked_line_id`, comme les produits optionnels du cœur) — supprimer
+        // le produit du panier les emporte. ⚠️ Une ligne refusée (pièce non publiée, non
+        // vendable) est NOMMÉE, jamais perdue en silence.
+        const refused = [];
+        for (const line of this.state.model?.separateLines || []) {
+            if (!line.productId) continue;
+            try {
+                const added = await rpc("/shop/cart/update_json", {
+                    product_id: line.productId, add_qty: line.qty || 1,
+                    linked_line_id: main?.line_id,
+                });
+                if (!added?.line_id) refused.push(line.name);
+            } catch (e) {
+                console.warn("[configurateur] ligne à part refusée :", line.name, e);
+                refused.push(line.name);
+            }
+        }
+        if (refused.length) {
+            this.state.reason = _t("These parts could not be added to the cart: %s",
+                                   refused.join(", "));
+            return;
+        }
+        browser.location.href = "/shop/cart";
     }
 
 

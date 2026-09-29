@@ -239,3 +239,9 @@ msgstr "Cette réponse n'est pas acceptée."
 #: code:addons/product_configurator_web_3d/static/src/configurator_state.js:0
 msgid "This question does not accept a typed answer."
 msgstr "Cette question n'accepte pas de réponse saisie."
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "These parts could not be added to the cart: %s"
+msgstr "Ces pièces n'ont pas pu être ajoutées au panier : %s"

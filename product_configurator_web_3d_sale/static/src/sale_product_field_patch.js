@@ -17,6 +17,8 @@
 import { patch } from "@web/core/utils/patch";
 import { SaleOrderLineProductField } from "@sale/js/sale_product_field";
 import { ConfiguratorDialog } from "@product_configurator_web_3d/configurator_dialog";
+import { getLinkedSaleOrderLines } from "@sale/js/sale_utils";
+import { uuid } from "@web/views/utils";
 
 patch(SaleOrderLineProductField.prototype, {
     /**
@@ -66,11 +68,56 @@ patch(SaleOrderLineProductField.prototype, {
      * `_compute_price_unit`. La ligne n'est pas encore enregistrée — c'est le
      * devis qui la portera, comme pour n'importe quel produit.
      */
-    async _applyWeb3dConfiguration({ productId, sessionId }) {
+    async _applyWeb3dConfiguration({ productId, sessionId, separateLines = [] }) {
         if (!productId) return;
-        await this.props.record.update({
-            product_id: [productId, this.props.record.data.product_template_id[1]],
+        const main = this.props.record;
+        await main.update({
+            product_id: [productId, main.data.product_template_id[1]],
             config_session_id: [sessionId, ""],
         });
+        await this._applySeparateLines(main, separateLines);
+    },
+
+    /**
+     * Les pièces VENDUES À PART, chacune sur SA ligne rattachée à celle-ci — D-368.
+     *
+     * ⓘ **Le rattachement du cœur** : une ligne NEUVE n'a pas encore d'identifiant, on la
+     * désigne par `virtual_id` / `linked_virtual_id`, que `sale.order.line.create` résout en
+     * `linked_line_id` ; une ligne déjà enregistrée se désigne par `linked_line_id`. Supprimer
+     * la ligne du produit emporte les siennes (`ondelete` du cœur).
+     *
+     * ⚠️ **Une reconfiguration REMPLACE les lignes rattachées** plutôt que d'en empiler :
+     * elles sont retirées puis reposées. Ce sont celles de la configuration — un produit
+     * configurable n'a pas d'autre ligne rattachée par ce chemin.
+     *
+     * ⚠️ **Côté client, et nulle part ailleurs** : `_web_after_confirm` (serveur) ne crée pas
+     * ces lignes, sans quoi reconfigurer une ligne enregistrée les poserait deux fois.
+     */
+    async _applySeparateLines(main, separateLines) {
+        const lines = main.model.root.data.order_line;
+        for (const old of getLinkedSaleOrderLines(main)) {
+            await lines.delete(old);
+        }
+        const wanted = (separateLines || []).filter((line) => line.productId);
+        if (!wanted.length) return;
+        let link;
+        if (main.isNew) {
+            let virtualId = main.data.virtual_id;
+            if (!virtualId) {
+                virtualId = uuid();
+                await main.update({ virtual_id: virtualId });
+            }
+            link = { linked_virtual_id: virtualId };
+        } else {
+            link = { linked_line_id: [main.resId, main.data.name || ""] };
+        }
+        for (const line of wanted) {
+            const record = await lines.addNewRecord({ position: "bottom", mode: "readonly" });
+            await record.update({
+                product_id: [line.productId, line.name],
+                product_uom_qty: line.qty || 1,
+                ...link,
+            });
+        }
     },
 });

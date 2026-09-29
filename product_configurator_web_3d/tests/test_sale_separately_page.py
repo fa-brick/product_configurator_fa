@@ -102,3 +102,11 @@ class TestSaleSeparatelyPage(TransactionCase):
         self.assertEqual(variant.product_template_attribute_value_ids.product_attribute_value_id,
                          self.black)
         self.assertEqual(session.web_separate_lines()[0]["productId"], variant.id)
+
+    def test_la_page_recoit_les_lignes_et_le_TOTAL(self):
+        """Le total affiché = le produit + ses lignes à part ; le détail va au panier."""
+        session = self._session(self.black, self.handle_value)
+        state = session.web_state()
+        self.assertEqual(len(state["separateLines"]), 1)
+        self.assertEqual(state["total"], state["price"] + 10.0)
+        self.assertEqual(self._session(self.black, self.none).web_state()["separateLines"], [])

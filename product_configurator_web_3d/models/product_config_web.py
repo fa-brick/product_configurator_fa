@@ -1011,6 +1011,10 @@ class ProductConfigSession(models.Model):
         walk(definition or {})
         variants = self.child_variants or {}
         Product = self.env["product.product"].sudo()
+        # ⚠️ **LA MÊME LISTE DE PRIX QUE LE PRODUIT** (`get_cfg_price`) : sans elle, la page
+        # annonçait le bumper au prix catalogue (1,00) et le panier le facturait à 0,00 —
+        # mesuré sur une copie de fabk18, dont la liste « Par défaut » porte des règles.
+        pricelist = self.env.user.partner_id.property_product_pricelist
         out = []
         for value in self.value_ids.filtered(lambda v: v.attribute_id.id in apart):
             if not value.product_id:
@@ -1028,7 +1032,7 @@ class ProductConfigSession(models.Model):
                         value_ids = self._web_child_value_ids(
                             tmpl, answers_by_node.get(node.get("id")) or {},
                             self._web_child_custom(link_id), node, link_id)
-                        found, price, name = self._web_combination(tmpl, value_ids)
+                        found, price, name = self._web_combination(tmpl, value_ids, pricelist)
                         # ⚠️ Sans variante encore née, AUCUN article : retomber sur celui de
                         # la valeur afficherait « Bumper (Bleu) » au prix du Rouge.
                         product = found or self.env["product.product"]
@@ -1039,12 +1043,29 @@ class ProductConfigSession(models.Model):
                 "name": product.display_name if product else name,
                 "productId": product.id or None,
                 "qty": max(len({n.get("linkId") for n in nodes}), 1),
-                "price": price if price is not None else product._get_contextual_price(),
+                "price": price if price is not None else self._web_price(product, pricelist),
             })
         return out
 
+    def _web_sold_separately_ptav_ids(self):
+        """Les `product.template.attribute.value` des réponses VENDUES À PART — D-368."""
+        self.ensure_one()
+        apart = self.product_tmpl_id._sale_separately_attribute_ids()
+        if not apart:
+            return []
+        chosen = self.value_ids.filtered(lambda v: v.attribute_id.id in apart)
+        return self.product_tmpl_id.attribute_line_ids.product_template_value_ids.filtered(
+            lambda ptav: ptav.product_attribute_value_id in chosen).ids
+
     @api.model
-    def _web_combination(self, tmpl, value_ids):
+    def _web_price(self, product, pricelist):
+        """Le prix d'un article (ou d'un gabarit) par la liste de prix donnée, sinon catalogue."""
+        if pricelist:
+            return pricelist._get_product_price(product, 1.0)
+        return product._get_contextual_price()
+
+    @api.model
+    def _web_combination(self, tmpl, value_ids, pricelist=None):
         """`(variante existante | vide, prix, nom)` d'une combinaison — SANS créer la variante.
 
         ⓘ Une variante dynamique n'existe qu'une fois commandée : afficher un prix ne doit
@@ -1057,12 +1078,13 @@ class ProductConfigSession(models.Model):
             lambda ptav: ptav.product_attribute_value_id.id in wanted)
         variant = tmpl._get_variant_for_combination(combination)
         if variant:
-            return variant, variant._get_contextual_price(), variant.display_name
+            return variant, self._web_price(variant, pricelist), variant.display_name
         extra = sum(combination.mapped("price_extra"))
         # ⓘ Le nom que la variante PORTERA — la règle du cœur (`_get_combination_name`).
         label = combination._get_combination_name()
         return (self.env["product.product"],
-                tmpl.with_context(current_attributes_price_extra=[extra])._get_contextual_price(),
+                self._web_price(tmpl.with_context(current_attributes_price_extra=[extra]),
+                                pricelist),
                 "%s (%s)" % (tmpl.display_name, label) if label else tmpl.display_name)
 
     @api.model
@@ -1302,13 +1324,25 @@ class ProductConfigSession(models.Model):
         # scène contient. La recalculer serait la payer deux fois par clic.
         definition = (model3d.to_definition(values, link_answers=self._web_link_answers())
                       if model3d else None)
+        price = self.get_cfg_price(custom_vals=self._get_custom_vals_dict())
+        separate = self.web_separate_lines(definition)
         return {
             "productName": self.product_tmpl_id.display_name,
             "state": self.state,
             "attributes": self._web_attribute_lines(),
             # ⚠️ AVEC les saisies (D-353) : une largeur tapée doit changer le prix
             # comme la même largeur choisie dans la liste.
-            "price": self.get_cfg_price(custom_vals=self._get_custom_vals_dict()),
+            "price": price,
+            # ⓘ D-368 — les lignes À PART (une pièce vendue à part) et le TOTAL que la page
+            # affiche : le produit plus ses lignes. Le détail se lit au panier et au devis
+            # (arbitrage de Gerry, 2026-09-28).
+            "separateLines": separate,
+            "total": price + sum(line["price"] * line["qty"] for line in separate),
+            # ⚠️ Les réponses aux questions vendues à part, en `product.template.attribute.value`
+            # — à passer au panier avec la ligne du produit. Sans elles, la boutique complète
+            # d'office chaque question `no_variant` par sa PREMIÈRE valeur, et la ligne du JeNo
+            # affichait « Bumper avant : Sans bumper » à côté de son bumper (mesuré).
+            "noVariantPtavIds": self._web_sold_separately_ptav_ids(),
             # La VARIANTE née de la confirmation, quand elle existe : c'est par elle
             # qu'une boutique met la configuration au panier.
             "productId": self.product_id.id or None,

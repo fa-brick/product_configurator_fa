@@ -47,7 +47,7 @@ import { collectGlbAttachments, extractImportedGeometries }
 // ne portaient pas le drapeau `baked` — ni la session ni `bakedSolidsByNode` ne les
 // auraient reconnus.
 import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
-import { toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
+import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
          placementOf, selectableNodeIds, familyOf, answerForPlacement,
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError }
     from "@product_configurator_web_3d/configurator_state";
@@ -135,6 +135,10 @@ export class ConfiguratorPage extends Component {
         // sur le JeNo : 2 742 ms sans graine, 1 616 ms avec), et qui décide seule de
         // charger la lib CSG. La page ne rejoue plus aucun de ces réglages.
         this._session = createBuildSession({ getThree, getCSG });
+        this._bakedReader = createBakedReader((url, faces) => this._readBakedFile(url, faces), {
+            onError: (nodeId, error) =>
+                console.warn(`[configurateur] pièce cuite ${nodeId} non chargée :`, error),
+        });
         // ⚠️ UN IDENTIFIANT PAR ONGLET, pas par utilisateur : la même personne
         // peut ouvrir la même configuration deux fois, et c'est bien l'onglet
         // qui conduit. `randomUUID` n'existe QUE dans un contexte sécurisé
@@ -241,6 +245,8 @@ export class ConfiguratorPage extends Component {
             bus.unsubscribe("configurator_selection", onSelection);
             bus.deleteChannel(channel);
             document.removeEventListener("keydown", onKey, true);
+            // Les workers du décodeur ne s'arrêtent qu'ici ([[L-449]]).
+            this._dracoDecoder?.dispose();
         });
     }
 
@@ -349,40 +355,36 @@ export class ConfiguratorPage extends Component {
     }
 
     async _loadBaked(baked) {
-        const loaded = new Map();
-        const entries = Object.entries(baked || {});
-        if (!entries.length) return loaded;
-        try {
+        if (!Object.keys(baked || {}).length) return new Map();
+        return this._bakedReader.read(baked);
+    }
+
+    /**
+     * UN fichier cuit : le télécharger, le décoder, en tirer des volumes — la lecture que
+     * `createBakedReader` ne fait qu'une fois par fichier.
+     *
+     * ⚠️ **UN SEUL décodeur Draco pour la page**, libéré au démontage. Un `DRACOLoader`
+     * neuf par lecture ouvrait quatre workers que personne ne fermait : quatre de plus à
+     * chaque clic ([[L-449]]). La doc de Three.js recommande d'en garder un et de le
+     * réutiliser.
+     * source: https://threejs.org/docs/pages/DRACOLoader.html
+     */
+    async _readBakedFile(url, faces) {
+        if (!this._gltfLoader) {
             const { GLTFLoader } = await getGLTFLoader();
             const { DRACOLoader } = await getDRACOLoader();
-            const decoder = new DRACOLoader().setDecoderPath(DRACO_DECODER_PATH);
-            const loader = new GLTFLoader().setDRACOLoader(decoder);
-            await Promise.all(entries.map(async ([nodeId, entry]) => {
-                try {
-                    // ⚠️ L'URL SERVIE porte le jeton d'accès : sans lui, un visiteur
-                    // anonyme reçoit un 404 et la pièce manque (2026-09-24). Le repli
-                    // sur l'identifiant nu ne vaut que pour un serveur plus ancien.
-                    const response = await fetch(entry.url || `/web/content/${entry.attachmentId}`);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    const buffer = await response.arrayBuffer();
-                    const gltf = await new Promise((resolve, reject) =>
-                        loader.parse(buffer, "", resolve, reject));
-                    // ⚠️ La FORME que le moteur attend — `Map(nodeId → {solids})`, la même
-                    // que l'éditeur dépose : c'est par elle que `buildPart` sert la pièce
-                    // cuite, et que la session la met dans la clé de partage.
-                    const solids = bakedSolidsFromScene(this._session.THREE, gltf.scene,
-                                                        { faces: entry.faces || {} });
-                    if (solids.length) loaded.set(nodeId, { solids });
-                } catch (error) {
-                    console.warn(`[configurateur] pièce cuite ${nodeId} non chargée :`,
-                                 error);
-                }
-            }));
-        } catch (error) {
-            console.warn("[configurateur] les pièces cuites n'ont pas pu être lues :",
-                         error);
+            this._dracoDecoder = this._dracoDecoder
+                || new DRACOLoader().setDecoderPath(DRACO_DECODER_PATH);
+            this._gltfLoader = new GLTFLoader().setDRACOLoader(this._dracoDecoder);
         }
-        return loaded;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const buffer = await response.arrayBuffer();
+        const gltf = await new Promise((resolve, reject) =>
+            this._gltfLoader.parse(buffer, "", resolve, reject));
+        // ⚠️ La FORME que le moteur attend — celle que l'éditeur dépose : c'est par elle que
+        // `buildPart` sert la pièce cuite, et que la session la met dans la clé de partage.
+        return bakedSolidsFromScene(this._session.THREE, gltf.scene, { faces });
     }
 
     async _buildScene(definition, scope, baked = null, imported = null) {

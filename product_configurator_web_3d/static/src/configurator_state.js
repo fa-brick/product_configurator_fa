@@ -437,3 +437,64 @@ export function reasonFor(value) {
     if (!value || value.available) return null;
     return _t("Not available with your current choices.");
 }
+
+/**
+ * Le lecteur des pièces CUITES — un fichier se lit et se décode UNE fois pour la vie de la
+ * page ([[L-449]]).
+ *
+ * ⚠️ **La page relisait tout, à chaque reconstruction.** « Tête bombée de vis.glb » sert
+ * quinze poses du JeNo : il était téléchargé et décodé quinze fois à CHAQUE permutation
+ * (1,7 à 4,9 s par clic, mesuré le 2026-09-29), pour un fichier qui n'avait pas changé.
+ * L'éditeur tient ce cache depuis sa cuisson (`_readBakedFile`) ; la page ne l'avait pas.
+ *
+ * ⓘ **La clé est l'URL servie ET la table des faces.** L'URL porte le jeton de la pièce
+ * jointe, qui ne change pas ; une nouvelle cuisson est une nouvelle pièce jointe, donc une
+ * nouvelle clé. Les poses d'un même fichier partagent ses volumes, comme dans l'éditeur :
+ * le moteur les pose par leur `worldTransform`, il ne les modifie pas.
+ *
+ * ⓘ **La PROMESSE est gardée, pas le résultat** : quinze poses demandées dans le même tour
+ * n'ouvrent qu'un téléchargement. Un échec n'est pas mémorisé, il se retente au tour suivant
+ * ([[L-323]]).
+ *
+ * @param {(url: string, faces: object) => Promise<Array>} readFile  lit et décode un fichier,
+ *        rend ses volumes (`bakedSolidsFromScene`)
+ * @param {{onError?: (nodeId: string, error: Error) => void}} [options]
+ * @returns {{read: (baked: object) => Promise<Map>, size: number}} `read` rend la forme que le
+ *          moteur attend, `Map(nodeId → {solids})`
+ */
+export function createBakedReader(readFile, { onError = () => {} } = {}) {
+    const files = new Map();
+    const fileOf = (url, faces) => {
+        const key = `${url}\n${JSON.stringify(faces)}`;
+        let pending = files.get(key);
+        if (!pending) {
+            pending = Promise.resolve().then(() => readFile(url, faces));
+            files.set(key, pending);
+            pending.catch(() => {
+                if (files.get(key) === pending) files.delete(key);
+            });
+        }
+        return pending;
+    };
+    return {
+        async read(baked) {
+            const loaded = new Map();
+            await Promise.all(Object.entries(baked || {}).map(async ([nodeId, entry]) => {
+                // ⚠️ L'URL SERVIE porte le jeton d'accès : sans lui, un visiteur anonyme
+                // reçoit un 404 et la pièce manque. Le repli sur l'identifiant nu ne vaut
+                // que pour un serveur plus ancien.
+                const url = entry?.url || `/web/content/${entry?.attachmentId}`;
+                try {
+                    const solids = await fileOf(url, entry?.faces || {});
+                    if (solids?.length) loaded.set(nodeId, { solids });
+                } catch (error) {
+                    onError(nodeId, error);
+                }
+            }));
+            return loaded;
+        },
+        get size() {
+            return files.size;
+        },
+    };
+}

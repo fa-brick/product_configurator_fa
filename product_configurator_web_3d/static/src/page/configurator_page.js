@@ -103,6 +103,12 @@ export class ConfiguratorPage extends Component {
     setup() {
         this.state = useState({
             model: null, loading: true, reason: null, cameraApply: null,
+            // ⚠️ **LE MODÈLE QUE LA 3D MONTRE — pas forcément celui des questions** ([[L-449]]).
+            // Les matières (`zonesByPiece`, le calque) et la projection de la racine se
+            // lisent ICI, et il ne change qu'EN MÊME TEMPS que les poses construites. Lues sur
+            // `model`, les zones d'une permutation arrivaient avant sa pièce : le viewer
+            // redessinait l'ANCIENNE sans ses zones, donc au neutre violet, le temps du calcul.
+            sceneModel: null,
             // Les ENFANTS de l'assemblage, et le compteur qui dit au viewer que
             // les poses ont changé (il ne relit pas une Map par référence).
             pieces: [], sceneSerial: 0,
@@ -160,6 +166,8 @@ export class ConfiguratorPage extends Component {
             const payload = this.props.initialState
                 || await this._call("/configurator/state");
             this.state.model = toViewModel(payload);
+            // Rien n'est encore construit : la première scène EST celle de ce modèle.
+            this.state.sceneModel = this.state.model;
             // ⚠️ **LA VUE PAR DÉFAUT SE DEMANDE ICI**, avant même le premier rendu :
             // le viewer reçoit alors la pose dans ses props d'origine et se pose
             // dessus sans jamais cadrer par lui-même. Demandée après la construction,
@@ -178,7 +186,7 @@ export class ConfiguratorPage extends Component {
         onMounted(() => {
             const model = this.state.model;
             if (model && !model.error) {
-                this._buildScene(model.definition, model.scope, model.baked, model.imported);
+                this._buildScene(model);
             } else {
                 this.state.ready = true;
             }
@@ -279,7 +287,14 @@ export class ConfiguratorPage extends Component {
         const sameValues = previous
             && JSON.stringify(model.scope) === JSON.stringify(previous.scope);
         if (!sameRecipe || !sameValues) {
-            await this._buildScene(model.definition, model.scope, model.baked, model.imported);
+            await this._buildScene(model);
+        } else {
+            // ⓘ Même recette, mêmes valeurs — une couleur : la scène suit TOUT DE SUITE, sauf
+            // si une construction est en cours. L'écho du bus arrive justement pendant le
+            // calcul d'une permutation ; publié là, il remettait les zones neuves sur les
+            // anciennes poses. La construction en cours le publiera avec les siennes.
+            this._sceneTarget = model;
+            if (!this._building) this.state.sceneModel = model;
         }
     }
 
@@ -387,8 +402,25 @@ export class ConfiguratorPage extends Component {
         return bakedSolidsFromScene(this._session.THREE, gltf.scene, { faces });
     }
 
-    async _buildScene(definition, scope, baked = null, imported = null) {
+    /**
+     * ⚠️ **UN JETON PAR CONSTRUCTION** : deux réponses rapprochées lancent deux
+     * constructions, et la première peut finir APRÈS la seconde. Sans jeton, elle
+     * publierait une scène déjà dépassée par-dessus la bonne.
+     */
+    _publishScene(ticket) {
+        if (ticket !== this._buildTicket) return false;
+        this._building = false;
+        this.state.sceneModel = this._sceneTarget;
+        return true;
+    }
+
+    async _buildScene(model) {
+        const { definition, scope, baked = null, imported = null } = model || {};
+        const ticket = this._buildTicket = (this._buildTicket || 0) + 1;
+        this._building = true;
+        this._sceneTarget = model;
         if (!definition) {
+            this._publishScene(ticket);
             this.state.pieces = [];
             this.state.postBuild = { byNode: {}, byPiece: {}, perforations: {} };
             this._worlds = new Map();
@@ -412,6 +444,9 @@ export class ConfiguratorPage extends Component {
             // gardé sur la page, pour une sonde — jamais envoyé, une durée est une
             // propriété de la machine.
             const chronicle = createChronicle();
+            // Une construction plus récente a été lancée pendant les lectures : elle seule
+            // publiera. Sortir AVANT `build()` épargne en plus son calcul.
+            if (ticket !== this._buildTicket) return;
             const { worlds, solids, baked: bakedSolids, pieces, postBuild } =
                 this._session.build(buildable, scope || {},
                                     { bakedParts, importedGeometries, chronicle });
@@ -427,6 +462,8 @@ export class ConfiguratorPage extends Component {
             // de la pièce ; montée par la route des esquisses, elle recevrait la matrice
             // du plan une seconde fois — un quart de tour (mesuré sur le bras, 2026-09-19).
             this._bakedSolids = bakedSolids;
+            // ⚠️ LES POSES ET LEURS MATIÈRES DANS LE MÊME RENDU ([[L-449]]).
+            this._publishScene(ticket);
             this.state.pieces = pieces;
             this.state.postBuild = postBuild;
             // ⓘ Une permutation peut faire disparaître la pose sélectionnée : la sélection
@@ -445,6 +482,7 @@ export class ConfiguratorPage extends Component {
             // depuis les seuls items de la racine. Il montre une pièce PLAUSIBLE, et rien
             // ne dit qu'elle est fausse. On le DIT donc au moins dans la console.
             console.warn("[configurateur] la scène n'a pas pu être construite :", e);
+            if (!this._publishScene(ticket)) return;
             this.state.pieces = [];
             this.state.postBuild = { byNode: {}, byPiece: {}, perforations: {} };
             this._worlds = new Map();
@@ -488,7 +526,7 @@ export class ConfiguratorPage extends Component {
 
     /** Les zones de matière, rangées par pièce — ce que le viewer peint. */
     get zonesByPiece() {
-        return this.state.model?.zones?.zonesByPiece || {};
+        return this.state.sceneModel?.zones?.zonesByPiece || {};
     }
 
     /**
@@ -499,7 +537,7 @@ export class ConfiguratorPage extends Component {
     get zoneMaterialsByNode() {
         // ⚠️ Une constante, pas `{}` : le viewer compare le calque par IDENTITÉ, et un objet
         // neuf à chaque rendu le ferait repeindre à chaque rendu ([[L-420]]).
-        return this.state.model?.zones?.byNode || NO_NODE_MATERIALS;
+        return this.state.sceneModel?.zones?.byNode || NO_NODE_MATERIALS;
     }
 
     /** `Map(nodeId → worldTransform)` — le viewer POSE les enfants avec. */
@@ -777,12 +815,12 @@ export class ConfiguratorPage extends Component {
     }
 
     get rootPieceId() {
-        return this.state.model?.definition?.model3dId ?? null;
+        return this.state.sceneModel?.definition?.model3dId ?? null;
     }
 
     /** Le nœud de la racine — par lui, le viewer retrouve son volume construit. */
     get rootNodeId() {
-        return this.state.model?.definition?.id ?? null;
+        return this.state.sceneModel?.definition?.id ?? null;
     }
 
     getResolvedWorldByNodeId() {
@@ -797,7 +835,7 @@ export class ConfiguratorPage extends Component {
      * serait corrigée le jour où la forme d'un nœud change.
      */
     get sketchItems() {
-        const model = this.state.model;
+        const model = this.state.sceneModel;
         if (!model?.definition) return [];
         return projectSketchItems(model.definition, model.scope || {});
     }

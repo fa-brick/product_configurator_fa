@@ -56,6 +56,8 @@ import { subtreeOf } from "@product_editor/engine/builder/project_items";
 
 /** Le calque par pose VIDE — une seule instance (voir `zoneMaterialsByNode`). */
 const NO_NODE_MATERIALS = Object.freeze({});
+/** La projection VIDE — une seule instance, pour la même raison (voir `sketchItems`). */
+const NO_SKETCH_ITEMS = Object.freeze([]);
 
 // Fenêtre de partage de la caméra. 150 ms : sous le seuil où un mouvement
 // paraît saccadé à qui regarde, au-dessus de la cadence d'une orbite au doigt.
@@ -135,6 +137,14 @@ export class ConfiguratorPage extends Component {
         this._worlds = new Map();
         this._solids = new Map();
         this._bakedSolids = new Map();
+        // ⚠️ **LES MÉMOS DES GETTERS VIVENT ICI, et jamais en `this._x = …`** ([[L-449]]).
+        // Un getter lu par le gabarit s'exécute sur un CONTEXTE qui hérite du composant
+        // (`Object.create`, neuf à chaque rendu — [[L-384]]) : ce qu'il écrit sur `this`
+        // reste sur ce contexte et meurt avec lui. Les quatre mémos de cette page étaient
+        // ainsi recalculés à CHAQUE rendu, et le viewer reconstruisait toute la scène pour
+        // le seul passage de `loading`. Cet objet-ci est LU à travers le contexte : on
+        // modifie ses champs, on ne le remplace jamais.
+        this._memos = { selectable: null, selected: null, isolated: null, items: null };
         // ⚠️ **LA SESSION DE CONSTRUCTION (D-329)** — possédée par la page, donc par un
         // objet à durée de vie connue : c'est elle qui tient la graine de partage (ce qui
         // évite de reconstruire DOUZE pièces pour en changer une — mesuré le 2026-09-22
@@ -570,10 +580,10 @@ export class ConfiguratorPage extends Component {
         // ⓘ Memoïsé sur ses deux entrées : le viewer compare cette prop par identité, et
         // un Set neuf à chaque rendu lui ferait relire la sélection en boucle ([[L-315]]).
         const model = this.state.model, pieces = this.state.pieces;
-        if (this._selectableFor?.model !== model || this._selectableFor?.pieces !== pieces) {
-            this._selectableFor = { model, pieces, ids: selectableNodeIds(model, pieces) };
+        if (this._memos.selectable?.model !== model || this._memos.selectable?.pieces !== pieces) {
+            this._memos.selectable = { model, pieces, ids: selectableNodeIds(model, pieces) };
         }
-        return this._selectableFor.ids;
+        return this._memos.selectable.ids;
     }
 
     /**
@@ -586,10 +596,10 @@ export class ConfiguratorPage extends Component {
     get selectedNodeIds() {
         const id = this.state.selection.nodeId;
         const pieces = this.state.pieces;
-        if (this._selectedFor?.id !== id || this._selectedFor?.pieces !== pieces) {
-            this._selectedFor = { id, pieces, list: familyOf(pieces, id) };
+        if (this._memos.selected?.id !== id || this._memos.selected?.pieces !== pieces) {
+            this._memos.selected = { id, pieces, list: familyOf(pieces, id) };
         }
-        return this._selectedFor.list;
+        return this._memos.selected.list;
     }
 
     /** Le placement réglable de la pose sélectionnée — ses questions. */
@@ -609,19 +619,19 @@ export class ConfiguratorPage extends Component {
         const { nodeId, isolated } = this.state.selection;
         const pieces = this.state.pieces;
         if (!isolated || !nodeId) return pieces;
-        if (this._isolatedFor?.pieces !== pieces || this._isolatedFor?.nodeId !== nodeId) {
+        if (this._memos.isolated?.pieces !== pieces || this._memos.isolated?.nodeId !== nodeId) {
             // ⓘ Isolée, la FAMILLE entière se montre (D-375) : les quatre bumpers des bras,
             // pas celui qu'on a touché seul.
             const keep = subtreeOf(pieces, familyOf(pieces, nodeId));
-            this._isolatedFor = { pieces, nodeId, list: pieces.filter((p) => keep.has(p.key)) };
+            this._memos.isolated = { pieces, nodeId, list: pieces.filter((p) => keep.has(p.key)) };
         }
-        return this._isolatedFor.list;
+        return this._memos.isolated.list;
     }
 
     /** Isolé sur un enfant, la RACINE ne se dessine pas non plus. */
     get viewerSketchItems() {
         const { nodeId, isolated } = this.state.selection;
-        return isolated && nodeId ? [] : this.sketchItems;
+        return isolated && nodeId ? NO_SKETCH_ITEMS : this.sketchItems;
     }
 
     /**
@@ -835,9 +845,19 @@ export class ConfiguratorPage extends Component {
      * serait corrigée le jour où la forme d'un nœud change.
      */
     get sketchItems() {
+        // ⚠️ **MÉMOÏSÉ, et c'est ce qui coûtait une reconstruction par RENDU** ([[L-449]]).
+        // Le viewer reconstruit toute la scène quand cette prop change d'identité : un
+        // tableau neuf à chaque rendu faisait tout refaire pour le seul passage de
+        // `loading` — deux fois par clic, sans compter l'écho du bus. La portée arrive en
+        // objet neuf à chaque réponse : elle se compare par valeur.
         const model = this.state.sceneModel;
-        if (!model?.definition) return [];
-        return projectSketchItems(model.definition, model.scope || {});
+        if (!model?.definition) return NO_SKETCH_ITEMS;
+        const scope = JSON.stringify(model.scope || {});
+        if (this._memos.items?.definition !== model.definition || this._memos.items?.scope !== scope) {
+            this._memos.items = { definition: model.definition, scope,
+                               items: projectSketchItems(model.definition, model.scope || {}) };
+        }
+        return this._memos.items.items;
     }
 
     get questions() {

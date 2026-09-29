@@ -17,6 +17,7 @@ jest.mock("@product_editor/engine/builder/to_buildable", () => new Proxy({}, {
         if (key === "toBuildable") return (definition) => definition;
         if (key === "createChronicle") return () => ({ snapshot: () => ({}) });
         if (key === "projectSketchItems") return (definition) => [definition.id];
+        if (key === "subtreeOf") return (pieces, keys) => new Set(keys);
         return class Stub {};
     },
 }));
@@ -48,6 +49,7 @@ function page() {
         model: null, sceneModel: null, pieces: [], sceneSerial: 0, ready: false,
         postBuild: {}, selection: { nodeId: null, isolated: false }, cameraApply: null,
     };
+    p._memos = { selectable: null, selected: null, isolated: null, items: null };
     p.gates = [];
     p._loadBaked = () => {
         const g = gate();
@@ -64,6 +66,13 @@ function page() {
     };
     return p;
 }
+
+/**
+ * Un RENDU : OWL lit les props du gabarit sur un contexte qui hérite du composant — neuf à
+ * chaque rendu, et ici sur deux étages comme sur la page réelle (mesuré le 2026-09-29,
+ * [[L-384]]). Un mémo écrit sur `this` y meurt avec le contexte.
+ */
+const render = (p) => Object.create(Object.create(p));
 
 /** Ce que le viewer reçoit : les poses, et les pièces dont il a les zones. */
 const shown = (p) => ({
@@ -145,5 +154,79 @@ describe("une permutation — la scène ne change qu'une fois construite", () =>
         p.gates.shift().open();
         await applying;
         expect(p.rootNodeId).toBe("m2");
+    });
+});
+
+describe("ce que le viewer compare par IDENTITÉ ne change pas sans raison (L-449)", () => {
+    // Le viewer reconstruit TOUTE la scène quand `sketchItems`, `pieces` ou les zones
+    // changent de référence. Mesuré le 2026-09-29 : cinq reconstructions par permutation,
+    // une seule utile — le passage de `loading`, puis l'écho du bus, refaisaient tout.
+
+    test("⚠️ deux RENDUS sans changement rendent la MÊME projection — chacun sur son contexte", async () => {
+        const p = await opened(39569);
+        expect(render(p).sketchItems).toBe(render(p).sketchItems);
+        expect(render(p).viewerSketchItems).toBe(render(p).sketchItems);
+    });
+
+    test("⚠️ les trois autres mémos tiennent aussi d'un rendu à l'autre", async () => {
+        const p = await opened(39569);
+        expect(render(p).selectableNodeIds).toBe(render(p).selectableNodeIds);
+        p.state.selection = { nodeId: "c-39569", isolated: true };
+        expect(render(p).selectedNodeIds).toBe(render(p).selectedNodeIds);
+        // Isolée, une liste neuve à chaque rendu reconstruisait toute la scène à chaque rendu.
+        expect(render(p).viewerPieces).toBe(render(p).viewerPieces);
+        expect(render(p).viewerPieces.map((x) => x.key)).toEqual(["c-39569"]);
+    });
+
+    test("⚠️ l'ÉCHO du bus — la même réponse, reçue une seconde fois — ne change aucune référence", async () => {
+        const p = await opened(39569);
+        const before = { items: render(p).sketchItems, zones: p.zonesByPiece, layer: p.zoneMaterialsByNode };
+        await p._applyModel(payload(39569));
+        expect(p.gates).toHaveLength(0);
+        expect(render(p).sketchItems).toBe(before.items);
+        expect(p.zonesByPiece).toBe(before.zones);
+        expect(p.zoneMaterialsByNode).toBe(before.layer);
+    });
+
+    test("une permutation, elle, change la projection — une fois construite", async () => {
+        const p = await opened(39569);
+        const before = render(p).sketchItems;
+        const applying = p._applyModel({ ...payload(39571), scope: { plate: 39571, x: 1 } });
+        await flush();
+        expect(render(p).sketchItems).toBe(before);
+        p.gates.shift().open();
+        await applying;
+        expect(render(p).sketchItems).not.toBe(before);
+    });
+
+    test("isolée, la racine ne se dessine pas — et le vide est TOUJOURS le même", async () => {
+        const p = await opened(39569);
+        p.state.selection = { nodeId: "c-39569", isolated: true };
+        expect(render(p).viewerSketchItems).toEqual([]);
+        expect(render(p).viewerSketchItems).toBe(render(p).viewerSketchItems);
+    });
+});
+
+describe("⚠️ aucun getter de la page n'écrit sur `this` (L-384, L-449)", () => {
+    // Lu pendant le rendu, un getter s'exécute sur le contexte du gabarit : l'écriture y
+    // reste. Les mémos se rangent dans `this._memos`, créé au `setup()`.
+    const { readFileSync } = require("node:fs");
+    const { join } = require("node:path");
+    const RAW = readFileSync(join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
+    const SOURCE = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
+
+    test("aucune affectation `this._x =` dans un corps de getter", () => {
+        const offenders = [];
+        const re = /\n    get (\w+)\(\) \{([\s\S]*?)\n    \}/g;
+        let m;
+        while ((m = re.exec(SOURCE))) {
+            if (/this\.[\w$]+\s*=[^=]/.test(m[2])) offenders.push(m[1]);
+        }
+        expect(offenders).toEqual([]);
+    });
+
+    test("les mémos naissent dans `setup()`", () => {
+        const setup = SOURCE.slice(SOURCE.indexOf("setup() {"), SOURCE.indexOf("_listenToOthers() {"));
+        expect(setup).toContain("this._memos = {");
     });
 });

@@ -295,7 +295,11 @@ export function toViewModel(payload, previous = null) {
         camera: payload.camera || null,
         // Les MATIÈRES de la scène, composées par le serveur : la page n'a le droit
         // de lire aucun des modèles qui les portent.
-        zones: payload.zones || null,
+        // ⚠️ Les ZONES et l'AMBIANCE gardent aussi leur référence quand rien n'a changé :
+        // le viewer les compare par identité, et les zones seules reconstruisent la scène.
+        // L'écho du bus — la même réponse, reçue une seconde fois — refaisait tout
+        // ([[L-449]]).
+        zones: keepIfSame(previous?.zones, payload.zones || null),
         productId: payload.productId || null,
         // ⓘ **LA SORTIE de la page atteinte par un lien** — la fiche du produit. Elle vient
         // du serveur parce que la route de la page ne résout pas le jeton (D-190), et elle
@@ -314,7 +318,7 @@ export function toViewModel(payload, previous = null) {
         // ⚠️ Même maillon, même piège : un champ servi que cette recopie oublie n'atteint
         // jamais la page ([[L-357]]). Les fichiers importés, et leur URL à jeton.
         imported: payload.imported || null,
-        ambience: payload.ambience || null,
+        ambience: keepIfSame(previous?.ambience, payload.ambience || null),
     };
 }
 
@@ -325,6 +329,10 @@ export function toViewModel(payload, previous = null) {
  * cycle (c'est la garantie de `to_definition`), et elle se compte en dizaines de nœuds. Une
  * comparaison structurelle écrite à la main coûterait plus cher à maintenir qu'à exécuter.
  */
+function keepIfSame(previous, next) {
+    return previous && sameDefinition(previous, next) ? previous : next;
+}
+
 export function sameDefinition(a, b) {
     if (a === b) return true;
     if (!a || !b) return false;

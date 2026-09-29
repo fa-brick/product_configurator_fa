@@ -447,3 +447,30 @@ describe("la MARQUE du choix d'une grande pastille", () => {
             .toBe("ring");
     });
 });
+
+describe("toViewModel — les zones et l'ambiance gardent leur référence (L-449)", () => {
+    // Le viewer compare les zones par IDENTITÉ et reconstruit la scène quand elles changent :
+    // l'écho du bus, qui rapporte la réponse qu'on vient d'appliquer, refaisait tout.
+    const withScene = (zones, ambience) => ({ ...PAYLOAD, zones, ambience });
+    const ZONES = { zonesByPiece: { 7: [{ id: 1, material: { name: "Carbone" } }] }, byNode: {} };
+
+    test("⚠️ identiques, elles restent les MÊMES objets", () => {
+        const first = toViewModel(withScene(ZONES, { id: 4, exposure: 1.15 }));
+        const echo = toViewModel(JSON.parse(JSON.stringify(withScene(ZONES, { id: 4, exposure: 1.15 }))), first);
+        expect(echo.zones).toBe(first.zones);
+        expect(echo.ambience).toBe(first.ambience);
+    });
+
+    test("différentes — une couleur, une exposition —, elles sont remplacées", () => {
+        const first = toViewModel(withScene(ZONES, { id: 4, exposure: 1.15 }));
+        const other = { zonesByPiece: { 7: [{ id: 1, material: { name: "Bleu" } }] }, byNode: {} };
+        const next = toViewModel(withScene(other, { id: 4, exposure: 1.3 }), first);
+        expect(next.zones).toBe(other);
+        expect(next.ambience).toEqual({ id: 4, exposure: 1.3 });
+    });
+
+    test("sans modèle précédent, ni zones ni ambiance, rien n'est inventé", () => {
+        expect(toViewModel(PAYLOAD).zones).toBeNull();
+        expect(toViewModel(PAYLOAD, toViewModel(PAYLOAD)).ambience).toBeNull();
+    });
+});

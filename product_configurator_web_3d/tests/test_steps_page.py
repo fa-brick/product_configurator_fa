@@ -143,9 +143,12 @@ class StepsOnThePage(BaseCommon):
     # ── LA VUE D'UNE ÉTAPE ────────────────────────────────────────────────
 
     def test_10_a_step_WITHOUT_a_view_does_not_move_the_camera(self):
-        steps, _step_of, _hidden = self._session()._web_step_layout()
-        served = self._session()._web_steps(steps, None)
+        session = self._session()
+        steps, _step_of, _hidden = session._web_step_layout()
+        step_views, question_views = session._web_views(steps, None)
+        served = session._web_steps(steps, step_views)
         self.assertEqual([s["camera"] for s in served], [None, None])
+        self.assertEqual(question_views, {})
 
     def test_11_a_step_view_is_served_in_the_viewer_form(self):
         model3d = self.env["product.model3d"].create(
@@ -157,7 +160,22 @@ class StepsOnThePage(BaseCommon):
         self._step_line(self.prints).view_camera_id = view
         session = self._session()
         steps, _step_of, _hidden = session._web_step_layout()
-        served = {s["name"]: s["camera"] for s in session._web_steps(steps, None)}
+        step_views, _question_views = session._web_views(steps, None)
+        served = {s["name"]: s["camera"] for s in session._web_steps(steps, step_views)}
         self.assertIsNone(served["Frame"])
         self.assertEqual(served["Prints"], session._web_camera_view(view))
         self.assertIn("pose", served["Prints"])
+
+    def test_12_an_ATTRIBUTE_view_rides_with_its_question(self):
+        """D-387 — la page prend la vue de l'attribut quand on ouvre ou répond à sa question."""
+        model3d = self.env["product.model3d"].create(
+            {"name": "Drone", "product_tmpl_id": self.tmpl.id}
+        )
+        view = self.env["product.model3d.camera"].create(
+            {"name": "Close-up", "model3d_id": model3d.id}
+        )
+        self.lines[self.plate].view_camera_id = view
+        session = self._session()
+        questions = {q["name"]: q["camera"] for q in session.web_state()["attributes"]}
+        self.assertEqual(questions["Plate"], session._web_camera_view(view))
+        self.assertIsNone(questions["Color"])

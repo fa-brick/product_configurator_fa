@@ -103,23 +103,41 @@ class ProductConfigSession(models.Model):
             step_of.setdefault(line.id, None)
         return steps, step_of, hidden
 
-    def _web_steps(self, steps, model3d):
-        """Les étapes telles que la page les reçoit — avec la VUE de chacune (D-385).
+    def _web_views(self, steps, model3d):
+        """Les VUES 3D des étapes et des questions — D-385, D-387.
 
-        ⓘ La vue d'une étape est la sienne (`view_camera_id`), sinon RIEN : la caméra
-        ne bouge pas quand on change d'étape — l'arbitrage de `_resolve_view_camera`.
+        ⓘ Une vue est celle qu'on a posée, sinon RIEN : la caméra ne bouge pas —
+        l'arbitrage de `_resolve_view_camera`. La page résout ensuite « l'attribut,
+        sinon son étape » (D-163) au moment où l'on ouvre ou répond à une question.
+
+        ⚠️ La définition n'est calculée qu'UNE fois, et seulement si une vue vise une
+        pièce : c'est l'objet le plus cher de la réponse.
+
+        :returns: ``(par_etape, par_question)`` — ``{step_line_id: vue}`` et
+            ``{attribute_id: vue}``, sans les entrées vides.
         """
         step_lines = self.env["product.config.step.line"].sudo()
-        cameras = {step["id"]: step_lines.browse(step["id"]).view_camera_id for step in steps}
+        by_step = {step["id"]: step_lines.browse(step["id"]).view_camera_id for step in steps}
+        by_question = {
+            line.attribute_id.id: line.view_camera_id
+            for line in self.product_tmpl_id.attribute_line_ids
+            if line.view_camera_id
+        }
+        cameras = [camera for camera in (*by_step.values(), *by_question.values()) if camera]
         definition = None
-        if model3d and any(camera.target_kind == "piece" for camera in cameras.values()):
+        if model3d and any(camera.target_kind == "piece" for camera in cameras):
             definition = model3d.to_definition()
+
+        def views(table):
+            return {key: self._web_camera_view(camera, definition)
+                    for key, camera in table.items() if camera}
+
+        return views(by_step), views(by_question)
+
+    def _web_steps(self, steps, step_views):
+        """Les étapes telles que la page les reçoit — avec la VUE de chacune (D-385)."""
         return [
-            {
-                "id": step["id"],
-                "name": step["name"],
-                "camera": self._web_camera_view(cameras[step["id"]], definition),
-            }
+            {"id": step["id"], "name": step["name"], "camera": step_views.get(step["id"])}
             for step in steps
         ]
 
@@ -1571,13 +1589,19 @@ class ProductConfigSession(models.Model):
         # ⓘ UNE lecture des étapes pour les questions ET pour la liste qui suit : deux
         # lectures pourraient ne pas classer une question dans la même étape.
         layout = self._web_step_layout()
+        step_views, question_views = self._web_views(layout[0], model3d)
+        attributes = self._web_attribute_lines(layout=layout)
+        # ⓘ D-387 — la vue d'un ATTRIBUT, que la page prend quand on ouvre ou répond à sa
+        # question ; `None` : la caméra suit celle de l'étape, ou ne bouge pas.
+        for question in attributes:
+            question["camera"] = question_views.get(question["id"])
         return {
             "productName": self.product_tmpl_id.display_name,
             "state": self.state,
-            "attributes": self._web_attribute_lines(layout=layout),
+            "attributes": attributes,
             # ⓘ D-385 — les ÉTAPES visibles, dans l'ordre : les pastilles du haut du viewer.
             # Vide quand le produit n'en déclare aucune : la page reste une liste à plat.
-            "steps": self._web_steps(layout[0], model3d),
+            "steps": self._web_steps(layout[0], step_views),
             # ⚠️ AVEC les saisies (D-353) : une largeur tapée doit changer le prix
             # comme la même largeur choisie dans la liste.
             "price": price,

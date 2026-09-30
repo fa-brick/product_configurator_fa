@@ -6,7 +6,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { toViewModel, activeStepId, stepQuestions, missingBefore, stepChips }
+import { toViewModel, activeStepId, stepQuestions, missingBefore, stepChips, questionView }
     from "@product_configurator_web_3d/configurator_state";
 
 const SRC = join(__dirname, "..", "src");
@@ -131,3 +131,38 @@ describe("la page branche les étapes", () => {
         expect(confirm.indexOf("_revealMissing")).toBeLessThan(confirm.indexOf("/configurator/confirm"));
     });
 });
+
+describe("la vue d'une question : la sienne, sinon celle de son étape (D-163, D-387)", () => {
+    const VUE_A = { pose: { azimuth: 1 } }, VUE_E = { pose: { azimuth: 2 } };
+    const steps = [{ id: 10, name: "Plaques", camera: VUE_E }, { id: 20, name: "Options", camera: null }];
+
+    test("l'attribut qui déclare une vue l'impose", () => {
+        expect(questionView({ id: 1, stepId: 10, camera: VUE_A }, steps)).toBe(VUE_A);
+    });
+
+    test("sans vue à lui, celle de son étape", () => {
+        expect(questionView({ id: 1, stepId: 10, camera: null }, steps)).toBe(VUE_E);
+    });
+
+    test("ni l'un ni l'autre : `null` — la caméra ne bouge pas", () => {
+        expect(questionView({ id: 1, stepId: 20, camera: null }, steps)).toBe(null);
+        expect(questionView({ id: 1, stepId: null, camera: null }, [])).toBe(null);
+        expect(questionView(undefined, steps)).toBe(null);
+    });
+
+    test("l'état servi porte la vue de chaque question", () => {
+        const model = toViewModel({ attributes: [{ id: 1, name: "A", camera: VUE_A, values: [] },
+                                                 { id: 2, name: "B", values: [] }] });
+        expect(model.questions.map((q) => q.camera)).toEqual([VUE_A, null]);
+    });
+
+    test("⚠️ la page ne repose une vue que si elle CHANGE — et l'ouvre au clic comme à la réponse", () => {
+        const JS = readFileSync(join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
+        const show = JS.slice(JS.indexOf("    _showView(view) {"));
+        expect(show.slice(0, show.indexOf("\n    }\n"))).toContain("=== this._shownView) return");
+        expect(JS.slice(JS.indexOf("    openPanel("), JS.indexOf("    closePanel("))).toContain("_showQuestionView");
+        expect(JS.slice(JS.indexOf("    async onPick("), JS.indexOf("/configurator/set_value\", payload);\n        await this._applyModel(next);\n        this.state.loading = false;\n    }\n\n    /**\n     * Terminer")))
+            .toContain("_showQuestionView(questionId)");
+    });
+});
+

@@ -51,7 +51,8 @@ import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, han
          placementOf, selectableNodeIds, familyOf, answerForPlacement,
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError, revealScrollLeft,
          rowEdges, lineOf, filterAnswers, panelViewOf, pickedAnswer, isImageForm,
-         panelChips, filterByCategory, activeStepId, stepQuestions, missingBefore, stepChips }
+         panelChips, filterByCategory, activeStepId, stepQuestions, missingBefore, stepChips,
+         questionView }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -898,6 +899,7 @@ export class ConfiguratorPage extends Component {
 
     /** Ouvrir le panneau d'une question — de la racine (`nodeId` nul) ou d'une pièce. */
     openPanel(nodeId, question) {
+        if (!nodeId) this._showQuestionView(question.id);
         this.state.reason = null;
         this.state.panel = {
             nodeId: nodeId || null, questionId: question.id, search: "", view: panelViewOf(question),
@@ -1010,6 +1012,7 @@ export class ConfiguratorPage extends Component {
             return;
         }
         const placement = nodeId ? this.selectedPlacement : null;
+        if (!nodeId) this._showQuestionView(question.id);
         const payload = customAnswerFor(
             this.state.model, question, raw, placement, localization.decimalPoint);
         if (!payload) return;
@@ -1135,6 +1138,30 @@ export class ConfiguratorPage extends Component {
     }
 
     /**
+     * Poser une vue 3D — SEULEMENT si elle diffère de la dernière posée (D-387).
+     *
+     * ⚠️ Sans cette garde, chaque réponse à la même question reprendrait la main sur le
+     * cadrage que le client vient de se donner : on impose une vue en ARRIVANT sur ce
+     * qu'elle montre, pas à chaque clic.
+     */
+    _showView(view) {
+        if (!view) return;
+        const key = JSON.stringify(view);
+        if (key === this._shownView) return;
+        this._shownView = key;
+        this.state.cameraApply = {
+            ...view, move: true,
+            serial: (this.state.cameraApply?.serial ?? 0) + 1,
+        };
+    }
+
+    /** Travailler une question du PRODUIT : sa vue, sinon celle de son étape (D-163). */
+    _showQuestionView(questionId) {
+        const question = this.questions.find((q) => q.id === questionId);
+        this._showView(questionView(question, this.steps));
+    }
+
+    /**
      * Afficher une étape — et prendre SA vue, si elle en déclare une.
      *
      * ⓘ Sans vue, la caméra ne bouge pas : le client garde le cadrage qu'il s'est donné
@@ -1146,13 +1173,10 @@ export class ConfiguratorPage extends Component {
         this.state.panel = null;
         this.state.reason = null;
         if (this.answersRef.el) this.answersRef.el.scrollTop = 0;
-        const view = this.steps.find((step) => step.id === stepId)?.camera;
-        if (view) {
-            this.state.cameraApply = {
-                ...view, move: true,
-                serial: (this.state.cameraApply?.serial ?? 0) + 1,
-            };
-        }
+        // ⓘ Changer d'étape, c'est changer de sujet : la vue déjà montrée se remontre si
+        // une question de la nouvelle étape la demande (D-387).
+        this._shownView = null;
+        this._showView(this.steps.find((step) => step.id === stepId)?.camera);
     }
 
     /**
@@ -1295,6 +1319,9 @@ export class ConfiguratorPage extends Component {
             this.state.reason = this.handLabel;
             return;
         }
+        // ⓘ D-387 — la vue de la question, AVANT l'aller-retour : la caméra part pendant
+        // que le serveur répond, au lieu d'attendre la reconstruction.
+        this._showQuestionView(questionId);
         const payload = answerFor(this.state.model, questionId, value.id);
         if (!payload) {
             this.state.reason = reasonFor(value);

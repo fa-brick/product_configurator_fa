@@ -189,6 +189,16 @@ export function activeStepId(steps, wanted) {
     return steps.some((step) => step.id === wanted) ? wanted : steps[0].id;
 }
 
+/**
+ * La vue à montrer quand on travaille une question : la sienne, sinon celle de son étape,
+ * sinon `null` — la caméra ne bouge pas (D-163, D-387).
+ */
+export function questionView(question, steps) {
+    if (!question) return null;
+    if (question.camera) return question.camera;
+    return steps.find((step) => step.id === question.stepId)?.camera || null;
+}
+
 /** Les questions de l'étape affichée — toutes quand le produit n'a pas d'étape. */
 export function stepQuestions(questions, steps, activeId) {
     if (!steps.length) return questions;
@@ -261,6 +271,8 @@ function toQuestion(line) {
         // OBLIGATOIRE y manque : le serveur en décide, avec l'évaluateur de la confirmation.
         stepId: line.stepId ?? null,
         missing: !!line.missing,
+        // ⓘ D-387 — la vue 3D de l'attribut, `null` s'il n'en déclare pas.
+        camera: line.camera || null,
     };
 }
 

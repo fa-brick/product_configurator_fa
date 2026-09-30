@@ -78,9 +78,9 @@ class TestPlacements(TransactionCase):
 
     def test_la_question_a_la_forme_de_celles_de_la_racine(self):
         question = self._placements()["c%s" % self.link_poignee.id]["questions"][0]
-        self.assertEqual(sorted(question), ["answerSize", "customValue", "displayType", "free",
-                                            "id", "multi", "name", "required", "swatchMark",
-                                            "values"])
+        self.assertEqual(sorted(question), ["answerLayout", "answerSize", "customValue",
+                                            "displayType", "free", "id", "multi", "name",
+                                            "required", "swatchMark", "values"])
         self.assertEqual(sorted(question["values"][0]),
                          ["available", "chosen", "color", "id", "image", "name", "raw"])
         # ⓘ Et les MÊMES clés qu'une question de la racine : la page les rend avec un seul
@@ -94,6 +94,12 @@ class TestPlacements(TransactionCase):
         self.couleur.write({"display_type": "card", "answer_size": "large"})
         question = self._placements()["c%s" % self.link_poignee.id]["questions"][0]
         self.assertEqual(question["answerSize"], "large")
+
+    def test_la_disposition_part_avec_la_question_d_une_piece(self):
+        """D-382 : la disposition EFFECTIVE, par le constructeur des placements aussi."""
+        self.couleur.write({"display_type": "card", "answer_layout": "scroll"})
+        question = self._placements()["c%s" % self.link_poignee.id]["questions"][0]
+        self.assertEqual(question["answerLayout"], "scroll")
 
     # ── RÉPONDRE ───────────────────────────────────────────────────────────
     def test_repondre_ecrit_la_session_et_coche_la_valeur(self):

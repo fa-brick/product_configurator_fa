@@ -17,7 +17,7 @@ import { _t } from "@web/core/l10n/translation";
  * ⚠️ **Le jeton entre par l'URL et ne ressort pas.** Il est passé en prop par le gabarit,
  * employé dans les appels, et n'apparaît dans aucun état rendu (D-190).
  */
-import { Component, onMounted, onWillStart, onWillUnmount, useState } from "@odoo/owl";
+import { Component, onMounted, onPatched, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
@@ -49,7 +49,8 @@ import { collectGlbAttachments, extractImportedGeometries }
 import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
 import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
          placementOf, selectableNodeIds, familyOf, answerForPlacement,
-         freeText, boundsLabel, freeSuggestions, customAnswerFor, customError }
+         freeText, boundsLabel, freeSuggestions, customAnswerFor, customError, revealScrollLeft,
+         rowEdges }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -191,6 +192,10 @@ export class ConfiguratorPage extends Component {
             this._settleCamera();
             this.state.loading = false;
         });
+        // ⓘ LES RANGÉES QUI DÉFILENT (D-382) : leurs bords, et le choix ramené à l'écran.
+        this.pageRef = useRef("page");
+        onMounted(() => this._settleRows());
+        onPatched(() => this._settleRows());
         // ⓘ APRÈS le montage, et sans `await` : la construction ne bloque plus
         // personne, et c'est elle qui lèvera `ready` en se posant sur la vue.
         onMounted(() => {
@@ -740,6 +745,71 @@ export class ConfiguratorPage extends Component {
             : null;
         if (!req) return;
         this.state.cameraApply = { ...req, serial: (this.state.cameraApply?.serial ?? 0) + 1 };
+    }
+
+    /**
+     * Ce qui est choisi pour une question, en une clé — ce que la rangée qui défile
+     * compare à ce qu'elle a déjà montré, pour ramener un choix NOUVEAU à l'écran (D-382). ⓘ Une méthode et non une expression du gabarit :
+     * OWL y résout les identifiants sur le composant.
+     */
+    chosenKey(question) {
+        return question.values.filter((value) => value.chosen).map((value) => value.id).join(",");
+    }
+
+    /**
+     * Régler les rangées qui défilent après un rendu — D-382.
+     *
+     * ⚠️ **Pas de composant enfant à emplacement ici**, et c'est mesuré : la rangée avait
+     * d'abord été un composant `ScrollRow` recevant la grille par son slot. Dans le gabarit
+     * `Question`, appelé par `t-call` depuis une boucle, OWL ne recopie pas le contexte du
+     * slot (ni boucle ni `t-set` dans CE gabarit : il le croit sûr) ; toutes les questions
+     * rendaient alors les réponses de la DERNIÈRE ([[L-453]]). La page porte donc la rangée
+     * elle-même, et la règle ici par le DOM.
+     *
+     * ⓘ Le choix n'est ramené que lorsqu'il CHANGE (`data-chosen` contre `data-shown`) :
+     * la page se rend à chaque réponse, au prix, au bus — ramener la rangée à chaque rendu
+     * reprendrait la main à qui fait défiler.
+     */
+    _settleRows() {
+        const root = this.pageRef.el;
+        if (!root) return;
+        for (const row of root.querySelectorAll(".o_cfg3d_scrollrow--active")) {
+            const grid = row.firstElementChild;
+            if (!grid) continue;
+            if (row.dataset.chosen !== row.dataset.shown) {
+                row.dataset.shown = row.dataset.chosen;
+                const chosen = grid.querySelector(".o_cfg3d_card--chosen, .o_cfg3d_bigswatch--chosen");
+                if (chosen) {
+                    // ⓘ `offsetLeft` se lit depuis la grille, qui est positionnée (SCSS).
+                    const left = revealScrollLeft(grid.scrollLeft, grid.clientWidth,
+                                                  chosen.offsetLeft, chosen.offsetWidth);
+                    if (left !== null) grid.scrollLeft = left;
+                }
+            }
+            this._markEdges(row);
+        }
+    }
+
+    /** Les bords atteints d'une rangée — ce qui cache la flèche devenue inutile. */
+    _markEdges(row) {
+        const grid = row.firstElementChild;
+        const edges = rowEdges(grid.scrollLeft, grid.clientWidth, grid.scrollWidth);
+        // ⓘ Des classes posées à la main : OWL ne retire que celles qu'il gère lui-même.
+        row.classList.toggle("o_cfg3d_scrollrow--start", edges.start);
+        row.classList.toggle("o_cfg3d_scrollrow--end", edges.end);
+    }
+
+    /** Le défilement d'une rangée, capturé sur elle — et le survol, qui la remesure. */
+    onRowScroll(ev) {
+        const row = ev.currentTarget;
+        if (row.classList.contains("o_cfg3d_scrollrow--active") && row.firstElementChild) {
+            this._markEdges(row);
+        }
+    }
+
+    onRowArrow(ev, direction) {
+        const grid = ev.currentTarget.closest(".o_cfg3d_scrollrow")?.firstElementChild;
+        if (grid) grid.scrollBy({ left: direction * grid.clientWidth * 0.8, behavior: "smooth" });
     }
 
     /**

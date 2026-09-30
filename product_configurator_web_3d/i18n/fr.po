@@ -303,3 +303,52 @@ msgstr "Moyenne"
 #: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__answer_size__large
 msgid "Large"
 msgstr "Grande"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields,field_description:product_configurator_web_3d.field_product_attribute__answer_layout
+msgid "Answer layout"
+msgstr "Disposition des réponses"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields,help:product_configurator_web_3d.field_product_attribute__answer_layout
+msgid ""
+"How the answers are laid out on the configurator page. Horizontal scroll and "
+"One row only apply to cards and large swatches; Summary line also applies to "
+"radio, pills and select. Any other combination shows the full list."
+msgstr ""
+"Disposition des réponses sur la page du configurateur. Le défilement "
+"horizontal et la ligne unique ne valent que pour les cartes et les grandes "
+"pastilles ; la ligne résumé vaut aussi pour les boutons radio, les pilules et "
+"la liste. Toute autre combinaison affiche la liste complète."
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__answer_layout__inline
+msgid "Full list"
+msgstr "Liste complète"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__answer_layout__scroll
+msgid "Horizontal scroll"
+msgstr "Défilement horizontal"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__answer_layout__line
+msgid "One row + See all"
+msgstr "Une ligne + Tout voir"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__answer_layout__summary
+msgid "Summary line"
+msgstr "Ligne résumé"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.xml:0
+msgid "Previous"
+msgstr "Précédent"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.xml:0
+msgid "Next"
+msgstr "Suivant"

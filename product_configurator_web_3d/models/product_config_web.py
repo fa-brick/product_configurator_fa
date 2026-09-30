@@ -94,6 +94,8 @@ class ProductConfigSession(models.Model):
                 "swatchMark": line.attribute_id.swatch_mark,
                 # ⓘ La taille d'une carte ou d'une grande pastille (D-382).
                 "answerSize": line.attribute_id.answer_size,
+                # ⓘ Sa disposition, déjà ramenée à ce que la forme permet (D-382).
+                "answerLayout": line.attribute_id._web_answer_layout(),
                 "values": [
                     {
                         "id": value.id,
@@ -809,6 +811,7 @@ class ProductConfigSession(models.Model):
                 "displayType": line.attribute_id.display_type,
                 "swatchMark": line.attribute_id.swatch_mark,
                 "answerSize": line.attribute_id.answer_size,
+                "answerLayout": line.attribute_id._web_answer_layout(),
                 "values": [{
                     "id": value.id,
                     "name": value.display_value or value.name,

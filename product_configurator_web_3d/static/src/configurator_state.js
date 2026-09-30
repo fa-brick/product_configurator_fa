@@ -21,6 +21,53 @@ import { _t } from "@web/core/l10n/translation";
 /** Les tailles d'une carte ou d'une grande pastille (`answer_size`, D-382). */
 export const ANSWER_SIZES = ["small", "medium", "large"];
 
+/** Les formes qui montrent une IMAGE, et celles qu'une ligne résumé remplace (D-382). */
+const IMAGE_FORMS = ["card", "swatch"];
+const SUMMARY_FORMS = ["card", "swatch", "radio", "pills", "select"];
+
+/**
+ * La disposition EFFECTIVE d'une question — D-382.
+ *
+ * ⓘ Le miroir de `_web_answer_layout` côté serveur, qui la sert déjà ramenée : ce calcul
+ * couvre le serveur qui ne la sert pas encore, et toute combinaison sans effet. Une
+ * disposition inconnue ou absente est `inline`, l'affichage d'avant ce réglage.
+ */
+export function answerLayoutOf(line) {
+    const layout = line.answerLayout;
+    const form = line.displayType || "radio";
+    if ((layout === "scroll" || layout === "line") && IMAGE_FORMS.includes(form)) return layout;
+    if (layout === "summary" && SUMMARY_FORMS.includes(form)) return layout;
+    return "inline";
+}
+
+/**
+ * Le défilement qui montre un élément EN ENTIER dans une rangée — ou `null` s'il l'est
+ * déjà. Positions en pixels, relatives au début du contenu de la rangée.
+ *
+ * ⓘ Le moins possible : un élément coupé à gauche vient se caler au bord gauche, un
+ * élément coupé à droite au bord droit. ⚠️ On ne touche pas à la rangée quand il est
+ * visible — la page se rend à chaque réponse, et ramener la rangée à chaque rendu
+ * reprendrait la main à celui qui fait défiler.
+ */
+export function revealScrollLeft(scrollLeft, viewWidth, itemLeft, itemWidth) {
+    if (itemLeft < scrollLeft) return itemLeft;
+    if (itemLeft + itemWidth > scrollLeft + viewWidth) {
+        return Math.max(0, itemLeft + itemWidth - viewWidth);
+    }
+    return null;
+}
+
+/**
+ * Les bords qu'une rangée a atteints — ce qui cache sa flèche devenue inutile (D-382).
+ * ⓘ Au pixel près : un défilement fractionnaire s'arrête souvent à 0,5 px du bord.
+ */
+export function rowEdges(scrollLeft, viewWidth, scrollWidth) {
+    return {
+        start: scrollLeft <= 1,
+        end: scrollLeft + viewWidth >= scrollWidth - 1,
+    };
+}
+
 /** Une question, telle que la page la rend — de la racine ou d'un placement. */
 function toQuestion(line) {
     return {
@@ -37,6 +84,8 @@ function toQuestion(line) {
         // d'avant ce réglage, pour toute valeur inconnue ou absente (un serveur qui ne la
         // sert pas encore).
         answerSize: ANSWER_SIZES.includes(line.answerSize) ? line.answerSize : "medium",
+        // ⓘ Sa disposition (D-382) : `inline` pour toute combinaison sans effet.
+        answerLayout: answerLayoutOf(line),
         values: (line.values || []).map(toValue),
         // ⓘ **LA SAISIE LIBRE** (D-353) : la forme du champ, ou `null` quand la question
         // se répond par sa liste. C'est ELLE qui décide du champ, avant `displayType` —

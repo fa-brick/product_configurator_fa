@@ -47,6 +47,11 @@
        hauteur de contenu, le panneau déborde et la barre de défilement s'installe
        sur toute la page au lieu du seul corps. C'est le défaut que Gerry a vu. */
     min-height: 0;
+    /* ⚠️ **ET `min-width: 0`, pour la même raison, en largeur** (D-382). Un élément flexible
+       garde au moins la largeur de son contenu ; une rangée qui DÉFILE a pour contenu toute
+       sa longueur — quinze teintes, 4 611 px. La colonne passait de 340 à 1 080 px, et les
+       cartes à 302 px de côté (mesuré sur la page, 2026-09-30). */
+    min-width: 0;
     border-left: 1px solid rgba(0, 0, 0, 0.08);
 
     @media (max-width: 900px) {
@@ -298,6 +303,80 @@
     overflow: hidden;
 
     .o_cfg3d_bigswatch--chosen & { font-weight: 600; }
+}
+
+/* ── LA RANGÉE QUI DÉFILE (D-382, disposition `scroll`) ─────────────────────
+   La grille de cartes ou de grandes pastilles passe sur UNE rangée, qui défile de gauche à
+   droite. La TAILLE (`answer_size`) garde son sens : elle dit combien de réponses se voient
+   à la fois — 4, 3 ou 2 cartes, plus une MOITIÉ de la suivante. Cette moitié est le repère
+   « il y a une suite » ; elle ne coûte aucun script.
+   ⚠️ `overflow-x: auto` force `overflow-y` à `auto` : l'anneau d'une grande pastille,
+   dessiné en ombre, serait rogné en haut et en bas sans la marge intérieure que la grille
+   garde (`.o_cfg3d_bigswatches`).
+   ⓘ L'enveloppe existe aussi en disposition `inline`, INERTE : tout ce qui suit ne vaut
+   que pour `--active`. */
+.o_cfg3d_scrollrow--active {
+    position: relative;
+
+    > .o_cfg3d_cards,
+    > .o_cfg3d_bigswatches {
+        /* ⓘ Positionnée : c'est depuis elle que la page lit l'`offsetLeft` du choix. */
+        position: relative;
+        grid-template-columns: none;
+        grid-auto-flow: column;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x mandatory;
+        /* Pas de barre : la moitié de réponse et les flèches disent déjà qu'on défile. */
+        scrollbar-width: none;
+        &::-webkit-scrollbar { display: none; }
+
+        > * { scroll-snap-align: start; }
+    }
+    /* ⓘ L'aimant compte la marge intérieure de la grande pastille : sans elle, la première
+       réponse s'aimante à 4 px, et la rangée ne commence jamais à son bord. */
+    > .o_cfg3d_bigswatches { scroll-padding-inline: 4px; }
+
+    /* n réponses entières et une moitié : n écarts de 8 px, n + 0,5 colonnes.
+       ⓘ Interpolé : libsass ne doit pas tenter d'évaluer le `calc()` ([[L-302]]). */
+    > .o_cfg3d_cards { grid-auto-columns: #{"calc((100% - 24px) / 3.5)"}; }
+    > .o_cfg3d_cards--small { grid-auto-columns: #{"calc((100% - 32px) / 4.5)"}; }
+    > .o_cfg3d_cards--large { grid-auto-columns: #{"calc((100% - 16px) / 2.5)"}; }
+    > .o_cfg3d_bigswatches { grid-auto-columns: #{"calc((100% - 24px) / 3.5)"}; }
+    > .o_cfg3d_bigswatches--small { grid-auto-columns: #{"calc((100% - 32px) / 4.5)"}; }
+    > .o_cfg3d_bigswatches--large { grid-auto-columns: #{"calc((100% - 16px) / 2.5)"}; }
+}
+
+/* Les flèches : pour la SOURIS seulement — au doigt, la rangée se pousse. */
+.o_cfg3d_scrollrow_arrow {
+    display: none;
+    position: absolute;
+    top: 50%;
+    z-index: 1;
+    width: 28px;
+    height: 28px;
+    margin-top: -14px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    color: rgba(0, 0, 0, 0.7);
+    font-size: 12px;
+    cursor: pointer;
+
+    &--prev { left: 2px; }
+    &--next { right: 2px; }
+}
+
+@media (hover: hover) {
+    .o_cfg3d_scrollrow:hover .o_cfg3d_scrollrow_arrow { display: flex; }
+    /* ⚠️ Même poids que la règle du survol, et APRÈS elle : au bord atteint, la flèche
+       qui n'irait nulle part disparaît. */
+    .o_cfg3d_scrollrow--start:hover .o_cfg3d_scrollrow_arrow--prev,
+    .o_cfg3d_scrollrow--end:hover .o_cfg3d_scrollrow_arrow--next { display: none; }
 }
 
 /* ── LA COULEUR ─────────────────────────────────────────────────────────── */

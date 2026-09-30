@@ -1,6 +1,10 @@
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
+# Les formes qui montrent une IMAGE, et celles qu'une ligne résumé peut remplacer (D-382).
+IMAGE_FORMS = ("card", "swatch")
+SUMMARY_FORMS = ("card", "swatch", "radio", "pills", "select")
+
 
 class ProductAttributeLine(models.Model):
     """La VUE 3D que le configurateur affiche pour cet attribut — D-163.
@@ -152,6 +156,41 @@ class ProductAttribute(models.Model):
         help="Size of the cards or large swatches on the configurator page. How many fit "
         "on a row follows from the space available.",
     )
+    # ⓘ **LA DISPOSITION des réponses** — D-382. `inline` est l'affichage d'avant : toutes les
+    # réponses, dans la forme de la question. `scroll` et `line` ne valent que pour les
+    # formes à image ; `summary` aussi pour les boutons et la liste (Gerry, 2026-09-30).
+    # ⚠️ **Pas de contrainte** sur le couple forme / disposition : elle interdirait de
+    # changer la forme d'un attribut déjà réglé. Une combinaison sans effet retombe sur
+    # `inline` au moment de servir (`_web_answer_layout`).
+    answer_layout = fields.Selection(
+        selection=[
+            ("inline", "Full list"),
+            ("scroll", "Horizontal scroll"),
+            ("line", "One row + See all"),
+            ("summary", "Summary line"),
+        ],
+        default="inline",
+        required=True,
+        string="Answer layout",
+        help="How the answers are laid out on the configurator page. Horizontal scroll and "
+        "One row only apply to cards and large swatches; Summary line also applies to "
+        "radio, pills and select. Any other combination shows the full list.",
+    )
+
+    def _web_answer_layout(self):
+        """La disposition EFFECTIVE, telle que la page la reçoit — D-382.
+
+        ⓘ Le miroir de `answerLayoutOf` (`configurator_state.js`) : le serveur sert la
+        disposition déjà ramenée à ce que la forme permet, la page refait le même calcul
+        pour un serveur qui ne la servirait pas encore.
+        """
+        self.ensure_one()
+        layout = self.answer_layout or "inline"
+        if layout in ("scroll", "line") and self.display_type not in IMAGE_FORMS:
+            return "inline"
+        if layout == "summary" and self.display_type not in SUMMARY_FORMS:
+            return "inline"
+        return layout
 
 
 class ProductAttributeValue(models.Model):

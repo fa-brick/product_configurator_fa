@@ -65,11 +65,16 @@ describe("ramener le choix à l'écran", () => {
 });
 
 describe("le gabarit — une enveloppe autour des deux grilles à image", () => {
-    const branch = (form, next) => XML.slice(XML.indexOf(`question.displayType === '${form}'`),
-                                             XML.indexOf(next));
+    // ⓘ Ancré sur les `t-elif` : le résumé cite aussi `displayType === 'swatch'`, plus haut.
+    const branch = (form, next) => {
+        const start = XML.indexOf(`t-elif="question.displayType === '${form}'"`);
+        const end = XML.indexOf(next, start);
+        if (start < 0 || end < 0) throw new Error(`branche introuvable : ${form}`);
+        return XML.slice(start, end);
+    };
     const BRANCHES = [
-        ["card", "question.displayType === 'swatch'", "o_cfg3d_cards"],
-        ["swatch", "question.displayType === 'color'", "o_cfg3d_bigswatches"],
+        ["card", `t-elif="question.displayType === 'swatch'"`, "o_cfg3d_cards"],
+        ["swatch", `t-elif="question.displayType === 'color'"`, "o_cfg3d_bigswatches"],
     ];
 
     test("la carte et la grande pastille : l'enveloppe, activée par la disposition", () => {
@@ -110,8 +115,10 @@ describe("le gabarit — une enveloppe autour des deux grilles à image", () => 
         const settle = JS.slice(JS.indexOf("    _settleRows() {"), JS.indexOf("    _markEdges("));
         expect(settle).toMatch(/if \(row\.dataset\.chosen !== row\.dataset\.shown\) \{\s*row\.dataset\.shown = row\.dataset\.chosen;/);
         const setup = JS.slice(JS.indexOf("export class ConfiguratorPage"));
-        expect(setup).toContain("onMounted(() => this._settleRows());");
-        expect(setup).toContain("onPatched(() => this._settleRows());");
+        expect(setup).toContain("onMounted(() => this._afterRender());");
+        expect(setup).toContain("onPatched(() => this._afterRender());");
+        const after = JS.slice(JS.indexOf("    _afterRender() {"), JS.indexOf("    _observeAnswers() {"));
+        expect(after).toContain("this._settleRows();");
     });
 });
 

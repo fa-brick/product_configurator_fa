@@ -352,3 +352,45 @@ msgstr "Précédent"
 #: code:addons/product_configurator_web_3d/static/src/page/configurator_page.xml:0
 msgid "Next"
 msgstr "Suivant"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "Back"
+msgstr "Retour"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "Search…"
+msgstr "Rechercher…"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "See all"
+msgstr "Tout voir"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "No answer matches this search."
+msgstr "Aucune réponse ne correspond à cette recherche."
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "List"
+msgstr "Liste"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "Small grid"
+msgstr "Petite grille"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "Large grid"
+msgstr "Grande grille"

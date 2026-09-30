@@ -52,6 +52,13 @@
        sa longueur — quinze teintes, 4 611 px. La colonne passait de 340 à 1 080 px, et les
        cartes à 302 px de côté (mesuré sur la page, 2026-09-30). */
     min-width: 0;
+    /* ⓘ Le PANNEAU DE CHOIX (D-382) se pose par-dessus la colonne : elle le borne.
+       ⚠️ **ET ELLE LE ROGNE** (`overflow: hidden`) : pendant qu'il glisse, il dépasse à droite
+       de la page, et le focus posé sur sa recherche faisait défiler TOUTE la page de ~210 px
+       pour la montrer — la colonne à x = 730, ses cartes coupées sous le panneau (mesuré,
+       2026-09-30). Le panneau mobile est `fixed` : ce rognage ne le touche pas. */
+    position: relative;
+    overflow: hidden;
     border-left: 1px solid rgba(0, 0, 0, 0.08);
 
     @media (max-width: 900px) {
@@ -378,6 +385,227 @@
     .o_cfg3d_scrollrow--start:hover .o_cfg3d_scrollrow_arrow--prev,
     .o_cfg3d_scrollrow--end:hover .o_cfg3d_scrollrow_arrow--next { display: none; }
 }
+
+/* ── « +N / TOUT VOIR » : la dernière case d'une ligne pleine (D-382) ──────── */
+.o_cfg3d_more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.6);
+}
+.o_cfg3d_bigswatch_disc.o_cfg3d_more {
+    background: #fff;
+    font-size: 16px;
+}
+
+/* ── LA LIGNE RÉSUMÉ (D-382) : la question, le choix, le chevron ─────────── */
+.o_cfg3d_summary {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover { border-color: rgba(0, 0, 0, 0.3); }
+}
+
+.o_cfg3d_summary_shot {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.04);
+
+    &--disc { border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
+    img { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+
+.o_cfg3d_summary_text {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.o_cfg3d_summary_question {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.o_cfg3d_summary_answer {
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &--empty { opacity: 0.55; }
+}
+
+.o_cfg3d_summary_chevron { flex: 0 0 auto; opacity: 0.6; }
+
+/* ── LE PANNEAU DE CHOIX (D-382) ─────────────────────────────────────────────
+   Par-dessus la colonne des questions, glissé depuis la droite : la 3D reste visible et
+   suit les réponses. Sous 900 px, plein écran, monté depuis le bas.
+   ⚠️ `100dvh` après `100vh`, comme la page : la hauteur barres masquées tomberait sous la
+   barre du navigateur (voir `.o_cfg3d_page`). */
+.o_cfg3d_panel {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    animation: o_cfg3d_panel_from_right 0.2s ease-out;
+
+    @media (max-width: 900px) {
+        position: fixed;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 20;
+        animation-name: o_cfg3d_panel_from_bottom;
+    }
+    @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+
+@keyframes o_cfg3d_panel_from_right { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes o_cfg3d_panel_from_bottom { from { transform: translateY(100%); } to { transform: none; } }
+
+.o_cfg3d_panel_head {
+    flex: 0 0 auto;
+    padding: 12px 16px 4px;
+}
+
+.o_cfg3d_panel_back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: inherit;
+    opacity: 0.75;
+    cursor: pointer;
+
+    &:hover { opacity: 1; }
+}
+
+.o_cfg3d_panel_title { font-size: 16px; margin: 8px 0 0; }
+
+.o_cfg3d_panel_tools {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.o_cfg3d_panel_search {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+
+    .oi-search {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        margin-top: -7px;
+        opacity: 0.45;
+        pointer-events: none;
+    }
+}
+
+.o_cfg3d_panel_input {
+    width: 100%;
+    font-size: 13px;
+    padding: 6px 30px 6px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+    background: #fff;
+
+    &:focus { outline: none; border-color: $o-brand-primary; }
+}
+
+.o_cfg3d_panel_views {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 2px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.o_cfg3d_panel_view {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: rgba(0, 0, 0, 0.45);
+    cursor: pointer;
+
+    &:hover { color: rgba(0, 0, 0, 0.75); }
+    &--on { color: $o-brand-primary; background: rgba($o-brand-primary, 0.1); }
+}
+
+.o_cfg3d_panel_reason { margin: 8px 16px 0; }
+
+/* Le corps : lui seul défile. */
+.o_cfg3d_panel_body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.o_cfg3d_panel_list { display: flex; flex-direction: column; }
+
+.o_cfg3d_panel_row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 4px;
+    border: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover { background: rgba(0, 0, 0, 0.03); }
+    &--chosen .o_cfg3d_panel_name { font-weight: 600; }
+    /* ÉTEINTE, pas désactivée : l'appui doit rester possible pour en donner la raison (D-178). */
+    &--muted { opacity: 0.4; }
+}
+
+.o_cfg3d_panel_shot {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.04);
+
+    &--disc { border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
+    img { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+
+.o_cfg3d_panel_name { flex: 1 1 auto; font-size: 13px; }
+.o_cfg3d_panel_check { color: $o-brand-primary; }
 
 /* ── LA COULEUR ─────────────────────────────────────────────────────────── */
 /* ⓘ Le PADDING est la place de l'anneau de sélection (voir `--chosen`). */

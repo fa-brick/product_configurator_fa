@@ -68,6 +68,77 @@ export function rowEdges(scrollLeft, viewWidth, scrollWidth) {
     };
 }
 
+// ── LA LIGNE, LE RÉSUMÉ, LE PANNEAU (D-382, lot 3) ──────────────────────────
+
+/**
+ * La largeur MINIMALE d'une réponse dans sa grille, par forme et par taille — les valeurs
+ * de `configurator_page.scss` (`minmax(…)`), que `answer_size.test.js` tient ensemble.
+ * ⓘ Pour la grande pastille, c'est la CASE de la grille, pas le disque.
+ */
+export const ANSWER_MIN_WIDTH = {
+    card: { small: 64, medium: 96, large: 140 },
+    swatch: { small: 68, medium: 84, large: 108 },
+};
+/** L'écart entre deux réponses, et la marge intérieure de la grille des pastilles. */
+export const ANSWER_GAP = 8;
+const SWATCH_GRID_PADDING = 8;
+
+/** Les formes à image — celles qui ont une grille, et une bascule de vue au panneau. */
+export function isImageForm(question) {
+    return IMAGE_FORMS.includes(question.displayType);
+}
+
+/**
+ * Ce qu'une rangée `line` montre : autant de réponses qu'il en tient sur UNE ligne, la
+ * dernière case cédée à « +N » quand toutes n'y tiennent pas — D-382.
+ *
+ * ⚠️ **Le choix est TOUJOURS dans la rangée** : s'il tombe au-delà, il prend la dernière
+ * place visible. Sinon le client ne voit pas ce qu'il a choisi (analyse, §3).
+ *
+ * ⓘ Sans largeur mesurée (`width` nul, avant le premier `ResizeObserver`), tout est montré :
+ * la grille d'avant, plutôt qu'une rangée tronquée au hasard.
+ *
+ * @returns {{values: object[], more: number}}
+ */
+export function lineOf(values, width, form, size) {
+    if (!width || !ANSWER_MIN_WIDTH[form]) return { values, more: 0 };
+    const min = ANSWER_MIN_WIDTH[form][size] || ANSWER_MIN_WIDTH[form].medium;
+    const inner = form === "swatch" ? width - SWATCH_GRID_PADDING : width;
+    const capacity = Math.max(1, Math.floor((inner + ANSWER_GAP) / (min + ANSWER_GAP)));
+    if (values.length <= capacity) return { values, more: 0 };
+    const slots = Math.max(1, capacity - 1);
+    let shown = values.slice(0, slots);
+    const chosen = values.find((value) => value.chosen);
+    if (chosen && !shown.includes(chosen)) shown = [...shown.slice(0, slots - 1), chosen];
+    return { values: shown, more: values.length - shown.length };
+}
+
+/** Un texte ramené à ce qu'une recherche compare : sans accents, sans casse. */
+export function searchable(text) {
+    return String(text ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+/** Les réponses dont le NOM contient la recherche — « creme » trouve « Crème ». */
+export function filterAnswers(values, query) {
+    const wanted = searchable(query);
+    return wanted ? values.filter((value) => searchable(value.name).includes(wanted)) : values;
+}
+
+/**
+ * La vue d'ouverture du panneau. Une forme sans image n'a que la liste ; une forme à image
+ * s'ouvre en grille, grande si l'attribut le dit, petite sinon — le panneau sert à PARCOURIR,
+ * la moyenne y cède à la petite (plan, lot 3).
+ */
+export function panelViewOf(question) {
+    if (!isImageForm(question)) return "list";
+    return question.answerSize === "large" ? "large" : "small";
+}
+
+/** La réponse choisie d'une question à choix simple — `null` s'il n'y en a pas. */
+export function pickedAnswer(question) {
+    return question.values.find((value) => value.chosen) || null;
+}
+
 /** Une question, telle que la page la rend — de la racine ou d'un placement. */
 function toQuestion(line) {
     return {

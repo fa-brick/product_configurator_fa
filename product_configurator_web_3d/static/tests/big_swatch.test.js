@@ -9,8 +9,13 @@ import { join } from "node:path";
 const SRC = join(__dirname, "..", "src");
 const XML = readFileSync(join(SRC, "page", "configurator_page.xml"), "utf8");
 const SCSS = readFileSync(join(SRC, "page", "configurator_page.scss"), "utf8");
-const bloc = XML.slice(XML.indexOf("question.displayType === 'swatch'"),
-                       XML.indexOf("question.displayType === 'color'"));
+// ⓘ Ancré sur les `t-elif` : le résumé (D-382) cite aussi `displayType === 'swatch'`.
+const bloc = XML.slice(XML.indexOf("t-elif=\"question.displayType === 'swatch'\""),
+                       XML.indexOf("t-elif=\"question.displayType === 'color'\""));
+// ⓘ Le BOUTON vit dans un sous-gabarit depuis D-382 : la question et le panneau de choix
+// l'appellent tous deux par `t-call`.
+const puck = XML.slice(XML.indexOf('t-name="product_configurator_web_3d.BigSwatch"'),
+                       XML.indexOf('t-name="product_configurator_web_3d.AnswerPanel"'));
 
 describe("la grande pastille", () => {
     test("elle a sa branche, AVANT celle de la couleur", () => {
@@ -19,13 +24,14 @@ describe("la grande pastille", () => {
     });
 
     test("le choix se VOIT : classe choisie, coche, et le nom sous le disque", () => {
-        expect(bloc).toContain("'o_cfg3d_bigswatch--chosen': value.chosen");
-        expect(bloc).toContain("t-if=\"value.chosen and question.swatchMark === 'check'\"");
-        expect(bloc).toContain('class="o_cfg3d_bigswatch_label" t-esc="value.name"');
+        expect(bloc).toContain('<t t-call="product_configurator_web_3d.BigSwatch"/>');
+        expect(puck).toContain("'o_cfg3d_bigswatch--chosen': value.chosen");
+        expect(puck).toContain("t-if=\"value.chosen and question.swatchMark === 'check'\"");
+        expect(puck).toContain('class="o_cfg3d_bigswatch_label" t-esc="value.name"');
     });
 
     test("elle répond comme les autres formes — par onAnswer, placement compris", () => {
-        expect(bloc).toContain("this.onAnswer(placementNodeId, question.id, value)");
+        expect(puck).toContain("this.onAnswer(placementNodeId, question.id, value)");
     });
 
     test("⚠️ l'anneau est une OMBRE dans une marge réservée — un contour se faisait rogner", () => {

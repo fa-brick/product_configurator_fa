@@ -50,7 +50,7 @@ import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
 import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
          placementOf, selectableNodeIds, familyOf, answerForPlacement,
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError, revealScrollLeft,
-         rowEdges }
+         rowEdges, lineOf, filterAnswers, panelViewOf, pickedAnswer, isImageForm }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -106,6 +106,14 @@ export class ConfiguratorPage extends Component {
     setup() {
         this.state = useState({
             model: null, loading: true, reason: null, cameraApply: null,
+            // ── LE PANNEAU DE CHOIX (D-382) ─────────────────────────────────────
+            // ⚠️ **Des IDENTIFIANTS, jamais la question elle-même** ([[L-449]]) : elle est
+            // relue dans l'état à chaque rendu (`panelQuestion`). Gardée ici, elle
+            // afficherait une coche en retard après chaque réponse.
+            // `{ nodeId, questionId, search, view }`, ou `null` quand il est fermé.
+            panel: null,
+            // La largeur utile des questions, mesurée — ce que la rangée `line` partage.
+            lineWidth: 0,
             // ⚠️ **LE MODÈLE QUE LA 3D MONTRE — pas forcément celui des questions** ([[L-449]]).
             // Les matières (`zonesByPiece`, le calque) et la projection de la racine se
             // lisent ICI, et il ne change qu'EN MÊME TEMPS que les poses construites. Lues sur
@@ -192,10 +200,14 @@ export class ConfiguratorPage extends Component {
             this._settleCamera();
             this.state.loading = false;
         });
-        // ⓘ LES RANGÉES QUI DÉFILENT (D-382) : leurs bords, et le choix ramené à l'écran.
+        // ⓘ APRÈS CHAQUE RENDU (D-382) : les rangées qui défilent, la largeur des questions
+        // que la rangée `line` partage, la recherche du panneau qui vient de s'ouvrir.
         this.pageRef = useRef("page");
-        onMounted(() => this._settleRows());
-        onPatched(() => this._settleRows());
+        this.answersRef = useRef("answers");
+        this.panelSearchRef = useRef("panelSearch");
+        onMounted(() => this._afterRender());
+        onPatched(() => this._afterRender());
+        onWillUnmount(() => this._answersObserver?.disconnect());
         // ⓘ APRÈS le montage, et sans `await` : la construction ne bloque plus
         // personne, et c'est elle qui lèvera `ready` en se posant sur la vue.
         onMounted(() => {
@@ -249,7 +261,12 @@ export class ConfiguratorPage extends Component {
         bus.subscribe("configurator_selection", onSelection);
         // Échap désélectionne — en phase de CAPTURE : un service de raccourcis peut
         // avaler les écoutes en phase bulle ([[L-005]]).
-        const onKey = (ev) => { if (ev.key === "Escape" && this.state.selection.nodeId) this.onClearSelection(); };
+        // ⓘ Le panneau de choix se ferme AVANT la sélection : Échap défait le dernier geste.
+        const onKey = (ev) => {
+            if (ev.key !== "Escape") return;
+            if (this.state.panel) this.closePanel();
+            else if (this.state.selection.nodeId) this.onClearSelection();
+        };
         document.addEventListener("keydown", onKey, true);
         onWillUnmount(() => {
             // Une saisie en attente ne part plus vers une page qui n'est plus là.
@@ -705,6 +722,8 @@ export class ConfiguratorPage extends Component {
         if (before.nodeId === nodeId && before.isolated === isolated) return;
         this.state.selection = { nodeId, isolated };
         this.state.reason = null;
+        // Le panneau montrait une question de l'ANCIENNE sélection (D-382).
+        this.state.panel = null;
         if (isolated && nodeId) this._frameOn(nodeId);
         else if (before.isolated) this._returnToView();
         // ⚠️ Partagée comme la caméra (D-256) : seul qui tient la main diffuse, et ce
@@ -790,6 +809,43 @@ export class ConfiguratorPage extends Component {
         }
     }
 
+    _afterRender() {
+        this._settleRows();
+        this._observeAnswers();
+        if (this._focusPanelSearch && this.panelSearchRef.el) {
+            this._focusPanelSearch = false;
+            // ⚠️ Pas au doigt : le clavier du téléphone mangerait la moitié du panneau.
+            // ⚠️ `preventScroll` : le panneau glisse encore, et montrer la recherche faisait
+            // défiler la page entière sous lui.
+            if (window.matchMedia("(hover: hover)").matches) {
+                this.panelSearchRef.el.focus({ preventScroll: true });
+            }
+        }
+    }
+
+    /**
+     * Mesurer la largeur des questions, et la suivre — la rangée `line` en tire le nombre de
+     * réponses qu'elle montre (D-382).
+     *
+     * ⓘ Rebranché quand le corps change d'élément (il n'existe pas avant le modèle).
+     * ⓘ N'écrit que ce qui change : une écriture relance un rendu, donc ce même crochet.
+     */
+    _observeAnswers() {
+        const el = this.answersRef.el;
+        if (!el || el === this._answersObserved || typeof ResizeObserver === "undefined") return;
+        this._answersObserver?.disconnect();
+        this._answersObserved = el;
+        const measure = () => {
+            const style = window.getComputedStyle(el);
+            const width = Math.floor(el.clientWidth - parseFloat(style.paddingLeft)
+                                     - parseFloat(style.paddingRight));
+            if (width !== this.state.lineWidth) this.state.lineWidth = width;
+        };
+        this._answersObserver = new ResizeObserver(measure);
+        this._answersObserver.observe(el);
+        measure();
+    }
+
     /** Les bords atteints d'une rangée — ce qui cache la flèche devenue inutile. */
     _markEdges(row) {
         const grid = row.firstElementChild;
@@ -810,6 +866,67 @@ export class ConfiguratorPage extends Component {
     onRowArrow(ev, direction) {
         const grid = ev.currentTarget.closest(".o_cfg3d_scrollrow")?.firstElementChild;
         if (grid) grid.scrollBy({ left: direction * grid.clientWidth * 0.8, behavior: "smooth" });
+    }
+
+    /**
+     * Les réponses qu'une question MONTRE sur la page : toutes, ou — en disposition `line` —
+     * celles d'une seule ligne et le compte de celles qui restent (D-382).
+     */
+    shownAnswers(question) {
+        if (question.answerLayout !== "line") return { values: question.values, more: 0 };
+        return lineOf(question.values, this.state.lineWidth, question.displayType, question.answerSize);
+    }
+
+    pickedAnswer(question) {
+        return pickedAnswer(question);
+    }
+
+    isImageForm(question) {
+        return isImageForm(question);
+    }
+
+    // ── LE PANNEAU DE CHOIX (D-382) ─────────────────────────────────────────────
+
+    /** Ouvrir le panneau d'une question — de la racine (`nodeId` nul) ou d'une pièce. */
+    openPanel(nodeId, question) {
+        this.state.reason = null;
+        this.state.panel = {
+            nodeId: nodeId || null, questionId: question.id, search: "", view: panelViewOf(question),
+        };
+        this._focusPanelSearch = true;
+    }
+
+    /** « Retour » — le seul geste qui le ferme, choix simple compris (Gerry, 2026-09-30). */
+    closePanel() {
+        this.state.panel = null;
+        this.state.reason = null;
+    }
+
+    /**
+     * La question du panneau, RELUE dans l'état à chaque rendu — `null` s'il est fermé ou si
+     * elle n'est plus servie. ⚠️ Un getter lu par le gabarit : il ne lie ni n'écrit rien
+     * ([[L-384]]).
+     */
+    get panelQuestion() {
+        const panel = this.state.panel;
+        if (!panel) return null;
+        const questions = panel.nodeId
+            ? (panel.nodeId === this.state.selection.nodeId ? this.selectedPlacement?.questions : null)
+            : this.questions;
+        return (questions || []).find((question) => question.id === panel.questionId) || null;
+    }
+
+    /** Les réponses du panneau, filtrées par la recherche. */
+    panelValues(question) {
+        return filterAnswers(question.values, this.state.panel.search);
+    }
+
+    onPanelSearch(ev) {
+        this.state.panel.search = ev.target.value;
+    }
+
+    onPanelView(view) {
+        this.state.panel.view = view;
     }
 
     /**
@@ -1186,6 +1303,13 @@ export class ConfiguratorPage extends Component {
     // ── Libellés — remontés du gabarit, où `_t()` n'est pas résoluble ────────
     get priceLabel() { return _t("Price"); }
     get chooseLabel() { return _t("Choose…"); }
+    get backLabel() { return _t("Back"); }
+    get searchLabel() { return _t("Search…"); }
+    get seeAllLabel() { return _t("See all"); }
+    get noMatchLabel() { return _t("No answer matches this search."); }
+    get listViewLabel() { return _t("List"); }
+    get smallViewLabel() { return _t("Small grid"); }
+    get largeViewLabel() { return _t("Large grid"); }
 
     /** Une question est repondue des qu'une de ses valeurs est retenue. */
     isAnswered(question) {

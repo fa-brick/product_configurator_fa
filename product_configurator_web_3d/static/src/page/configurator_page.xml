@@ -105,7 +105,7 @@
                 <!-- ⓘ SEUL LE CORPS DÉFILE. Le titre et le pied restent en place : ce
                      qu'on vient chercher — le prix et le geste — ne doit jamais partir
                      hors de l'écran (demande de Gerry, 2026-09-06). -->
-                <div class="o_cfg3d_scroll">
+                <div class="o_cfg3d_scroll" t-ref="answers">
                 <!-- ⓘ L'EN-TÊTE dit où l'on est : le produit, ou — une pièce sélectionnée —
                      la FLÈCHE de retour suivie du nom de la pièce (maquette de Gerry,
                      2026-09-23). Pas de fil d'Ariane, pas de bouton en bas : la flèche est
@@ -183,6 +183,10 @@
                             t-on-click="() => this.onConfirm()"
                             t-esc="confirmLabel"/>
                 </div>
+
+                <!-- ⓘ LE PANNEAU DE CHOIX (D-382) — par-dessus la colonne, qui le borne ; en
+                     plein écran sous 900 px. Relu à chaque rendu : `panelQuestion`. -->
+                <t t-if="panelQuestion" t-call="product_configurator_web_3d.AnswerPanel"/>
             </aside>
         </t>
     </div>
@@ -193,7 +197,9 @@
      jamais la forme. ⚠️ Un gabarit NOMMÉ, appelé de l'autre — pas un auto-appel ([[L-027]]). -->
 <t t-name="product_configurator_web_3d.Question">
     <section class="o_cfg3d_question">
-        <h2 t-esc="question.name"/>
+        <!-- ⓘ La LIGNE RÉSUMÉ porte le nom de la question dans son cadre (D-382) : il ne
+             se répète pas au-dessus. Une saisie libre garde son titre. -->
+        <h2 t-if="question.free or question.answerLayout !== 'summary'" t-esc="question.name"/>
         <!-- ⚠️ **LA QUESTION PREND LA FORME QU'ON LUI A DONNÉE.**
              `display_type` est réglé en back-office depuis toujours ;
              la page l'ignorait et rendait un bouton pour tout
@@ -231,10 +237,33 @@
                  t-esc="this.freeBounds(question)"/>
         </t>
 
+        <!-- ── LA LIGNE RÉSUMÉ (D-382) : la question, ce qui est choisi, et le panneau au
+             clic. Pour les formes à image, les boutons et la liste (Gerry, 2026-09-30).
+             ⓘ La vignette n'apparaît que si le choix en a une : pas de cadre vide. Ronde pour
+             une pastille ou une teinte seule, carrée pour l'image d'un produit, qu'un disque
+             rognerait. -->
+        <button t-elif="question.answerLayout === 'summary'" type="button" class="o_cfg3d_summary"
+                t-on-click="() => this.openPanel(placementNodeId, question)">
+            <t t-set="picked" t-value="this.pickedAnswer(question)"/>
+            <span t-if="picked and (picked.image or picked.color)" class="o_cfg3d_summary_shot"
+                  t-att-class="{ 'o_cfg3d_summary_shot--disc': question.displayType === 'swatch' or !picked.image }"
+                  t-att-style="picked.color ? 'background-color: ' + picked.color : ''">
+                <img t-if="picked.image" t-att-src="picked.image" t-att-alt="picked.name"/>
+            </span>
+            <span class="o_cfg3d_summary_text">
+                <span class="o_cfg3d_summary_question" t-esc="question.name"/>
+                <span class="o_cfg3d_summary_answer"
+                      t-att-class="{ 'o_cfg3d_summary_answer--empty': !picked }"
+                      t-esc="picked ? picked.name : chooseLabel"/>
+            </span>
+            <i class="oi oi-chevron-right o_cfg3d_summary_chevron" role="img"/>
+        </button>
+
         <!-- ── LA CARTE : une vignette, son libellé dessous ── -->
         <!-- ⓘ L'enveloppe `o_cfg3d_scrollrow` est inerte en disposition `inline` ; en
              `scroll`, la grille, son PREMIER enfant, devient une rangée qui défile (D-382). -->
         <t t-elif="question.displayType === 'card'">
+            <t t-set="shown" t-value="this.shownAnswers(question)"/>
             <div class="o_cfg3d_scrollrow"
                  t-att-class="{ 'o_cfg3d_scrollrow--active': question.answerLayout === 'scroll' }"
                  t-att-data-chosen="this.chosenKey(question)"
@@ -242,23 +271,15 @@
                  t-on-mouseenter="onRowScroll">
                 <div class="o_cfg3d_cards"
                      t-att-class="'o_cfg3d_cards--' + question.answerSize">
-                    <t t-foreach="question.values" t-as="value" t-key="value.id">
-                        <button class="o_cfg3d_card"
-                                t-att-class="{
-                                    'o_cfg3d_card--chosen': value.chosen,
-                                    'o_cfg3d_card--muted': value.muted }"
-                                t-on-click="() => this.onAnswer(placementNodeId, question.id, value)">
-                            <!-- ⚠️ **PAS DE CADRE SANS IMAGE.** Une vignette promise
-                                 et vide est pire qu'une absence : elle se lit comme
-                                 un chargement en panne. Une valeur qui ne désigne
-                                 rien n'a pas d'image, et la carte se réduit alors à
-                                 son libellé (relevé de Gerry, 2026-09-07). -->
-                            <span t-if="value.image" class="o_cfg3d_card_shot">
-                                <img t-att-src="value.image" t-att-alt="value.name"/>
-                            </span>
-                            <span class="o_cfg3d_card_label" t-esc="value.name"/>
-                        </button>
+                    <t t-foreach="shown.values" t-as="value" t-key="value.id">
+                        <t t-call="product_configurator_web_3d.Card"/>
                     </t>
+                    <!-- « +N / Tout voir » : la dernière case d'une ligne pleine (D-382). -->
+                    <button t-if="shown.more" type="button" class="o_cfg3d_card o_cfg3d_card--more"
+                            t-on-click="() => this.openPanel(placementNodeId, question)">
+                        <span class="o_cfg3d_card_shot o_cfg3d_more">+<t t-esc="shown.more"/></span>
+                        <span class="o_cfg3d_card_label" t-esc="seeAllLabel"/>
+                    </button>
                 </div>
                 <t t-if="question.answerLayout === 'scroll'" t-call="product_configurator_web_3d.ScrollArrows"/>
             </div>
@@ -273,6 +294,7 @@
              marge que la grille réserve : un contour déborde, et un cadre qui défile le
              rogne. -->
         <t t-elif="question.displayType === 'swatch'">
+            <t t-set="shown" t-value="this.shownAnswers(question)"/>
             <div class="o_cfg3d_scrollrow"
                  t-att-class="{ 'o_cfg3d_scrollrow--active': question.answerLayout === 'scroll' }"
                  t-att-data-chosen="this.chosenKey(question)"
@@ -280,24 +302,14 @@
                  t-on-mouseenter="onRowScroll">
                 <div class="o_cfg3d_bigswatches"
                      t-att-class="'o_cfg3d_bigswatches--' + question.swatchMark + ' o_cfg3d_bigswatches--' + question.answerSize">
-                    <t t-foreach="question.values" t-as="value" t-key="value.id">
-                        <button class="o_cfg3d_bigswatch"
-                                t-att-class="{
-                                    'o_cfg3d_bigswatch--chosen': value.chosen,
-                                    'o_cfg3d_bigswatch--muted': value.muted }"
-                                t-att-title="value.name"
-                                t-on-click="() => this.onAnswer(placementNodeId, question.id, value)">
-                            <span class="o_cfg3d_bigswatch_disc"
-                                  t-att-style="value.color ? 'background-color: ' + value.color : ''">
-                                <img t-if="value.image" t-att-src="value.image" t-att-alt="value.name"/>
-                                <span t-if="value.chosen and question.swatchMark === 'check'"
-                                      class="o_cfg3d_bigswatch_check">
-                                    <i class="fa fa-check"/>
-                                </span>
-                            </span>
-                            <span class="o_cfg3d_bigswatch_label" t-esc="value.name"/>
-                        </button>
+                    <t t-foreach="shown.values" t-as="value" t-key="value.id">
+                        <t t-call="product_configurator_web_3d.BigSwatch"/>
                     </t>
+                    <button t-if="shown.more" type="button" class="o_cfg3d_bigswatch o_cfg3d_bigswatch--more"
+                            t-on-click="() => this.openPanel(placementNodeId, question)">
+                        <span class="o_cfg3d_bigswatch_disc o_cfg3d_more">+<t t-esc="shown.more"/></span>
+                        <span class="o_cfg3d_bigswatch_label" t-esc="seeAllLabel"/>
+                    </button>
                 </div>
                 <t t-if="question.answerLayout === 'scroll'" t-call="product_configurator_web_3d.ScrollArrows"/>
             </div>
@@ -366,6 +378,131 @@
                     <span t-esc="value.name"/>
                 </button>
             </t>
+        </div>
+    </section>
+</t>
+
+<!-- ⓘ UNE CARTE — dans la question comme dans le panneau (D-382). Reçoit `value`,
+     `question` et `placementNodeId` du gabarit qui l'appelle, par `t-call` : pas de
+     composant à emplacement ici ([[L-453]]). -->
+<t t-name="product_configurator_web_3d.Card">
+    <button class="o_cfg3d_card"
+            t-att-class="{
+                'o_cfg3d_card--chosen': value.chosen,
+                'o_cfg3d_card--muted': value.muted }"
+            t-on-click="() => this.onAnswer(placementNodeId, question.id, value)">
+        <!-- ⚠️ **PAS DE CADRE SANS IMAGE.** Une vignette promise et vide est pire qu'une
+             absence : elle se lit comme un chargement en panne. Une valeur qui ne désigne
+             rien n'a pas d'image, et la carte se réduit alors à son libellé (relevé de
+             Gerry, 2026-09-07). -->
+        <span t-if="value.image" class="o_cfg3d_card_shot">
+            <img t-att-src="value.image" t-att-alt="value.name" loading="lazy"/>
+        </span>
+        <span class="o_cfg3d_card_label" t-esc="value.name"/>
+    </button>
+</t>
+
+<!-- ⓘ UNE GRANDE PASTILLE — même principe que la carte. -->
+<t t-name="product_configurator_web_3d.BigSwatch">
+    <button class="o_cfg3d_bigswatch"
+            t-att-class="{
+                'o_cfg3d_bigswatch--chosen': value.chosen,
+                'o_cfg3d_bigswatch--muted': value.muted }"
+            t-att-title="value.name"
+            t-on-click="() => this.onAnswer(placementNodeId, question.id, value)">
+        <span class="o_cfg3d_bigswatch_disc"
+              t-att-style="value.color ? 'background-color: ' + value.color : ''">
+            <img t-if="value.image" t-att-src="value.image" t-att-alt="value.name" loading="lazy"/>
+            <span t-if="value.chosen and question.swatchMark === 'check'"
+                  class="o_cfg3d_bigswatch_check">
+                <i class="fa fa-check"/>
+            </span>
+        </span>
+        <span class="o_cfg3d_bigswatch_label" t-esc="value.name"/>
+    </button>
+</t>
+
+<!-- ⓘ LE PANNEAU DE CHOIX (D-382) — toutes les réponses d'une question, une recherche, une
+     vue. Il reste ouvert jusqu'à « Retour », choix simple compris (Gerry, 2026-09-30) : ce
+     qu'on choisit se voit dans la 3D, à côté, sans le quitter.
+     ⚠️ La RAISON d'un refus (D-178) s'affiche ICI : celle de la colonne est dessous. -->
+<t t-name="product_configurator_web_3d.AnswerPanel">
+    <t t-set="question" t-value="panelQuestion"/>
+    <t t-set="placementNodeId" t-value="state.panel.nodeId"/>
+    <section class="o_cfg3d_panel" role="dialog" t-att-aria-label="question.name">
+        <header class="o_cfg3d_panel_head">
+            <button type="button" class="o_cfg3d_panel_back" t-on-click="() => this.closePanel()">
+                <i class="oi oi-arrow-left" role="img"/>
+                <span t-esc="backLabel"/>
+            </button>
+            <h2 class="o_cfg3d_panel_title" t-esc="question.name"/>
+        </header>
+        <div class="o_cfg3d_panel_tools">
+            <div class="o_cfg3d_panel_search">
+                <input type="search" class="o_cfg3d_panel_input" t-ref="panelSearch"
+                       t-att-placeholder="searchLabel" t-att-aria-label="searchLabel"
+                       t-att-value="state.panel.search"
+                       t-on-input="(ev) => this.onPanelSearch(ev)"/>
+                <i class="oi oi-search" role="img"/>
+            </div>
+            <div t-if="this.isImageForm(question)" class="o_cfg3d_panel_views" role="group">
+                <button type="button" class="o_cfg3d_panel_view"
+                        t-att-class="{ 'o_cfg3d_panel_view--on': state.panel.view === 'list' }"
+                        t-att-aria-pressed="state.panel.view === 'list' ? 'true' : 'false'"
+                        t-att-title="listViewLabel" t-att-aria-label="listViewLabel"
+                        t-on-click="() => this.onPanelView('list')">
+                    <i class="fa fa-list"/>
+                </button>
+                <button type="button" class="o_cfg3d_panel_view"
+                        t-att-class="{ 'o_cfg3d_panel_view--on': state.panel.view === 'small' }"
+                        t-att-aria-pressed="state.panel.view === 'small' ? 'true' : 'false'"
+                        t-att-title="smallViewLabel" t-att-aria-label="smallViewLabel"
+                        t-on-click="() => this.onPanelView('small')">
+                    <i class="fa fa-th"/>
+                </button>
+                <button type="button" class="o_cfg3d_panel_view"
+                        t-att-class="{ 'o_cfg3d_panel_view--on': state.panel.view === 'large' }"
+                        t-att-aria-pressed="state.panel.view === 'large' ? 'true' : 'false'"
+                        t-att-title="largeViewLabel" t-att-aria-label="largeViewLabel"
+                        t-on-click="() => this.onPanelView('large')">
+                    <i class="fa fa-th-large"/>
+                </button>
+            </div>
+        </div>
+        <p t-if="state.reason" class="o_cfg3d_reason o_cfg3d_panel_reason" t-esc="state.reason"/>
+        <div class="o_cfg3d_panel_body">
+            <t t-set="found" t-value="this.panelValues(question)"/>
+            <p t-if="!found.length" class="o_cfg3d_note" t-esc="noMatchLabel"/>
+            <!-- La LISTE : une vignette si la réponse en a une, son nom, la coche. -->
+            <div t-elif="state.panel.view === 'list'" class="o_cfg3d_panel_list">
+                <t t-foreach="found" t-as="value" t-key="value.id">
+                    <button type="button" class="o_cfg3d_panel_row"
+                            t-att-class="{
+                                'o_cfg3d_panel_row--chosen': value.chosen,
+                                'o_cfg3d_panel_row--muted': value.muted }"
+                            t-on-click="() => this.onAnswer(placementNodeId, question.id, value)">
+                        <span t-if="value.image or value.color" class="o_cfg3d_panel_shot"
+                              t-att-class="{ 'o_cfg3d_panel_shot--disc': question.displayType === 'swatch' or !value.image }"
+                              t-att-style="value.color ? 'background-color: ' + value.color : ''">
+                            <img t-if="value.image" t-att-src="value.image" t-att-alt="value.name" loading="lazy"/>
+                        </span>
+                        <span class="o_cfg3d_panel_name" t-esc="value.name"/>
+                        <i t-if="value.chosen" class="fa fa-check o_cfg3d_panel_check"/>
+                    </button>
+                </t>
+            </div>
+            <div t-elif="question.displayType === 'card'" class="o_cfg3d_cards"
+                 t-att-class="'o_cfg3d_cards--' + state.panel.view">
+                <t t-foreach="found" t-as="value" t-key="value.id">
+                    <t t-call="product_configurator_web_3d.Card"/>
+                </t>
+            </div>
+            <div t-else="" class="o_cfg3d_bigswatches"
+                 t-att-class="'o_cfg3d_bigswatches--' + question.swatchMark + ' o_cfg3d_bigswatches--' + state.panel.view">
+                <t t-foreach="found" t-as="value" t-key="value.id">
+                    <t t-call="product_configurator_web_3d.BigSwatch"/>
+                </t>
+            </div>
         </div>
     </section>
 </t>

@@ -99,6 +99,23 @@
                               zoneMaterialsByNode="zoneMaterialsByNode"
                               cameraApply="state.cameraApply"
                               onCameraPose="(pose) => this.onCameraPose(pose)"/>
+
+                <!-- ⓘ LES ÉTAPES (D-385) — des pastilles en haut du viewer, centrées sur
+                     sa largeur (demande de Gerry, 2026-09-30). Une pastille GRISÉE reste
+                     cliquable : elle dit ce qui manque et y mène (`onStepChip`), comme une
+                     valeur éteinte dit pourquoi (D-178). ⚠️ `aria-disabled` et non
+                     `disabled` : un bouton désactivé ne reçoit plus le clic. -->
+                <nav t-if="stepChips.length" class="o_cfg3d_steps" t-att-aria-label="stepsLabel">
+                    <t t-foreach="stepChips" t-as="chip" t-key="chip.id">
+                        <button type="button" class="o_cfg3d_panel_chip o_cfg3d_step_chip"
+                                t-att-class="{ 'o_cfg3d_panel_chip--on': chip.active,
+                                               'o_cfg3d_step_chip--locked': chip.locked }"
+                                t-att-aria-current="chip.active ? 'step' : false"
+                                t-att-aria-disabled="chip.locked ? 'true' : false"
+                                t-on-click="() => this.onStepChip(chip)"
+                                t-esc="chip.name"/>
+                    </t>
+                </nav>
             </div>
 
             <aside class="o_cfg3d_side">
@@ -148,8 +165,9 @@
                 </section>
 
                 <!-- ⓘ Les questions du PRODUIT — par le MÊME gabarit qu'une pièce. -->
+                <!-- ⓘ Celles de l'ÉTAPE affichée — toutes, sans étape (D-385). -->
                 <t t-if="!selectedPlacement">
-                    <t t-foreach="questions" t-as="question" t-key="question.id">
+                    <t t-foreach="shownQuestions" t-as="question" t-key="question.id">
                         <t t-call="product_configurator_web_3d.Question">
                             <t t-set="placementNodeId" t-value="null"/>
                         </t>
@@ -196,7 +214,9 @@
      (D-333). Un seul gabarit : ce qui change est le lien qui part avec la réponse,
      jamais la forme. ⚠️ Un gabarit NOMMÉ, appelé de l'autre — pas un auto-appel ([[L-027]]). -->
 <t t-name="product_configurator_web_3d.Question">
-    <section class="o_cfg3d_question">
+    <!-- ⓘ `data-question-id` : c'est par lui qu'une réponse MANQUANTE est retrouvée,
+         amenée sous les yeux et reçoit le focus (D-385, `_revealQuestion`). -->
+    <section class="o_cfg3d_question" t-att-data-question-id="question.id">
         <!-- ⓘ La LIGNE RÉSUMÉ porte le nom de la question dans son cadre (D-382) : il ne
              se répète pas au-dessus. Une saisie libre garde son titre. -->
         <h2 t-if="question.free or question.answerLayout !== 'summary'" t-esc="question.name"/>

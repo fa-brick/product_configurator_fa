@@ -600,6 +600,75 @@
     }
 }
 
+/* LES ÉTAPES (D-385) — les pastilles du panneau, posées en haut du viewer et centrées sur
+   sa largeur (demande de Gerry, 2026-09-30). */
+.o_cfg3d_steps {
+    position: absolute;
+    top: 12px;
+    left: 0;
+    right: 0;
+    /* ⓘ Au-dessus de la photo d'attente (z-index 2) : on voit les étapes dès l'ouverture. */
+    z-index: 3;
+    display: flex;
+    gap: 6px;
+    /* ⚠️ La croix de la page est en haut à droite (`o_cfg3d_close`) : sous 900 px elle
+       tombe sur le viewer, d'où la marge des deux côtés, symétrique pour rester centré. */
+    padding: 0 56px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    pointer-events: none;
+
+    &::-webkit-scrollbar { display: none; }
+
+    /* ⚠️ **CENTRÉ PAR LES MARGES, PAS PAR `justify-content: center`** : quand la rangée
+       déborde, un centrage flex coupe le DÉBUT, qu'aucun défilement ne ramène. Les marges
+       automatiques centrent ce qui tient et laissent défiler ce qui dépasse. */
+    > :first-child { margin-left: auto; }
+    > :last-child { margin-right: auto; }
+}
+
+.o_cfg3d_step_chip {
+    /* ⓘ Le conteneur laisse passer le geste vers la 3D ; seules les pastilles le prennent. */
+    pointer-events: auto;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+
+    /* ⚠️ GRISÉE, MAIS CLIQUABLE : le clic dit ce qui manque (`onStepChip`). */
+    &--locked {
+        color: rgba(0, 0, 0, 0.35);
+        background: #f3f3f3;
+        border-color: rgba(0, 0, 0, 0.08);
+        cursor: not-allowed;
+
+        &:hover { border-color: rgba(0, 0, 0, 0.15); }
+    }
+}
+
+/* ⚠️ **LE TOAST NE DOIT PAS COUVRIR LA QUESTION QU'IL DÉSIGNE** (D-385). Le cœur pose ses
+   notifications en haut à droite de la FENÊTRE — ici, sur la colonne des questions : le
+   toast « répondez d'abord à Type de TopPlate » masquait justement Type de TopPlate
+   (capture du 2026-09-30). On les décale sur le viewer, sous les pastilles d'étape.
+   ⓘ Page pleine seulement : dans le dialogue du back-office, la colonne n'est pas collée
+   au bord de la fenêtre, et la place du cœur ne recouvre rien. Sous 900 px, la colonne
+   passe sous le viewer : la place du cœur est déjà sur la 3D. */
+@media (min-width: 901px) {
+    body:has(.o_cfg3d_page):not(:has(.o_cfg3d_action)) .o_notification_manager {
+        right: calc(340px + 16px);
+    }
+}
+
+/* La question manquante qu'on vient d'amener sous les yeux : un repère bref. */
+.o_cfg3d_question--flash {
+    animation: o_cfg3d_question_flash 1.6s ease-out;
+    border-radius: 6px;
+
+    @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+
+@keyframes o_cfg3d_question_flash {
+    0%, 30% { box-shadow: 0 0 0 3px rgba($o-brand-primary, 0.45); background: rgba($o-brand-primary, 0.06); }
+    100% { box-shadow: 0 0 0 3px rgba($o-brand-primary, 0); background: transparent; }
+}
+
 .o_cfg3d_panel_reason { margin: 8px 16px 0; }
 
 /* Le corps : lui seul défile. */

@@ -168,6 +168,68 @@ export function filterByCategory(values, key) {
     return values.filter((value) => (value.categoryKeys || []).includes(key));
 }
 
+// ── LES ÉTAPES — D-385 ───────────────────────────────────────────────────────────
+//
+// ⚠️ **UNE ÉTAPE EST UN MARQUEUR, PAS UN CONTENANT** (D-202) : le serveur range chaque
+// question dans la sienne (`stepId`) et ne sert que les étapes VISIBLES. La page n'a donc
+// rien à déduire de l'ordre : elle filtre, et grise.
+//
+// Arbitrage de Gerry (2026-09-30) : les étapes s'affichent en pastilles en haut du
+// viewer ; l'étape suivante reste GRISÉE tant qu'une question obligatoire manque ; un
+// clic sur une pastille grisée DIT ce qui manque et y MÈNE.
+
+/** Une étape telle que la page la rend — sa vue, ou `null` : la caméra ne bouge pas. */
+function toStep(raw) {
+    return { id: raw.id, name: raw.name || "", camera: raw.camera || null };
+}
+
+/** L'étape affichée : celle qu'on a choisie si elle est encore servie, sinon la première. */
+export function activeStepId(steps, wanted) {
+    if (!steps.length) return null;
+    return steps.some((step) => step.id === wanted) ? wanted : steps[0].id;
+}
+
+/** Les questions de l'étape affichée — toutes quand le produit n'a pas d'étape. */
+export function stepQuestions(questions, steps, activeId) {
+    if (!steps.length) return questions;
+    return questions.filter((question) => question.stepId === activeId);
+}
+
+/**
+ * Les questions obligatoires qui manquent AVANT une étape — dans l'ordre des étapes, puis
+ * des questions. `targetId` nul : toutes celles qui manquent (la confirmation).
+ *
+ * ⓘ C'est ce qui bloque l'accès à `targetId` : une étape se mérite par TOUTES celles qui
+ * la précèdent, pas seulement par la précédente — sans quoi on sauterait une étape
+ * incomplète en passant par la suivante.
+ */
+export function missingBefore(steps, questions, targetId = null) {
+    const missing = questions.filter((question) => question.missing);
+    if (!steps.length) return targetId === null ? missing : [];
+    const order = new Map(steps.map((step, index) => [step.id, index]));
+    const rank = (question) => order.get(question.stepId) ?? steps.length;
+    // ⓘ `sort` est stable : l'ordre des questions tient à l'intérieur d'une étape.
+    const sorted = [...missing].sort((a, b) => rank(a) - rank(b));
+    if (targetId === null) return sorted;
+    const limit = order.get(targetId) ?? 0;
+    return sorted.filter((question) => rank(question) < limit);
+}
+
+/**
+ * Les pastilles d'étape : `{id, name, active, locked}`.
+ *
+ * ⓘ `locked` : une question obligatoire manque dans une étape qui PRÉCÈDE. L'étape
+ * affichée n'est jamais verrouillée — on doit pouvoir y répondre.
+ */
+export function stepChips(steps, questions, activeId) {
+    return steps.map((step) => ({
+        id: step.id,
+        name: step.name,
+        active: step.id === activeId,
+        locked: step.id !== activeId && missingBefore(steps, questions, step.id).length > 0,
+    }));
+}
+
 /** Une question, telle que la page la rend — de la racine ou d'un placement. */
 function toQuestion(line) {
     return {
@@ -195,6 +257,10 @@ function toQuestion(line) {
         free: line.free ? toFreeField(line.free) : null,
         // Ce que le client a TAPÉ, tel que le serveur l'a rangé — `null` s'il a choisi.
         customValue: line.customValue ?? null,
+        // ⓘ D-385 — l'étape qui porte la question (`null` hors étape), et si une réponse
+        // OBLIGATOIRE y manque : le serveur en décide, avec l'évaluateur de la confirmation.
+        stepId: line.stepId ?? null,
+        missing: !!line.missing,
     };
 }
 
@@ -439,6 +505,8 @@ export function toViewModel(payload, previous = null) {
         noVariantPtavIds: payload.noVariantPtavIds || [],
         closed: payload.state && payload.state !== "draft",
         questions: (payload.attributes || []).map(toQuestion),
+        // ⓘ D-385 — les ÉTAPES visibles, dans l'ordre ; vide sans étape déclarée.
+        steps: (payload.steps || []).map(toStep),
         // ⚠️ **LES PLACEMENTS RÉGLABLES** (D-332, D-333) : les pièces posées dont des
         // questions restent à répondre — et elles seules. C'est la vérité UNIQUE de
         // « sélectionnable » sur cette page ; leurs questions ont la forme de celles de

@@ -52,20 +52,101 @@ class ProductConfigSession(models.Model):
              "become attribute values only when the configuration is confirmed.",
     )
 
-    def _web_attribute_lines(self):
+    def _web_step_layout(self):
+        """Les ÉTAPES que la page montre, et l'étape de chaque question — D-385.
+
+        ⚠️ **L'ÉTAPE EST UN MARQUEUR, PAS UN CONTENANT** (D-202) : la ligne qui
+        porte `config_step_id` l'ouvre, et les lignes suivantes lui appartiennent
+        jusqu'au marqueur d'après. On relit donc les lignes DANS L'ORDRE, comme
+        `config_step_owner_id`, plutôt que `step_line.attribute_line_ids`, qui ne
+        dit rien des lignes placées avant la première étape.
+
+        ⚠️ **UNE ÉTAPE MASQUÉE PAR SA CONDITION EMPORTE SES QUESTIONS** (D-086) :
+        elles ne s'affichent pas et ne sont pas exigées. C'est ce que le
+        back-office fait déjà (`validate_configuration` ne contrôle que les
+        étapes ouvertes).
+
+        ⓘ **Les lignes AVANT la première étape rejoignent la première étape
+        visible** — arbitré par Gerry le 2026-09-30. Sans étape visible, elles
+        restent hors étape, et la page les montre à plat comme avant.
+
+        :returns: ``(steps, step_of, hidden)`` — les étapes visibles
+            ``[{"id", "name", "lines"}]`` dans l'ordre, l'étape de chaque ligne
+            ``{line_id: step_line_id | None}``, et les lignes d'une étape masquée.
+        """
+        self.ensure_one()
+        tmpl = self.product_tmpl_id
+        chosen = self.value_ids.ids
+        custom_vals = self._get_custom_vals_dict()
+        step_lines = {sl.config_step_id: sl for sl in tmpl.config_step_line_ids}
+        steps, leading = [], []
+        hidden = self.env["product.template.attribute.line"]
+        current, opened = None, False
+        for line in tmpl.attribute_line_ids.sorted():
+            step_line = step_lines.get(line.config_step_id)
+            if step_line:
+                opened = True
+                current = None
+                if step_line._is_visible(chosen, custom_vals):
+                    current = {"id": step_line.id, "name": step_line.name, "lines": []}
+                    steps.append(current)
+            if current:
+                current["lines"].append(line)
+            elif opened:
+                hidden |= line
+            else:
+                leading.append(line)
+        if steps:
+            steps[0]["lines"][:0] = leading
+        step_of = {line.id: step["id"] for step in steps for line in step["lines"]}
+        for line in leading:
+            step_of.setdefault(line.id, None)
+        return steps, step_of, hidden
+
+    def _web_steps(self, steps, model3d):
+        """Les étapes telles que la page les reçoit — avec la VUE de chacune (D-385).
+
+        ⓘ La vue d'une étape est la sienne (`view_camera_id`), sinon RIEN : la caméra
+        ne bouge pas quand on change d'étape — l'arbitrage de `_resolve_view_camera`.
+        """
+        step_lines = self.env["product.config.step.line"].sudo()
+        cameras = {step["id"]: step_lines.browse(step["id"]).view_camera_id for step in steps}
+        definition = None
+        if model3d and any(camera.target_kind == "piece" for camera in cameras.values()):
+            definition = model3d.to_definition()
+        return [
+            {
+                "id": step["id"],
+                "name": step["name"],
+                "camera": self._web_camera_view(cameras[step["id"]], definition),
+            }
+            for step in steps
+        ]
+
+    def _web_attribute_lines(self, layout=None):
         """Les questions du produit, avec ce qui reste disponible.
 
         ⚠️ La disponibilité se demande à `values_available` — celle qui sert déjà
         à l'assistant — et non à une règle réécrite ici. Deux évaluateurs d'une
         même restriction finiraient par diverger, et c'est le client qui verrait
         la différence.
+
+        ⓘ Chaque question porte son ÉTAPE (`stepId`) et dit si elle MANQUE
+        (`missing`) : c'est ce qui grise les pastilles d'étape de la page (D-385).
+        Le même évaluateur que la confirmation (`_web_missing_attributes`), pour
+        que la page ne grise jamais ce que le serveur accepterait.
         """
         self.ensure_one()
         chosen = self.value_ids.ids
         typed = self._web_root_custom()
         custom_vals = self._get_custom_vals_dict()
+        layout = layout or self._web_step_layout()
+        _steps, step_of, hidden = layout
+        missing = self._web_missing_attributes(layout=layout)
         out = []
         for line in self.product_tmpl_id.attribute_line_ids.sorted():
+            if line in hidden:
+                continue
             values = self._web_offered_values(line)
             available = set(
                 self.values_available(
@@ -82,6 +163,10 @@ class ProductConfigSession(models.Model):
                 "name": line.attribute_id.name,
                 "required": bool(line.required),
                 "multi": bool(line.multi),
+                # ⓘ D-385 — l'étape (`step.line`) qui porte la question, `None` hors
+                # étape ; et si une réponse obligatoire y manque encore.
+                "stepId": step_of.get(line.id),
+                "missing": line in missing,
                 # ⓘ **LA SAISIE LIBRE** (D-353) — la forme du champ, ou `None` quand la
                 # question se répond par sa liste ; et ce que le client a déjà tapé.
                 "free": self._web_free_field(line),
@@ -640,6 +725,14 @@ class ProductConfigSession(models.Model):
         camera = self.env["product.model3d.camera"].sudo().search(
             [("model3d_id", "=", model3d.id), ("is_thumbnail", "=", True)], limit=1,
         )
+        return self._web_camera_view(camera)
+
+    def _web_camera_view(self, camera, definition=None):
+        """Une vue enregistrée, dans la forme que le viewer applique — `None` sans vue.
+
+        ⓘ Partagée par la vue par défaut et par celle d'une ÉTAPE (D-385) : deux
+        sérialisations d'une même fiche divergeraient au premier champ ajouté.
+        """
         if not camera:
             return None
         return {
@@ -655,26 +748,30 @@ class ProductConfigSession(models.Model):
             # pose sans centre — et une pièce isolée puis quittée gardait le centre de
             # la pièce. Gerry (2026-09-23) : « lorsque l'on quitte, il faut revenir à
             # la vue caméra en cours, qui donnera la target ».
-            "target": self._web_camera_target(camera),
+            "target": self._web_camera_target(camera, definition),
         }
 
-    def _web_camera_target(self, camera):
+    def _web_camera_target(self, camera, definition=None):
         """La cible d'une vue, telle que le viewer la résout : un NŒUD `c<linkId>`, la
         MATIÈRE (`root`) ou l'ORIGINE. Miroir de `_resolveCameraTarget` de l'éditeur —
         `root` et `origin` ne sont pas la même chose (D-116)."""
         if camera.target_kind == "piece" and camera.target_link_id:
             # ⚠️ L'identité du NŒUD que le lien pose, lue dans la définition (D-349) : un
             # lien imbriqué s'appelle `c10/c11`, et `c<lien>` ne le trouverait pas.
-            return {"nodeId": self._web_node_id_of_link(camera.target_link_id)}
+            return {"nodeId": self._web_node_id_of_link(camera.target_link_id, definition)}
         if camera.target_kind == "root":
             return {"root": True}
         return {"origin": True}
 
-    def _web_node_id_of_link(self, link):
+    def _web_node_id_of_link(self, link, definition=None):
         """Le nœud de la PREMIÈRE pose d'un lien dans la définition — `c<lien>` à défaut,
-        l'identité d'un enfant direct. Une caméra vise une place, pas une pose."""
-        model3d = self._web_model3d()
-        definition = model3d.to_definition() if model3d else None
+        l'identité d'un enfant direct. Une caméra vise une place, pas une pose.
+
+        ⓘ `definition` : celle que l'appelant a déjà calculée — c'est l'objet le plus cher
+        de la réponse, et les vues des étapes la demanderaient une fois chacune."""
+        if definition is None:
+            model3d = self._web_model3d()
+            definition = model3d.to_definition() if model3d else None
 
         def walk(node):
             for child in (node or {}).get("children") or []:
@@ -1288,27 +1385,40 @@ class ProductConfigSession(models.Model):
             values.setdefault(attr_id, text)
         return values
 
-    def _web_missing_attributes(self):
-        """Les questions OBLIGATOIRES restées sans réponse.
+    def _web_missing_attributes(self, layout=None):
+        """Les questions OBLIGATOIRES restées sans réponse, dans l'ordre affiché.
 
         ⚠️ **La visibilité passe AVANT l'exigence** — c'est la règle de D-086 :
-        un attribut masqué par une condition cesse d'être obligatoire. Sans
-        cela, une question que le client ne voit pas l'empêcherait de terminer,
-        et rien à l'écran ne dirait pourquoi.
+        un attribut masqué par une condition cesse d'être obligatoire, et une
+        ÉTAPE masquée emporte les siennes (`_web_step_layout`). Sans cela, une
+        question que le client ne voit pas l'empêcherait de terminer, et rien à
+        l'écran ne dirait pourquoi.
+
+        ⚠️ **DES IDENTIFIANTS, PAS UN RECORDSET, pour `_is_visible`.** L'évaluateur
+        fait `set(domaine) & set(value_ids)` : un recordset y donnait des
+        enregistrements face à des entiers, l'intersection était toujours vide,
+        et toute condition « in » passait pour fausse — une question obligatoire
+        visible n'était pas réclamée ici, et la confirmation tombait plus loin,
+        dans `validate_configuration`, sans dire laquelle manquait (relevé en
+        préparant D-385). Les SAISIES aussi (`custom_vals`) : sans elles, une
+        condition numérique n'était jamais vraie.
 
         ⓘ On ne s'appuie PAS sur `check_and_open_incomplete_step` : elle ne
         regarde que les ÉTAPES (`get_open_step_lines`), donc un produit qui n'en
-        déclare aucune passerait sans contrôle. La page ne montre pas encore les
-        étapes ; elle doit pourtant refuser une configuration incomplète.
+        déclare aucune passerait sans contrôle.
         """
         self.ensure_one()
         chosen = self.value_ids
+        custom_vals = self._get_custom_vals_dict()
+        _steps, _step_of, hidden = layout or self._web_step_layout()
         # ⓘ Une question répondue par SAISIE est répondue (D-353) : sans cette ligne, une
         # largeur obligatoire tapée bloquerait la confirmation, faute de valeur cochée.
         typed = self._web_root_custom()
         missing = self.env["product.template.attribute.line"]
-        for line in self.product_tmpl_id.attribute_line_ids:
-            if not line.required or not line._is_visible(value_ids=chosen):
+        for line in self.product_tmpl_id.attribute_line_ids.sorted():
+            if not line.required or line in hidden:
+                continue
+            if not line._is_visible(value_ids=chosen.ids, custom_vals=custom_vals):
                 continue
             if line.attribute_id.id in typed:
                 continue
@@ -1458,10 +1568,16 @@ class ProductConfigSession(models.Model):
                       if model3d else None)
         price = self.get_cfg_price(custom_vals=self._get_custom_vals_dict())
         separate = self.web_separate_lines(definition)
+        # ⓘ UNE lecture des étapes pour les questions ET pour la liste qui suit : deux
+        # lectures pourraient ne pas classer une question dans la même étape.
+        layout = self._web_step_layout()
         return {
             "productName": self.product_tmpl_id.display_name,
             "state": self.state,
-            "attributes": self._web_attribute_lines(),
+            "attributes": self._web_attribute_lines(layout=layout),
+            # ⓘ D-385 — les ÉTAPES visibles, dans l'ordre : les pastilles du haut du viewer.
+            # Vide quand le produit n'en déclare aucune : la page reste une liste à plat.
+            "steps": self._web_steps(layout[0], model3d),
             # ⚠️ AVEC les saisies (D-353) : une largeur tapée doit changer le prix
             # comme la même largeur choisie dans la liste.
             "price": price,

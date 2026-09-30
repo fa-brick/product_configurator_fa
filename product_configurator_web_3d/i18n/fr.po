@@ -116,6 +116,12 @@ msgstr "Identifiant opaque de la page qui conduit actuellement cette configurati
 
 #. module: product_configurator_web_3d
 #. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "Please answer first"
+msgstr "Répondez d'abord à"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
 #: code:addons/product_configurator_web_3d/static/src/configurator_state.js:0
 msgid "Please answer first: %s"
 msgstr "Répondez d'abord à : %s"
@@ -358,6 +364,12 @@ msgstr "Suivant"
 #: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
 msgid "Back"
 msgstr "Retour"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "Steps"
+msgstr "Étapes"
 
 #. module: product_configurator_web_3d
 #. odoo-javascript

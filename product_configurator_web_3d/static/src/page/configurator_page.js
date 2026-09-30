@@ -51,7 +51,7 @@ import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, han
          placementOf, selectableNodeIds, familyOf, answerForPlacement,
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError, revealScrollLeft,
          rowEdges, lineOf, filterAnswers, panelViewOf, pickedAnswer, isImageForm,
-         panelChips, filterByCategory }
+         panelChips, filterByCategory, activeStepId, stepQuestions, missingBefore, stepChips }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -135,6 +135,10 @@ export class ConfiguratorPage extends Component {
             // orange ce qu'un clic pourrait désigner, comme dans l'éditeur, et ne nomme
             // rien (arbitrage Gerry, 2026-09-23).
             selection: { nodeId: null, isolated: false },
+            // ── LES ÉTAPES (D-385) ────────────────────────────────────────────
+            // L'étape CHOISIE, par son identifiant — relue contre celles que l'état sert
+            // (`activeStepId`) : une étape masquée par une réponse ne reste pas affichée.
+            step: null,
             // ⚠️ FAUX tant que la première scène n'est pas construite : c'est ce qui
             // tient la photo devant. Il ne repasse jamais à faux ensuite — une
             // reconstruction n'est pas une attente, c'est une mise à jour, et
@@ -155,6 +159,9 @@ export class ConfiguratorPage extends Component {
         // le seul passage de `loading`. Cet objet-ci est LU à travers le contexte : on
         // modifie ses champs, on ne le remplace jamais.
         this._memos = { selectable: null, selected: null, isolated: null, items: null };
+        // ⓘ Le TOAST des réponses manquantes (D-385) — le service du cœur, monté par la
+        // racine publique comme par le back-office (`MainComponentsContainer`).
+        this.notification = useService("notification");
         // ⚠️ **LA SESSION DE CONSTRUCTION (D-329)** — possédée par la page, donc par un
         // objet à durée de vie connue : c'est elle qui tient la graine de partage (ce qui
         // évite de reconstruire DOUZE pièces pour en changer une — mesuré le 2026-09-22
@@ -813,6 +820,7 @@ export class ConfiguratorPage extends Component {
     _afterRender() {
         this._settleRows();
         this._observeAnswers();
+        this._revealQuestion();
         if (this._focusPanelSearch && this.panelSearchRef.el) {
             this._focusPanelSearch = false;
             // ⚠️ Pas au doigt : le clavier du téléphone mangerait la moitié du panneau.
@@ -1092,6 +1100,105 @@ export class ConfiguratorPage extends Component {
         return this.state.model?.questions || [];
     }
 
+    // ── LES ÉTAPES — D-385 ──────────────────────────────────────────────────────
+
+    /** Les étapes servies — vide sans étape déclarée : la page reste à plat. */
+    get steps() {
+        return this.state.model?.steps || [];
+    }
+
+    get activeStepId() {
+        return activeStepId(this.steps, this.state.step);
+    }
+
+    /** Les questions que la colonne montre : celles de l'étape affichée. */
+    get shownQuestions() {
+        return stepQuestions(this.questions, this.steps, this.activeStepId);
+    }
+
+    /**
+     * Les pastilles du haut du viewer. ⓘ Aucune quand une PIÈCE est sélectionnée : la
+     * colonne montre alors ses questions à elle, qui n'ont pas d'étape (arbitrage Gerry).
+     */
+    get stepChips() {
+        if (this.selectedPlacement) return [];
+        return stepChips(this.steps, this.questions, this.activeStepId);
+    }
+
+    /** Une pastille : on y va — ou, grisée, on dit ce qui manque et on y mène. */
+    onStepChip(chip) {
+        if (chip.locked) {
+            this._revealMissing(missingBefore(this.steps, this.questions, chip.id));
+            return;
+        }
+        this._goToStep(chip.id);
+    }
+
+    /**
+     * Afficher une étape — et prendre SA vue, si elle en déclare une.
+     *
+     * ⓘ Sans vue, la caméra ne bouge pas : le client garde le cadrage qu'il s'est donné
+     * (l'arbitrage de `_resolve_view_camera`, côté serveur).
+     */
+    _goToStep(stepId) {
+        if (stepId === this.activeStepId) return;
+        this.state.step = stepId;
+        this.state.panel = null;
+        this.state.reason = null;
+        if (this.answersRef.el) this.answersRef.el.scrollTop = 0;
+        const view = this.steps.find((step) => step.id === stepId)?.camera;
+        if (view) {
+            this.state.cameraApply = {
+                ...view, move: true,
+                serial: (this.state.cameraApply?.serial ?? 0) + 1,
+            };
+        }
+    }
+
+    /**
+     * Dire ce qui manque, et y MENER : le toast nomme les questions, la colonne passe à
+     * l'étape de la première et la fait venir sous les yeux (demande de Gerry, D-385).
+     *
+     * ⓘ La sélection d'une pièce tombe d'abord : ses questions à elle recouvrent celles
+     * du produit, et la question à montrer ne serait pas dans la colonne.
+     */
+    _revealMissing(missing) {
+        const first = missing[0];
+        if (!first) return;
+        this.notification.add(missing.map((question) => question.name).join(", "), {
+            title: _t("Please answer first"),
+            type: "warning",
+        });
+        if (this.state.selection.nodeId) this._select(null, false);
+        if (first.stepId !== null && first.stepId !== this.activeStepId) {
+            this._goToStep(first.stepId);
+        }
+        // ⚠️ La question n'existe dans le DOM qu'une fois son étape affichée. Déjà là, on
+        // la montre tout de suite ; sinon `_afterRender` le fera après le rendu que le
+        // changement d'étape déclenche. ⓘ Pas de compteur « pour forcer un rendu » : OWL
+        // ne rend que pour une clé que le gabarit LIT.
+        this._revealQuestionId = first.id;
+        this._revealQuestion();
+    }
+
+    /** Amener la question signalée sous les yeux, et lui donner le focus. */
+    _revealQuestion() {
+        const id = this._revealQuestionId;
+        const root = this.answersRef.el;
+        if (!id || !root) return;
+        const section = root.querySelector(`[data-question-id="${id}"]`);
+        if (!section) return;
+        this._revealQuestionId = null;
+        section.scrollIntoView({ block: "center", behavior: "smooth" });
+        // ⚠️ `preventScroll` : le défilement doux ci-dessus fait le trajet ; un focus
+        // qui défile lui-même le couperait net.
+        section.querySelector("input, select, button, [tabindex]")?.focus({ preventScroll: true });
+        // ⓘ Un repère BREF : la question clignote le temps que l'œil la trouve.
+        section.classList.remove("o_cfg3d_question--flash");
+        void section.offsetWidth;
+        section.classList.add("o_cfg3d_question--flash");
+    }
+
     /** Le prix, tel qu'il se lit — une somme, pas un détail (D-176). */
     get price() {
         // ⓘ Le TOTAL (D-368) : le produit plus ses pièces vendues à part — le détail se
@@ -1208,6 +1315,13 @@ export class ConfiguratorPage extends Component {
      * close, le bandeau de fermeture prend la place du bouton, sans code de plus.
      */
     async onConfirm() {
+        // ⓘ D-385 — ce qui manque se DIT et se MONTRE ici, comme au clic d'une étape
+        // grisée : le serveur refuserait aussi, mais seulement par un texte en bas.
+        const missing = missingBefore(this.steps, this.questions);
+        if (missing.length) {
+            this._revealMissing(missing);
+            return;
+        }
         this.state.loading = true;
         // ⓘ D-368 — dans le dialogue du devis, c'est l'hôte qui pose les lignes rattachées.
         const next = await this._call("/configurator/confirm",
@@ -1324,6 +1438,7 @@ export class ConfiguratorPage extends Component {
     get largeViewLabel() { return _t("Large grid"); }
     get allLabel() { return _t("All"); }
     get otherLabel() { return _t("Others"); }
+    get stepsLabel() { return _t("Steps"); }
 
     /** Une question est repondue des qu'une de ses valeurs est retenue. */
     isAnswered(question) {

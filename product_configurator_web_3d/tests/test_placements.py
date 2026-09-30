@@ -78,11 +78,12 @@ class TestPlacements(TransactionCase):
 
     def test_la_question_a_la_forme_de_celles_de_la_racine(self):
         question = self._placements()["c%s" % self.link_poignee.id]["questions"][0]
-        self.assertEqual(sorted(question), ["answerLayout", "answerSize", "customValue",
-                                            "displayType", "free", "id", "multi", "name",
-                                            "required", "swatchMark", "values"])
+        self.assertEqual(sorted(question), ["answerLayout", "answerSize", "categories",
+                                            "customValue", "displayType", "free", "id", "multi",
+                                            "name", "required", "swatchMark", "values"])
         self.assertEqual(sorted(question["values"][0]),
-                         ["available", "chosen", "color", "id", "image", "name", "raw"])
+                         ["available", "categoryKeys", "chosen", "color", "id", "image", "name",
+                          "raw"])
         # ⓘ Et les MÊMES clés qu'une question de la racine : la page les rend avec un seul
         # gabarit (D-333), un champ qui manquerait d'un côté y serait lu `undefined`.
         root = self.session.web_state()["attributes"]

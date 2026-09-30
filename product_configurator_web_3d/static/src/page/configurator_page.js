@@ -50,7 +50,8 @@ import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
 import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
          placementOf, selectableNodeIds, familyOf, answerForPlacement,
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError, revealScrollLeft,
-         rowEdges, lineOf, filterAnswers, panelViewOf, pickedAnswer, isImageForm }
+         rowEdges, lineOf, filterAnswers, panelViewOf, pickedAnswer, isImageForm,
+         panelChips, filterByCategory }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -110,7 +111,7 @@ export class ConfiguratorPage extends Component {
             // ⚠️ **Des IDENTIFIANTS, jamais la question elle-même** ([[L-449]]) : elle est
             // relue dans l'état à chaque rendu (`panelQuestion`). Gardée ici, elle
             // afficherait une coche en retard après chaque réponse.
-            // `{ nodeId, questionId, search, view }`, ou `null` quand il est fermé.
+            // `{ nodeId, questionId, search, view, category }`, ou `null` quand il est fermé.
             panel: null,
             // La largeur utile des questions, mesurée — ce que la rangée `line` partage.
             lineWidth: 0,
@@ -892,6 +893,7 @@ export class ConfiguratorPage extends Component {
         this.state.reason = null;
         this.state.panel = {
             nodeId: nodeId || null, questionId: question.id, search: "", view: panelViewOf(question),
+            category: null,
         };
         this._focusPanelSearch = true;
     }
@@ -916,9 +918,19 @@ export class ConfiguratorPage extends Component {
         return (questions || []).find((question) => question.id === panel.questionId) || null;
     }
 
-    /** Les réponses du panneau, filtrées par la recherche. */
+    /** Les réponses du panneau, filtrées par la pastille de catégorie PUIS par la recherche. */
     panelValues(question) {
-        return filterAnswers(question.values, this.state.panel.search);
+        const panel = this.state.panel;
+        return filterAnswers(filterByCategory(question.values, panel.category), panel.search);
+    }
+
+    /** Les pastilles de catégories du panneau — aucune sous deux groupes (D-382). */
+    panelChips(question) {
+        return panelChips(question, this.allLabel, this.otherLabel);
+    }
+
+    onPanelCategory(key) {
+        this.state.panel.category = key;
     }
 
     onPanelSearch(ev) {
@@ -1310,6 +1322,8 @@ export class ConfiguratorPage extends Component {
     get listViewLabel() { return _t("List"); }
     get smallViewLabel() { return _t("Small grid"); }
     get largeViewLabel() { return _t("Large grid"); }
+    get allLabel() { return _t("All"); }
+    get otherLabel() { return _t("Others"); }
 
     /** Une question est repondue des qu'une de ses valeurs est retenue. */
     isAnswered(question) {

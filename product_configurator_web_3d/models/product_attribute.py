@@ -237,6 +237,28 @@ class ProductAttributeValue(models.Model):
         readonly=True,
     )
 
+    def _web_categories(self):
+        """Les catégories sous lesquelles cette réponse se range au panneau de choix — D-382.
+
+        Une liste de `{key, name, sequence, parent}`, la FEUILLE seulement : ici la catégorie
+        de la MATIÈRE que la valeur désigne (un arbre depuis D-382, dans `product_editor`).
+        La boutique y ajoute les catégories e-commerce du PRODUIT désigné, par surcharge
+        (`product_configurator_web_sale`) : ce module ne dépend pas de `website_sale`.
+
+        ⚠️ Clé PRÉFIXÉE par le modèle (`m5`) : deux modèles, deux séquences d'identifiants.
+        Lu en `sudo`, comme le reste de l'état : le visiteur n'a aucun droit sur les matières.
+        """
+        self.ensure_one()
+        category = self.sudo().material_id.category_id
+        if not category:
+            return []
+        return [{
+            "key": "m%s" % category.id,
+            "name": category.name,
+            "sequence": category.sequence,
+            "parent": category.parent_id.name or "",
+        }]
+
     def _preview_source(self):
         """La MATIÈRE complète la chaîne du module attribut — D-258.
 

@@ -107,7 +107,7 @@ describe("la vue d'ouverture et le choix résumé", () => {
 describe("le panneau — ce que la page en garde, et quand il se ferme", () => {
     test("⚠️ l'état ne garde que des IDENTIFIANTS, jamais la question ([[L-449]])", () => {
         const open = method("openPanel");
-        expect(open).toMatch(/this\.state\.panel = \{\s*nodeId: nodeId \|\| null, questionId: question\.id, search: "", view: panelViewOf\(question\),\s*\};/);
+        expect(open).toMatch(/this\.state\.panel = \{\s*nodeId: nodeId \|\| null, questionId: question\.id, search: "", view: panelViewOf\(question\),\s*category: null,\s*\};/);
     });
 
     test("⚠️ la question est RELUE par un getter qui n'écrit rien ([[L-384]])", () => {

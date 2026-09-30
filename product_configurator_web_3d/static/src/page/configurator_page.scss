@@ -563,6 +563,37 @@
     &--on { color: $o-brand-primary; background: rgba($o-brand-primary, 0.1); }
 }
 
+/* Les pastilles de catégories : une rangée qui défile sous la recherche, sans barre. */
+.o_cfg3d_panel_chips {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 6px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+
+    &::-webkit-scrollbar { display: none; }
+}
+
+.o_cfg3d_panel_chip {
+    flex: 0 0 auto;
+    padding: 4px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 999px;
+    background: #fff;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover { border-color: rgba(0, 0, 0, 0.3); }
+    &--on {
+        border-color: $o-brand-primary;
+        background: $o-brand-primary;
+        color: #fff;
+    }
+}
+
 .o_cfg3d_panel_reason { margin: 8px 16px 0; }
 
 /* Le corps : lui seul défile. */

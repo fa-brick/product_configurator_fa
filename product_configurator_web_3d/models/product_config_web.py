@@ -12,6 +12,7 @@ ni identifiant interne de session, ni jeton d'une autre, ni rien qui permette
 d'énumérer : le jeton entre, il ne ressort pas.
 """
 import logging
+from collections import Counter
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
@@ -75,6 +76,7 @@ class ProductConfigSession(models.Model):
                 )
             )
             values = self._web_shown_values(line, values, available, chosen)
+            categories, category_keys = self._web_categorized(values)
             out.append({
                 "id": line.attribute_id.id,
                 "name": line.attribute_id.name,
@@ -96,6 +98,8 @@ class ProductConfigSession(models.Model):
                 "answerSize": line.attribute_id.answer_size,
                 # ⓘ Sa disposition, déjà ramenée à ce que la forme permet (D-382).
                 "answerLayout": line.attribute_id._web_answer_layout(),
+                # ⓘ Les catégories de SES réponses — les pastilles du panneau (D-382).
+                "categories": categories,
                 "values": [
                     {
                         "id": value.id,
@@ -115,6 +119,8 @@ class ProductConfigSession(models.Model):
                         # Grisée, un appui dira pourquoi (D-178).
                         "available": value.id in available,
                         "chosen": value.id in chosen,
+                        # ⓘ Les catégories de la réponse, par clé (D-382).
+                        "categoryKeys": category_keys[value.id],
                         # La PASTILLE d'une valeur de couleur — telle qu'Odoo la
                         # range, sans interprétation.
                         "color": value.html_color or None,
@@ -131,6 +137,36 @@ class ProductConfigSession(models.Model):
                 ],
             })
         return out
+
+    # ── LES CATÉGORIES DES RÉPONSES — D-382 ────────────────────────────────
+
+    @api.model
+    def _web_categorized(self, values):
+        """Les catégories d'une question, et celles de chacune de ses réponses — D-382.
+
+        Rend `(categories, keys)` : la liste `[{key, name}]` des catégories PRÉSENTES parmi
+        les réponses montrées, dans l'ordre d'affichage (séquence, puis nom), et, par réponse,
+        la liste de ses clés. Les catégories viennent de `_web_categories()` de la valeur :
+        la MATIÈRE ici, le PRODUIT par la boutique (`product_configurator_web_sale`).
+
+        ⓘ **Seule la FEUILLE se nomme** (Gerry, 2026-09-30) — sauf quand deux feuilles
+        portent le même nom : le parent vient alors entre parenthèses, et seulement là.
+        """
+        seen, keys = {}, {}
+        for value in values:
+            found = value._web_categories()
+            keys[value.id] = [category["key"] for category in found]
+            for category in found:
+                seen.setdefault(category["key"], category)
+        ordered = sorted(seen.values(), key=lambda c: (c["sequence"], c["name"].lower()))
+        homonyms = Counter(category["name"] for category in ordered)
+        categories = [{
+            "key": category["key"],
+            "name": ("%s (%s)" % (category["name"], category["parent"])
+                     if homonyms[category["name"]] > 1 and category["parent"]
+                     else category["name"]),
+        } for category in ordered]
+        return categories, keys
 
     # ── LA SAISIE LIBRE — D-353 ─────────────────────────────────────────────
 
@@ -801,6 +837,7 @@ class ProductConfigSession(models.Model):
                                 exc_info=True)
                 available = set(values.ids)
             values = self._web_shown_values(line, values, available, chosen_ids)
+            categories, category_keys = self._web_categorized(values)
             questions.append({
                 "id": line.attribute_id.id,
                 "name": line.attribute_id.name,
@@ -812,12 +849,14 @@ class ProductConfigSession(models.Model):
                 "swatchMark": line.attribute_id.swatch_mark,
                 "answerSize": line.attribute_id.answer_size,
                 "answerLayout": line.attribute_id._web_answer_layout(),
+                "categories": categories,
                 "values": [{
                     "id": value.id,
                     "name": value.display_value or value.name,
                     "raw": value.name,
                     "available": value.id in available,
                     "chosen": value.id in chosen_ids,
+                    "categoryKeys": category_keys[value.id],
                     "color": value.html_color or None,
                     "image": ("/configurator/value/%s/image" % value.id
                               if self._web_value_has_image(value) else None),

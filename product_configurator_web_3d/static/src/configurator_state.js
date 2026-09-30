@@ -139,6 +139,35 @@ export function pickedAnswer(question) {
     return question.values.find((value) => value.chosen) || null;
 }
 
+/** La pastille des réponses SANS catégorie — « Autres », toujours la dernière. */
+export const OTHER_CATEGORY = "__other__";
+
+/**
+ * Les pastilles de catégories d'un panneau — D-382 (Gerry : « des pastilles horizontales
+ * sous la recherche qui filtrent », « autre et tout »).
+ *
+ * « Tout » d'abord (clé `null`), les catégories dans l'ordre servi, « Autres » en dernier
+ * s'il reste des réponses sans catégorie. ⓘ **Aucune pastille sous deux groupes** : une
+ * seule catégorie ne filtrerait rien.
+ */
+export function panelChips(question, allLabel, otherLabel) {
+    const categories = question.categories || [];
+    const hasOther = question.values.some((value) => !(value.categoryKeys || []).length);
+    if (categories.length + (hasOther ? 1 : 0) < 2) return [];
+    return [
+        { key: null, label: allLabel },
+        ...categories.map((category) => ({ key: category.key, label: category.name })),
+        ...(hasOther ? [{ key: OTHER_CATEGORY, label: otherLabel }] : []),
+    ];
+}
+
+/** Les réponses d'une pastille — filtre EXACT, sans les sous-catégories (Gerry). */
+export function filterByCategory(values, key) {
+    if (!key) return values;
+    if (key === OTHER_CATEGORY) return values.filter((value) => !(value.categoryKeys || []).length);
+    return values.filter((value) => (value.categoryKeys || []).includes(key));
+}
+
 /** Une question, telle que la page la rend — de la racine ou d'un placement. */
 function toQuestion(line) {
     return {
@@ -157,6 +186,8 @@ function toQuestion(line) {
         answerSize: ANSWER_SIZES.includes(line.answerSize) ? line.answerSize : "medium",
         // ⓘ Sa disposition (D-382) : `inline` pour toute combinaison sans effet.
         answerLayout: answerLayoutOf(line),
+        // ⓘ Les catégories présentes parmi ses réponses, dans l'ordre d'affichage (D-382).
+        categories: Array.isArray(line.categories) ? line.categories : [],
         values: (line.values || []).map(toValue),
         // ⓘ **LA SAISIE LIBRE** (D-353) : la forme du champ, ou `null` quand la question
         // se répond par sa liste. C'est ELLE qui décide du champ, avant `displayType` —
@@ -365,6 +396,9 @@ function toValue(raw) {
         // doit pouvoir en donner la raison. `disabled` interdirait l'appui, donc la
         // raison. Ce qui se refuse est la SÉLECTION, pas l'interaction.
         muted: raw.available === false,
+        // ⓘ Les catégories de la réponse, par clé (D-382) — les pastilles du panneau.
+        // ⚠️ Recopiées ICI, faute de quoi elles s'arrêteraient à cette fonction ([[L-212]]).
+        categoryKeys: Array.isArray(raw.categoryKeys) ? raw.categoryKeys : [],
     };
 }
 

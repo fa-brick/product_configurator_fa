@@ -394,3 +394,15 @@ msgstr "Petite grille"
 #: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
 msgid "Large grid"
 msgstr "Grande grille"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "All"
+msgstr "Tout"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "Others"
+msgstr "Autres"

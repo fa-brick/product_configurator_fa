@@ -469,6 +469,18 @@
                 </button>
             </div>
         </div>
+        <!-- LES PASTILLES DE CATÉGORIES (D-382) : sous la recherche, elles filtrent — « Tout »
+             d'abord, « Autres » en dernier ; aucune sous deux groupes. -->
+        <t t-set="chips" t-value="this.panelChips(question)"/>
+        <div t-if="chips.length" class="o_cfg3d_panel_chips" role="group">
+            <t t-foreach="chips" t-as="chip" t-key="chip.key or 'all'">
+                <button type="button" class="o_cfg3d_panel_chip"
+                        t-att-class="{ 'o_cfg3d_panel_chip--on': state.panel.category === chip.key }"
+                        t-att-aria-pressed="state.panel.category === chip.key ? 'true' : 'false'"
+                        t-on-click="() => this.onPanelCategory(chip.key)"
+                        t-esc="chip.label"/>
+            </t>
+        </div>
         <p t-if="state.reason" class="o_cfg3d_reason o_cfg3d_panel_reason" t-esc="state.reason"/>
         <div class="o_cfg3d_panel_body">
             <t t-set="found" t-value="this.panelValues(question)"/>

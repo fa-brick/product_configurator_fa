@@ -383,9 +383,16 @@ export class ConfiguratorTree extends Component {
         // places — c'est ce que Gerry a vu. Les attributs sont donc des éléments
         // de ce glisser aussi ; seule la POIGNÉE d'étape le démarre, et un
         // attribut n'en porte pas.
+        //
+        // ⚠️ **UNE CLASSE, JAMAIS UNE LISTE À VIRGULE** ([[L-473]]). Le cœur
+        // colle `elements + " " + handle` (`draggable_hook_builder.js`) :
+        // `".o_config_step, .o_config_attribute"` devenait « `.o_config_step`
+        // OU `.o_config_attribute .o_config_step_handle` » — tout le bandeau
+        // démarrait un glisser, et son `preventDefault` empêchait la liste
+        // déroulante de la vue 3D de s'ouvrir (Gerry, 2026-09-30).
         useSortable({
             ref: this.rootRef,
-            elements: ".o_config_step, .o_config_attribute",
+            elements: ".o_config_row",
             handle: ".o_config_step_handle",
             cursor: "grabbing",
             placeholderClasses: ["d-table-row", "o_config_ghost"],

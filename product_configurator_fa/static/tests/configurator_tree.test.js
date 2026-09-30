@@ -371,8 +371,23 @@ describe("Un bandeau se dépose ENTRE les attributs — et s'ouvre sur celui qui
     test("⚠️ le glisser d'un bandeau survole AUSSI les attributs — sinon son fantôme ne bouge pas", () => {
         const source = readFileSync(
             join(__dirname, "..", "src", "js", "configurator_tree.esm.js"), "utf8");
-        expect(source).toContain('elements: ".o_config_step, .o_config_attribute"');
+        expect(source).toContain('elements: ".o_config_row"');
         expect(source).toContain('handle: ".o_config_step_handle"');
+        const xml = readFileSync(
+            join(__dirname, "..", "src", "js", "configurator_tree.xml"), "utf8");
+        expect(xml).toContain('class="o_config_step o_config_row"');
+        expect(xml).toContain("'o_config_attribute o_config_row'");
+    });
+
+    test("⚠️ AUCUN `elements` à virgule — le cœur y colle la poignée, et la virgule la détache", () => {
+        // Gerry : « je ne peux pas sélectionner la vue d'une étape ». `elements + " " + handle`
+        // (`draggable_hook_builder.js`) : « .a, .b .poignée » vaut « .a » OU « .b .poignée » —
+        // tout le bandeau démarrait un glisser, et son `preventDefault` bloquait la liste.
+        const source = readFileSync(
+            join(__dirname, "..", "src", "js", "configurator_tree.esm.js"), "utf8");
+        const selectors = [...source.matchAll(/elements: "([^"]*)"/g)].map((m) => m[1]);
+        expect(selectors.length).toBeGreaterThanOrEqual(3);
+        for (const selector of selectors) expect(selector).not.toContain(",");
     });
 
     test("⚠️ un refus du serveur DÉFAIT l'anticipation — la relecture est dans le `finally`", () => {

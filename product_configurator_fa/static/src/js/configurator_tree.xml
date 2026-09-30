@@ -80,7 +80,7 @@
     <!-- ⓘ Les rangées deviennent des sous-gabarits : elles sont désormais
          appelées depuis DEUX conteneurs — la tête du bloc et ses valeurs. -->
     <t t-name="product_configurator_fa.ConfiguratorTree.StepRow">
-        <tr class="o_config_step"
+        <tr class="o_config_step o_config_row"
             t-att-data-step-id="row.id"
             t-att-data-line-id="row.line_id">
             <td class="o_config_tree_handle" t-on-pointerdown="() => this.freezeColumns()">
@@ -153,7 +153,7 @@
 
     <t t-name="product_configurator_fa.ConfiguratorTree.Row">
         <tr
-            t-att-class="row.kind === 'value' ? 'o_config_value' : 'o_config_attribute'"
+            t-att-class="row.kind === 'value' ? 'o_config_value' : 'o_config_attribute o_config_row'"
             t-att-data-line-id="row.kind === 'attribute' ? row.id : row.line_id"
             t-att-data-value-id="row.kind === 'value' ? row.id : false">
             <!-- ⚠️ Le figeage des colonnes se déclenche au POINTERDOWN,

@@ -9,12 +9,13 @@ import {
     attributeLineIdBelow,
     dropIndex,
     flattenTree,
+    dropLayout,
     groupRows,
-    lineIdAbove,
     moveStepRow,
     reorder,
     reorderRowValues,
     reorderRows,
+    restepRows,
 } from "../src/js/configurator_tree.esm.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -239,30 +240,33 @@ describe("Le point de dépôt se calcule sur la liste PLATE, pas sur les voisins
         {kind: "step", lineId: 2, transient: false},
         {kind: "attribute", lineId: 2, transient: false},
     ];
+    const RANGEES_ETAPE = [
+        {kind: "attribute", lineId: 1, transient: false},
+        {kind: "value", lineId: 1, transient: false},
+        {kind: "step", lineId: 2, stepId: 9, transient: false},
+        {kind: "attribute", lineId: 2, transient: false},
+        {kind: "attribute", lineId: 3, transient: false},
+    ];
 
-    test("au-dessus d'un bord de bloc, on trouve quand même l'attribut précédent", () => {
-        // Index 1 = la dernière valeur du bloc 1 ; elle porte l'identifiant de
-        // SA ligne, et c'est bien sous l'attribut 1 qu'on dépose.
-        expect(lineIdAbove(RANGEES, 1)).toBe(1);
-    });
-
-    test("⚠️ le BANDEAU se saute — il porte l'identifiant d'une ligne EN DESSOUS", () => {
-        // S'y arrêter renverrait la ligne 2, située sous le point de dépôt :
-        // l'attribut déposé aurait sauté d'un cran de trop.
-        expect(lineIdAbove(RANGEES, 2)).toBe(1);
+    test("au-dessus d'un bord de bloc, on se pose quand même sous l'attribut précédent", () => {
+        // Index 1 = la dernière valeur du bloc 1 : c'est bien sous l'attribut 1
+        // qu'on dépose — et au-dessus du bandeau, qui garde sa ligne.
+        expect(dropLayout(RANGEES_ETAPE, 1, 3)).toEqual({
+            order: [1, 3, 2], steps: [[9, 2]],
+        });
     });
 
     test("les rangées TRANSITOIRES ne désignent rien", () => {
         const avecFantome = [
             {kind: "attribute", lineId: 1, transient: false},
             {kind: "attribute", lineId: 2, transient: true},
+            {kind: "attribute", lineId: 3, transient: false},
         ];
-        expect(lineIdAbove(avecFantome, 1)).toBe(1);
+        expect(dropLayout(avecFantome, 1, 2).order).toEqual([1, 2, 3]);
     });
 
     test("rien au-dessus : dépôt en tête", () => {
-        expect(lineIdAbove(RANGEES, -1)).toBe(null);
-        expect(lineIdAbove(RANGEES, 0)).toBe(1);
+        expect(dropLayout(RANGEES_ETAPE, -1, 3).order).toEqual([3, 1, 2]);
     });
 
     test("un bandeau s'ouvre sur le premier ATTRIBUT en dessous, pas sur une valeur", () => {
@@ -285,5 +289,68 @@ describe("Le nom d'une question s'affiche UNE fois (D-368)", () => {
         const close = xml.indexOf("</a>", start) + "</a>".length;
         const next = xml.slice(close).trimStart();
         expect(next.startsWith(`<t t-else="" t-esc="row.name"/>`)).toBe(true);
+    });
+});
+
+
+describe("Un bandeau reste où il s'affiche ; seul l'attribut bouge", () => {
+    // ⚠️ Constat de Gerry sur le JeNo 5" : « je n'arrive pas à déplacer Bottom
+    // Plate au-dessus de Impressions 3D ». Bottom Plate portait le marqueur de
+    // l'étape : le bandeau le suivait, et le dépôt ne changeait rien.
+    const JENO = [
+        {kind: "attribute", lineId: 3, transient: false}, // Middle plate
+        {kind: "step", lineId: 4, stepId: 7, transient: false}, // Impressions 3D
+        {kind: "attribute", lineId: 4, transient: true}, // Bottom Plate, emportée
+        {kind: "attribute", lineId: 5, transient: false}, // Couleur impression
+        {kind: "attribute", lineId: 6, transient: false}, // Bumper Avant
+    ];
+
+    test("⚠️ la ligne qui OUVRE l'étape passe au-dessus de son propre bandeau", () => {
+        // Fantôme juste sous Middle plate : l'ordre ne change pas, le MARQUEUR si.
+        expect(dropLayout(JENO, 0, 4)).toEqual({
+            order: [3, 4, 5, 6], steps: [[7, 5]],
+        });
+    });
+
+    test("⚠️ une ligne glissée ENTRE le bandeau et sa ligne entre dans l'étape", () => {
+        // C'est ce que le fantôme montre ; avant, elle ressortait au-dessus.
+        const rangees = [
+            {kind: "attribute", lineId: 3, transient: false},
+            {kind: "step", lineId: 4, stepId: 7, transient: false},
+            {kind: "attribute", lineId: 4, transient: false},
+            {kind: "attribute", lineId: 5, transient: true},
+        ];
+        expect(dropLayout(rangees, 1, 5)).toEqual({
+            order: [3, 5, 4], steps: [[7, 5]],
+        });
+    });
+
+    test("la ligne qui ouvre l'étape, descendue, y reste — l'étape s'ouvre sur la suivante", () => {
+        expect(dropLayout(JENO, 4, 4)).toEqual({
+            order: [3, 5, 6, 4], steps: [[7, 5]],
+        });
+    });
+
+    test("ⓘ une étape qu'on VIDERAIT suit sa ligne, comme avant", () => {
+        const seule = [
+            {kind: "attribute", lineId: 3, transient: false},
+            {kind: "step", lineId: 4, stepId: 7, transient: false},
+            {kind: "attribute", lineId: 4, transient: true},
+        ];
+        expect(dropLayout(seule, 0, 4)).toEqual({order: [3, 4], steps: null});
+    });
+
+    test("l'anticipation pose chaque bandeau devant sa nouvelle ligne", () => {
+        const arbre = [
+            {kind: "attribute", id: 3},
+            {kind: "step", id: 7, line_id: 4},
+            {kind: "attribute", id: 4},
+            {kind: "attribute", id: 5},
+        ];
+        const suivant = reorderRows(restepRows(arbre, [[7, 5]]), [3, 4, 5]);
+        expect(suivant.map((r) => `${r.kind}${r.id}`)).toEqual([
+            "attribute3", "attribute4", "step7", "attribute5",
+        ]);
+        expect(restepRows(arbre, null)).toEqual(arbre);
     });
 });

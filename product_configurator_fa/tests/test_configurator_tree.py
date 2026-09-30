@@ -221,6 +221,63 @@ class ConfiguratorTree(BaseCommon):
         genres = [r["kind"] for r in self._rows()]
         self.assertEqual(genres, ["step", "attribute", "attribute"])
 
+    def _add_line(self, name):
+        attribut = self.env["product.attribute"].create(
+            {"name": name, "create_variant": "no_variant"}
+        )
+        valeur = self.env["product.attribute.value"].create(
+            {"name": "Any", "attribute_id": attribut.id}
+        )
+        return self.env["product.template.attribute.line"].create({
+            "product_tmpl_id": self.template.id, "attribute_id": attribut.id,
+            "value_ids": [(6, 0, valeur.ids)], "sequence": 30,
+        })
+
+    def test_13a_the_tree_can_move_the_step_MARKER_with_the_order(self):
+        """⚠️ L'arbre garde le bandeau où il s'affiche — constat de Gerry.
+
+        *« je n'arrive pas à déplacer Bottom Plate au-dessus de Impressions 3D »* :
+        la ligne qui ouvrait l'étape emportait son bandeau partout. Déposée
+        au-dessus de lui, elle quitte l'étape, que la ligne suivante ouvre
+        désormais — ordre et marqueur écrits dans le même appel.
+        """
+        forme = self.template.attribute_line_ids.filtered(
+            lambda l: l.attribute_id == self.shape
+        )
+        suivante = self._add_line("Height")
+        genre = self.template.attribute_line_ids - forme - suivante
+        self.template.configurator_reorder(
+            (genre + forme + suivante).ids, [[self.step.id, suivante.id]]
+        )
+        self.assertFalse(forme.config_step_id)
+        self.assertEqual(suivante.config_step_id, self.step)
+        rows = self._rows()
+        self.assertEqual(
+            [r["kind"] for r in rows], ["attribute", "attribute", "step", "attribute"]
+        )
+        self.assertEqual(rows[3]["id"], suivante.id)
+
+    def test_13b_but_only_a_step_ALREADY_on_this_product(self):
+        """⚠️ Sans cette garde, l'arbre poserait n'importe quelle étape du catalogue."""
+        etrangere = self.env["product.config.step"].create({"name": "Elsewhere"})
+        with self.assertRaises(UserError):
+            self.template.configurator_reorder(
+                self.template.attribute_line_ids.sorted().ids,
+                [[etrangere.id, self.template.attribute_line_ids[:1].id]],
+            )
+
+    def test_13c_and_never_over_ANOTHER_step_left_out_of_the_list(self):
+        """⚠️ Une ligne n'ouvre qu'une étape : l'autre se perdrait sans le dire."""
+        suivante = self._add_line("Height")
+        autre = self.env["product.config.step"].create({"name": "Sizes"})
+        suivante.config_step_id = autre
+        with self.assertRaises(UserError):
+            self.template.configurator_reorder(
+                self.template.attribute_line_ids.sorted().ids,
+                [[self.step.id, suivante.id]],
+            )
+        self.assertEqual(suivante.config_step_id, autre)
+
     def test_14_the_line_SETTINGS_have_a_door_at_last(self):
         """⚠️ Ils n'étaient joignables NULLE PART depuis la fiche produit — D-217.
 

@@ -140,28 +140,70 @@ export function groupRows(flat) {
 }
 
 /**
- * La ligne d'ATTRIBUT au-dessus du point de dépôt, dans la liste plate.
+ * L'arbre après le dépôt d'un ATTRIBUT : l'ordre des lignes, et la ligne que
+ * chaque bandeau ouvre désormais.
  *
- * ⚠️ **LA LISTE EST PLATE, LES `<tbody>` NE LE SONT PAS.** Depuis le découpage en
- * blocs, `previousElementSibling` s'arrête au bord d'un `<tbody>` : une rangée
- * déposée en tête d'un bloc n'aurait plus AUCUN voisin au-dessus, et serait
- * remontée en tête de l'arbre. On raisonne donc sur toutes les rangées du corps.
+ * ⚠️ **UN BANDEAU RESTE OÙ IL S'AFFICHE ; SEUL L'ATTRIBUT BOUGE.** Constat de
+ * Gerry sur le JeNo 5" : *« je n'arrive pas à déplacer Bottom Plate au-dessus
+ * de Impressions 3D »*. Bottom Plate PORTAIT le marqueur de l'étape (D-202) :
+ * le bandeau, déduit de lui, le suivait partout. Déposé juste au-dessus de son
+ * propre bandeau, l'attribut ne changeait pas de rang, et rien ne bougeait —
+ * le fantôme montrait un dépôt que le résultat démentait. L'inverse aussi :
+ * glisser l'attribut suivant ENTRE le bandeau et Bottom Plate le rendait
+ * au-dessus du bandeau, hors de l'étape où le fantôme l'avait posé.
  *
- * ⚠️ On saute le BANDEAU d'étape : il porte l'identifiant de la ligne qu'il
- * ouvre, donc d'une ligne située EN DESSOUS de lui. Et les rangées TRANSITOIRES
- * — celle qu'on emporte, et le fantôme laissé en place — qui sont encore là.
+ * On lit donc l'écran tel que le fantôme le montre : chaque bandeau s'ouvre sur
+ * le premier attribut qui le suit. Le marqueur passe d'une ligne à l'autre ; il
+ * ne s'emporte plus.
  *
- * ⓘ Fonction PURE, sur des descripteurs `{kind, lineId, transient}`.
+ * ⓘ **Une étape qu'on viderait garde l'ancien comportement** — le bandeau suit
+ * sa ligne (`steps: null`). Une étape qui n'ouvre rien n'existe pas, et quand
+ * elle ne tient qu'une ligne, déplacer cette ligne, c'est déplacer l'étape.
+ *
+ * ⓘ Fonction PURE, sur des descripteurs `{kind, lineId, stepId, transient}` ;
+ * `at` est l'index de la rangée juste au-dessus du point de dépôt (−1 : en
+ * tête). Rend `{order, steps}`, `steps` étant des paires `[stepId, lineId]`.
  */
-export function lineIdAbove(rows, at) {
-    for (let i = Math.min(at, rows.length - 1); i >= 0; i--) {
-        const row = rows[i];
-        if (row.transient || row.kind === "step" || !row.lineId) {
+export function dropLayout(rows, at, movedLineId) {
+    const keep = (row) =>
+        !row.transient &&
+        (row.kind === "step" ||
+            (row.kind === "attribute" && row.lineId !== movedLineId));
+    const tokens = [
+        ...rows.slice(0, at + 1).filter(keep),
+        {kind: "attribute", lineId: movedLineId},
+        ...rows.slice(at + 1).filter(keep),
+    ];
+    const order = tokens
+        .filter((token) => token.kind === "attribute")
+        .map((token) => token.lineId);
+    const steps = [];
+    for (let i = 0; i < tokens.length; i++) {
+        if (tokens[i].kind !== "step") {
             continue;
         }
-        return row.lineId;
+        const opened = tokens[i + 1];
+        if (!opened || opened.kind !== "attribute") {
+            return {order, steps: null};
+        }
+        steps.push([tokens[i].stepId, opened.lineId]);
     }
-    return null;
+    return {order, steps};
+}
+
+/**
+ * Les bandeaux posés sur leurs nouvelles lignes — l'anticipation de `dropLayout`.
+ *
+ * ⓘ Fonction PURE. À composer avec `reorderRows`, qui range chaque bandeau
+ * devant la ligne dont il porte l'identifiant.
+ */
+export function restepRows(rows, steps) {
+    const lineOf = new Map(steps || []);
+    return (rows || []).map((row) =>
+        row.kind === "step" && lineOf.has(row.id)
+            ? {...row, line_id: lineOf.get(row.id)}
+            : row
+    );
 }
 
 /**
@@ -444,13 +486,6 @@ export class ConfiguratorTree extends Component {
         this.state.expanded = new Set(this.state.expanded);
     }
 
-    /** Les identifiants de lignes d'attribut, dans l'ordre affiché. */
-    get lineIds() {
-        return (this.state.rows || [])
-            .filter((row) => row.kind === "attribute")
-            .map((row) => row.id);
-    }
-
     /**
      * Toutes les rangées du corps, décrites pour les calculs de dépôt.
      *
@@ -473,6 +508,7 @@ export class ConfiguratorTree extends Component {
                 ? "value"
                 : "other",
             lineId: el.dataset.lineId ? Number(el.dataset.lineId) : null,
+            stepId: el.dataset.stepId ? Number(el.dataset.stepId) : null,
             transient:
                 el.classList.contains("o_dragged") ||
                 el.classList.contains("o_config_ghost"),
@@ -613,16 +649,22 @@ export class ConfiguratorTree extends Component {
         return Number(node.dataset.valueId);
     }
 
+    /**
+     * ⚠️ Les bandeaux restent où ils s'affichent — voir `dropLayout`. Le serveur
+     * reçoit l'ordre ET les marqueurs dans le même appel : les écrire en deux
+     * fois laisserait voir, entre les deux, une étape ouverte sur la mauvaise
+     * ligne.
+     */
     async onDrop(element, previous, next) {
         const moved = Number(element.dataset.lineId);
-        const ids = this.lineIds;
-        const from = ids.indexOf(moved);
         const rangees = this.bodyRows();
-        const dessus = lineIdAbove(rangees, this.dropAt(rangees, previous, next));
-        const ordonne = reorder(ids, from, dropIndex(ids, from, dessus));
+        const {order, steps} = dropLayout(
+            rangees, this.dropAt(rangees, previous, next), moved
+        );
         await this.writeAndReload(
-            "product.template", "configurator_reorder", [[this.templateId], ordonne],
-            reorderRows(this.state.rows, ordonne)
+            "product.template", "configurator_reorder",
+            [[this.templateId], order, steps],
+            reorderRows(restepRows(this.state.rows, steps), order)
         );
     }
 

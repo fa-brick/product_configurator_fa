@@ -409,18 +409,66 @@ class ProductTemplate(models.Model):
         cible.config_step_id = etape
         return True
 
-    def configurator_reorder(self, line_ids):
+    def configurator_reorder(self, line_ids, step_line_ids=None):
         """Réordonne les lignes d'attribut — l'ordre PORTE l'appartenance.
 
         ⚠️ Déplacer une ligne peut changer son étape (D-202), en silence. C'est
         assumé ; c'est pourquoi l'arbre redessine ses bandeaux après chaque
         déplacement, au lieu d'attendre un rechargement.
+
+        ⚠️ **SANS `step_line_ids`, LE MARQUEUR SUIT SA LIGNE.** L'arbre, lui,
+        garde chaque bandeau où il s'affiche : il envoie donc aussi la ligne que
+        chaque étape ouvre désormais (paires ``[step_id, line_id]``). Constat de
+        Gerry : la ligne qui ouvrait une étape ne pouvait pas passer au-dessus de
+        son propre bandeau. Les deux s'écrivent ici ENSEMBLE, pour qu'aucun état
+        intermédiaire n'ouvre une étape sur la mauvaise ligne.
         """
         self.ensure_one()
         lignes = self.env["product.template.attribute.line"].browse(line_ids)
         for rang, ligne in enumerate(lignes, start=1):
             ligne.sequence = rang * 10
+        if step_line_ids:
+            self._configurator_place_steps(step_line_ids)
         return True
+
+    def _configurator_place_steps(self, step_line_ids):
+        """Pose chaque étape sur la ligne donnée — paires ``[step_id, line_id]``.
+
+        ⚠️ Seules les étapes DÉJÀ ouvertes sur ce produit se déplacent : sans
+        cette garde, l'arbre d'un produit pourrait y poser n'importe quelle étape
+        du catalogue. Et une ligne n'ouvre qu'UNE étape : une cible qui en porte
+        une autre, absente de la liste, la perdrait sans le dire.
+        """
+        placees = dict(step_line_ids)
+        if len(set(placees.values())) != len(placees):
+            raise UserError(self.env._("An attribute can open only one step."))
+        etapes = self.env["product.config.step"].browse(list(placees))
+        if etapes - self.attribute_line_ids.config_step_id:
+            raise UserError(
+                self.env._("This step is not declared on this product.")
+            )
+        cibles = self.env["product.template.attribute.line"].browse(
+            list(placees.values())
+        )
+        if cibles - self.attribute_line_ids:
+            raise UserError(
+                self.env._("This attribute line does not belong to this product.")
+            )
+        autres = cibles.config_step_id - etapes
+        if autres:
+            raise UserError(
+                self.env._(
+                    "“%(other)s” already opens on this attribute. Move it first.",
+                    other=autres[:1].name,
+                )
+            )
+        # ⓘ Effacer d'abord, poser ensuite : une ligne peut perdre une étape et
+        # en recevoir une autre dans le même appel.
+        self.attribute_line_ids.filtered(
+            lambda ligne: ligne.config_step_id in etapes
+        ).config_step_id = False
+        for etape_id, line_id in placees.items():
+            cibles.browse(line_id).config_step_id = etape_id
 
     def configurator_reorder_values(self, line_id, value_ids):
         """Réordonne les VALEURS d'un attribut — l'ordre est celui de l'attribut.

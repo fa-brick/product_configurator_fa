@@ -57,7 +57,7 @@ describe("le gabarit porte la taille", () => {
 describe("la feuille de style dessine chaque taille", () => {
     test("⚠️ `medium` reste la règle d'avant — un attribut existant ne bouge pas", () => {
         const cards = rule(".o_cfg3d_cards");
-        expect(cards).toMatch(/^\.o_cfg3d_cards \{\s*display: grid;\s*grid-template-columns: repeat\(auto-fill, minmax\(96px, 1fr\)\);/);
+        expect(cards).toMatch(/^\.o_cfg3d_cards \{\s*display: grid;\s*grid-template-columns: repeat\(auto-fill, minmax\(88px, 1fr\)\);/);
         expect(rule(".o_cfg3d_bigswatches")).toContain("minmax(84px, 1fr)");
         expect(rule(".o_cfg3d_bigswatch_disc")).toMatch(/width: 64px;\s*height: 64px;/);
         // Aucune règle `--medium` : elle ne pourrait que diverger de la règle de base.
@@ -70,22 +70,28 @@ describe("la feuille de style dessine chaque taille", () => {
         expect(cards).toMatch(/&--large \{ grid-template-columns: repeat\(auto-fill, minmax\(140px, 1fr\)\); \}/);
     });
 
-    test("⚠️ chaque taille donne un nombre de cartes DIFFÉRENT dans la colonne de 340 px", () => {
-        // 72 px rendait trois cartes, comme la moyenne : la petite taille ne changeait rien.
-        // Largeur utile : 308 px, 293 px quand une barre de défilement classique s'y loge.
-        const min = (cls) => Number(rule(".o_cfg3d_cards").match(
-            new RegExp(`${cls} \\{ grid-template-columns: repeat\\(auto-fill, minmax\\((\\d+)px`))[1]);
+    test("⚠️ chaque taille donne un nombre DIFFÉRENT — 4, 3, 2 — AVEC ou SANS barre de défilement", () => {
+        // 72 px rendait trois cartes, comme la moyenne ; puis la moyenne à 96 px n'en rendait
+        // que DEUX avec la barre de défilement de Chrome sous Linux — comme la grande (relevé
+        // de Gerry, 2026-09-30). Les TROIS tailles, aux DEUX largeurs, pour les DEUX formes.
+        // Colonne de 340 px : 308 px utiles, 293 avec une barre classique ; la grille des
+        // pastilles retire encore sa marge intérieure (8 px).
         const fit = (width, size) => Math.floor((width + 8) / (size + 8));
-        for (const width of [308, 293]) {
-            expect(fit(width, min("&--small"))).toBe(4);
-            expect(fit(width, min("&--large"))).toBe(2);
+        for (const [selector, inset] of [[".o_cfg3d_cards", 0], [".o_cfg3d_bigswatches", 8]]) {
+            const body = rule(selector);
+            const base = Number(body.match(/minmax\((\d+)px, 1fr\)/)[1]);
+            const at = (cls) => Number(body.match(
+                new RegExp(`${cls} \\{ grid-template-columns: repeat\\(auto-fill, minmax\\((\\d+)px`))[1]);
+            for (const width of [308 - inset, 293 - inset]) {
+                expect([fit(width, at("&--small")), fit(width, base), fit(width, at("&--large"))])
+                    .toEqual([4, 3, 2]);
+            }
         }
-        expect(fit(308, 96)).toBe(3);
     });
 
     test("la grande pastille : le disque ET sa case de grille suivent", () => {
         const grid = rule(".o_cfg3d_bigswatches");
-        expect(grid).toContain("&--small { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); }");
+        expect(grid).toContain("&--small { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }");
         expect(grid).toContain("&--large { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); }");
         const disc = rule(".o_cfg3d_bigswatch_disc");
         expect(disc).toContain(".o_cfg3d_bigswatches--small & { width: 48px; height: 48px; }");

@@ -171,7 +171,11 @@
    sa silhouette avant de lire son nom. */
 .o_cfg3d_cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    /* ⚠️ **88 px, pas 96** (D-382, relevé de Gerry le 2026-09-30 : « je ne vois pas de
+       différence »). Une barre de défilement CLASSIQUE (Chrome sous Linux, Windows) prend
+       ~15 px à la colonne : 293 px utiles au lieu de 308. À 96 px, la moyenne n'y logeait que
+       DEUX cartes — exactement la grande. 88 px en loge trois, avec ou sans barre. */
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
     gap: 8px;
 
     /* ⓘ LA TAILLE vient de l'attribut (`answer_size`, D-382) : une largeur MINIMALE, et le
@@ -238,7 +242,9 @@
     padding: 6px 4px;
 
     /* ⓘ LA TAILLE (D-382) : la case de la grille suit le disque, 20 px de plus pour le nom. */
-    &--small { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); }
+    /* ⓘ 64 px et non 68 : avec la barre de défilement, 68 ne logeait que trois pastilles,
+       comme la moyenne (même relevé). */
+    &--small { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
     &--large { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); }
 }
 

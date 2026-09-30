@@ -76,8 +76,8 @@ export function rowEdges(scrollLeft, viewWidth, scrollWidth) {
  * ⓘ Pour la grande pastille, c'est la CASE de la grille, pas le disque.
  */
 export const ANSWER_MIN_WIDTH = {
-    card: { small: 64, medium: 96, large: 140 },
-    swatch: { small: 68, medium: 84, large: 108 },
+    card: { small: 64, medium: 88, large: 140 },
+    swatch: { small: 64, medium: 84, large: 108 },
 };
 /** L'écart entre deux réponses, et la marge intérieure de la grille des pastilles. */
 export const ANSWER_GAP = 8;

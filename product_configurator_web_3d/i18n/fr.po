@@ -274,3 +274,32 @@ msgstr "Coche"
 #: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__swatch_mark__ring
 msgid "Ring"
 msgstr "Anneau"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields,field_description:product_configurator_web_3d.field_product_attribute__answer_size
+msgid "Answer size"
+msgstr "Taille des réponses"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields,help:product_configurator_web_3d.field_product_attribute__answer_size
+msgid ""
+"Size of the cards or large swatches on the configurator page. How many fit "
+"on a row follows from the space available."
+msgstr ""
+"Taille des cartes ou des grandes pastilles sur la page du configurateur. Le "
+"nombre par ligne découle de la place disponible."
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__answer_size__small
+msgid "Small"
+msgstr "Petite"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__answer_size__medium
+msgid "Medium"
+msgstr "Moyenne"
+
+#. module: product_configurator_web_3d
+#: model:ir.model.fields.selection,name:product_configurator_web_3d.selection__product_attribute__answer_size__large
+msgid "Large"
+msgstr "Grande"

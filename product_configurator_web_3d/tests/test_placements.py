@@ -78,8 +78,9 @@ class TestPlacements(TransactionCase):
 
     def test_la_question_a_la_forme_de_celles_de_la_racine(self):
         question = self._placements()["c%s" % self.link_poignee.id]["questions"][0]
-        self.assertEqual(sorted(question), ["customValue", "displayType", "free", "id", "multi",
-                                            "name", "required", "swatchMark", "values"])
+        self.assertEqual(sorted(question), ["answerSize", "customValue", "displayType", "free",
+                                            "id", "multi", "name", "required", "swatchMark",
+                                            "values"])
         self.assertEqual(sorted(question["values"][0]),
                          ["available", "chosen", "color", "id", "image", "name", "raw"])
         # ⓘ Et les MÊMES clés qu'une question de la racine : la page les rend avec un seul
@@ -87,6 +88,12 @@ class TestPlacements(TransactionCase):
         root = self.session.web_state()["attributes"]
         if root:
             self.assertEqual(sorted(root[0]), sorted(question))
+
+    def test_la_taille_de_l_attribut_part_avec_la_question_d_une_piece(self):
+        """D-382 : le constructeur des PLACEMENTS sert la taille, comme celui de la racine."""
+        self.couleur.write({"display_type": "card", "answer_size": "large"})
+        question = self._placements()["c%s" % self.link_poignee.id]["questions"][0]
+        self.assertEqual(question["answerSize"], "large")
 
     # ── RÉPONDRE ───────────────────────────────────────────────────────────
     def test_repondre_ecrit_la_session_et_coche_la_valeur(self):

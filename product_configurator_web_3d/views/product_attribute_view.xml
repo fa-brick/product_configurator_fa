@@ -17,6 +17,9 @@
             <xpath expr="//field[@name='display_type'][@widget='radio']" position="after">
                 <field name="swatch_mark" widget="radio" options="{'horizontal': True}"
                        invisible="display_type != 'swatch'"/>
+                <!-- ⓘ La TAILLE, pour les deux formes qui montrent une image (D-382). -->
+                <field name="answer_size" widget="radio" options="{'horizontal': True}"
+                       invisible="display_type not in ('card', 'swatch')"/>
             </xpath>
             <!-- ⓘ Ordre voulu par Gerry (2026-09-29) : MATIÈRE, valeur, aperçu. La
                  matière est ce qu'on choisit ; le nom de la valeur la nomme, et la

@@ -92,6 +92,8 @@ class ProductConfigSession(models.Model):
                 "displayType": line.attribute_id.display_type,
                 # ⓘ La marque du choix d'une grande pastille : coche ou anneau.
                 "swatchMark": line.attribute_id.swatch_mark,
+                # ⓘ La taille d'une carte ou d'une grande pastille (D-382).
+                "answerSize": line.attribute_id.answer_size,
                 "values": [
                     {
                         "id": value.id,
@@ -806,6 +808,7 @@ class ProductConfigSession(models.Model):
                 "customValue": typed.get(line.attribute_id.id),
                 "displayType": line.attribute_id.display_type,
                 "swatchMark": line.attribute_id.swatch_mark,
+                "answerSize": line.attribute_id.answer_size,
                 "values": [{
                     "id": value.id,
                     "name": value.display_value or value.name,

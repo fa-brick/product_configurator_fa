@@ -34,7 +34,8 @@ describe("la grande pastille", () => {
     });
 
     test("⚠️ la coche OU l'anneau, jamais les deux (Gerry) — la marque vient de l'attribut", () => {
-        expect(bloc).toContain("t-att-class=\"'o_cfg3d_bigswatches--' + question.swatchMark\"");
+        // ⓘ La TAILLE (D-382) s'ajoute derrière la marque, dans le même attribut.
+        expect(bloc).toContain("t-att-class=\"'o_cfg3d_bigswatches--' + question.swatchMark + ");
         // L'anneau n'existe que sous `--ring` : aucune autre règle ne le pose sur la pastille choisie.
         const rings = SCSS.match(/0 0 0 4px \$o-brand-primary/g) || [];
         expect(rings.length).toBe(2);                 // la grande (sous --ring) et la petite « Couleur »

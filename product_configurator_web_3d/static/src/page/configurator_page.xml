@@ -233,7 +233,8 @@
 
         <!-- ── LA CARTE : une vignette, son libellé dessous ── -->
         <div t-elif="question.displayType === 'card'"
-             class="o_cfg3d_cards">
+             class="o_cfg3d_cards"
+             t-att-class="'o_cfg3d_cards--' + question.answerSize">
             <t t-foreach="question.values" t-as="value" t-key="value.id">
                 <button class="o_cfg3d_card"
                         t-att-class="{
@@ -263,7 +264,7 @@
              rogne. -->
         <div t-elif="question.displayType === 'swatch'"
              class="o_cfg3d_bigswatches"
-             t-att-class="'o_cfg3d_bigswatches--' + question.swatchMark">
+             t-att-class="'o_cfg3d_bigswatches--' + question.swatchMark + ' o_cfg3d_bigswatches--' + question.answerSize">
             <t t-foreach="question.values" t-as="value" t-key="value.id">
                 <button class="o_cfg3d_bigswatch"
                         t-att-class="{

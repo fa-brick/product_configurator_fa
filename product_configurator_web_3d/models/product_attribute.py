@@ -140,6 +140,18 @@ class ProductAttribute(models.Model):
         help="How a large swatch shows that it is chosen: a checkmark in its centre, or a "
         "ring around it. The name below turns bold in both cases.",
     )
+    # ⓘ **LA TAILLE d'une carte ou d'une grande pastille** — D-382 (Gerry, 2026-09-30 :
+    # « plutôt modifier la taille que le nombre en largeur »). Le nombre par ligne en
+    # découle, selon la place. `medium` est l'affichage d'avant ce champ : un attribut
+    # existant ne bouge pas d'un pixel.
+    answer_size = fields.Selection(
+        selection=[("small", "Small"), ("medium", "Medium"), ("large", "Large")],
+        default="medium",
+        required=True,
+        string="Answer size",
+        help="Size of the cards or large swatches on the configurator page. How many fit "
+        "on a row follows from the space available.",
+    )
 
 
 class ProductAttributeValue(models.Model):

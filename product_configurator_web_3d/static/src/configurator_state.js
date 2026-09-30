@@ -18,6 +18,9 @@ import { _t } from "@web/core/l10n/translation";
  * refaire. On garde donc l'ancienne quand elle n'a pas changé.
  */
 
+/** Les tailles d'une carte ou d'une grande pastille (`answer_size`, D-382). */
+export const ANSWER_SIZES = ["small", "medium", "large"];
+
 /** Une question, telle que la page la rend — de la racine ou d'un placement. */
 function toQuestion(line) {
     return {
@@ -30,6 +33,10 @@ function toQuestion(line) {
         displayType: line.displayType || "radio",
         // ⓘ La marque du choix d'une grande pastille — la coche si rien n'est dit.
         swatchMark: line.swatchMark === "ring" ? "ring" : "check",
+        // ⓘ La taille d'une carte ou d'une grande pastille (D-382) — `medium`, l'affichage
+        // d'avant ce réglage, pour toute valeur inconnue ou absente (un serveur qui ne la
+        // sert pas encore).
+        answerSize: ANSWER_SIZES.includes(line.answerSize) ? line.answerSize : "medium",
         values: (line.values || []).map(toValue),
         // ⓘ **LA SAISIE LIBRE** (D-353) : la forme du champ, ou `null` quand la question
         // se répond par sa liste. C'est ELLE qui décide du champ, avant `displayType` —

@@ -161,6 +161,15 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
     gap: 8px;
+
+    /* ⓘ LA TAILLE vient de l'attribut (`answer_size`, D-382) : une largeur MINIMALE, et le
+       nombre par ligne en découle. `medium` est la règle ci-dessus, inchangée.
+       ⚠️ **64 px, pas 72.** La colonne offre 308 px ; quatre cartes de 72 px et leurs trois
+       écarts en demandent 312 : la petite taille rendait TROIS cartes de 97 px, exactement
+       la moyenne (mesuré sur la page, 2026-09-30). 64 px en loge quatre, barre de
+       défilement comprise (293 px). */
+    &--small { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+    &--large { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
 }
 
 .o_cfg3d_card {
@@ -196,6 +205,9 @@
 
 .o_cfg3d_card_label {
     font-size: 12px;
+
+    /* Quatre cartes par ligne : un corps plus petit pour garder deux lignes lisibles. */
+    .o_cfg3d_cards--small & { font-size: 11px; }
     line-height: 1.25;
     /* Deux lignes au plus : au-delà, les cartes cessent d'être comparables. */
     display: -webkit-box;
@@ -212,6 +224,10 @@
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
     gap: 12px 8px;
     padding: 6px 4px;
+
+    /* ⓘ LA TAILLE (D-382) : la case de la grille suit le disque, 20 px de plus pour le nom. */
+    &--small { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); }
+    &--large { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); }
 }
 
 .o_cfg3d_bigswatch {
@@ -241,6 +257,10 @@
 
     img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
+    /* ⓘ LA TAILLE (D-382) — 64 px est `medium`, la règle ci-dessus. */
+    .o_cfg3d_bigswatches--small & { width: 48px; height: 48px; }
+    .o_cfg3d_bigswatches--large & { width: 88px; height: 88px; }
+
     /* ⚠️ Le survol ne vise que les pastilles NON choisies : `:hover` pèse plus lourd que la
        classe, et la souris reste sur celle qu'on vient de cliquer — l'anneau disparaissait
        jusqu'à ce qu'elle s'en aille (mesuré au pixel sur une copie de fabk18). */
@@ -263,6 +283,10 @@
     background: rgba(0, 0, 0, 0.28);
     color: #fff;
     font-size: 20px;
+
+    /* La coche suit le disque, pour ne pas le remplir ni s'y perdre. */
+    .o_cfg3d_bigswatches--small & { font-size: 16px; }
+    .o_cfg3d_bigswatches--large & { font-size: 26px; }
 }
 
 .o_cfg3d_bigswatch_label {

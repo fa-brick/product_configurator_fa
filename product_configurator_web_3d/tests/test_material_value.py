@@ -6,6 +6,7 @@ suivait : aucune colonne de la valeur ne pointait une fiche matière. Ces tests
 """
 
 from odoo.exceptions import ValidationError
+from odoo.tools import mute_logger
 
 from odoo.addons.base.tests.common import BaseCommon
 
@@ -85,7 +86,9 @@ class MaterialValue(BaseCommon):
             "name": "Steel", "attribute_id": attribute.id,
             "material_id": self.other.id,
         })
-        with self.assertRaises(Exception):
+        # ⓘ Le refus passe par la clé étrangère : Postgres rejette le DELETE, et Odoo le
+        # journalise en ERROR — une erreur ATTENDUE, qu'on ne laisse pas traîner au journal.
+        with self.assertRaises(Exception), mute_logger("odoo.sql_db"):
             self.other.unlink()
 
     def test_05_picking_a_material_FILLS_the_name(self):

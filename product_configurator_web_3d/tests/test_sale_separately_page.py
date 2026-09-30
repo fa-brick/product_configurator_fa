@@ -60,6 +60,13 @@ class TestSaleSeparatelyPage(TransactionCase):
             "parent_id": cls.door.id, "child_id": cls.handle.id,
             "swap_attribute_id": cls.option.id,
         })
+        # ⚠️ **UNE LISTE DE PRIX À SOI, VIDE.** Le prix d'une ligne à part passe par la liste
+        # de l'utilisateur (`web_separate_lines`), donc par celle de la BASE où tourne le
+        # test : sur fabk18, la liste « Par défaut » portait une règle globale « prix fixe
+        # 0 » (4 août → 30 septembre 2026), et trois tests tombaient à 0 au lieu de 10 et
+        # 12 sans que le code soit en cause (2026-09-30). Le test fixe la sienne.
+        cls.pricelist = cls.env["product.pricelist"].create({"name": "Sans règle"})
+        cls.env.user.partner_id.specific_property_product_pricelist = cls.pricelist
 
     def _session(self, *values):
         # ⓘ Créée VIDE puis répondue : à la création, la session pose d'office le défaut
@@ -97,6 +104,17 @@ class TestSaleSeparatelyPage(TransactionCase):
         self.assertEqual(product.product_template_attribute_value_ids.product_attribute_value_id,
                          self.black)
         self.assertEqual(line["price"], 10.0)
+
+    def test_la_ligne_a_part_suit_la_LISTE_DE_PRIX(self):
+        """C'est pour elle que le prix passe par la liste de l'utilisateur : le panier la
+        facture, la page doit annoncer le même prix."""
+        self.env["product.pricelist.item"].create({
+            "pricelist_id": self.pricelist.id, "applied_on": "1_product",
+            "product_tmpl_id": self.handle_tmpl.id,
+            "compute_price": "fixed", "fixed_price": 7.0,
+        })
+        lines = self._session(self.black, self.handle_value).web_separate_lines()
+        self.assertEqual([line["price"] for line in lines], [7.0])
 
     def test_la_variante_de_la_piece_nait_meme_non_touchee(self):
         """⚠️ Avant D-368, une pièce que le client n'avait pas répondue ne recevait aucune

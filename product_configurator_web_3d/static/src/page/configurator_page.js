@@ -1012,7 +1012,6 @@ export class ConfiguratorPage extends Component {
             return;
         }
         const placement = nodeId ? this.selectedPlacement : null;
-        if (!nodeId) this._showQuestionView(question.id);
         const payload = customAnswerFor(
             this.state.model, question, raw, placement, localization.decimalPoint);
         if (!payload) return;
@@ -1029,6 +1028,7 @@ export class ConfiguratorPage extends Component {
         }
         await this._applyModel(next);
         this.state.loading = false;
+        if (!nodeId) await this._showQuestionViewAfterPaint(question.id);
     }
 
     /** La liste déroulante d'un placement — même porte que `onSelect` pour la racine. */
@@ -1159,6 +1159,25 @@ export class ConfiguratorPage extends Component {
     _showQuestionView(questionId) {
         const question = this.questions.find((q) => q.id === questionId);
         this._showView(questionView(question, this.steps));
+    }
+
+    /**
+     * La vue d'une question qu'on vient de RÉPONDRE — une fois la nouvelle scène peinte.
+     *
+     * ⚠️ **PARTIE AU CLIC, L'ANIMATION ÉTAIT COUPÉE** (Gerry, 2026-09-30) : la réponse du
+     * serveur arrive pendant les 500 ms du trajet, et la reconstruction qui suit
+     * (`_buildScene`, synchrone, puis les maillages du viewer au rendu suivant) bloque le
+     * fil — l'image gèle, puis saute à l'arrivée. On attend donc que `_applyModel` ait
+     * construit ET que le viewer ait peint : deux images, la première portant le rendu
+     * d'OWL, la seconde la peinture qui le suit. Le trajet part ensuite sur un fil libre.
+     *
+     * ⓘ Ouvrir le panneau d'une question, qui ne reconstruit rien, garde la vue immédiate
+     * (`openPanel`) : c'est alors elle qui est déjà montrée au moment du choix.
+     */
+    async _showQuestionViewAfterPaint(questionId) {
+        await new Promise((resolve) =>
+            browser.requestAnimationFrame(() => browser.requestAnimationFrame(resolve)));
+        this._showQuestionView(questionId);
     }
 
     /**
@@ -1319,9 +1338,6 @@ export class ConfiguratorPage extends Component {
             this.state.reason = this.handLabel;
             return;
         }
-        // ⓘ D-387 — la vue de la question, AVANT l'aller-retour : la caméra part pendant
-        // que le serveur répond, au lieu d'attendre la reconstruction.
-        this._showQuestionView(questionId);
         const payload = answerFor(this.state.model, questionId, value.id);
         if (!payload) {
             this.state.reason = reasonFor(value);
@@ -1332,6 +1348,8 @@ export class ConfiguratorPage extends Component {
         const next = await this._call("/configurator/set_value", payload);
         await this._applyModel(next);
         this.state.loading = false;
+        // ⓘ D-387 — la vue de la question, APRÈS la nouvelle scène (`_showQuestionViewAfterPaint`).
+        await this._showQuestionViewAfterPaint(questionId);
     }
 
     /**

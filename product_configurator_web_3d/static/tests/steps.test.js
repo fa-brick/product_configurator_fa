@@ -161,8 +161,19 @@ describe("la vue d'une question : la sienne, sinon celle de son étape (D-163, D
         const show = JS.slice(JS.indexOf("    _showView(view) {"));
         expect(show.slice(0, show.indexOf("\n    }\n"))).toContain("=== this._shownView) return");
         expect(JS.slice(JS.indexOf("    openPanel("), JS.indexOf("    closePanel("))).toContain("_showQuestionView");
-        expect(JS.slice(JS.indexOf("    async onPick("), JS.indexOf("/configurator/set_value\", payload);\n        await this._applyModel(next);\n        this.state.loading = false;\n    }\n\n    /**\n     * Terminer")))
-            .toContain("_showQuestionView(questionId)");
+    });
+
+    test("⚠️ après une RÉPONSE, la vue part une fois la scène reconstruite ET peinte — pas au clic", () => {
+        // Gerry : « la caméra se déclenche quand on a cliqué sur une valeur, il y a donc une
+        // coupure dans l'animation à chaque fois ».
+        const JS = readFileSync(join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
+        const pick = JS.slice(JS.indexOf("    async onPick("), JS.indexOf("     * Terminer"));
+        expect(pick).not.toMatch(/this\._showQuestionView\(/);
+        expect(pick.indexOf("_showQuestionViewAfterPaint")).toBeGreaterThan(pick.indexOf("await this._applyModel(next)"));
+        const free = JS.slice(JS.indexOf("    async _sendFreeAnswer("), JS.indexOf("    onAnswerSelect("));
+        expect(free.indexOf("_showQuestionViewAfterPaint")).toBeGreaterThan(free.indexOf("await this._applyModel(next)"));
+        const after = JS.slice(JS.indexOf("    async _showQuestionViewAfterPaint("));
+        expect(after.slice(0, after.indexOf("\n    }\n"))).toMatch(/requestAnimationFrame\(\(\) => browser\.requestAnimationFrame/);
     });
 });
 

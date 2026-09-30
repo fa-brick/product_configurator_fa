@@ -169,11 +169,48 @@ export function dropLayout(rows, at, movedLineId) {
         !row.transient &&
         (row.kind === "step" ||
             (row.kind === "attribute" && row.lineId !== movedLineId));
-    const tokens = [
+    return layoutOf([
         ...rows.slice(0, at + 1).filter(keep),
         {kind: "attribute", lineId: movedLineId},
         ...rows.slice(at + 1).filter(keep),
-    ];
+    ]);
+}
+
+/**
+ * L'arbre après le dépôt d'un BANDEAU — la même lecture que pour un attribut.
+ *
+ * ⚠️ **LE BANDEAU SE POSE OÙ LE FANTÔME L'A MONTRÉ, ET CHAQUE BANDEAU S'OUVRE SUR
+ * LE PREMIER ATTRIBUT QUI LE SUIT.** Constat de Gerry : *« je ne peux pas déplacer
+ * ma nouvelle étape créée au début de la liste »*. L'ancien calcul ne regardait
+ * que la ligne sous le point de dépôt : déposé contre un autre bandeau, il visait
+ * une ligne qui ouvrait DÉJÀ une étape, et le serveur refusait. Lu ainsi, poser
+ * « New Step » en tête l'ouvre sur la première ligne, et la ligne qu'il ouvrait
+ * rejoint l'étape d'au-dessus.
+ *
+ * ⓘ `null` : une étape en sortirait VIDE — déposée sous la dernière ligne, ou
+ * collée contre un autre bandeau. Une étape qui n'ouvre rien n'existe pas : on
+ * ne dépose pas.
+ *
+ * ⓘ Fonction PURE, mêmes descripteurs que `dropLayout`.
+ */
+export function stepDropLayout(rows, at, movedStepId) {
+    const keep = (row) =>
+        !row.transient &&
+        (row.kind === "attribute" ||
+            (row.kind === "step" && row.stepId !== movedStepId));
+    const layout = layoutOf([
+        ...rows.slice(0, at + 1).filter(keep),
+        {kind: "step", stepId: movedStepId},
+        ...rows.slice(at + 1).filter(keep),
+    ]);
+    return layout.steps ? layout : null;
+}
+
+/**
+ * Ce qu'une suite de rangées dit : l'ordre des lignes, et la ligne que chaque
+ * bandeau ouvre — `steps: null` si un bandeau n'ouvre rien.
+ */
+function layoutOf(tokens) {
     const order = tokens
         .filter((token) => token.kind === "attribute")
         .map((token) => token.lineId);
@@ -204,27 +241,6 @@ export function restepRows(rows, steps) {
             ? {...row, line_id: lineOf.get(row.id)}
             : row
     );
-}
-
-/**
- * La première ligne d'ATTRIBUT sous le point de dépôt.
- *
- * ⚠️ Un bandeau s'ouvre sur ce qui le SUIT — c'est toute la forme (A) de D-202.
- * Et l'on ne s'arrête que sur un attribut : une valeur porte l'identifiant de sa
- * ligne, qui est au-dessus d'elle.
- *
- * ⓘ Fonction PURE. `null` : rien en dessous — une étape qui n'ouvre rien
- * n'existe pas.
- */
-export function attributeLineIdBelow(rows, at) {
-    for (let i = Math.max(at, 0); i < rows.length; i++) {
-        const row = rows[i];
-        if (row.transient || row.kind !== "attribute") {
-            continue;
-        }
-        return row.lineId;
-    }
-    return null;
 }
 
 /**
@@ -287,32 +303,6 @@ export function reorderRowValues(rows, lineId, valueIds) {
             values: valueIds.map((id) => parId.get(id)).filter(Boolean),
         };
     });
-}
-
-/**
- * Le bandeau change de ligne — il s'ouvre désormais SUR celle-ci.
- *
- * ⓘ Fonction PURE. Le bandeau se pose JUSTE AVANT son attribut : c'est toute la
- * forme (A) de D-202 — ce qui suit une étape lui appartient.
- */
-export function moveStepRow(rows, stepId, lineId) {
-    const bandeau = (rows || []).find(
-        (row) => row.kind === "step" && row.id === stepId
-    );
-    if (!bandeau) {
-        return [...(rows || [])];
-    }
-    const suivant = [];
-    for (const row of rows) {
-        if (row === bandeau) {
-            continue;
-        }
-        if (row.kind === "attribute" && row.id === lineId) {
-            suivant.push({...bandeau, line_id: lineId});
-        }
-        suivant.push(row);
-    }
-    return suivant;
 }
 
 export class ConfiguratorTree extends Component {
@@ -384,13 +374,16 @@ export class ConfiguratorTree extends Component {
             onDragEnd: ({element}) => this.releaseCellWidths(element),
             onDrop: ({element, previous}) => this.onDropValue(element, previous),
         });
-        // ⚠️ **UN BANDEAU SE DÉPLACE PAR SON `next`, PAS PAR SON `previous`.**
-        // L'étape s'ouvre SUR la ligne qui la suit (D-202) : c'est donc le
-        // premier attribut SOUS le point de dépôt qui reçoit le marqueur, pas
-        // celui du dessus.
+        // ⚠️ **LE FANTÔME D'UN BANDEAU DOIT POUVOIR PASSER ENTRE LES ATTRIBUTS.**
+        // Le cœur ne déplace le fantôme qu'au survol des `elements`
+        // (`sortable.js`, `onElementPointerEnter`) : limités aux bandeaux, un
+        // bandeau seul ne bougeait JAMAIS, et deux ne faisaient qu'échanger leurs
+        // places — c'est ce que Gerry a vu. Les attributs sont donc des éléments
+        // de ce glisser aussi ; seule la POIGNÉE d'étape le démarre, et un
+        // attribut n'en porte pas.
         useSortable({
             ref: this.rootRef,
-            elements: ".o_config_step",
+            elements: ".o_config_step, .o_config_attribute",
             handle: ".o_config_step_handle",
             cursor: "grabbing",
             placeholderClasses: ["d-table-row", "o_config_ghost"],
@@ -461,10 +454,13 @@ export class ConfiguratorTree extends Component {
             }
         } finally {
             this.writing = false;
+            // ⓘ On relit dans TOUS les cas : après une écriture pour confirmer,
+            // après un enregistrement refusé pour DÉFAIRE l'anticipation.
+            // ⚠️ DANS le `finally` : un refus du serveur LÈVE, et la relecture
+            // placée après était sautée — l'arbre gardait l'état anticipé, deux
+            // bandeaux empilés que la base n'avait jamais eus (capture de Gerry).
+            await this.load();
         }
-        // ⓘ On relit dans TOUS les cas : après une écriture pour confirmer,
-        // après un enregistrement refusé pour DÉFAIRE l'anticipation.
-        await this.load();
     }
 
     get rows() {
@@ -804,25 +800,25 @@ export class ConfiguratorTree extends Component {
         }
     }
 
+    /**
+     * ⓘ Le même appel que le dépôt d'un attribut (`configurator_reorder`) :
+     * l'ordre ne change pas, les marqueurs si — et plusieurs à la fois quand le
+     * bandeau passe au-dessus d'un autre.
+     */
     async onDropStep(element, previous, next) {
-        const stepId = Number(element.dataset.stepId);
         const rangees = this.bodyRows();
-        const at = this.dropAt(rangees, previous, next);
-        // ⓘ On repart d'un cran SOUS le point de dépôt : le bandeau s'ouvre sur
-        // ce qui le suit. `at` vaut −1 quand le fantôme n'a aucun voisin — il
-        // est alors seul dans son bloc, et rien n'a bougé.
-        const lineId =
-            previous || next ? attributeLineIdBelow(rangees, at + 1) : null;
-        if (!lineId) {
-            // Déposé sous la dernière ligne : il n'y a rien à ouvrir. Le cœur
-            // n'a pas touché au DOM (`applyChangeOnDrop` est faux), le bandeau
-            // est déjà revenu seul.
+        const layout = stepDropLayout(
+            rangees, this.dropAt(rangees, previous, next), Number(element.dataset.stepId)
+        );
+        if (!layout) {
+            // Une étape en sortirait vide. Le cœur n'a pas touché au DOM
+            // (`applyChangeOnDrop` est faux) : le bandeau est déjà revenu seul.
             return;
         }
         await this.writeAndReload(
-            "product.template", "configurator_move_step",
-            [[this.templateId], stepId, lineId],
-            moveStepRow(this.state.rows, stepId, lineId)
+            "product.template", "configurator_reorder",
+            [[this.templateId], layout.order, layout.steps],
+            reorderRows(restepRows(this.state.rows, layout.steps), layout.order)
         );
     }
 

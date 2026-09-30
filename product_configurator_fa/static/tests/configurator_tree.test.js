@@ -6,16 +6,15 @@
  * précisément le cas que le dialogue existe pour éviter (D-206).
  */
 import {
-    attributeLineIdBelow,
     dropIndex,
     flattenTree,
     dropLayout,
     groupRows,
-    moveStepRow,
     reorder,
     reorderRowValues,
     reorderRows,
     restepRows,
+    stepDropLayout,
 } from "../src/js/configurator_tree.esm.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -178,18 +177,6 @@ describe("Le dépôt s'affiche AVANT que le serveur l'ait confirmé", () => {
         expect(suivant[0]).not.toBe(arbre[0]);
         expect(arbre[0].values.map((v) => v.id)).toEqual([11, 12]);
     });
-
-    test("le bandeau déplacé se pose JUSTE AVANT sa nouvelle ligne", () => {
-        const suivant = moveStepRow(ARBRE_ETAPE, 9, 3);
-        expect(suivant.map((r) => `${r.kind}${r.id}`)).toEqual([
-            "attribute1", "attribute2", "step9", "attribute3",
-        ]);
-        expect(suivant[2].line_id).toBe(3);
-    });
-
-    test("⚠️ un bandeau inconnu ne mutile pas l'arbre", () => {
-        expect(moveStepRow(ARBRE_ETAPE, 999, 3)).toEqual(ARBRE_ETAPE);
-    });
 });
 
 describe("L'arbre se découpe en blocs — un conteneur par attribut", () => {
@@ -269,14 +256,6 @@ describe("Le point de dépôt se calcule sur la liste PLATE, pas sur les voisins
         expect(dropLayout(RANGEES_ETAPE, -1, 3).order).toEqual([3, 1, 2]);
     });
 
-    test("un bandeau s'ouvre sur le premier ATTRIBUT en dessous, pas sur une valeur", () => {
-        expect(attributeLineIdBelow(RANGEES, 1)).toBe(2);
-        expect(attributeLineIdBelow(RANGEES, 0)).toBe(1);
-    });
-
-    test("⚠️ rien en dessous : une étape qui n'ouvre rien n'existe pas", () => {
-        expect(attributeLineIdBelow(RANGEES, 4)).toBe(null);
-    });
 });
 
 describe("Le nom d'une question s'affiche UNE fois (D-368)", () => {
@@ -352,5 +331,55 @@ describe("Un bandeau reste où il s'affiche ; seul l'attribut bouge", () => {
             "attribute3", "attribute4", "step7", "attribute5",
         ]);
         expect(restepRows(arbre, null)).toEqual(arbre);
+    });
+});
+
+describe("Un bandeau se dépose ENTRE les attributs — et s'ouvre sur celui qui le suit", () => {
+    // ⚠️ Constat de Gerry : « je ne peux pas déplacer ma nouvelle étape créée au début
+    // de la liste ». Le fantôme d'un bandeau ne passait qu'entre bandeaux, et le dépôt
+    // visait une ligne qui ouvrait déjà une étape : refus du serveur.
+    const JENO = [
+        {kind: "attribute", lineId: 1, transient: false}, // Cam plate
+        {kind: "attribute", lineId: 2, transient: false}, // TopPlate
+        {kind: "step", lineId: 5, stepId: 14, transient: false}, // Impressions 3D
+        {kind: "attribute", lineId: 5, transient: false}, // Couleur impression
+        {kind: "step", lineId: 6, stepId: 15, transient: true}, // New Step, emporté
+        {kind: "attribute", lineId: 6, transient: false}, // Bumper Avant
+    ];
+
+    test("⚠️ « New Step » posé EN TÊTE ouvre la première ligne ; Bumper rejoint Impressions 3D", () => {
+        expect(stepDropLayout(JENO, -1, 15)).toEqual({
+            order: [1, 2, 5, 6], steps: [[15, 1], [14, 5]],
+        });
+    });
+
+    test("posé entre deux attributs, il s'ouvre sur celui du DESSOUS", () => {
+        expect(stepDropLayout(JENO, 0, 15)).toEqual({
+            order: [1, 2, 5, 6], steps: [[15, 2], [14, 5]],
+        });
+    });
+
+    test("ⓘ collé contre un autre bandeau, une étape serait vide : on ne dépose pas", () => {
+        // Juste au-dessus d'« Impressions 3D ».
+        expect(stepDropLayout(JENO, 1, 15)).toBe(null);
+    });
+
+    test("ⓘ sous la dernière ligne, il n'ouvrirait rien : on ne dépose pas", () => {
+        expect(stepDropLayout(JENO, 5, 15)).toBe(null);
+    });
+
+    test("⚠️ le glisser d'un bandeau survole AUSSI les attributs — sinon son fantôme ne bouge pas", () => {
+        const source = readFileSync(
+            join(__dirname, "..", "src", "js", "configurator_tree.esm.js"), "utf8");
+        expect(source).toContain('elements: ".o_config_step, .o_config_attribute"');
+        expect(source).toContain('handle: ".o_config_step_handle"');
+    });
+
+    test("⚠️ un refus du serveur DÉFAIT l'anticipation — la relecture est dans le `finally`", () => {
+        const source = readFileSync(
+            join(__dirname, "..", "src", "js", "configurator_tree.esm.js"), "utf8");
+        const write = source.slice(source.indexOf("async writeAndReload("));
+        const body = write.slice(0, write.indexOf("\n    }\n"));
+        expect(body.slice(body.indexOf("} finally {"))).toContain("await this.load();");
     });
 });

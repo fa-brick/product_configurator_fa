@@ -22,6 +22,15 @@ class ProductAttributeLine(models.Model):
         self.ensure_one()
         return self.view_camera_id.display_name or ""
 
+    def _configurator_camera_id(self):
+        self.ensure_one()
+        return self.view_camera_id.id or False
+
+    def _configurator_set_camera(self, camera_id):
+        """Posée depuis la liste déroulante de l'arbre (D-386)."""
+        self.ensure_one()
+        self.view_camera_id = self.product_tmpl_id._configurator_camera_of(camera_id)
+
     view_camera_id = fields.Many2one(
         comodel_name="product.model3d.camera",
         string="3D View",

@@ -91,7 +91,7 @@
                 <span class="o_config_step_handle o_row_handle oi oi-draggable"
                       title="Move this step — everything below it belongs to it"/>
             </td>
-            <td colspan="3">
+            <td colspan="2">
                 <!-- ⚠️ **LE NOM SE SAISIT ICI, PAS DANS UN DIALOGUE.**
                      Gerry : le geste doit être celui d'« Ajouter une
                      section » — une ligne se crée, on la nomme, on la
@@ -110,6 +110,10 @@
                     <em t-esc="row.name"/>
                 </a>
             </td>
+            <!-- ⓘ D-386 — la vue 3D de l'ÉTAPE, choisie ici comme celle d'un attribut. -->
+            <td class="o_config_tree_view">
+                <t t-call="product_configurator_fa.ConfiguratorTree.Camera"/>
+            </td>
             <td class="o_config_tree_actions">
                 <!-- ⓘ Le nom sert désormais à RENOMMER : les réglages de
                      l'étape — sa condition de visibilité (D-086), sa vue
@@ -127,6 +131,24 @@
                 </button>
             </td>
         </tr>
+    </t>
+
+    <!-- ⓘ LA VUE 3D d'un attribut ou d'une étape — D-386 (Gerry : « on voit une colonne 3D
+         view mais pas de liste déroulante pour choisir »). La liste vient du PONT 3D
+         (`configurator_camera_choices`) : sans lui, ou sans vue sur le produit, on
+         affiche le nom comme avant. L'option vide : « la caméra ne bouge pas » (D-163). -->
+    <t t-name="product_configurator_fa.ConfiguratorTree.Camera">
+        <select t-if="state.cameras.length" class="o_input o_config_camera"
+                t-att-title="row.camera or ''"
+                t-on-change="(ev) => this.setCamera(row, ev.target.value)">
+            <option value="" t-att-selected="!row.camera_id"/>
+            <t t-foreach="state.cameras" t-as="camera" t-key="camera.id">
+                <option t-att-value="camera.id"
+                        t-att-selected="camera.id === row.camera_id"
+                        t-esc="camera.name"/>
+            </t>
+        </select>
+        <t t-else="" t-esc="row.camera or ''"/>
     </t>
 
     <t t-name="product_configurator_fa.ConfiguratorTree.Row">
@@ -235,7 +257,12 @@
                     </div>
                 </t>
             </td>
-            <td class="o_config_tree_view"><t t-esc="row.camera or ''"/></td>
+            <td class="o_config_tree_view">
+                <!-- ⓘ D-386 — une LISTE DÉROULANTE pour l'attribut ; rien pour une valeur :
+                     la vue ne descend pas aux valeurs (D-204). -->
+                <t t-if="row.kind === 'attribute'"
+                   t-call="product_configurator_fa.ConfiguratorTree.Camera"/>
+            </td>
             <td class="o_config_tree_actions">
                 <button
                     t-if="row.kind === 'attribute'"

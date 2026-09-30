@@ -6,7 +6,7 @@ from datetime import timedelta
 from psycopg2 import IntegrityError
 
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -926,6 +926,20 @@ class ProductAttributeLine(models.Model):
         """
         self.ensure_one()
         return ""
+
+    def _configurator_camera_id(self):
+        """L'identifiant de la vue 3D de cette ligne — `False` sans le pont (D-386).
+
+        ⓘ Même crochet que `_configurator_camera_name`, pour la même raison : la
+        colonne de l'arbre devient une LISTE DÉROULANTE, qui doit savoir quelle vue
+        est choisie sans que le cœur connaisse `view_camera_id`.
+        """
+        self.ensure_one()
+        return False
+
+    def _configurator_set_camera(self, camera_id):
+        """Poser la vue 3D de cette ligne — le pont l'écrit, le cœur ne sait pas."""
+        raise UserError(self.env._("3D views need the 3D configurator module."))
 
     def action_open_configurator_line(self):
         """Ouvre les réglages de CETTE ligne — D-217.

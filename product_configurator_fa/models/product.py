@@ -141,14 +141,20 @@ class ProductTemplate(models.Model):
                     (regle.attribute_line_id.id, valeur.id), regle
                 )
 
+        etapes = {sl.config_step_id: sl for sl in self.config_step_line_ids}
         for ligne in self.attribute_line_ids.sorted():
             if ligne.config_step_id and ligne.config_step_id != ouverte:
                 ouverte = ligne.config_step_id
+                # ⓘ La vue 3D de l'étape vit sur SA ligne d'étape (`step.line`), pas
+                # sur `product.config.step`, partagé entre produits (D-386).
+                etape = etapes.get(ligne.config_step_id)
                 lignes.append({
                     "kind": "step",
                     "id": ligne.config_step_id.id,
                     "line_id": ligne.id,
                     "name": ligne.config_step_id.display_name,
+                    "camera": etape._configurator_camera_name() if etape else "",
+                    "camera_id": etape._configurator_camera_id() if etape else False,
                 })
             lignes.append({
                 "kind": "attribute",
@@ -157,6 +163,7 @@ class ProductTemplate(models.Model):
                 "facets": ligne.visibility_domain_id._facet_data(),
                 "domain_id": ligne.visibility_domain_id.id,
                 "camera": ligne._configurator_camera_name(),
+                "camera_id": ligne._configurator_camera_id(),
                 # ⓘ D-368 — la question donne une ligne de devis À PART.
                 "sale_separately": bool(ligne.sale_separately),
                 "values": [
@@ -174,6 +181,42 @@ class ProductTemplate(models.Model):
                 ],
             })
         return lignes
+
+    # ─ LA VUE 3D, CHOISIE DANS L'ARBRE — D-386 ─────────────────────────────
+    #
+    # ⚠️ Demande de Gerry (2026-09-30) : *« on voit une colonne 3D view mais pas de
+    # liste déroulante pour choisir »*. La vue ne se posait que dans le dialogue de
+    # chaque ligne, et jamais depuis un bandeau d'étape. Le cœur ne connaît pas les
+    # caméras (D-075) : il demande les choix et délègue l'écriture au pont.
+
+    def _configurator_camera_choices(self):
+        """Les vues 3D qu'on peut choisir pour ce produit — aucune sans le pont."""
+        self.ensure_one()
+        return []
+
+    def configurator_camera_choices(self):
+        """`[{id, name}]` — la liste déroulante de la colonne « Vue 3D »."""
+        self.ensure_one()
+        return self._configurator_camera_choices()
+
+    def configurator_set_camera(self, kind, record_id, camera_id):
+        """Pose la vue 3D d'un ATTRIBUT (`kind="attribute"`, ligne d'attribut) ou d'une
+        ÉTAPE (`kind="step"`, `product.config.step`) — `camera_id` faux l'efface.
+
+        ⚠️ La cible est cherchée PARMI CELLES DU PRODUIT : sans cette garde, l'arbre
+        d'un produit pourrait écrire sur la ligne d'un autre.
+        """
+        self.ensure_one()
+        if kind == "step":
+            cible = self.config_step_line_ids.filtered(
+                lambda sl: sl.config_step_id.id == record_id
+            )[:1]
+        else:
+            cible = self.attribute_line_ids.filtered(lambda l: l.id == record_id)
+        if not cible:
+            raise UserError(self.env._("This line does not belong to this product."))
+        cible._configurator_set_camera(camera_id or False)
+        return True
 
     # ─ CE QUE L'ARBRE PEUT FAIRE — D-211 ────────────────────────────────────
     #

@@ -383,3 +383,28 @@ describe("Un bandeau se dépose ENTRE les attributs — et s'ouvre sur celui qui
         expect(body.slice(body.indexOf("} finally {"))).toContain("await this.load();");
     });
 });
+
+describe("La vue 3D se CHOISIT dans l'arbre — une liste déroulante (D-386)", () => {
+    // Gerry : « on voit une colonne 3D view mais pas de liste déroulante pour choisir ».
+    const XML = readFileSync(
+        join(__dirname, "..", "src", "js", "configurator_tree.xml"), "utf8");
+
+    test("la liste est un gabarit partagé par l'attribut ET le bandeau d'étape", () => {
+        expect(XML).toContain('t-name="product_configurator_fa.ConfiguratorTree.Camera"');
+        expect(XML.match(/t-call="product_configurator_fa\.ConfiguratorTree\.Camera"/g)).toHaveLength(2);
+    });
+
+    test("⚠️ le bandeau laisse sa colonne « Vue 3D » libre — son nom ne couvre plus que deux colonnes", () => {
+        const step = XML.slice(XML.indexOf('t-name="product_configurator_fa.ConfiguratorTree.StepRow"'),
+                               XML.indexOf('t-name="product_configurator_fa.ConfiguratorTree.Camera"'));
+        expect(step).toContain('colspan="2"');
+        expect(step).not.toContain('colspan="3"');
+    });
+
+    test("sans vue proposée (pas de pont 3D), le nom s'affiche comme avant", () => {
+        const camera = XML.slice(XML.indexOf('t-name="product_configurator_fa.ConfiguratorTree.Camera"'));
+        expect(camera).toContain('t-if="state.cameras.length"');
+        expect(camera).toContain('t-esc="row.camera or \'\'"');
+    });
+});
+

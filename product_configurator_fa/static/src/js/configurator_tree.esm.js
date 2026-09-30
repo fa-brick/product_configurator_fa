@@ -314,7 +314,9 @@ export class ConfiguratorTree extends Component {
         this.action = useService("action");
         // ⓘ `editingStep` porte l'étape dont le nom est en cours de saisie — une
         // seule à la fois, comme une section fraîche dans un bon de commande.
-        this.state = useState({rows: [], expanded: new Set(), editingStep: null});
+        // ⓘ `cameras` : les vues 3D du produit, la liste déroulante de la colonne « Vue
+        // 3D » (D-386) — vide sans le pont 3D, et la colonne montre alors un nom.
+        this.state = useState({rows: [], expanded: new Set(), editingStep: null, cameras: []});
         this.rootRef = useRef("root");
         this.stepInputRef = useRef("stepInput");
         // ⚠️ Une saisie qui n'a pas le FOCUS n'est pas une saisie : le cœur donne
@@ -414,8 +416,25 @@ export class ConfiguratorTree extends Component {
             this.state.rows = [];
             return;
         }
-        this.state.rows = await this.orm.call(
-            "product.template", "get_configurator_tree", [[this.templateId]]
+        const [rows, cameras] = await Promise.all([
+            this.orm.call("product.template", "get_configurator_tree", [[this.templateId]]),
+            this.orm.call("product.template", "configurator_camera_choices", [[this.templateId]]),
+        ]);
+        this.state.rows = rows;
+        this.state.cameras = cameras;
+    }
+
+    /**
+     * Choisir la vue 3D d'un attribut ou d'une étape — D-386.
+     *
+     * ⓘ `row.id` désigne la ligne d'attribut, ou l'ÉTAPE (`product.config.step`) pour un
+     * bandeau : le serveur retrouve la ligne d'étape du produit. Une valeur vide efface
+     * la vue — la caméra ne bouge plus (D-163).
+     */
+    async setCamera(row, value) {
+        await this.writeAndReload(
+            "product.template", "configurator_set_camera",
+            [[this.templateId], row.kind, row.id, value ? Number(value) : false]
         );
     }
 

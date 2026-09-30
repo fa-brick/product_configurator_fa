@@ -991,6 +991,19 @@ class ProductConfigStepLine(models.Model):
             custom_vals or {},
         )
 
+    # ⓘ LA VUE 3D D'UNE ÉTAPE, par crochets (D-386) — les mêmes que sur la ligne
+    # d'attribut : `view_camera_id` vient du pont, le cœur ne le connaît pas (D-075).
+    def _configurator_camera_name(self):
+        self.ensure_one()
+        return ""
+
+    def _configurator_camera_id(self):
+        self.ensure_one()
+        return False
+
+    def _configurator_set_camera(self, camera_id):
+        raise UserError(self.env._("3D views need the 3D configurator module."))
+
     @api.constrains("config_step_id")
     def _check_config_step(self):
         """Prevent to add same step more than once on same product template"""

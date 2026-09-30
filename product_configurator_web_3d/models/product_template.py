@@ -10,6 +10,7 @@ reprise depuis un devis sans 3D) — il ne sera retiré que lorsque tous auront
 leur remplaçant (lot 6, point c).
 """
 from odoo import models
+from odoo.exceptions import UserError
 
 
 class ProductTemplate(models.Model):
@@ -29,3 +30,23 @@ class ProductTemplate(models.Model):
         self.ensure_one()
         session = self.env["product.config.session"].create_get_session(self.id)
         return session.action_open_3d_page()
+
+    def _configurator_camera_choices(self):
+        """Le crochet du cœur, rempli ici : les vues des modèles 3D de ce produit (D-386).
+
+        ⓘ Le même domaine que `view_camera_id` : la liste de l'arbre ne propose que ce
+        que le formulaire accepterait.
+        """
+        self.ensure_one()
+        cameras = self.env["product.model3d.camera"].search(
+            [("model3d_id.product_tmpl_id", "=", self.id)], order="name, id")
+        return [{"id": camera.id, "name": camera.display_name} for camera in cameras]
+
+    def _configurator_camera_of(self, camera_id):
+        """La vue désignée — REFUSÉE si elle n'est pas une vue de ce produit."""
+        self.ensure_one()
+        if not camera_id:
+            return self.env["product.model3d.camera"]
+        if camera_id not in [choice["id"] for choice in self._configurator_camera_choices()]:
+            raise UserError(self.env._("This 3D view does not belong to this product."))
+        return self.env["product.model3d.camera"].browse(camera_id)

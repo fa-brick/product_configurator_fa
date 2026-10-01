@@ -163,7 +163,9 @@ $o-cfg3d-compact-max: 900px;
     max-height: 40dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 12px 0;
+    /* ⓘ 5 px de plus en bas qu'en haut : le champ respire au-dessus du bord de l'écran (Gerry,
+       2026-10-01 : « pour se sentir moins serré »). */
+    padding: 12px 0 17px;
 
     .o_cfg3d_question { margin-bottom: 0; }
 }

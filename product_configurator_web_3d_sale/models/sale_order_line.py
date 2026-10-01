@@ -7,11 +7,40 @@ sur chaque ligne configurable d'un devis en brouillon. Comme la clé à molette 
 la fiche produit, il ne change ni de place ni d'icône — seulement de
 destination.
 """
-from odoo import fields, models
+from odoo import Command, api, fields, models
 
 
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
+
+    # ── W-99 / D-393 : la ligne porte les réponses « sans variante » de SA configuration ──
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        lines._sync_no_variant_from_session()
+        return lines
+
+    def write(self, vals):
+        res = super().write(vals)
+        # ⓘ `product_id` aussi : une configuration rouverte (D-371) et reconfirmée change
+        # l'article de sa ligne (`_web_after_confirm`) — et peut-être ses réponses.
+        if "config_session_id" in vals or "product_id" in vals:
+            self._sync_no_variant_from_session()
+        return res
+
+    def _sync_no_variant_from_session(self):
+        """Recopier sur la ligne les réponses « sans variante » de sa configuration.
+
+        Depuis l'option A, elles ne sont plus dans l'article : la ligne est le SEUL endroit où
+        elles vivent après la commande — description, livraison, fabrication (le cœur d'Odoo
+        les passe à l'ordre de fabrication : `never_product_template_attribute_value_ids`).
+        ⓘ N'écrit que si elles changent : pas de boucle avec `write`.
+        """
+        for line in self.filtered("config_session_id"):
+            ptav_ids = line.config_session_id.sudo()._web_no_variant_ptav_ids()
+            if set(ptav_ids) != set(line.product_no_variant_attribute_value_ids.ids):
+                line.product_no_variant_attribute_value_ids = [Command.set(ptav_ids)]
 
     def reconfigure_product(self):
         """Ouvrir la configuration 3D de cette ligne.
@@ -39,7 +68,10 @@ class SaleOrderLine(models.Model):
             session = self.env["product.config.session"].create_get_session(
                 self.product_id.product_tmpl_id.id, force_create=True,
             )
-            values = self.product_id.product_template_attribute_value_ids
+            # ⓘ W-99 / D-393 — et les réponses « sans variante », qui vivent sur la LIGNE
+            # depuis l'option A, plus dans l'article.
+            values = self.product_id.product_template_attribute_value_ids \
+                | self.product_no_variant_attribute_value_ids
             session.value_ids = [(6, 0, values.product_attribute_value_id.ids)]
             self.config_session_id = session
         return session.action_open_3d_page()

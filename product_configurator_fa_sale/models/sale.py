@@ -53,16 +53,24 @@ class SaleOrderLine(models.Model):
         return result
 
     def _get_sale_order_line_multiline_description_variants(self):
+        """La description d'Odoo — réponses « sans variante » et saisies de la ligne — PUIS les
+        textes saisis dans la configuration qui n'y sont pas encore.
+
+        ⚠️ **W-99 / D-393 : elle S'AJOUTE, elle ne remplace plus.** La version d'OCA écrivait
+        les saisies de la session À LA PLACE de la description d'Odoo : depuis que les réponses
+        « sans variante » vivent sur la ligne et non dans l'article, elles auraient disparu du
+        devis dès qu'un texte était saisi. Et seules les saisies des questions « sans variante »
+        s'écrivent ici : celles des questions qui créent des variantes sont devenues des
+        valeurs de l'article (D-353), son nom les porte déjà.
+        """
         name = ""
         for line in self:
-            custom_values = line.custom_value_ids
-            if custom_values:
-                name += "\n" + "\n".join(
-                    [f"{cv.display_name}: {cv.value}" for cv in custom_values]
-                )
-            else:
-                name += super(
-                    SaleOrderLine,
-                    line,
-                )._get_sale_order_line_multiline_description_variants()
+            name += super(SaleOrderLine, line)._get_sale_order_line_multiline_description_variants()
+            on_line = line.product_custom_attribute_value_ids \
+                .custom_product_template_attribute_value_id.attribute_id
+            typed = line.custom_value_ids.filtered(
+                lambda cv: cv.attribute_id.create_variant == "no_variant"
+                and cv.attribute_id not in on_line)
+            if typed:
+                name += "\n" + "\n".join(f"{cv.display_name}: {cv.value}" for cv in typed)
         return name

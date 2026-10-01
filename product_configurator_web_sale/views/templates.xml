@@ -41,6 +41,31 @@
             <attribute name="t-if">not product.config_ok</attribute>
         </xpath>
 
+        <!-- 5. ⚠️ Et le message qui MENT s'arrête. « Cette combinaison n'existe
+             pas » est la retombée du `t-else` d'Odoo : vrai pour un produit
+             ordinaire sans variante vendable, FAUX pour un produit
+             configurable, dont c'est l'état normal avant la première
+             configuration. -->
+        <xpath expr="//p[@t-else=''][hasclass('alert-warning')]" position="attributes">
+            <attribute name="t-else"/>
+            <attribute name="t-elif">not product.config_ok</attribute>
+        </xpath>
+    </template>
+
+    <!-- ══ LES QUESTIONS ET LE « À PARTIR DE » : UNE VUE À PART ════════════════
+         ⚠️ **Une vue NEUVE, et c'est ce qui les fait servir** (W-69, Gerry 2026-10-01).
+         Ces deux règles vivaient dans `product_configure_button`. Or l'éditeur de site
+         en fait une COPIE propre au site, qu'il FIGE (`arch_updated`) : relevé le
+         2026-09-25 puis le 2026-10-01, cette copie ne portait que les règles 1, 2 et 5 —
+         sur fabk18 (2565, puis 2849, recréée et refigée) comme sur le serveur d'essai
+         (2565). La fiche du JeNo posait donc encore ses questions ([[L-356]]).
+
+         Une vue enfant NEUVE échappe à cela : à l'installation, `website` en crée une
+         copie fraîche sous chaque copie de site du parent (`_create_all_specific_views`),
+         sans toucher à celles qui sont figées. Remettre la copie à zéro, au contraire, ne
+         tiendrait que jusqu'à la prochaine retouche de la fiche dans l'éditeur. -->
+    <template id="product_configure_questions_hidden" inherit_id="website_sale.product"
+              name="Configurable product: no attribute selectors, price from">
         <!-- 3. ⚠️ **ET LES QUESTIONS S'EFFACENT AVEC LUI** (arbitrage Gerry, 2026-09-22).
              Le pari d'origine était qu'un produit configurable n'a pas de variante, donc
              pas de sélecteur : il tombe dès qu'une configuration en a créé une. Mesuré le
@@ -76,16 +101,6 @@
         <xpath expr="//t[@t-call='website_sale.product_price']" position="before">
             <span t-if="product.config_ok and combination_info['price']"
                   class="o_cfg3d_from me-1 text-muted">From</span>
-        </xpath>
-
-        <!-- 5. ⚠️ Et le message qui MENT s'arrête. « Cette combinaison n'existe
-             pas » est la retombée du `t-else` d'Odoo : vrai pour un produit
-             ordinaire sans variante vendable, FAUX pour un produit
-             configurable, dont c'est l'état normal avant la première
-             configuration. -->
-        <xpath expr="//p[@t-else=''][hasclass('alert-warning')]" position="attributes">
-            <attribute name="t-else"/>
-            <attribute name="t-elif">not product.config_ok</attribute>
         </xpath>
     </template>
 

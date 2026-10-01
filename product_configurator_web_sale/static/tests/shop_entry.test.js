@@ -61,3 +61,27 @@ describe("la croix a quitté l'overlay pour la page", () => {
         expect(OVERLAY_SCSS).not.toMatch(/^\.o_cfg3d_overlay_close\s*\{/m);
     });
 });
+
+describe("⚠️ les questions et le « À partir de » vivent dans une vue À PART (W-69)", () => {
+    /** Le gabarit d'une vue, de sa balise à sa fermeture. */
+    const vue = (id) => {
+        const i = VUE.indexOf(`<template id="${id}"`);
+        expect(i).toBeGreaterThan(-1);
+        return VUE.slice(i, VUE.indexOf("</template>", i));
+    };
+
+    test("pas dans `product_configure_button` — la vue que l'éditeur de site FIGE", () => {
+        // Sa copie de site ne portait que les règles 1, 2 et 5 (fabk18 et serveur d'essai) :
+        // y remettre une règle, c'est la rendre invisible partout où la fiche a été retouchée.
+        const bouton = vue("product_configure_button");
+        expect(bouton).not.toContain("website_sale.variants");
+        expect(bouton).not.toContain(">From<");
+    });
+
+    test("dans une vue NEUVE, que `website` copie fraîche sous chaque site", () => {
+        const neuve = vue("product_configure_questions_hidden");
+        expect(neuve).toContain('inherit_id="website_sale.product"');
+        expect(neuve).toContain("website_sale.variants");
+        expect(neuve).toContain(">From<");
+    });
+});

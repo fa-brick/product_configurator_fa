@@ -21,9 +21,10 @@ msgid "Configure"
 msgstr "Configurer"
 
 #. module: product_configurator_web_sale
-#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.product_configure_button
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.product_configure_questions_hidden
 # ⓘ Le prix d'un produit non configuré n'est pas ferme : il s'annonce comme un
-# plancher. Le mot vit dans une VUE, d'où la référence `model_terms` — une
+# plancher. ⚠️ Rattaché à la vue NEUVE depuis W-69 (2026-10-01) : une traduction de gabarit
+# appartient à SA vue, et l'ancienne ne porte plus le mot — il s'affichait en anglais. Le mot vit dans une VUE, d'où la référence `model_terms` — une
 # référence de la mauvaise nature n'atteint jamais la chaîne ([[L-299]]).
 msgid "From"
 msgstr "À partir de"

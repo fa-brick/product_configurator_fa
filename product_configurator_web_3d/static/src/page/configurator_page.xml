@@ -515,12 +515,18 @@
                 t-on-click="() => this.closePanel()">
             <i class="oi oi-chevron-down" role="img"/>
         </button>
+        <!-- ⓘ LA FLÈCHE, PUIS LE NOM DE LA QUESTION, SUR UNE LIGNE (Gerry, 2026-10-01) — comme
+             l'en-tête d'une pièce sélectionnée (D-333). La flèche est le retour ; « Retour »
+             écrit ne reste que dans son nom (`title`, `aria-label`). -->
         <header class="o_cfg3d_panel_head">
-            <button type="button" class="o_cfg3d_panel_back" t-on-click="() => this.closePanel()">
-                <i class="oi oi-arrow-left" role="img"/>
-                <span t-esc="backLabel"/>
-            </button>
-            <h2 class="o_cfg3d_panel_title" t-esc="question.name"/>
+            <h2 class="o_cfg3d_panel_title">
+                <button type="button" class="o_cfg3d_panel_back"
+                        t-att-title="backLabel" t-att-aria-label="backLabel"
+                        t-on-click="() => this.closePanel()">
+                    <i class="oi oi-arrow-left" role="img"/>
+                </button>
+                <span t-esc="question.name"/>
+            </h2>
         </header>
         <div class="o_cfg3d_panel_tools">
             <div class="o_cfg3d_panel_search">

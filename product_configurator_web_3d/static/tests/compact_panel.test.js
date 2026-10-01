@@ -79,3 +79,16 @@ describe("la liste ne remonte pas jusqu'en haut", () => {
         expect(panel).toMatch(/<button t-if="state.compact" type="button" class="o_cfg3d_panel_grip"[\s\S]*?t-on-click="\(\) => this.closePanel\(\)">\s*<i class="oi oi-chevron-down" role="img"\/>/);
     });
 });
+
+describe("l'en-tête du panneau : la flèche, puis le nom, sur une ligne (Gerry, 2026-10-01)", () => {
+    test("la flèche est le retour, DANS le titre ; « Retour » ne vit plus que dans son nom", () => {
+        const panel = XML.slice(XML.indexOf('<t t-name="product_configurator_web_3d.AnswerPanel">'));
+        const head = panel.slice(panel.indexOf('<header class="o_cfg3d_panel_head">'), panel.indexOf("</header>"));
+        expect(head).toMatch(/<h2 class="o_cfg3d_panel_title">\s*<button type="button" class="o_cfg3d_panel_back"/);
+        expect(head).toContain('t-att-aria-label="backLabel"');
+        expect(head).toContain('<i class="oi oi-arrow-left" role="img"/>');
+        expect(head).toContain('<span t-esc="question.name"/>');
+        expect(head).not.toContain('t-esc="backLabel"');
+        expect(SCSS).toMatch(/\.o_cfg3d_panel_title \{\s*display: flex;\s*align-items: center;/);
+    });
+});

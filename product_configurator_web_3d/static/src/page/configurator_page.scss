@@ -627,25 +627,30 @@ $o-cfg3d-compact-max: 900px;
     cursor: pointer;
 }
 
+/* ⓘ La flèche de retour, nue, de la couleur du texte — la même que celle d'une pièce
+   sélectionnée (`o_cfg3d_backarrow`). */
 .o_cfg3d_panel_back {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 0;
+    flex: 0 0 auto;
     border: 0;
     background: transparent;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    padding: 2px 4px;
+    font-size: 18px;
+    line-height: 1;
     color: inherit;
-    opacity: 0.75;
+    opacity: 0.7;
     cursor: pointer;
 
     &:hover { opacity: 1; }
 }
 
-.o_cfg3d_panel_title { font-size: 16px; margin: 8px 0 0; }
+/* La flèche et le nom de la question sur une ligne (Gerry, 2026-10-01). */
+.o_cfg3d_panel_title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    margin: 0;
+}
 
 .o_cfg3d_panel_tools {
     flex: 0 0 auto;

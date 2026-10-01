@@ -1,7 +1,8 @@
 # Copyright (C) 2021 Open Source Integrators
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
-from odoo import fields, models
+from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class MrpProduction(models.Model):
@@ -88,3 +89,21 @@ class MrpBomLineConfiguration(models.Model):
         comodel_name="product.attribute.value",
         required=True,
     )
+
+    @api.constrains("value_ids")
+    def _check_no_variant_values(self):
+        """Une condition de nomenclature ne cite pas de réponse « sans variante » — W-99 / D-393.
+
+        ⚠️ Elle se compare aux valeurs de l'ARTICLE (`create_get_bom`), et depuis l'option A une
+        réponse « sans variante » n'y entre plus : la condition ne jouerait JAMAIS, sans un mot.
+        Même raison que le refus d'un composant « sans variante » (Gerry, Q1) : la nomenclature
+        est bâtie par article.
+        """
+        for config in self:
+            no_variant = config.value_ids.filtered(
+                lambda v: v.attribute_id.create_variant == "no_variant")
+            if no_variant:
+                raise ValidationError(self.env._(
+                    "A bill of materials condition cannot use answers that create no variant "
+                    "(%s): it is matched against the configured product, which does not carry "
+                    "them.", ", ".join(no_variant.mapped("display_name"))))

@@ -20,7 +20,9 @@ class DynamicMaterialisation(BaseCommon):
             {"name": "Handle B3", "categ_id": cls.categorie.id},
         ])
         cls.attribute = cls.env["product.attribute"].create({
-            "name": "Handle dyn", "create_variant": "no_variant",
+            # ⓘ `dynamic` depuis W-99 / D-393 : un produit configurable refuse un composant
+            # « sans variante » ; la matérialisation, elle, ne dépend que du type PRODUIT.
+            "name": "Handle dyn", "create_variant": "dynamic",
             "value_type": "product", "dynamic_values": True,
             "product_filter_domain": str([("categ_id", "=", cls.categorie.id)]),
         })
@@ -213,7 +215,7 @@ class RetractionDuFiltre(BaseCommon):
             "name": "Retracting attribute",
             "value_type": "product",
             "dynamic_values": True,
-            "create_variant": "no_variant",
+            "create_variant": "dynamic",   # W-99 / D-393, cf. « Handle dyn »
             "product_filter_domain": str([("categ_id", "=", cls.categ_a.id)]),
         })
 

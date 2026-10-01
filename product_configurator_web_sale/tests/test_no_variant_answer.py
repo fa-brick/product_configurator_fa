@@ -53,7 +53,7 @@ class NoVariantAnswerInCart(WebsiteSaleCommon):
         return order.order_line.browse(result["line_id"])
 
     def _page_ptav_ids(self, session):
-        return session._web_sold_separately_ptav_ids()
+        return session._web_no_variant_ptav_ids()
 
     def test_01_la_ligne_porte_la_reponse_choisie_pas_la_premiere(self):
         session, variant = self._configure(self.classic, self.gloss)
@@ -63,22 +63,13 @@ class NoVariantAnswerInCart(WebsiteSaleCommon):
         self.assertIn("Brillant", line.name)
         self.assertNotIn("Mat", line.name.replace("Brillant", ""))
 
-    def test_02_DEFAUT_CONNU_le_panier_remplace_la_variante_configuree(self):
-        """⚠️ **Constat du 2026-10-01 (W-69, Q7) — un DÉFAUT, décrit tel qu'il est.**
-
-        Le chemin hérité d'OCA fait entrer la réponse « sans variante » DANS la variante
-        configurée (`Brillant, Cine`) ; le panier d'Odoo, lui, recompose la combinaison et
-        crée ou retrouve la variante SANS elle (`Cine`). La ligne porte donc la bonne
-        réponse (test 01), mais pas l'article que la configuration a fait naître — ni ce que
-        `_fa_mrp` a bâti sur lui. Correction à arbitrer avec Gerry.
-
-        ⓘ Ce test ÉCHOUERA le jour où le défaut sera corrigé : il faudra alors l'inverser
-        (`assertEqual(line.product_id, variant)`).
-        """
+    def test_02_la_ligne_garde_l_article_configure(self):
+        """W-99 / D-393 (option A) — le défaut constaté le 2026-10-01 est CORRIGÉ : la réponse
+        « sans variante » ne fait plus partie de l'article, le panier n'a donc plus d'article
+        à recomposer. Ce test remplace le test de caractérisation `test_02_DEFAUT_CONNU_…`."""
         session, variant = self._configure(self.cine, self.gloss)
         line = self._to_cart(variant, self._page_ptav_ids(session))
         names = lambda p: set(p.product_template_attribute_value_ids
                               .product_attribute_value_id.mapped("name"))
-        self.assertEqual(names(variant), {"Cine", "Brillant"})
-        self.assertNotEqual(line.product_id, variant)
-        self.assertEqual(names(line.product_id), {"Cine"})
+        self.assertEqual(names(variant), {"Cine"})          # la finition n'est plus dans l'article
+        self.assertEqual(line.product_id, variant)

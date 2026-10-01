@@ -2558,24 +2558,25 @@ class ProductConfigSession(models.Model):
 
     @api.model
     def _variant_value_ids(self, value_ids, product_tmpl_id=None):
-        """Les valeurs qui entrent dans la VARIANTE — sans celles d'une question vendue à part.
+        """Les valeurs qui entrent dans la VARIANTE — celles des questions qui CRÉENT des variantes.
 
-        ⚠️ **D-368 : la pièce vendue à part a sa propre ligne.** Sa valeur n'entre ni dans
-        la variante du produit (deux JeNo aux bumpers différents sont le MÊME JeNo), ni
-        donc dans sa nomenclature, que `_fa_mrp` bâtit sur les valeurs de la variante.
+        ⚠️ **W-99 / D-393 (option A, Gerry 2026-10-01) : la règle du cœur d'Odoo.** Le chemin
+        hérité d'OCA faisait entrer TOUTE valeur cochée dans la variante, `no_variant` compris ;
+        le panier d'Odoo, qui l'en exclut, recomposait alors un AUTRE article, sans la réponse —
+        et la fiche boutique ne rendait plus son formulaire. Une réponse « sans variante » va
+        désormais sur la LIGNE de commande (`product_no_variant_attribute_value_ids`), jamais
+        dans l'article. Aucune donnée à reprendre : 0 variante ne portait une telle valeur, sur
+        fabk18 comme sur le serveur d'essai (relevé du 2026-10-01).
 
-        ⚠️ **Et SEULEMENT celles-là.** Le chemin d'OCA fait entrer TOUTE valeur cochée
-        dans la variante, `no_variant` compris — là où le cœur d'Odoo l'exclut. Le
-        corriger en général fusionnerait des variantes existantes : la Boite de Jenga de
-        configdb porte ses dimensions en `no_variant`, et le fork n'écrit pas ces valeurs
-        sur la ligne de devis (relevé le 2026-09-29). Hors périmètre, signalé.
+        ⓘ Ce qui le rend sûr pour la fabrication : un produit configurable n'a plus le droit de
+        poser une question « sans variante » qui désigne un COMPOSANT intégré
+        (`_check_no_variant_on_configurable`) — la nomenclature est bâtie par article.
+
+        ⓘ D-368 : une question vendue à part est « sans variante » par construction ; elle
+        sort donc d'ici sans règle à part. Sa pièce a sa propre ligne.
         """
-        tmpl = product_tmpl_id or self.product_tmpl_id
-        apart = tmpl._sale_separately_attribute_ids() if tmpl else set()
-        if not apart:
-            return value_ids
         values = self.env["product.attribute.value"].browse(value_ids)
-        return [v.id for v in values if v.attribute_id.id not in apart]
+        return [v.id for v in values if v.attribute_id.create_variant != "no_variant"]
 
     def search_variant(self, value_ids=None, product_tmpl_id=None):
         """Searches product.variants with given value_ids and custom values

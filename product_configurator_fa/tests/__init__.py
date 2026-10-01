@@ -31,3 +31,4 @@ from . import test_numeric_condition
 from . import test_free_text_values  # noqa: F401  (D-353)
 from . import test_sale_separately  # noqa: F401  (D-368)
 from . import test_default_values  # noqa: F401  (constat de Gerry, 2026-09-29)
+from . import test_no_variant_on_line  # noqa: F401  (W-99, D-393)

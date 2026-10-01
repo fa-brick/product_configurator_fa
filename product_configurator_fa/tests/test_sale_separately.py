@@ -35,7 +35,10 @@ class SaleSeparately(BaseCommon):
             "attribute_line_ids": [
                 Command.create({"attribute_id": cls.plate.id,
                                 "value_ids": [Command.set((cls.classic | cls.cine).ids)]}),
+                # ⓘ VENDUE À PART dès la création : depuis W-99 / D-393, un produit configurable
+                # refuse une question « sans variante » qui désigne un composant INTÉGRÉ.
                 Command.create({"attribute_id": cls.bumper.id, "required": False,
+                                "sale_separately": True,
                                 "value_ids": [Command.set((cls.none | cls.with_bumper).ids)]}),
             ],
         })
@@ -69,15 +72,20 @@ class SaleSeparately(BaseCommon):
             line.sale_separately = True
 
     def test_une_question_OBLIGATOIRE_ne_se_vend_pas_a_part(self):
-        """D-371 (Gerry) : une option se retire — une question obligatoire, non."""
-        self.line.required = True
+        """D-371 (Gerry) : une option se retire — une question obligatoire, non.
+
+        ⓘ La ligne est vendue à part dès la création (W-99 / D-393) : c'est la rendre
+        OBLIGATOIRE qui est refusé."""
         with self.assertRaisesRegex(ValidationError, "required"):
-            self.line.sale_separately = True
+            self.line.required = True
 
     # ── le prix ─────────────────────────────────────────────────────────────
-    def test_integree_la_piece_fait_le_prix_du_produit(self):
-        """Ce qui existait : une valeur qui désigne un produit ajoute son prix."""
-        self.assertEqual(self._session(self.classic, self.with_bumper).get_cfg_price(), 115.0)
+    def test_integree_la_piece_est_refusee(self):
+        """W-99 / D-393 — ce qui existait (« une valeur qui désigne un produit ajoute son
+        prix ») n'a plus le droit d'exister en « sans variante » : intégrée, la pièce créerait
+        des configurations qui partagent un article et sa nomenclature."""
+        with self.assertRaisesRegex(ValidationError, "designates components"):
+            self.line.sale_separately = False
 
     def test_vendue_a_part_elle_ne_le_fait_plus(self):
         self.line.sale_separately = True

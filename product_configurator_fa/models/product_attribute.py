@@ -61,6 +61,13 @@ class ProductAttribute(models.Model):
     _inherit = "product.attribute"
     _order = "sequence"
 
+    @api.constrains("value_type", "create_variant")
+    def _check_no_variant_lines(self):
+        """W-99 / D-393 — changer la nature d'un attribut revérifie les lignes des produits
+        configurables qui le posent (`_check_no_variant_on_configurable`)."""
+        lines = self.env["product.template.attribute.line"].search([("attribute_id", "in", self.ids)])
+        lines._check_no_variant_on_configurable()
+
     def copy(self, default=None):
         """Add ' (Copy)' in name to prevent attribute
         having same name while copying"""
@@ -1200,6 +1207,37 @@ class ProductAttributeLine(models.Model):
                     "would be counted twice, once in this product and once on its own "
                     "line. Set the attribute's variant creation to “Never”.",
                     attribute.display_name))
+
+    @api.constrains("attribute_id", "product_tmpl_id", "sale_separately", "dimension_role")
+    def _check_no_variant_on_configurable(self):
+        """Ce qu'une question « sans variante » n'a pas le droit d'être sur un produit
+        CONFIGURABLE — W-99 / D-393 (Gerry, 2026-10-01).
+
+        Sa réponse va sur la ligne de commande, pas dans l'article : deux configurations qui
+        ne diffèrent que par elle sont le MÊME article. Deux choses ne le supportent pas :
+
+        1. **un composant intégré** (des valeurs qui désignent des produits, non vendus à
+           part) : la nomenclature est bâtie PAR ARTICLE et réutilisée — le composant serait
+           perdu ou faux. Il crée des variantes, ou se vend à part (D-368) ;
+        2. **un axe de grille de prix** : la grille se lit sur l'article (D-093), qui ne
+           porterait plus la cote.
+        """
+        for line in self:
+            attribute = line.attribute_id
+            if not line.product_tmpl_id.config_ok or attribute.create_variant != "no_variant":
+                continue
+            if line.dimension_role:
+                raise ValidationError(self.env._(
+                    "“%s” cannot be a price grid axis while it creates no variant: the grid "
+                    "is read on the configured product, which would not carry the dimension. "
+                    "Set the attribute's variant creation to “Dynamically”.",
+                    attribute.display_name))
+            if attribute.value_type == "product" and not line.sale_separately:
+                raise ValidationError(self.env._(
+                    "“%s” designates components but creates no variant: two configurations "
+                    "differing only by it would share one product, and one bill of "
+                    "materials. Set its variant creation to “Dynamically”, or sell it "
+                    "separately.", attribute.display_name))
 
     def _unavailable_display(self):
         """`grey` ou `hide` : ce que la page fait d'une valeur indisponible — D-168.

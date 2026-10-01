@@ -10,6 +10,7 @@ import sys
 from unittest import skipUnless
 
 from odoo import Command
+from odoo.exceptions import ValidationError
 from odoo.api import call_kw
 from odoo.tests import TransactionCase, tagged
 
@@ -79,9 +80,17 @@ class TestSaleSeparatelyPage(TransactionCase):
 
     def test_l_editeur_sait_que_la_piece_est_vendue_a_part(self):
         self.assertIs(self.link.customer_answers_ordered(), True)
-        self.door_tmpl.attribute_line_ids.filtered(
-            lambda l: l.attribute_id == self.option).sale_separately = False
-        self.assertIs(self.link.customer_answers_ordered(), False)
+        # ⓘ W-99 / D-393 : la pièce ne peut plus redevenir INTÉGRÉE en « sans variante » — le
+        # cas « non vendue à part » d'une question « sans variante » qui désigne une pièce
+        # n'existe plus sur un produit configurable. Le refus le dit.
+        # ⚠️ `assertRaises` d'ODOO, et non `assertRaisesRegex` de unittest : seul le premier
+        # pose un point de sauvegarde — l'autre laisse la valeur refusée dans le cache, que la
+        # lecture suivante écrit en base.
+        with self.assertRaises(ValidationError) as refused:
+            self.door_tmpl.attribute_line_ids.filtered(
+                lambda l: l.attribute_id == self.option).sale_separately = False
+        self.assertIn("designates components", str(refused.exception))
+        self.assertIs(self.link.customer_answers_ordered(), True)
 
     def test_par_le_chemin_RPC_de_l_editeur(self):
         """⚠️ Appelées comme le CLIENT les appelle (`orm.call`) : l'une sur un lien, l'autre

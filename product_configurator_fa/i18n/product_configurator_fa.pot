@@ -1531,3 +1531,21 @@ msgid ""
 "“%s” cannot be sold separately while it is required: a part sold separately "
 "is an option, which can be left out. Untick “Required” first."
 msgstr ""
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid ""
+"“%s” cannot be a price grid axis while it creates no variant: the grid is "
+"read on the configured product, which would not carry the dimension. Set the"
+" attribute's variant creation to “Dynamically”."
+msgstr ""
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid ""
+"“%s” designates components but creates no variant: two configurations "
+"differing only by it would share one product, and one bill of materials. Set"
+" its variant creation to “Dynamically”, or sell it separately."
+msgstr ""

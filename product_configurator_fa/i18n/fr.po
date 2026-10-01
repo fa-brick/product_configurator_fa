@@ -196,3 +196,29 @@ msgstr ""
 "« %s » ne peut pas être vendue à part tant qu'elle est obligatoire : une "
 "pièce vendue à part est une option, qu'on peut laisser de côté. Décochez "
 "d'abord « Obligatoire »."
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid ""
+"“%s” cannot be a price grid axis while it creates no variant: the grid is "
+"read on the configured product, which would not carry the dimension. Set the"
+" attribute's variant creation to “Dynamically”."
+msgstr ""
+"« %s » ne peut pas être un axe de la grille de prix tant qu'il ne crée pas "
+"de variante : la grille se lit sur le produit configuré, qui ne porterait "
+"pas la cote. Réglez la création de variantes de l'attribut sur « "
+"Dynamiquement »."
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_attribute.py:0
+msgid ""
+"“%s” designates components but creates no variant: two configurations "
+"differing only by it would share one product, and one bill of materials. Set"
+" its variant creation to “Dynamically”, or sell it separately."
+msgstr ""
+"« %s » désigne des composants mais ne crée pas de variante : deux "
+"configurations qui ne diffèrent que par lui partageraient un même produit, "
+"et une même nomenclature. Réglez sa création de variantes sur « "
+"Dynamiquement », ou vendez-le à part."

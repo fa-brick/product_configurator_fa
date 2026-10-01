@@ -1287,13 +1287,18 @@ class ProductConfigSession(models.Model):
 
         return out
 
-    def _web_sold_separately_ptav_ids(self):
-        """Les `product.template.attribute.value` des réponses VENDUES À PART — D-368."""
+    def _web_no_variant_ptav_ids(self):
+        """Les `product.template.attribute.value` de TOUTES les réponses « sans variante » —
+        celles qui vont sur la LIGNE de commande, et non dans l'article (W-99 / D-393).
+
+        ⚠️ Depuis l'option A, l'article ne porte plus ces réponses : une seule qui ne serait
+        pas transmise, et la boutique y mettrait d'office la PREMIÈRE valeur (« Mat » au lieu
+        de « Brillant », mesuré). Les questions vendues à part (D-368) en sont un cas.
+        """
         self.ensure_one()
-        apart = self.product_tmpl_id._sale_separately_attribute_ids()
-        if not apart:
+        chosen = self.value_ids.filtered(lambda v: v.attribute_id.create_variant == "no_variant")
+        if not chosen:
             return []
-        chosen = self.value_ids.filtered(lambda v: v.attribute_id.id in apart)
         return self.product_tmpl_id.attribute_line_ids.product_template_value_ids.filtered(
             lambda ptav: ptav.product_attribute_value_id in chosen).ids
 
@@ -1624,11 +1629,12 @@ class ProductConfigSession(models.Model):
             # (arbitrage de Gerry, 2026-09-28).
             "separateLines": separate,
             "total": price + sum(line["price"] * line["qty"] for line in separate),
-            # ⚠️ Les réponses aux questions vendues à part, en `product.template.attribute.value`
-            # — à passer au panier avec la ligne du produit. Sans elles, la boutique complète
-            # d'office chaque question `no_variant` par sa PREMIÈRE valeur, et la ligne du JeNo
-            # affichait « Bumper avant : Sans bumper » à côté de son bumper (mesuré).
-            "noVariantPtavIds": self._web_sold_separately_ptav_ids(),
+            # ⚠️ Les réponses « sans variante », en `product.template.attribute.value` — à passer
+            # au panier avec la ligne du produit. Sans elles, la boutique complète d'office
+            # chaque question `no_variant` par sa PREMIÈRE valeur, et la ligne du JeNo affichait
+            # « Bumper avant : Sans bumper » à côté de son bumper (mesuré). Depuis W-99, TOUTES
+            # les réponses « sans variante » passent par là, vendues à part ou non.
+            "noVariantPtavIds": self._web_no_variant_ptav_ids(),
             # La VARIANTE née de la confirmation, quand elle existe : c'est par elle
             # qu'une boutique met la configuration au panier.
             "productId": self.product_id.id or None,

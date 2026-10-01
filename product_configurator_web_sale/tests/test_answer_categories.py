@@ -24,7 +24,9 @@ class TestShopAnswerCategories(TransactionCase):
             "name": "Bras", "public_categ_ids": [Command.set(cls.chassis.ids)]})
         cls.vis = Template.create({"name": "Vis"})
         cls.attribute = cls.env["product.attribute"].create({
-            "name": "Pièce", "create_variant": "no_variant", "value_type": "product",
+            # ⓘ `dynamic` : un composant « sans variante » est refusé sur un produit configurable
+            # depuis W-99 / D-393 — et la catégorie d'une réponse ne dépend pas de la nature.
+            "name": "Pièce", "create_variant": "dynamic", "value_type": "product",
             "display_type": "card"})
         Value = cls.env["product.attribute.value"]
         cls.values = Value.create([

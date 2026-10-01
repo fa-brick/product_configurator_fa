@@ -38,6 +38,12 @@ class ProductTemplate(models.Model):
             else:
                 product_tmpl.attribute_line_val_ids = False
 
+    @api.constrains("config_ok", "attribute_line_ids")
+    def _check_no_variant_lines(self):
+        """W-99 / D-393 — rendre un produit configurable revérifie ses questions « sans
+        variante » : la règle vit sur la ligne, ce relais la fait jouer au bon moment."""
+        self.filtered("config_ok").attribute_line_ids._check_no_variant_on_configurable()
+
     @api.constrains("attribute_line_ids", "attribute_value_line_ids")
     def check_attr_value_ids(self):
         """Check attribute lines don't have some attribute value that

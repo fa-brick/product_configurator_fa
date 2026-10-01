@@ -166,6 +166,26 @@ class StepsOnThePage(BaseCommon):
         self.assertEqual(served["Prints"], session._web_camera_view(view))
         self.assertIn("pose", served["Prints"])
 
+    def test_11b_a_view_carries_its_LIMITS_in_factors(self):
+        """D-389 — les bornes partent avec la vue ; la distance en FACTEURS, que le viewer
+        convertit avec son propre rayon de référence."""
+        model3d = self.env["product.model3d"].create(
+            {"name": "Drone", "product_tmpl_id": self.tmpl.id}
+        )
+        view = self.env["product.model3d.camera"].create({
+            "name": "Bornée", "model3d_id": model3d.id,
+            "azimuth_min": -40, "azimuth_max": 40,
+            "inclination_min": 30, "inclination_max": 80,
+            "distance_min": 0.5, "distance_max": 2.0,
+        })
+        limits = self._session()._web_camera_view(view)["limits"]
+        self.assertEqual(limits, {
+            "azimuthMin": -40, "azimuthMax": 40,
+            "inclinationMin": 30, "inclinationMax": 80,
+            "distanceMin": 0.5, "distanceMax": 2.0,
+            "distanceIn": "factor",
+        })
+
     def test_12_an_ATTRIBUTE_view_rides_with_its_question(self):
         """D-387 — la page prend la vue de l'attribut quand on ouvre ou répond à sa question."""
         model3d = self.env["product.model3d"].create(

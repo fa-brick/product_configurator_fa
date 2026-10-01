@@ -762,6 +762,20 @@ class ProductConfigSession(models.Model):
             "fov": camera.fov,
             "projection": camera.projection,
             "fitDistance": camera.fit_distance,
+            # ⚠️ **LES BORNES — la page ne les servait pas** (Gerry, 2026-10-01 : « les limites
+            # définies pour la caméra ne sont pas prises en compte »). Le viewer bornait bien,
+            # mais seulement ce qu'on lui donnait. Les distances partent en FACTEURS, telles
+            # qu'en base (`distanceIn`) : le rayon qui les convertit en millimètres dépend de
+            # la scène et du canevas, que seul le viewer connaît (D-389).
+            "limits": {
+                "azimuthMin": camera.azimuth_min,
+                "azimuthMax": camera.azimuth_max,
+                "inclinationMin": camera.inclination_min,
+                "inclinationMax": camera.inclination_max,
+                "distanceMin": camera.distance_min,
+                "distanceMax": camera.distance_max,
+                "distanceIn": "factor",
+            },
             # ⓘ LA CIBLE fait partie de la vue (D-116). Sans elle, la page posait la
             # pose sans centre — et une pièce isolée puis quittée gardait le centre de
             # la pièce. Gerry (2026-09-23) : « lorsque l'on quitte, il faut revenir à

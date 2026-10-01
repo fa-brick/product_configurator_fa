@@ -60,3 +60,41 @@ describe("la page suit la largeur de la fenêtre", () => {
         expect(page.state.compact).toBe(false);
     });
 });
+
+describe("la zone réservée en haut du viewer (D-389)", () => {
+    const { viewInset, VIEW_INSET_GAP } = require("@product_configurator_web_3d/configurator_state");
+
+    test("le bas de ce qui recouvre le viewer, plus un peu d'air ; rien = 0", () => {
+        expect(viewInset(96)).toBe(96 + VIEW_INSET_GAP);
+        expect(viewInset(95.6)).toBe(Math.round(95.6 + VIEW_INSET_GAP));
+        expect(viewInset(0)).toBe(0);
+    });
+
+    test("la page la MESURE et la passe au viewer", () => {
+        const XML = readFileSync(join(__dirname, "..", "src", "page", "configurator_page.xml"), "utf8");
+        expect(XML).toContain('viewInsetTop="state.viewInsetTop"');
+        const JS = readFileSync(join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
+        const after = JS.slice(JS.indexOf("    _afterRender() {"), JS.indexOf("    _afterRender() {") + 300);
+        expect(after).toContain("this._measureViewInset();");
+    });
+
+    test("seuls comptent les éléments qui RECOUVRENT le viewer, et l'écriture n'a lieu que si ça change", () => {
+        const rect = (left, top, width, height) => ({ left, top, right: left + width, bottom: top + height, height });
+        const viewer = { getBoundingClientRect: () => rect(0, 0, 1060, 900) };
+        const chip = { getBoundingClientRect: () => rect(430, 12, 80, 28) };
+        const close = { getBoundingClientRect: () => rect(1352, 12, 32, 22) };   // au-dessus de la colonne
+        const page = Object.create(ConfiguratorPage.prototype);
+        let writes = 0;
+        const state = { _v: 0 };
+        Object.defineProperty(state, "viewInsetTop", { get: () => state._v, set: (v) => { writes++; state._v = v; } });
+        page.state = state;
+        page.pageRef = { el: {
+            querySelector: () => viewer,
+            querySelectorAll: () => [chip, close],
+        } };
+        page._measureViewInset();
+        expect(page.state.viewInsetTop).toBe(40 + VIEW_INSET_GAP);
+        page._measureViewInset();
+        expect(writes).toBe(1);
+    });
+});

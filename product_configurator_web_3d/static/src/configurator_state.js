@@ -92,6 +92,17 @@ export function centerScrollLeft(viewWidth, scrollWidth, itemLeft, itemWidth) {
     return Math.round(Math.min(max, Math.max(0, centered)));
 }
 
+/** L'air laissé sous ce que la page pose en haut du viewer, avant la zone de cadrage (D-389). */
+export const VIEW_INSET_GAP = 8;
+
+/**
+ * La zone réservée en haut du viewer, en pixels entiers — le bas de ce qui le recouvre, plus
+ * un peu d'air ; 0 quand rien ne le recouvre (D-389).
+ */
+export function viewInset(coveredBottom) {
+    return coveredBottom > 0 ? Math.round(coveredBottom + VIEW_INSET_GAP) : 0;
+}
+
 /**
  * La question dont l'onglet est ouvert, en mode compact — D-389.
  *

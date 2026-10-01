@@ -53,7 +53,7 @@ import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, han
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError, revealScrollLeft,
          rowEdges, lineOf, filterAnswers, panelViewOf, pickedAnswer, isImageForm,
          panelChips, filterByCategory, activeStepId, stepQuestions, missingBefore, stepChips,
-         questionView, COMPACT_QUERY, activeQuestionId, centerScrollLeft, layoutOn }
+         questionView, COMPACT_QUERY, activeQuestionId, centerScrollLeft, layoutOn, viewInset }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -154,6 +154,9 @@ export class ConfiguratorPage extends Component {
             // L'onglet ouvert en mode compact, par l'identifiant de sa question — relu contre
             // celles que la colonne montre (`activeQuestion`), comme l'étape.
             question: null,
+            // ⓘ La ZONE RÉSERVÉE en haut du viewer, en pixels — ce que la barre et les étapes
+            // y couvrent ; le viewer cadre sous elle (`_measureViewInset`, D-389).
+            viewInsetTop: 0,
         });
         this._watchCompact();
         this._worlds = new Map();
@@ -855,6 +858,7 @@ export class ConfiguratorPage extends Component {
     _afterRender() {
         this._settleRows();
         this._settleTabs();
+        this._measureViewInset();
         this._observeAnswers();
         this._revealQuestion();
         if (this._focusPanelSearch && this.panelSearchRef.el) {
@@ -924,6 +928,34 @@ export class ConfiguratorPage extends Component {
 
     pickedAnswer(question) {
         return pickedAnswer(question);
+    }
+
+    /**
+     * Mesurer ce que la page pose EN HAUT du viewer — D-389.
+     *
+     * Constat de Gerry (2026-10-01) : la barre prix / panier et les pastilles d'étape cachent le
+     * haut de la 3D, que le cadrage comptait comme visible. Le viewer cadre désormais sous une
+     * zone réservée (`viewInsetTop`) ; la page la MESURE plutôt que de la supposer — un
+     * produit sans étape, une pièce sélectionnée (pastilles masquées), l'encoche du téléphone
+     * la font varier.
+     *
+     * ⓘ Seuls comptent les éléments qui recouvrent le viewer : sur ordinateur, la croix est
+     * au-dessus de la colonne. ⓘ N'écrit que ce qui change : une écriture relance un rendu,
+     * donc ce même crochet.
+     */
+    _measureViewInset() {
+        const root = this.pageRef.el;
+        const viewer = root?.querySelector(".o_cfg3d_viewer");
+        if (!viewer) return;
+        const box = viewer.getBoundingClientRect();
+        let bottom = 0;
+        for (const el of root.querySelectorAll(".o_cfg3d_topbar, .o_cfg3d_step_chip, .o_cfg3d_close")) {
+            const r = el.getBoundingClientRect();
+            if (!r.height || r.left >= box.right || r.right <= box.left || r.top >= box.bottom) continue;
+            bottom = Math.max(bottom, r.bottom - box.top);
+        }
+        const inset = viewInset(bottom);
+        if (inset !== this.state.viewInsetTop) this.state.viewInsetTop = inset;
     }
 
     /** La disposition À L'ÉCRAN : une grille devient une rangée en mode compact (D-389). */

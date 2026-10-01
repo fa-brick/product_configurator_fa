@@ -98,6 +98,7 @@
                               zonesByPiece="zonesByPiece"
                               zoneMaterialsByNode="zoneMaterialsByNode"
                               cameraApply="state.cameraApply"
+                              viewInsetTop="state.viewInsetTop"
                               onCameraPose="(pose) => this.onCameraPose(pose)"/>
 
                 <!-- ⓘ LES ÉTAPES (D-385) — des pastilles en haut du viewer, centrées sur

@@ -9,6 +9,8 @@ destination.
 """
 from odoo import Command, api, fields, models
 
+NO_VARIANT = "product_no_variant_attribute_value_ids"
+
 
 class SaleOrderLine(models.Model):
     _inherit = "sale.order.line"
@@ -17,30 +19,36 @@ class SaleOrderLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        lines = super().create(vals_list)
-        lines._sync_no_variant_from_session()
-        return lines
+        # ⚠️ AVANT `super()`, pas après : la description (`name`) se calcule à la création,
+        # et seulement au changement d'article ensuite. Recopiées après coup, les réponses
+        # arrivaient sur la ligne mais pas dans son texte (constat du lot 7, ligne de devis).
+        for vals in vals_list:
+            if vals.get("config_session_id") and NO_VARIANT not in vals:
+                vals[NO_VARIANT] = self._no_variant_command(vals["config_session_id"])
+        return super().create(vals_list)
 
     def write(self, vals):
-        res = super().write(vals)
         # ⓘ `product_id` aussi : une configuration rouverte (D-371) et reconfirmée change
-        # l'article de sa ligne (`_web_after_confirm`) — et peut-être ses réponses.
-        if "config_session_id" in vals or "product_id" in vals:
-            self._sync_no_variant_from_session()
+        # l'article de sa ligne (`_web_after_confirm`) — et peut-être ses réponses. Écrites
+        # DANS le même `write` que l'article, elles entrent dans la description recalculée.
+        if NO_VARIANT in vals or not ("config_session_id" in vals or "product_id" in vals):
+            return super().write(vals)
+        res = True
+        for session, lines in self.grouped(
+                lambda line: vals.get("config_session_id", line.config_session_id.id)).items():
+            extra = {NO_VARIANT: self._no_variant_command(session)} if session else {}
+            res &= super(SaleOrderLine, lines).write({**vals, **extra})
         return res
 
-    def _sync_no_variant_from_session(self):
-        """Recopier sur la ligne les réponses « sans variante » de sa configuration.
+    def _no_variant_command(self, session_id):
+        """Les réponses « sans variante » de la configuration `session_id`, prêtes à écrire.
 
         Depuis l'option A, elles ne sont plus dans l'article : la ligne est le SEUL endroit où
         elles vivent après la commande — description, livraison, fabrication (le cœur d'Odoo
         les passe à l'ordre de fabrication : `never_product_template_attribute_value_ids`).
-        ⓘ N'écrit que si elles changent : pas de boucle avec `write`.
         """
-        for line in self.filtered("config_session_id"):
-            ptav_ids = line.config_session_id.sudo()._web_no_variant_ptav_ids()
-            if set(ptav_ids) != set(line.product_no_variant_attribute_value_ids.ids):
-                line.product_no_variant_attribute_value_ids = [Command.set(ptav_ids)]
+        session = self.env["product.config.session"].sudo().browse(session_id)
+        return [Command.set(session._web_no_variant_ptav_ids())]
 
     def reconfigure_product(self):
         """Ouvrir la configuration 3D de cette ligne.

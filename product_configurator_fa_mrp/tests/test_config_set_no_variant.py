@@ -25,5 +25,8 @@ class ConfigSetNoVariant(BaseCommon):
         self.assertTrue(self._configuration(self.plate))
 
     def test_02_une_reponse_sans_variante_est_refusee(self):
-        with self.assertRaisesRegex(ValidationError, "create no variant"):
+        # ⓘ `assertRaises` d'Odoo (point de sauvegarde), pas `assertRaisesRegex` : le refus
+        # laisserait sinon la condition dans le cache du test (L-482).
+        with self.assertRaises(ValidationError) as refused:
             self._configuration(self.finish)
+        self.assertIn("create no variant", str(refused.exception))

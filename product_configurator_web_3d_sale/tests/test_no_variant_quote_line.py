@@ -59,6 +59,9 @@ class NoVariantQuoteLine(TransactionCase):
         self.assertEqual(line.product_no_variant_attribute_value_ids.product_attribute_value_id,
                          self.gloss)
         self.assertIn("Brillant", line._get_sale_order_line_multiline_description_variants())
+        # ⚠️ Et dans la description ENREGISTRÉE : recopiées après la création, les réponses
+        # manquaient au texte de la ligne, calculé une fois pour toutes (lot 7).
+        self.assertIn("Finition: Brillant", line.name)
 
     def test_02_reconfiguree_la_ligne_suit(self):
         """D-371 : une configuration rouverte et reconfirmée réécrit l'article de sa ligne."""
@@ -68,6 +71,8 @@ class NoVariantQuoteLine(TransactionCase):
         line.write({"product_id": session.product_id.id})
         self.assertEqual(line.product_no_variant_attribute_value_ids.product_attribute_value_id,
                          self.matte)
+        self.assertIn("Finition: Mat", line.name)
+        self.assertNotIn("Brillant", line.name)
 
     def test_03_un_texte_saisi_s_AJOUTE_a_la_description(self):
         """⚠️ La version d'OCA REMPLAÇAIT la description par les saisies : la finition, qui

@@ -948,11 +948,17 @@ export class ConfiguratorPage extends Component {
     /**
      * Ouvrir un onglet, c'est TRAVAILLER sa question : sa vue 3D s'applique, comme à
      * l'ouverture de son panneau (D-387). ⓘ Une question de pièce n'a ni étape ni vue.
+     *
+     * ⚠️ **APRÈS LE RENDU DU NOUVEL ONGLET**, pas au clic (Gerry, 2026-10-01 : de TopPlate à
+     * Bras, le drone n'était pas cadré à la largeur). Le champ change, la colonne change de
+     * hauteur, donc le canevas aussi : posée au clic, la vue était calculée pour le format
+     * d'AVANT (412 × 683 au lieu de 752). Le viewer reprend aussi une vue en vigueur à tout
+     * redimensionnement (product_editor) ; attendre ici évite le double mouvement.
      */
     onTab(question) {
         this.state.question = question.id;
         this.state.reason = null;
-        if (!this.selectedPlacement) this._showQuestionView(question.id);
+        if (!this.selectedPlacement) this._showQuestionViewAfterPaint(question.id);
     }
 
     /**

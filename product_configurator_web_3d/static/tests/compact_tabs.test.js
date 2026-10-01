@@ -79,7 +79,8 @@ function makePage({ shown = [], placement = null, compact = true } = {}) {
     Object.defineProperty(page, "selectedPlacement", { value: placement });
     Object.defineProperty(page, "shownQuestions", { value: shown });
     page.views = [];
-    page._showQuestionView = (id) => page.views.push(id);
+    // ⓘ La vue d'un onglet part APRÈS le rendu (D-389) : c'est ce chemin qu'on intercepte.
+    page._showQuestionViewAfterPaint = (id) => page.views.push(id);
     return page;
 }
 

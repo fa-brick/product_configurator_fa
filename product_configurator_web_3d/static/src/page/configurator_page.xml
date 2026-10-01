@@ -125,7 +125,9 @@
                 </nav>
             </div>
 
-            <aside class="o_cfg3d_side">
+            <!-- ⓘ La marque `o_cfg3d_side` + `panel` : sur téléphone, la colonne GRANDIT le temps du panneau de choix,
+                 et la 3D rétrécit au-dessus au lieu d'être couverte (D-389). -->
+            <aside class="o_cfg3d_side" t-att-class="{ 'o_cfg3d_side--panel': panelQuestion }">
                 <!-- ⓘ SEUL LE CORPS DÉFILE. Le titre et le pied restent en place : ce
                      qu'on vient chercher — le prix et le geste — ne doit jamais partir
                      hors de l'écran (demande de Gerry, 2026-09-06). -->
@@ -227,8 +229,9 @@
                     <t t-call="product_configurator_web_3d.ActionBar"/>
                 </div>
 
-                <!-- ⓘ LE PANNEAU DE CHOIX (D-382) — par-dessus la colonne, qui le borne ; en
-                     plein écran sous 900 px. Relu à chaque rendu : `panelQuestion`. -->
+                <!-- ⓘ LE PANNEAU DE CHOIX (D-382) — par-dessus la colonne, qui le borne ; sur
+                     téléphone, la colonne grandit pour lui (D-389). Relu à chaque rendu :
+                     `panelQuestion`. -->
                 <t t-if="panelQuestion" t-call="product_configurator_web_3d.AnswerPanel"/>
             </aside>
         </t>
@@ -505,6 +508,13 @@
     <t t-set="question" t-value="panelQuestion"/>
     <t t-set="placementNodeId" t-value="state.panel.nodeId"/>
     <section class="o_cfg3d_panel" role="dialog" t-att-aria-label="question.name">
+        <!-- ⓘ LA POIGNÉE (D-389, téléphone) — comme la page de Roomle : elle ferme, comme
+             « Retour » et comme une tape dans la 3D. -->
+        <button t-if="state.compact" type="button" class="o_cfg3d_panel_grip"
+                t-att-title="closeLabel" t-att-aria-label="closeLabel"
+                t-on-click="() => this.closePanel()">
+            <i class="oi oi-chevron-down" role="img"/>
+        </button>
         <header class="o_cfg3d_panel_head">
             <button type="button" class="o_cfg3d_panel_back" t-on-click="() => this.closePanel()">
                 <i class="oi oi-arrow-left" role="img"/>

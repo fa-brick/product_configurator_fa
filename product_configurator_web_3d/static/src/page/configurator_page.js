@@ -733,12 +733,19 @@ export class ConfiguratorPage extends Component {
      * touchée (mesuré dans l'éditeur le 2026-09-13).
      */
     onSelectPiece(nodeId) {
+        // ⓘ D-389 — SUR TÉLÉPHONE, PANNEAU OUVERT, UNE TAPE DANS LA 3D LE FERME, ET C'EST TOUT
+        // (Gerry, 2026-10-01 : « fermer seulement ») : un geste, un effet ; la tape suivante
+        // désigne. Ce n'est pas `_select` qui s'en charge : une tape dans le vide sans
+        // sélection n'y change rien, donc ne fermerait rien. ⓘ Une orbite au doigt n'est
+        // pas une tape — le viewer ne publie rien pour elle.
+        if (this._closePanelOnTap()) return;
         this._select(nodeId && this.selectableNodeIds.has(nodeId) ? nodeId : null,
                      nodeId ? this.state.selection.isolated : false);
     }
 
     /** Le double clic : la pièce s'ouvre SEULE, cadrée, son panneau à droite. */
     onActivatePiece(nodeId) {
+        if (this._closePanelOnTap()) return;
         if (!nodeId || !this.selectableNodeIds.has(nodeId)) return;
         this._select(nodeId, true);
     }
@@ -985,7 +992,21 @@ export class ConfiguratorPage extends Component {
         this._focusPanelSearch = true;
     }
 
-    /** « Retour » — le seul geste qui le ferme, choix simple compris (Gerry, 2026-09-30). */
+    /**
+     * Fermer le panneau par une tape dans la 3D — sur TÉLÉPHONE seulement (D-389, Q5 : sur
+     * ordinateur il couvre la colonne, pas la 3D, et un clic n'y change rien).
+     * @returns {boolean} vrai si la tape a servi à fermer.
+     */
+    _closePanelOnTap() {
+        if (!this.state.compact || !this.state.panel) return false;
+        this.closePanel();
+        return true;
+    }
+
+    /**
+     * « Retour » — choix simple compris, il ne se ferme pas tout seul (Gerry, 2026-09-30).
+     * ⓘ Sur téléphone, la poignée et une tape dans la 3D le ferment aussi (D-389).
+     */
     closePanel() {
         this.state.panel = null;
         this.state.reason = null;
@@ -1569,6 +1590,7 @@ export class ConfiguratorPage extends Component {
     get otherLabel() { return _t("Others"); }
     get stepsLabel() { return _t("Steps"); }
     get missingLabel() { return _t("Answer required"); }
+    get closeLabel() { return _t("Close"); }
 
     /** Une question est repondue des qu'une de ses valeurs est retenue. */
     isAnswered(question) {

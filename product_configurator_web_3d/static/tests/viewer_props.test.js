@@ -186,8 +186,10 @@ describe("la page publique et son viewer", () => {
         const SRC = readFileSync(
             join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
         expect(SRC.match(/^    onSelectPiece\(/gm)).toHaveLength(1);
-        const bloc = SRC.slice(SRC.indexOf("    onSelectPiece(nodeId) {"),
-                               SRC.indexOf("    onSelectPiece(nodeId) {") + 220);
+        // ⓘ Le corps ENTIER de la méthode, jusqu'à son accolade : une fenêtre de N caractères
+        // se fait déborder par le premier commentaire ajouté (D-389).
+        const start = SRC.indexOf("    onSelectPiece(nodeId) {");
+        const bloc = SRC.slice(start, SRC.indexOf("\n    }\n", start));
         expect(bloc).toContain("this._select(nodeId && this.selectableNodeIds.has(nodeId) ? nodeId : null");
     });
 

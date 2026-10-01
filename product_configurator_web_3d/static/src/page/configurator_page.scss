@@ -42,6 +42,12 @@ $o-cfg3d-compact-max: 900px;
     flex: 1 1 auto;
     position: relative;
     min-height: 45vh;
+
+    /* ⓘ Sur téléphone, la 3D prend ce que la colonne laisse (D-389) — y compris quand le
+       panneau de choix la fait grandir : elle doit pouvoir descendre sous 45 %. */
+    @media (max-width: $o-cfg3d-compact-max) {
+        min-height: 30vh;
+    }
 }
 
 .o_cfg3d_side {
@@ -73,6 +79,15 @@ $o-cfg3d-compact-max: 900px;
         flex: 0 0 auto;
         border-left: none;
         border-top: 1px solid rgba(0, 0, 0, 0.08);
+
+        /* ⓘ LE PANNEAU DE CHOIX NE MONTE PLUS JUSQU'EN HAUT (D-389, capture Roomle) : la
+           colonne grandit à 58 % de l'écran, et la 3D, au-dessus, RÉTRÉCIT au lieu d'être
+           couverte — on voit ce qu'on choisit, pièce entière. Le viewer suit la taille de
+           son canevas sans recadrer : la cible reste au centre de ce qui se voit. */
+        &.o_cfg3d_side--panel {
+            flex-basis: 58vh;
+            flex-basis: 58dvh;
+        }
     }
 }
 
@@ -572,11 +587,9 @@ $o-cfg3d-compact-max: 900px;
     background: #fff;
     animation: o_cfg3d_panel_from_right 0.2s ease-out;
 
+    /* ⓘ Sur téléphone, il reste DANS la colonne (D-389) — c'est elle qui grandit — et
+       monte depuis le bas. Il était `fixed` sur tout l'écran, 3D comprise. */
     @media (max-width: $o-cfg3d-compact-max) {
-        position: fixed;
-        height: 100vh;
-        height: 100dvh;
-        z-index: 20;
         animation-name: o_cfg3d_panel_from_bottom;
     }
     @media (prefers-reduced-motion: reduce) { animation: none; }
@@ -588,6 +601,24 @@ $o-cfg3d-compact-max: 900px;
 .o_cfg3d_panel_head {
     flex: 0 0 auto;
     padding: 12px 16px 4px;
+
+    /* La poignée tient déjà le haut, sur téléphone. */
+    .o_cfg3d_panel_grip + & { padding-top: 0; }
+}
+
+/* ⓘ LA POIGNÉE (D-389, téléphone) : un chevron centré, toute la largeur pour cible. */
+.o_cfg3d_panel_grip {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 4px 0 0;
+    border: 0;
+    background: transparent;
+    font-size: 18px;
+    line-height: 1;
+    color: rgba(0, 0, 0, 0.5);
+    cursor: pointer;
 }
 
 .o_cfg3d_panel_back {

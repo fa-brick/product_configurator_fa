@@ -188,13 +188,15 @@ describe("le gabarit du panneau, de la ligne et du résumé", () => {
 describe("la feuille de style du panneau", () => {
     const panel = SCSS.slice(SCSS.indexOf(".o_cfg3d_panel {"), SCSS.indexOf("@keyframes o_cfg3d_panel_from_right"));
 
-    test("par-dessus la colonne, qui le borne ET le rogne ; plein écran sous 900 px", () => {
+    test("par-dessus la colonne, qui le borne ET le rogne — sur téléphone aussi, depuis D-389", () => {
         const side = SCSS.slice(SCSS.indexOf(".o_cfg3d_side {"), SCSS.indexOf(".o_cfg3d_scroll {"));
         expect(side).toContain("position: relative;");
         // Sans rognage, le panneau qui glisse dépassait, et le focus faisait défiler la page.
         expect(side).toContain("overflow: hidden;");
         expect(panel).toMatch(/position: absolute;\s*inset: 0;/);
-        expect(panel).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*position: fixed;\s*height: 100vh;\s*height: 100dvh;/);
+        // ⓘ D-389 : plus de plein écran sur téléphone — c'est la colonne qui grandit
+        // (`compact_panel.test.js`), et la 3D reste visible au-dessus.
+        expect(panel).not.toMatch(/position: fixed;/);
     });
 
     test("il glisse depuis la droite, ou monte depuis le bas — et reste immobile si on le demande", () => {

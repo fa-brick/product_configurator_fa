@@ -88,10 +88,10 @@ describe("sur téléphone, la barre monte sur la 3D (lot 2)", () => {
     test("les étapes passent sous la barre, toujours dans le viewer (Q1)", () => {
         const steps = rule(".o_cfg3d_steps");
         const mobile = steps.slice(steps.indexOf("@media (max-width: $o-cfg3d-compact-max)"));
-        expect(mobile).toMatch(/top: calc\(74px \+ env\(safe-area-inset-top, 0px\)\);/);
+        expect(mobile).toMatch(/top: calc\(68px \+ env\(safe-area-inset-top, 0px\)\);/);
     });
 
     test("les toasts descendent sous les étapes — page pleine seulement", () => {
-        expect(SCSS).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*body:has\(\.o_cfg3d_page\):not\(:has\(\.o_cfg3d_action\)\) \.o_notification_manager \{\s*top: calc\(112px/);
+        expect(SCSS).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*body:has\(\.o_cfg3d_page\):not\(:has\(\.o_cfg3d_action\)\) \.o_notification_manager \{\s*top: calc\(106px/);
     });
 });

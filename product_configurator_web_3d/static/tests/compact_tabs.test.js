@@ -157,8 +157,11 @@ describe("le gabarit : les onglets en mode compact, la colonne d'avant sinon", (
         expect(XML).toContain('<p t-if="state.reason and !state.compact" class="o_cfg3d_reason"');
     });
 
-    test("la boîte du champ a une hauteur FIXE — sinon la 3D sauterait d'un onglet à l'autre", () => {
-        expect(SCSS).toMatch(/\.o_cfg3d_field \{\s*height: \d+px;\s*overflow-y: auto;/);
+    test("la boîte du champ prend la hauteur de SON CONTENU, bornée — pas de blanc dessous", () => {
+        // ⓘ D'abord fixe (172 px) : une ligne résumé y laissait 100 px vides (Gerry, 2026-10-01).
+        const field = SCSS.slice(SCSS.indexOf(".o_cfg3d_field {"), SCSS.indexOf("}", SCSS.indexOf(".o_cfg3d_field {")));
+        expect(field).not.toMatch(/(^|\s)height:/);
+        expect(field).toMatch(/max-height: 40vh;\s*max-height: 40dvh;\s*overflow-y: auto;/);
         expect(SCSS).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*flex: 0 0 auto;/);
     });
 });

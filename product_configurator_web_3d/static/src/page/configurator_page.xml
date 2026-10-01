@@ -203,8 +203,8 @@
                             </button>
                         </t>
                     </div>
-                    <!-- ⓘ La boîte du champ a une hauteur FIXE : si elle suivait chaque champ,
-                         le canevas changerait de taille à chaque onglet et la pièce sauterait. -->
+                    <!-- ⓘ La boîte du champ prend la hauteur de son contenu, bornée : pas de blanc
+                         sous un champ court (Gerry, 2026-10-01). -->
                     <div class="o_cfg3d_field" role="tabpanel">
                         <t t-set="question" t-value="activeQuestion"/>
                         <t t-call="product_configurator_web_3d.Question">

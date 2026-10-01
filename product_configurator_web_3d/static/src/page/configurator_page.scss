@@ -152,14 +152,18 @@ $o-cfg3d-compact-max: 900px;
     background: #e8590c;
 }
 
-/* ⓘ La boîte du champ : une hauteur FIXE (une rangée de cartes moyennes), qui défile à
-   l'intérieur quand le champ est plus haut. Si elle suivait chaque champ, le canevas changerait
-   de taille à chaque onglet — et le viewer suit sa taille sans recadrer : la pièce sauterait. */
+/* ⓘ La boîte du champ : la hauteur de SON CONTENU, bornée (Gerry, 2026-10-01 : « un espace vide
+   persiste en partie basse — le but est de minimiser l'encombrement »). Elle était d'abord fixe
+   (172 px) pour que la 3D ne change pas de taille d'un onglet à l'autre ; une ligne résumé y
+   laissait 100 px de blanc. La 3D suit donc désormais le champ ouvert : le viewer garde sa cible
+   au centre, seule l'échelle varie un peu.
+   ⚠️ La borne en `vh` d'abord, en `dvh` ensuite : le repli des navigateurs qui ignorent `dvh`. */
 .o_cfg3d_field {
-    height: 172px;
+    max-height: 40vh;
+    max-height: 40dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding-top: 12px;
+    padding: 12px 0;
 
     .o_cfg3d_question { margin-bottom: 0; }
 }

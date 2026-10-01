@@ -21,7 +21,7 @@ describe("la barre d'action", () => {
     const bar = template("product_configurator_web_3d.ActionBar");
 
     test("le pied de la colonne l'appelle, hors de toute boucle — un seul endroit la décrit (L-453)", () => {
-        expect(XML).toMatch(/<div class="o_cfg3d_footer">\s*<t t-call="product_configurator_web_3d.ActionBar"\/>/);
+        expect(XML).toMatch(/<div t-if="!state.compact" class="o_cfg3d_footer">\s*<t t-call="product_configurator_web_3d.ActionBar"\/>/);
     });
 
     test("le prix, puis le panier : l'icône d'Odoo, et un NOM pour le lecteur d'écran", () => {
@@ -50,5 +50,48 @@ describe("la barre d'action", () => {
         expect(SCSS).toMatch(/\.o_cfg3d_price \{\s*flex: 1 1 auto;\s*min-width: 0;/);
         expect(SCSS).toMatch(/\.o_cfg3d_confirm \{\s*flex: 0 0 auto;/);
         expect(SCSS).not.toMatch(/\.o_cfg3d_confirm \{[^}]*width: 100%/);
+    });
+});
+
+/** Le bloc d'une règle SCSS, accolades imbriquées comprises. */
+function rule(selector) {
+    const start = SCSS.indexOf(`${selector} {`);
+    expect(start).toBeGreaterThan(-1);
+    let depth = 0;
+    for (let i = SCSS.indexOf("{", start); i < SCSS.length; i++) {
+        if (SCSS[i] === "{") depth++;
+        if (SCSS[i] === "}" && --depth === 0) return SCSS.slice(start, i + 1);
+    }
+    return "";
+}
+
+describe("sur téléphone, la barre monte sur la 3D (lot 2)", () => {
+    test("la MÊME barre, posée dans le viewer en mode compact — et le pied disparaît", () => {
+        const viewer = XML.slice(XML.indexOf('<div class="o_cfg3d_viewer">'), XML.indexOf('<aside class="o_cfg3d_side">'));
+        expect(viewer).toMatch(/<div t-if="state.compact" class="o_cfg3d_topbar">\s*<t t-call="product_configurator_web_3d.ActionBar"\/>/);
+        // ⓘ Les deux appels sont exclusifs : jamais deux paniers à l'écran.
+        expect((XML.match(/t-call="product_configurator_web_3d.ActionBar"/g) || []).length).toBe(2);
+    });
+
+    test("en haut, au-dessus de la photo d'attente, et sa droite laissée à la croix", () => {
+        const bar = rule(".o_cfg3d_topbar");
+        expect(bar).toMatch(/position: absolute;/);
+        expect(bar).toMatch(/z-index: 3;/);
+        const right = Number(bar.match(/right: (\d+)px;/)[1]);
+        const close = rule(".o_cfg3d_close");
+        const mobileClose = close.slice(close.indexOf("@media (max-width: $o-cfg3d-compact-max)"));
+        const width = Number(mobileClose.match(/width: (\d+)px;/)[1]);
+        const closeRight = Number(mobileClose.match(/right: (\d+)px;/)[1]);
+        expect(right).toBeGreaterThan(width + closeRight);
+    });
+
+    test("les étapes passent sous la barre, toujours dans le viewer (Q1)", () => {
+        const steps = rule(".o_cfg3d_steps");
+        const mobile = steps.slice(steps.indexOf("@media (max-width: $o-cfg3d-compact-max)"));
+        expect(mobile).toMatch(/top: calc\(74px \+ env\(safe-area-inset-top, 0px\)\);/);
+    });
+
+    test("les toasts descendent sous les étapes — page pleine seulement", () => {
+        expect(SCSS).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*body:has\(\.o_cfg3d_page\):not\(:has\(\.o_cfg3d_action\)\) \.o_notification_manager \{\s*top: calc\(112px/);
     });
 });

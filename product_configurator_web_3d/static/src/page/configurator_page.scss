@@ -633,9 +633,17 @@ $o-cfg3d-compact-max: 900px;
     z-index: 3;
     display: flex;
     gap: 6px;
-    /* ⚠️ La croix de la page est en haut à droite (`o_cfg3d_close`) : sous 900 px elle
-       tombe sur le viewer, d'où la marge des deux côtés, symétrique pour rester centré. */
+    /* ⚠️ La croix de la page est en haut à droite (`o_cfg3d_close`) : d'où la marge des deux
+       côtés, symétrique pour rester centré. */
     padding: 0 56px;
+
+    /* ⓘ SUR TÉLÉPHONE (D-389), la barre d'action et la croix occupent le haut : les étapes
+       passent SOUS elles, toujours dans le viewer (Gerry, 2026-10-01), et n'ont plus de croix à
+       éviter sur leur ligne. */
+    @media (max-width: $o-cfg3d-compact-max) {
+        top: calc(74px + env(safe-area-inset-top, 0px));
+        padding: 0 12px;
+    }
     overflow-x: auto;
     scrollbar-width: none;
     pointer-events: none;
@@ -675,6 +683,13 @@ $o-cfg3d-compact-max: 900px;
 @media (min-width: $o-cfg3d-compact-max + 1) {
     body:has(.o_cfg3d_page):not(:has(.o_cfg3d_action)) .o_notification_manager {
         right: calc(340px + 16px);
+    }
+}
+/* ⓘ SUR TÉLÉPHONE (D-389), la place du cœur (≈ 53 px du haut) tombe sur la barre d'action :
+   les toasts descendent sous les étapes, toujours sur la 3D. */
+@media (max-width: $o-cfg3d-compact-max) {
+    body:has(.o_cfg3d_page):not(:has(.o_cfg3d_action)) .o_notification_manager {
+        top: calc(112px + env(safe-area-inset-top, 0px));
     }
 }
 
@@ -849,6 +864,35 @@ $o-cfg3d-compact-max: 900px;
     opacity: 0.5;
 
     &:hover { opacity: 1; }
+
+    /* ⓘ SUR TÉLÉPHONE (D-389), un bouton rond posé sur la 3D, à droite de la barre d'action
+       et aligné sur elle : le trait seul s'y perdrait sur une scène sombre. */
+    @media (max-width: $o-cfg3d-compact-max) {
+        top: calc(14px + env(safe-area-inset-top, 0px));
+        right: 10px;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+        opacity: 1;
+    }
+}
+
+/* ── LA BARRE D'ACTION EN HAUT DU VIEWER (D-389, téléphone) ─────────────────
+   Le prix et le panier, sur un fond blanc arrondi : lisibles sur n'importe quelle scène. Elle
+   laisse sa droite à la croix (Gerry, 2026-10-01).
+   ⚠️ `z-index: 3`, comme la croix : la photo d'attente est à 2 et la couvrirait. */
+.o_cfg3d_topbar {
+    position: absolute;
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    left: 10px;
+    right: 62px;
+    z-index: 3;
+    padding: 6px 6px 6px 16px;
+    border-radius: 28px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
 }
 
 .o_cfg3d_error { margin: 15vh auto; text-align: center; }

@@ -105,6 +105,13 @@
                      cliquable : elle dit ce qui manque et y mène (`onStepChip`), comme une
                      valeur éteinte dit pourquoi (D-178). ⚠️ `aria-disabled` et non
                      `disabled` : un bouton désactivé ne reçoit plus le clic. -->
+                <!-- ⓘ SUR TÉLÉPHONE, LA BARRE D'ACTION MONTE SUR LA 3D (D-389) — en haut, la
+                     croix à sa droite (Gerry, 2026-10-01) : le pied de la colonne disparaît, et
+                     c'est autant de hauteur rendue à la 3D. Les étapes passent sous elle. -->
+                <div t-if="state.compact" class="o_cfg3d_topbar">
+                    <t t-call="product_configurator_web_3d.ActionBar"/>
+                </div>
+
                 <nav t-if="stepChips.length" class="o_cfg3d_steps" t-att-aria-label="stepsLabel">
                     <t t-foreach="stepChips" t-as="chip" t-key="chip.id">
                         <button type="button" class="o_cfg3d_panel_chip o_cfg3d_step_chip"
@@ -184,7 +191,7 @@
 
                 <!-- ⓘ LA BARRE D'ACTION (D-389) — un gabarit nommé, pour que le mode compact la
                      pose en haut du viewer sans la dupliquer. -->
-                <div class="o_cfg3d_footer">
+                <div t-if="!state.compact" class="o_cfg3d_footer">
                     <t t-call="product_configurator_web_3d.ActionBar"/>
                 </div>
 

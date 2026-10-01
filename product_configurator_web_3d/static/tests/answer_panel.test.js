@@ -193,7 +193,7 @@ describe("la feuille de style du panneau", () => {
         // Sans rognage, le panneau qui glisse dépassait, et le focus faisait défiler la page.
         expect(side).toContain("overflow: hidden;");
         expect(panel).toMatch(/position: absolute;\s*inset: 0;/);
-        expect(panel).toMatch(/@media \(max-width: 900px\) \{\s*position: fixed;\s*height: 100vh;\s*height: 100dvh;/);
+        expect(panel).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*position: fixed;\s*height: 100vh;\s*height: 100dvh;/);
     });
 
     test("il glisse depuis la droite, ou monte depuis le bas — et reste immobile si on le demande", () => {

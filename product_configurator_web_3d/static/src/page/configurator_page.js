@@ -17,7 +17,8 @@ import { _t } from "@web/core/l10n/translation";
  * ⚠️ **Le jeton entre par l'URL et ne ressort pas.** Il est passé en prop par le gabarit,
  * employé dans les appels, et n'apparaît dans aucun état rendu (D-190).
  */
-import { Component, onMounted, onPatched, onWillStart, onWillUnmount, useRef, useState } from "@odoo/owl";
+import { Component, onMounted, onPatched, onWillStart, onWillUnmount, useExternalListener, useRef,
+         useState } from "@odoo/owl";
 import { useService } from "@web/core/utils/hooks";
 import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
@@ -52,7 +53,7 @@ import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, han
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError, revealScrollLeft,
          rowEdges, lineOf, filterAnswers, panelViewOf, pickedAnswer, isImageForm,
          panelChips, filterByCategory, activeStepId, stepQuestions, missingBefore, stepChips,
-         questionView }
+         questionView, COMPACT_QUERY }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -148,7 +149,10 @@ export class ConfiguratorPage extends Component {
             // ⓘ **CE QUE LE DOIGT DÉSIGNE dans la 3D** — voir `onSelectPiece`. `null` tant
             // que rien n'est touché, et le vide y ramène : on désigne une pièce, on ne
             // s'engage à rien.
+            // ── LE MODE COMPACT (D-389) — le téléphone : voir `_watchCompact`. ──────────
+            compact: false,
         });
+        this._watchCompact();
         this._worlds = new Map();
         this._solids = new Map();
         this._bakedSolids = new Map();
@@ -228,6 +232,23 @@ export class ConfiguratorPage extends Component {
             }
         });
         this._listenToOthers();
+    }
+
+    /**
+     * Le MODE COMPACT (D-389) : la largeur de la fenêtre, suivie — le SCSS dispose, le gabarit
+     * rend selon `state.compact`, et les deux lisent le MÊME seuil (`COMPACT_QUERY`).
+     *
+     * ⓘ Une `MediaQueryList` est une cible d'évènements : `useExternalListener` s'y abonne au
+     * montage et s'en désabonne au démontage. ⓘ Lue tout de suite, avant le premier rendu : la
+     * page ne se dessine pas d'abord pour l'ordinateur pour se refaire aussitôt.
+     */
+    _watchCompact() {
+        const query = browser.matchMedia?.(COMPACT_QUERY);
+        if (!query) return;
+        this.state.compact = query.matches;
+        useExternalListener(query, "change", (ev) => {
+            this.state.compact = ev.matches;
+        });
     }
 
     /**

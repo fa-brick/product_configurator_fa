@@ -1,6 +1,11 @@
 /* La page publique du configurateur — viewer à gauche, questions à droite.
    Aucune couleur de thème n'est empruntée : cette page est NUE, et rien de Bootstrap ne
    décide de son fond. */
+
+/* ⓘ LE MODE COMPACT (D-389) — le téléphone. ⚠️ Le MÊME nombre que `COMPACT_MAX_WIDTH`
+   (`configurator_state.js`), que le JS lit pour décider de ce qu'il rend : un test compare
+   les deux. Toute media query de largeur de cette page passe par cette variable. */
+$o-cfg3d-compact-max: 900px;
 .o_cfg3d_page {
     display: flex;
     align-items: stretch;
@@ -28,7 +33,7 @@
 
     /* ⚠️ Sous 900 px, la 3D PASSE AU-DESSUS : le lien arrive souvent par courriel, donc
        sur un téléphone, et c'est le produit qu'on vient voir en premier. */
-    @media (max-width: 900px) {
+    @media (max-width: $o-cfg3d-compact-max) {
         flex-direction: column;
     }
 }
@@ -61,7 +66,7 @@
     overflow: hidden;
     border-left: 1px solid rgba(0, 0, 0, 0.08);
 
-    @media (max-width: 900px) {
+    @media (max-width: $o-cfg3d-compact-max) {
         flex: 1 1 auto;
         border-left: none;
         border-top: 1px solid rgba(0, 0, 0, 0.08);
@@ -474,7 +479,7 @@
     background: #fff;
     animation: o_cfg3d_panel_from_right 0.2s ease-out;
 
-    @media (max-width: 900px) {
+    @media (max-width: $o-cfg3d-compact-max) {
         position: fixed;
         height: 100vh;
         height: 100dvh;
@@ -650,7 +655,7 @@
    ⓘ Page pleine seulement : dans le dialogue du back-office, la colonne n'est pas collée
    au bord de la fenêtre, et la place du cœur ne recouvre rien. Sous 900 px, la colonne
    passe sous le viewer : la place du cœur est déjà sur la 3D. */
-@media (min-width: 901px) {
+@media (min-width: $o-cfg3d-compact-max + 1) {
     body:has(.o_cfg3d_page):not(:has(.o_cfg3d_action)) .o_notification_manager {
         right: calc(340px + 16px);
     }

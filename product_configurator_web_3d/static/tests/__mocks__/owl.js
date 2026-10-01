@@ -9,5 +9,8 @@ module.exports = {
     onWillStart: (fn) => fn && fn(),
     onMounted: () => {},
     onWillUnmount: () => {},
+    // ⓘ Branché TOUT DE SUITE sur la cible : le banc tient lieu de montage, et c'est
+    // l'abonnement qu'il éprouve, pas le cycle de vie d'OWL.
+    useExternalListener: (target, name, handler) => target.addEventListener?.(name, handler),
     xml: (strings) => String(strings),
 };

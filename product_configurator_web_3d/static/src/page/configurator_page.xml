@@ -182,24 +182,10 @@
 
                 </div>
 
+                <!-- ⓘ LA BARRE D'ACTION (D-389) — un gabarit nommé, pour que le mode compact la
+                     pose en haut du viewer sans la dupliquer. -->
                 <div class="o_cfg3d_footer">
-                    <div class="o_cfg3d_price">
-                        <span t-esc="priceLabel"/>
-                        <strong t-esc="price"/>
-                    </div>
-
-                    <!-- ⓘ Le bouton DISPARAÎT une fois la configuration close : le
-                         bandeau de fermeture, plus haut, dit alors ce qu'il en est.
-                         Deux états, un seul endroit qui parle. -->
-                    <!-- ⚠️ `!` ET NON `not`. OWL traduit `and`, `or`, `gt`, `lte`… mais
-                         PAS `not` (`owl.js`, `WORD_REPLACEMENT`) : il en fait une
-                         VARIABLE, `ctx['not']`, le gabarit ne compile plus, et la page
-                         entière reste BLANCHE — pas seulement ce bouton (L-209). -->
-                    <button t-if="state.model and !state.model.closed and !state.model.error"
-                            class="btn btn-primary o_cfg3d_confirm"
-                            t-att-disabled="state.loading or watching"
-                            t-on-click="() => this.onConfirm()"
-                            t-esc="confirmLabel"/>
+                    <t t-call="product_configurator_web_3d.ActionBar"/>
                 </div>
 
                 <!-- ⓘ LE PANNEAU DE CHOIX (D-382) — par-dessus la colonne, qui le borne ; en
@@ -207,6 +193,34 @@
                 <t t-if="panelQuestion" t-call="product_configurator_web_3d.AnswerPanel"/>
             </aside>
         </t>
+    </div>
+</t>
+
+<!-- ⓘ LA BARRE D'ACTION (D-389) — le prix et le geste qui termine, sur UNE ligne (Gerry,
+     2026-10-01). ⓘ Pas de composant à emplacement : un gabarit nommé, appelé par `t-call`
+     hors de toute boucle ([[L-453]]). -->
+<t t-name="product_configurator_web_3d.ActionBar">
+    <div class="o_cfg3d_actionbar">
+        <div class="o_cfg3d_price">
+            <span class="o_cfg3d_price_label" t-esc="priceLabel"/>
+            <strong class="o_cfg3d_price_amount" t-esc="price"/>
+        </div>
+        <!-- ⓘ LE PANIER POUR TOUS LES HÔTES, en icône seule : celle d'Odoo
+             (`website_sale`, `fa fa-shopping-cart`), arbitrage de Gerry (2026-10-01). Ce que
+             fait le bouton ne change pas, et son NOM le dit : un bouton fait d'une seule
+             icône n'en a que par `title` et `aria-label`.
+             Le bouton DISPARAÎT une fois la configuration close : le bandeau de fermeture,
+             plus haut, dit alors ce qu'il en est. Deux états, un seul endroit qui parle.
+             ⚠️ `!` ET NON `not` : OWL en ferait une VARIABLE, et la page entière resterait
+             BLANCHE (L-209). -->
+        <button t-if="state.model and !state.model.closed and !state.model.error"
+                type="button"
+                class="btn btn-primary o_cfg3d_confirm"
+                t-att-disabled="state.loading or watching"
+                t-att-title="confirmLabel" t-att-aria-label="confirmLabel"
+                t-on-click="() => this.onConfirm()">
+            <i class="fa fa-shopping-cart" role="img"/>
+        </button>
     </div>
 </t>
 

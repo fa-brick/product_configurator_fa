@@ -106,10 +106,27 @@ $o-cfg3d-compact-max: 900px;
     &--muted { opacity: 0.4; }
 }
 
-.o_cfg3d_price {
+/* ⓘ LA BARRE D'ACTION (D-389) — UNE ligne : le prix à gauche, le geste à droite (Gerry,
+   2026-10-01). Elle vit au pied de la colonne ; le mode compact la pose en haut du viewer. */
+.o_cfg3d_actionbar {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
+    align-items: center;
+    gap: 12px;
+}
+
+.o_cfg3d_price {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+.o_cfg3d_price_label { font-size: 12.5px; opacity: 0.7; }
+.o_cfg3d_price_amount {
+    font-size: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .o_cfg3d_reason, .o_cfg3d_note, .o_cfg3d_closed {
@@ -797,10 +814,15 @@ $o-cfg3d-compact-max: 900px;
     font-size: 12.5px;
 }
 
-/* ⓘ Pleine largeur et détaché du prix : c'est le geste qui TERMINE, il ne doit pas
-   se confondre avec les boutons de valeur, tous en ligne au-dessus. */
+/* ⓘ Le geste qui TERMINE : une icône seule (D-389), mais un bouton PLEIN, de la couleur du
+   thème — il ne se confond ni avec les boutons de valeur, au trait, ni avec le prix. Une cible
+   de 44 px au moins : c'est aussi le doigt qui le vise. */
 .o_cfg3d_confirm {
-    width: 100%;
+    flex: 0 0 auto;
+    min-width: 56px;
+    height: 44px;
+    font-size: 18px;
+    border-radius: 22px;
 }
 
 /* ── LA SORTIE ──────────────────────────────────────────────────────────────

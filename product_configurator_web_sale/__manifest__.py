@@ -12,7 +12,11 @@
     # base sans boutique : lui ajouter `website_sale` obligerait à installer tout
     # l'e-commerce pour ouvrir une configuration. La boutique est un POINT
     # D'ENTRÉE de plus, pas une dépendance de la page.
-    "depends": ["product_configurator_web_3d", "website_sale"],
+    # ⓘ `product_configurator_web_3d_sale` (W-99 / D-393) : la ligne du panier porte sa
+    # configuration (`config_session_id`, déclaré par `product_configurator_fa_sale`) — son
+    # prix et sa réouverture en dépendent. Installé partout où la boutique l'est (fabk18,
+    # serveur d'essai : relevé du 2026-10-01).
+    "depends": ["product_configurator_web_3d", "website_sale", "product_configurator_web_3d_sale"],
     "data": [
         "views/templates.xml",
     ],

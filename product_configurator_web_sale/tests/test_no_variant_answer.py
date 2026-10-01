@@ -39,17 +39,26 @@ class NoVariantAnswerInCart(WebsiteSaleCommon):
         })
 
     def _configure(self, *values):
+        """Une configuration CONFIRMÉE, comme la page la confirme (`action_confirm` écrit
+        l'article sur la session — c'est par lui que le panier reconnaît son jeton)."""
         session = self.env["product.config.session"].create({
             "product_tmpl_id": self.tmpl.id, "user_id": self.env.user.id,
             "value_ids": [Command.set([v.id for v in values])],
         })
-        return session, session.create_get_variant()
+        session.action_confirm()
+        return session, session.product_id
 
-    def _to_cart(self, variant, ptav_ids):
-        """Ce que fait la page : la variante, et les réponses qu'elle sait transmettre."""
-        order = self.empty_cart
+    def _to_cart(self, variant, ptav_ids, session=None, order=None):
+        """Ce que fait la page : la variante, ses réponses « sans variante », et — depuis W-99 —
+        le JETON de sa configuration (`config_session_token`)."""
+        order = order or self.empty_cart
+        token = None
+        if session:
+            session._ensure_access_token()
+            token = session.access_token
         result = order._cart_update(product_id=variant.id, add_qty=1,
-                                    no_variant_attribute_value_ids=ptav_ids)
+                                    no_variant_attribute_value_ids=ptav_ids,
+                                    config_session_token=token)
         return order.order_line.browse(result["line_id"])
 
     def _page_ptav_ids(self, session):
@@ -73,3 +82,42 @@ class NoVariantAnswerInCart(WebsiteSaleCommon):
                               .product_attribute_value_id.mapped("name"))
         self.assertEqual(names(variant), {"Cine"})          # la finition n'est plus dans l'article
         self.assertEqual(line.product_id, variant)
+
+    # ── W-99 lot 2 : la ligne LIÉE à sa configuration (Q2) ──────────────────────────────────
+    def test_03_la_ligne_porte_sa_configuration_ses_reponses_et_son_prix(self):
+        session, variant = self._configure(self.cine, self.gloss)
+        line = self._to_cart(variant, self._page_ptav_ids(session), session=session)
+        self.assertEqual(line.config_session_id, session)
+        self.assertEqual(line.product_id, variant)
+        self.assertEqual(line.product_no_variant_attribute_value_ids.product_attribute_value_id,
+                         self.gloss)
+        self.assertEqual(line.price_unit, session.price)
+
+    def test_04_meme_si_la_page_n_envoie_RIEN_la_session_dit_les_reponses(self):
+        """Le jeton suffit : la ligne relit les réponses dans la configuration elle-même."""
+        session, variant = self._configure(self.cine, self.gloss)
+        line = self._to_cart(variant, [], session=session)
+        self.assertEqual(line.product_no_variant_attribute_value_ids.product_attribute_value_id,
+                         self.gloss)
+
+    def test_05_une_configuration_une_ligne(self):
+        """Deux configurations qui ne diffèrent que par une réponse « sans variante » : le MÊME
+        article, mais DEUX lignes. La même configuration ajoutée deux fois : une ligne, 2."""
+        order = self.empty_cart
+        s1, v1 = self._configure(self.cine, self.gloss)
+        s2, v2 = self._configure(self.cine, self.matte)
+        self.assertEqual(v1, v2)
+        l1 = self._to_cart(v1, [], session=s1, order=order)
+        l2 = self._to_cart(v2, [], session=s2, order=order)
+        self.assertNotEqual(l1, l2)
+        again = self._to_cart(v1, [], session=s1, order=order)
+        self.assertEqual(again, l1)
+        self.assertEqual(l1.product_uom_qty, 2)
+
+    def test_06_un_jeton_d_une_AUTRE_configuration_ne_lie_rien(self):
+        """Le jeton ne vaut que pour l'article que SA configuration a fait naître."""
+        s1, v1 = self._configure(self.cine, self.gloss)
+        s2, v2 = self._configure(self.classic, self.gloss)
+        line = self._to_cart(v1, [], session=s2)
+        self.assertFalse(line.config_session_id)
+

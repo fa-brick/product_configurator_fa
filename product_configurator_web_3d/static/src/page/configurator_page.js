@@ -1550,9 +1550,12 @@ export class ConfiguratorPage extends Component {
         try {
             main = await rpc("/shop/cart/update_json", {
                 product_id: productId, add_qty: 1,
-                // ⓘ D-368 — la réponse réelle aux questions vendues à part, sinon la boutique
-                // y met leur première valeur (« Sans bumper »).
+                // ⓘ D-368, élargi par W-99 — TOUTES les réponses « sans variante » : sinon la
+                // boutique y met leur première valeur (« Sans bumper », « Mat »).
                 no_variant_attribute_value_ids: this.state.model?.noVariantPtavIds || [],
+                // ⓘ W-99 / D-393 — la ligne se LIE à cette configuration : elle garde l'article
+                // tel quel, son prix et ses réponses (`product_configurator_web_sale`).
+                config_session_token: this.props.token,
             });
         } catch (e) {
             console.warn("[configurateur] mise au panier impossible :", e);

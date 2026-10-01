@@ -163,7 +163,7 @@
                 <!-- ── LA PIÈCE SÉLECTIONNÉE — ses questions, à la place de celles du produit
                      (D-333 : « en un clic, éditer ses questions »). Le retour est la flèche
                      de l'en-tête, ci-dessus. -->
-                <section t-if="selectedPlacement" class="o_cfg3d_piece">
+                <section t-if="selectedPlacement and !state.compact" class="o_cfg3d_piece">
                     <t t-foreach="selectedPlacement.questions" t-as="question" t-key="question.id">
                         <t t-call="product_configurator_web_3d.Question">
                             <t t-set="placementNodeId" t-value="state.selection.nodeId"/>
@@ -173,7 +173,7 @@
 
                 <!-- ⓘ Les questions du PRODUIT — par le MÊME gabarit qu'une pièce. -->
                 <!-- ⓘ Celles de l'ÉTAPE affichée — toutes, sans étape (D-385). -->
-                <t t-if="!selectedPlacement">
+                <t t-if="!selectedPlacement and !state.compact">
                     <t t-foreach="shownQuestions" t-as="question" t-key="question.id">
                         <t t-call="product_configurator_web_3d.Question">
                             <t t-set="placementNodeId" t-value="null"/>
@@ -181,11 +181,43 @@
                     </t>
                 </t>
 
+                <!-- ⓘ SUR TÉLÉPHONE, LES QUESTIONS EN ONGLETS (D-389) — celles de l'étape, ou
+                     de la pièce sélectionnée, en une rangée qui défile ; l'onglet ouvert est
+                     CENTRÉ (`_settleTabs`) pour montrer qu'il y en a d'autres de chaque côté, et
+                     seul son champ s'affiche dessous (Gerry, 2026-10-01). La pastille d'un onglet
+                     dit qu'une réponse obligatoire y manque : on ne voit plus qu'une question à
+                     la fois. -->
+                <t t-if="state.compact and activeQuestion">
+                    <div class="o_cfg3d_tabs" role="tablist" t-ref="tabs"
+                         t-att-data-active="activeQuestion.id">
+                        <t t-foreach="tabQuestions" t-as="tab" t-key="tab.id">
+                            <button type="button" role="tab" class="o_cfg3d_tab"
+                                    t-att-class="{ 'o_cfg3d_tab--on': tab.id === activeQuestion.id }"
+                                    t-att-aria-selected="tab.id === activeQuestion.id ? 'true' : 'false'"
+                                    t-on-click="() => this.onTab(tab)">
+                                <span t-esc="tab.name"/>
+                                <span t-if="tab.missing" class="o_cfg3d_tab_missing"
+                                      t-att-title="missingLabel" t-att-aria-label="missingLabel"/>
+                            </button>
+                        </t>
+                    </div>
+                    <!-- ⓘ La boîte du champ a une hauteur FIXE : si elle suivait chaque champ,
+                         le canevas changerait de taille à chaque onglet et la pièce sauterait. -->
+                    <div class="o_cfg3d_field" role="tabpanel">
+                        <t t-set="question" t-value="activeQuestion"/>
+                        <t t-call="product_configurator_web_3d.Question">
+                            <t t-set="placementNodeId"
+                               t-value="selectedPlacement ? state.selection.nodeId : null"/>
+                        </t>
+                        <p t-if="state.reason" class="o_cfg3d_reason" t-esc="state.reason"/>
+                    </div>
+                </t>
+
                 <p t-if="!questions.length and !state.loading and !selectedPlacement" class="o_cfg3d_note"
                    t-esc="emptyLabel"/>
 
                 <!-- La raison d'un refus, là où le doigt vient de se poser. -->
-                <p t-if="state.reason" class="o_cfg3d_reason" t-esc="state.reason"/>
+                <p t-if="state.reason and !state.compact" class="o_cfg3d_reason" t-esc="state.reason"/>
 
                 </div>
 
@@ -240,7 +272,9 @@
     <section class="o_cfg3d_question" t-att-data-question-id="question.id">
         <!-- ⓘ La LIGNE RÉSUMÉ porte le nom de la question dans son cadre (D-382) : il ne
              se répète pas au-dessus. Une saisie libre garde son titre. -->
-        <h2 t-if="question.free or question.answerLayout !== 'summary'" t-esc="question.name"/>
+        <!-- ⓘ En mode compact, l'ONGLET porte déjà le nom (D-389). -->
+        <h2 t-if="!state.compact and (question.free or question.answerLayout !== 'summary')"
+            t-esc="question.name"/>
         <!-- ⚠️ **LA QUESTION PREND LA FORME QU'ON LUI A DONNÉE.**
              `display_type` est réglé en back-office depuis toujours ;
              la page l'ignorait et rendait un bouton pour tout
@@ -306,7 +340,7 @@
         <t t-elif="question.displayType === 'card'">
             <t t-set="shown" t-value="this.shownAnswers(question)"/>
             <div class="o_cfg3d_scrollrow"
-                 t-att-class="{ 'o_cfg3d_scrollrow--active': question.answerLayout === 'scroll' }"
+                 t-att-class="{ 'o_cfg3d_scrollrow--active': this.layoutOn(question) === 'scroll' }"
                  t-att-data-chosen="this.chosenKey(question)"
                  t-on-scroll.capture="onRowScroll"
                  t-on-mouseenter="onRowScroll">
@@ -322,7 +356,7 @@
                         <span class="o_cfg3d_card_label" t-esc="seeAllLabel"/>
                     </button>
                 </div>
-                <t t-if="question.answerLayout === 'scroll'" t-call="product_configurator_web_3d.ScrollArrows"/>
+                <t t-if="this.layoutOn(question) === 'scroll'" t-call="product_configurator_web_3d.ScrollArrows"/>
             </div>
         </t>
 
@@ -337,7 +371,7 @@
         <t t-elif="question.displayType === 'swatch'">
             <t t-set="shown" t-value="this.shownAnswers(question)"/>
             <div class="o_cfg3d_scrollrow"
-                 t-att-class="{ 'o_cfg3d_scrollrow--active': question.answerLayout === 'scroll' }"
+                 t-att-class="{ 'o_cfg3d_scrollrow--active': this.layoutOn(question) === 'scroll' }"
                  t-att-data-chosen="this.chosenKey(question)"
                  t-on-scroll.capture="onRowScroll"
                  t-on-mouseenter="onRowScroll">
@@ -352,7 +386,7 @@
                         <span class="o_cfg3d_bigswatch_label" t-esc="seeAllLabel"/>
                     </button>
                 </div>
-                <t t-if="question.answerLayout === 'scroll'" t-call="product_configurator_web_3d.ScrollArrows"/>
+                <t t-if="this.layoutOn(question) === 'scroll'" t-call="product_configurator_web_3d.ScrollArrows"/>
             </div>
         </t>
 

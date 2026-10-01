@@ -80,13 +80,14 @@ describe("le gabarit — une enveloppe autour des deux grilles à image", () => 
     test("la carte et la grande pastille : l'enveloppe, activée par la disposition", () => {
         for (const [form, next, grid] of BRANCHES) {
             const bloc = branch(form, next);
-            expect(bloc).toContain("'o_cfg3d_scrollrow--active': question.answerLayout === 'scroll'");
+            // ⓘ Par `layoutOn` depuis D-389 : en mode compact, une grille devient une rangée.
+            expect(bloc).toContain("'o_cfg3d_scrollrow--active': this.layoutOn(question) === 'scroll'");
             expect(bloc).toContain('t-att-data-chosen="this.chosenKey(question)"');
             expect(bloc).toContain('t-on-scroll.capture="onRowScroll"');
             // La grille est le PREMIER enfant de l'enveloppe : la page la lit ainsi.
             expect(bloc).toMatch(new RegExp(`t-on-mouseenter="onRowScroll">\\s*<div class="${grid}"`));
             expect(bloc).toContain(
-                `<t t-if="question.answerLayout === 'scroll'" t-call="product_configurator_web_3d.ScrollArrows"/>`);
+                `<t t-if="this.layoutOn(question) === 'scroll'" t-call="product_configurator_web_3d.ScrollArrows"/>`);
         }
     });
 

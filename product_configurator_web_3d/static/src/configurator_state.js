@@ -80,6 +80,48 @@ export function rowEdges(scrollLeft, viewWidth, scrollWidth) {
     };
 }
 
+/**
+ * Le `scrollLeft` qui CENTRE un onglet dans sa rangée — D-389 : *« la sélection de question le
+ * centre en largeur pour montrer qu'il y a des questions à gauche et à droite »* (Gerry).
+ * ⓘ Borné aux deux bouts : le premier et le dernier onglet ne se centrent pas, ils touchent le
+ * bord — une rangée ne défile pas au-delà de son contenu.
+ */
+export function centerScrollLeft(viewWidth, scrollWidth, itemLeft, itemWidth) {
+    const max = Math.max(0, scrollWidth - viewWidth);
+    const centered = itemLeft + itemWidth / 2 - viewWidth / 2;
+    return Math.round(Math.min(max, Math.max(0, centered)));
+}
+
+/**
+ * La question dont l'onglet est ouvert, en mode compact — D-389.
+ *
+ * ⓘ Celle qu'on a choisie si elle est encore servie (une réponse peut la masquer, ou
+ * changer d'étape), sinon la PREMIÈRE QUI MANQUE — c'est là qu'il y a quelque chose à faire —,
+ * sinon la première. Même principe que `activeStepId`.
+ */
+export function activeQuestionId(questions, wanted) {
+    if (!questions.length) return null;
+    if (questions.some((question) => question.id === wanted)) return wanted;
+    return (questions.find((question) => question.missing) || questions[0]).id;
+}
+
+/**
+ * La disposition d'une question À L'ÉCRAN — D-389 (Q3).
+ *
+ * ⓘ En mode compact, une grille de cartes ou de grandes pastilles devient une RANGÉE QUI
+ * DÉFILE, avec la liste complète (Gerry, 2026-10-01) : une grille de plusieurs lignes ne tient
+ * pas dans la boîte du champ, et sa hauteur ferait sauter la 3D d'un onglet à l'autre. `line`
+ * aussi, puisque la rangée montre déjà tout. `summary` reste un résumé : il est choisi exprès
+ * pour les longues listes.
+ */
+export function layoutOn(question, compact) {
+    if (compact && isImageForm(question)
+            && (question.answerLayout === "inline" || question.answerLayout === "line")) {
+        return "scroll";
+    }
+    return question.answerLayout;
+}
+
 // ── LA LIGNE, LE RÉSUMÉ, LE PANNEAU (D-382, lot 3) ──────────────────────────
 
 /**

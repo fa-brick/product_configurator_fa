@@ -374,6 +374,12 @@ msgstr "Étapes"
 #. module: product_configurator_web_3d
 #. odoo-javascript
 #: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "Answer required"
+msgstr "Réponse requise"
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
 msgid "Search…"
 msgstr "Rechercher…"
 

@@ -53,7 +53,7 @@ import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, han
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError, revealScrollLeft,
          rowEdges, lineOf, filterAnswers, panelViewOf, pickedAnswer, isImageForm,
          panelChips, filterByCategory, activeStepId, stepQuestions, missingBefore, stepChips,
-         questionView, COMPACT_QUERY }
+         questionView, COMPACT_QUERY, activeQuestionId, centerScrollLeft, layoutOn }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -151,6 +151,9 @@ export class ConfiguratorPage extends Component {
             // s'engage à rien.
             // ── LE MODE COMPACT (D-389) — le téléphone : voir `_watchCompact`. ──────────
             compact: false,
+            // L'onglet ouvert en mode compact, par l'identifiant de sa question — relu contre
+            // celles que la colonne montre (`activeQuestion`), comme l'étape.
+            question: null,
         });
         this._watchCompact();
         this._worlds = new Map();
@@ -218,6 +221,7 @@ export class ConfiguratorPage extends Component {
         this.pageRef = useRef("page");
         this.answersRef = useRef("answers");
         this.panelSearchRef = useRef("panelSearch");
+        this.tabsRef = useRef("tabs");
         onMounted(() => this._afterRender());
         onPatched(() => this._afterRender());
         onWillUnmount(() => this._answersObserver?.disconnect());
@@ -752,6 +756,8 @@ export class ConfiguratorPage extends Component {
         if (before.nodeId === nodeId && before.isolated === isolated) return;
         this.state.selection = { nodeId, isolated };
         this.state.reason = null;
+        // ⓘ D-389 — d'autres questions, donc l'onglet repart : la première qui manque.
+        this.state.question = null;
         // Le panneau montrait une question de l'ANCIENNE sélection (D-382).
         this.state.panel = null;
         if (isolated && nodeId) this._frameOn(nodeId);
@@ -841,6 +847,7 @@ export class ConfiguratorPage extends Component {
 
     _afterRender() {
         this._settleRows();
+        this._settleTabs();
         this._observeAnswers();
         this._revealQuestion();
         if (this._focusPanelSearch && this.panelSearchRef.el) {
@@ -904,12 +911,61 @@ export class ConfiguratorPage extends Component {
      * celles d'une seule ligne et le compte de celles qui restent (D-382).
      */
     shownAnswers(question) {
-        if (question.answerLayout !== "line") return { values: question.values, more: 0 };
+        if (this.layoutOn(question) !== "line") return { values: question.values, more: 0 };
         return lineOf(question.values, this.state.lineWidth, question.displayType, question.answerSize);
     }
 
     pickedAnswer(question) {
         return pickedAnswer(question);
+    }
+
+    /** La disposition À L'ÉCRAN : une grille devient une rangée en mode compact (D-389). */
+    layoutOn(question) {
+        return layoutOn(question, this.state.compact);
+    }
+
+    // ── LES ONGLETS DU MODE COMPACT (D-389) ─────────────────────────────────────
+
+    /** Les questions des onglets : celles de la pièce sélectionnée, sinon de l'étape. */
+    get tabQuestions() {
+        return this.selectedPlacement ? this.selectedPlacement.questions : this.shownQuestions;
+    }
+
+    /** La question de l'onglet ouvert — `null` sans question. */
+    get activeQuestion() {
+        const questions = this.tabQuestions;
+        const id = activeQuestionId(questions, this.state.question);
+        return questions.find((question) => question.id === id) || null;
+    }
+
+    /**
+     * Ouvrir un onglet, c'est TRAVAILLER sa question : sa vue 3D s'applique, comme à
+     * l'ouverture de son panneau (D-387). ⓘ Une question de pièce n'a ni étape ni vue.
+     */
+    onTab(question) {
+        this.state.question = question.id;
+        this.state.reason = null;
+        if (!this.selectedPlacement) this._showQuestionView(question.id);
+    }
+
+    /**
+     * Centrer l'onglet ouvert — seulement quand il CHANGE (`data-active` contre
+     * `data-centered`) : la page se rend à chaque réponse, au prix, au bus, et ramener la
+     * rangée à chaque rendu la reprendrait à qui la fait défiler (même garde que `_settleRows`).
+     *
+     * ⚠️ Un `scrollLeft` calculé, jamais `scrollIntoView` : il fait aussi défiler les
+     * ancêtres, la page comprise ([[L-455]]). ⓘ Le premier centrage est immédiat (rangée
+     * neuve), les suivants glissent.
+     */
+    _settleTabs() {
+        const row = this.tabsRef.el;
+        if (!row || row.dataset.active === row.dataset.centered) return;
+        const first = row.dataset.centered === undefined;
+        row.dataset.centered = row.dataset.active;
+        const tab = row.querySelector(".o_cfg3d_tab--on");
+        if (!tab) return;
+        const left = centerScrollLeft(row.clientWidth, row.scrollWidth, tab.offsetLeft, tab.offsetWidth);
+        row.scrollTo({ left, behavior: first ? "auto" : "smooth" });
     }
 
     isImageForm(question) {
@@ -1212,6 +1268,8 @@ export class ConfiguratorPage extends Component {
         this.state.step = stepId;
         this.state.panel = null;
         this.state.reason = null;
+        // ⓘ D-389 — l'onglet de la nouvelle étape : la première question qui manque.
+        this.state.question = null;
         if (this.answersRef.el) this.answersRef.el.scrollTop = 0;
         // ⓘ Changer d'étape, c'est changer de sujet : la vue déjà montrée se remontre si
         // une question de la nouvelle étape la demande (D-387).
@@ -1241,6 +1299,9 @@ export class ConfiguratorPage extends Component {
         // la montre tout de suite ; sinon `_afterRender` le fera après le rendu que le
         // changement d'étape déclenche. ⓘ Pas de compteur « pour forcer un rendu » : OWL
         // ne rend que pour une clé que le gabarit LIT.
+        // ⓘ D-389 — en mode compact, seule la question de l'onglet ouvert est dans le DOM :
+        // on ouvre le sien. Sans effet sur ordinateur, où toutes y sont.
+        this.state.question = first.id;
         this._revealQuestionId = first.id;
         this._revealQuestion();
     }
@@ -1253,7 +1314,9 @@ export class ConfiguratorPage extends Component {
         const section = root.querySelector(`[data-question-id="${id}"]`);
         if (!section) return;
         this._revealQuestionId = null;
-        section.scrollIntoView({ block: "center", behavior: "smooth" });
+        // ⚠️ Pas en mode compact : le champ est déjà sous les yeux, dans sa boîte, et
+        // `scrollIntoView` ferait aussi défiler la page sous la colonne ([[L-455]]).
+        if (!this.state.compact) section.scrollIntoView({ block: "center", behavior: "smooth" });
         // ⚠️ `preventScroll` : le défilement doux ci-dessus fait le trajet ; un focus
         // qui défile lui-même le couperait net.
         section.querySelector("input, select, button, [tabindex]")?.focus({ preventScroll: true });
@@ -1505,6 +1568,7 @@ export class ConfiguratorPage extends Component {
     get allLabel() { return _t("All"); }
     get otherLabel() { return _t("Others"); }
     get stepsLabel() { return _t("Steps"); }
+    get missingLabel() { return _t("Answer required"); }
 
     /** Une question est repondue des qu'une de ses valeurs est retenue. */
     isAnswered(question) {

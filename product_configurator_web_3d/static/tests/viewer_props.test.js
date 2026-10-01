@@ -144,7 +144,8 @@ describe("la page publique et son viewer", () => {
     });
 
     test("les questions du produit et celles d'une pièce passent par le MÊME gabarit", () => {
-        expect(TEMPLATE.match(/t-call="product_configurator_web_3d.Question"/g)).toHaveLength(2);
+        // ⓘ Trois appels depuis D-389 : la pièce, le produit, et l'onglet du mode compact.
+        expect(TEMPLATE.match(/t-call="product_configurator_web_3d.Question"/g)).toHaveLength(3);
         expect(TEMPLATE).toContain('t-name="product_configurator_web_3d.Question"');
         // Plus aucun `onPick` direct dans le gabarit : une seule porte, `onAnswer`.
         expect(TEMPLATE.replace(/<!--[\s\S]*?-->/g, "")).not.toContain("this.onPick(");

@@ -174,7 +174,8 @@ describe("le gabarit du panneau, de la ligne et du résumé", () => {
         expect(free).toBeGreaterThan(0);
         expect(summary).toBeGreaterThan(free);
         expect(card).toBeGreaterThan(summary);
-        expect(question).toContain(`<h2 t-if="question.free or question.answerLayout !== 'summary'" t-esc="question.name"/>`);
+        // ⓘ Et jamais en mode compact : l'onglet porte le nom (D-389).
+        expect(question).toMatch(/<h2 t-if="!state.compact and \(question.free or question.answerLayout !== 'summary'\)"\s*t-esc="question.name"\/>/);
     });
 
     test("« +N » : dans les deux grilles, il ouvre le panneau", () => {

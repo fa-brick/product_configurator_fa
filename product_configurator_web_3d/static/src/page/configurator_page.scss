@@ -38,6 +38,26 @@ $o-cfg3d-compact-max: 900px;
     }
 }
 
+/* ⓘ **LA PAGE CALÉE AU-DESSUS DU CLAVIER** du téléphone (`_watchKeyboard`, D-389). Le clavier
+   ne réduit que la partie VISIBLE de l'écran et fait glisser la page vers le haut : la 3D, la
+   barre du prix et le panier en sortaient (capture de Gerry, 2026-10-02). La page se pose sur
+   ce qui reste visible — `fixed` par rapport à la fenêtre, à la place et à la taille que
+   `visualViewport` donne — ; la colonne garde sa hauteur, la 3D prend le reste et le viewer
+   suit sa nouvelle taille (son `ResizeObserver`). Jamais dans un dialogue (voir le JS). */
+.o_cfg3d_page--keyboard {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: var(--o-cfg3d-visible-top, 0px);
+    height: var(--o-cfg3d-visible-height, 100dvh);
+
+    /* La 3D descend sous son plancher habituel : c'est elle qui cède la place au clavier. */
+    .o_cfg3d_viewer { min-height: 0; }
+    /* ⓘ Le nom du produit (ou de la pièce) cède sa ligne à la 3D pendant la saisie (Gerry,
+       2026-10-02) : l'onglet ouvert dit déjà ce qu'on remplit. */
+    .o_cfg3d_title { display: none; }
+}
+
 .o_cfg3d_viewer {
     flex: 1 1 auto;
     position: relative;

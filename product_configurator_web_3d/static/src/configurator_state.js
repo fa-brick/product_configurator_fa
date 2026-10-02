@@ -30,6 +30,44 @@ import { _t } from "@web/core/l10n/translation";
 export const COMPACT_MAX_WIDTH = 900;
 export const COMPACT_QUERY = `(max-width: ${COMPACT_MAX_WIDTH}px)`;
 
+/**
+ * Ce que le CLAVIER du téléphone a pris à l'écran au-delà de quoi on l'en croit ouvert, en
+ * pixels CSS. ⓘ Les barres du navigateur qui se replient en font varier quelques dizaines :
+ * sous ce seuil, ce n'est pas un clavier.
+ */
+export const KEYBOARD_MIN_HEIGHT = 120;
+
+/**
+ * La page CALÉE AU-DESSUS DU CLAVIER — `{ top, height }` en pixels CSS, ou `null` quand elle
+ * garde sa place.
+ *
+ * ⚠️ **Le clavier ne redimensionne PAS la page** : Chrome sur Android (par défaut) comme Safari
+ * réduisent la seule partie VISIBLE (`visualViewport`) et font glisser la page pour montrer le
+ * champ. La page fait la hauteur de l'écran : la 3D, la barre du prix et le panier sortaient
+ * par le haut (capture de Gerry, 2026-10-02). On la pose donc sur ce qui reste visible — la
+ * colonne garde sa hauteur, la 3D prend le reste.
+ *
+ * Seulement en mode compact, sur une page PLEINE (pas dans un dialogue, qui a son cadre),
+ * pendant une SAISIE, sans zoom au pincement — qui réduit lui aussi la partie visible.
+ * Source : https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport
+ */
+export function keyboardFit({ compact, framed, editing, innerHeight, viewport }) {
+    if (!compact || framed || !editing || !viewport) return null;
+    if ((viewport.scale || 1) > 1.01) return null;
+    if (innerHeight - viewport.height < KEYBOARD_MIN_HEIGHT) return null;
+    return { top: Math.round(viewport.offsetTop), height: Math.round(viewport.height) };
+}
+
+/** Un champ qui appelle le clavier : saisie de texte ou de nombre, zone de texte. */
+export function isTypingField(el) {
+    if (!el) return false;
+    if (el.tagName === "TEXTAREA" || el.isContentEditable) return true;
+    if (el.tagName !== "INPUT") return false;
+    const NO_KEYBOARD = ["checkbox", "radio", "button", "submit", "reset", "range", "color",
+                         "file", "image", "hidden"];
+    return !NO_KEYBOARD.includes((el.type || "text").toLowerCase());
+}
+
 /** Les tailles d'une carte ou d'une grande pastille (`answer_size`, D-382). */
 export const ANSWER_SIZES = ["small", "medium", "large"];
 

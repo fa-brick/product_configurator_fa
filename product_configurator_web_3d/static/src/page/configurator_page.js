@@ -53,7 +53,8 @@ import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, han
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError, revealScrollLeft,
          rowEdges, lineOf, filterAnswers, panelViewOf, pickedAnswer, isImageForm,
          panelChips, filterByCategory, activeStepId, stepQuestions, missingBefore, stepChips,
-         questionView, COMPACT_QUERY, activeQuestionId, centerScrollLeft, layoutOn, viewInset }
+         questionView, COMPACT_QUERY, activeQuestionId, centerScrollLeft, layoutOn, viewInset,
+         keyboardFit, isTypingField }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
@@ -157,8 +158,12 @@ export class ConfiguratorPage extends Component {
             // ⓘ La ZONE RÉSERVÉE en haut du viewer, en pixels — ce que la barre et les étapes
             // y couvrent ; le viewer cadre sous elle (`_measureViewInset`, D-389).
             viewInsetTop: 0,
+            // ⓘ La page CALÉE AU-DESSUS DU CLAVIER du téléphone, `{ top, height }`, ou `null` —
+            // voir `_watchKeyboard`.
+            keyboard: null,
         });
         this._watchCompact();
+        this._watchKeyboard();
         this._worlds = new Map();
         this._solids = new Map();
         this._bakedSolids = new Map();
@@ -256,6 +261,48 @@ export class ConfiguratorPage extends Component {
         useExternalListener(query, "change", (ev) => {
             this.state.compact = ev.matches;
         });
+    }
+
+    /**
+     * Le CLAVIER du téléphone (D-389) : la page se pose sur la partie encore VISIBLE de l'écran
+     * pendant une saisie, et la 3D y garde sa place — voir `keyboardFit`.
+     *
+     * ⓘ `visualViewport` dit ce que le clavier laisse : sa taille change à l'ouverture et à la
+     * fermeture (`resize`), son décalage quand le navigateur fait glisser la page (`scroll`).
+     * Le focus est suivi aussi : un appui hors du champ ferme le clavier, mais le dernier
+     * `resize` peut arriver avant que le champ ait perdu le focus.
+     * ⚠️ Un dialogue (back-office) a son propre cadre, souvent `transform` : une page `fixed`
+     * s'y placerait par rapport à lui. On ne touche donc qu'à une page PLEINE.
+     */
+    _watchKeyboard() {
+        // ⓘ `window` et non `browser` : l'objet d'Odoo ne relaie pas `visualViewport`.
+        const viewport = globalThis.window?.visualViewport;
+        if (!viewport) return;
+        const update = () => {
+            const el = this.pageRef?.el;
+            const fit = keyboardFit({
+                compact: this.state.compact,
+                framed: !el || !!el.closest(".modal"),
+                editing: isTypingField(document.activeElement) && !!el?.contains(document.activeElement),
+                innerHeight: window.innerHeight,
+                viewport,
+            });
+            const now = this.state.keyboard;
+            if (fit?.top === now?.top && fit?.height === now?.height) return;
+            this.state.keyboard = fit;
+        };
+        useExternalListener(viewport, "resize", update);
+        useExternalListener(viewport, "scroll", update);
+        useExternalListener(document, "focusin", update);
+        // ⓘ Après le départ du focus, pas pendant : `activeElement` vaut encore le champ.
+        useExternalListener(document, "focusout", () => browser.setTimeout(update, 0));
+    }
+
+    /** Le style de la page calée au-dessus du clavier — vide sinon. */
+    get keyboardStyle() {
+        const fit = this.state.keyboard;
+        if (!fit) return "";
+        return `--o-cfg3d-visible-top: ${fit.top}px; --o-cfg3d-visible-height: ${fit.height}px;`;
     }
 
     /**

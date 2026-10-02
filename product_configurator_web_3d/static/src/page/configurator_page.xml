@@ -4,7 +4,10 @@
     <!-- ⚠️ LE VIEWER À GAUCHE, LES QUESTIONS À DROITE (arbitrage Gerry, 2026-08-26).
          En colonne sous 900 px : sur un téléphone, la 3D en premier — c'est elle qu'on
          vient voir, et le lien arrive souvent par courriel. -->
-    <div class="o_cfg3d_page" t-ref="page">
+    <!-- ⓘ La classe « keyboard » : la page CALÉE AU-DESSUS DU CLAVIER du téléphone (`_watchKeyboard`). -->
+    <div class="o_cfg3d_page" t-ref="page"
+         t-att-class="{ 'o_cfg3d_page--keyboard': state.keyboard }"
+         t-att-style="keyboardStyle">
 
         <!-- ⚠️ **LA SORTIE — et elle manquait à qui arrive par un LIEN.** La croix ne vivait
              que dans l'overlay de la fiche produit ; la grille de la boutique, un courriel

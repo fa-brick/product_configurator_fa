@@ -151,8 +151,8 @@ class ValueType(BaseCommon):
         self.assertEqual(attr.custom_type, "integer")
 
     # ── ce que le FORMAT contraint à son tour ───────────────────────────────
-    def test_10_only_four_formats_are_offered(self):
-        """⚠️ Le catalogue hérité en proposait huit — il en reste quatre.
+    def test_10_only_five_formats_are_offered(self):
+        """⚠️ Le catalogue hérité en proposait huit — il en reste quatre, plus les PLAGES.
 
         Un format dit comment se LIT un libellé : un mot, un entier, un décimal.
         Les quatre retirés décrivaient des widgets de saisie (`text` n'est qu'un
@@ -163,9 +163,13 @@ class ValueType(BaseCommon):
         d'un « une pièce jointe n'est pas une valeur », et c'était faux — le
         client joint un fichier comme valeur personnalisée, et sept tests du
         module l'exercent de bout en bout.
+
+        ⓘ `range` — « Plages » — est AJOUTÉ le 2026-10-02 à la demande de Gerry (W-102 /
+        D-395) : des millimètres entiers notés comme l'impression de pages (`3-34, 45, 54`).
+        Ce n'est pas un widget : c'est une LECTURE de plus, avec sa forme canonique.
         """
         offerts = dict(self.Attribute._fields["custom_type"].selection)
-        self.assertEqual(sorted(offerts), ["binary", "char", "float", "integer"])
+        self.assertEqual(sorted(offerts), ["binary", "char", "float", "integer", "range"])
 
     def test_11_a_unit_qualifies_a_NUMBER(self):
         """« Chêne mm » n'est pas une lecture, c'est un accident de saisie."""

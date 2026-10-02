@@ -148,3 +148,44 @@ class FreeTextValues(BaseCommon):
             self.line_width.validate_custom_val("900")
         with self.assertRaisesRegex(ValidationError, "not a number"):
             self.line_width.validate_custom_val("wide")
+
+
+class FreeRangeValues(BaseCommon):
+    """Des PLAGES saisies par le client (`3-34, 45, 54`) — W-102 / D-395, étape 3 bis.
+
+    La lecture et le message vivent dans `product_attribute_advanced`, avec le format ; le
+    configurateur, lui, REFUSE à la saisie (sa page est publique) et réutilise la valeur dont
+    la forme canonique est la même.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.zones = cls.env["product.attribute"].create({
+            "name": "Zones début", "val_custom": True, "custom_type": "range",
+            "create_variant": "dynamic",
+        })
+        cls.known = cls.env["product.attribute.value"].create(
+            {"name": "3-34, 45, 54", "attribute_id": cls.zones.id})
+        template = cls.env["product.template"].create({"name": "Lame", "config_ok": True})
+        cls.line = cls.env["product.template.attribute.line"].create({
+            "product_tmpl_id": template.id, "attribute_id": cls.zones.id,
+            "custom": True, "required": False, "value_ids": [(6, 0, cls.known.ids)],
+        })
+
+    def test_01_a_readable_answer_passes(self):
+        self.line.validate_custom_val("3-34, 45, 54")
+        self.line.validate_custom_val(" 8 ; 12-14 ")
+
+    def test_02_an_unreadable_answer_is_refused_with_the_notation(self):
+        with self.assertRaisesRegex(ValidationError, "3-34, 45, 54"):
+            self.line.validate_custom_val("3 à 34")
+        with self.assertRaisesRegex(ValidationError, "smaller bound first"):
+            self.line.validate_custom_val("34-3")
+
+    def test_03_the_same_ranges_in_another_writing_REUSE_the_value(self):
+        self.assertEqual(self.line.resolve_custom_value("54 ; 45, 3-34"), self.known)
+
+    def test_04_a_new_answer_is_stored_canonical(self):
+        value = self.line.resolve_custom_value("12-14, 8")
+        self.assertEqual(value.name, "8, 12-14")

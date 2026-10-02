@@ -661,7 +661,9 @@ class ProductAttribute(models.Model):
         réponse, et la question retomberait en silence sur son défaut ([[L-218]]).
         """
         self.ensure_one()
-        if self.is_numeric():
+        if self.is_numeric() or self.is_ranges():
+            # ⓘ Des PLAGES (W-102) ont aussi une forme canonique — `54, 3-34` se range
+            # `3-34, 54` —, donc une seule valeur pour une seule réponse.
             text = self.normalize_custom_text(raw)
             return self.canonical_custom_value(text) if text else None
         return self.normalize_custom_text(raw) or None
@@ -1535,6 +1537,12 @@ class ProductAttributeLine(models.Model):
             return
         if attribute.value_type != "value":
             return
+        if attribute.is_ranges():
+            # ⓘ W-102 — des plages notées comme l'impression de pages ; la lecture et le
+            # message vivent dans `product_attribute_advanced`, avec le format.
+            message = attribute.ranges_error(val)
+            if message:
+                raise ValidationError(message)
         text = attribute.normalize_custom_text(val)
         if self.max_length and len(text) > self.max_length:
             raise ValidationError(

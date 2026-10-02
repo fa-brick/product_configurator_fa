@@ -999,8 +999,33 @@ class ProductAttributeLine(models.Model):
             # ⓘ Sans `active_test=False`, une valeur DÉSACTIVÉE serait invisible —
             # or c'est précisément l'état où l'on vient voir ce qui s'est passé
             # (D-205), et le seul endroit d'où la réactiver.
-            "context": {"active_test": False},
+            "context": {"active_test": False, **self._values_list_context()},
             "target": "new",
+        }
+
+    def action_open_attribute_values(self):
+        """Le bouton « Configurer » du cœur ouvre la MÊME liste : même contexte."""
+        action = super().action_open_attribute_values()
+        action["context"] = {
+            **action.get("context", {}),
+            **self._values_list_context(),
+        }
+        return action
+
+    def _values_list_context(self):
+        """Ce qui permet à la liste des valeurs de cacher une colonne ENTIÈRE.
+
+        ⚠️ `column_invisible` ne lit pas les enregistrements, seulement le
+        contexte : sans ces deux clés, seule la cellule se vide (`invisible`) et
+        l'en-tête reste, au-dessus d'une colonne blanche. La liste ouverte d'une
+        ligne ne porte qu'UN mode et UN type — c'est ce qui rend la colonne
+        décidable. Ouverte d'ailleurs, sans ces clés, toutes les colonnes restent.
+        """
+        self.ensure_one()
+        return {
+            "configurator_price_mode": self.price_mode,
+            "configurator_value_type": self.attribute_id.value_type,
+            "configurator_display_type": self.attribute_id.display_type,
         }
 
     # ─ L'ÉTAPE EST UN SÉPARATEUR — B1, D-202 ────────────────────────────────

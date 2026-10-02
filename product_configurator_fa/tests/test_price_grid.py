@@ -401,3 +401,23 @@ class PriceGrid(BaseCommon):
             show_price_extra=True, active_id=self.template.id
         ).display_name
         self.assertNotIn("/m²", shown)
+
+    def test_20_the_values_list_knows_WHICH_price_column_to_show(self):
+        """⚠️ `column_invisible` ne lit que le CONTEXTE : sans le mode de la
+        ligne, la colonne vide garde son en-tête — deux colonnes de prix pour un
+        seul montant. Les deux portes de la liste le transmettent."""
+        for action in (
+            self.line_lacquer.action_open_values(),
+            self.line_lacquer.action_open_attribute_values(),
+        ):
+            self.assertEqual(action["context"]["configurator_price_mode"], "per_sqm")
+            self.assertEqual(action["context"]["configurator_value_type"], "value")
+            self.assertEqual(
+                action["context"]["configurator_display_type"],
+                self.attr_lacquer.display_type,
+            )
+        self.line_lacquer.price_mode = "fixed"
+        action = self.line_lacquer.action_open_attribute_values()
+        self.assertEqual(action["context"]["configurator_price_mode"], "fixed")
+        # ⓘ Le contexte du cœur n'est pas écrasé, il est complété.
+        self.assertTrue(action["context"]["product_invisible"])

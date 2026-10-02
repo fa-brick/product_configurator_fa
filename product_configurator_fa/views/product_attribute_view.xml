@@ -654,29 +654,36 @@
         <field name="model">product.template.attribute.value</field>
         <field name="inherit_id" ref="product.product_template_attribute_value_view_tree" />
         <field name="arch" type="xml">
-            <!-- ⚠️ MÊME RÈGLE QUE SUR LE CATALOGUE, mais PAR LIGNE et non par
-                 colonne : `price_mode` est lié à la ligne d'attribut, et cette liste
-                 peut mêler des lignes de modes différents. `column_invisible` ne
-                 s'évalue que sur le contexte parent — seul `invisible`, évalué par
-                 enregistrement, sait vider la bonne cellule.
+            <!-- ⚠️ MÊME RÈGLE QUE SUR LE CATALOGUE, À DEUX ÉTAGES : `price_mode` et
+                 `value_type` vivent sur la ligne d'attribut.
+                 · la COLONNE (`column_invisible`) : ouverte depuis une ligne, la
+                   liste reçoit son mode et son type par le contexte
+                   (`_values_list_context`) — une seule colonne de prix reste ;
+                 · la CELLULE (`invisible`) : ouverte sans ce contexte, la liste peut
+                   mêler des lignes de modes différents, et seul `invisible`, évalué
+                   par enregistrement, sait vider la bonne cellule.
 
                  ⚠️ Le montant fixe DISPARAÎT en mode m², il ne devient pas seulement
                  lecture seule : un zéro affiché à côté d'un taux se lit comme « pas
                  de supplément », alors qu'il y en a un — et un champ modifiable
-                 aurait invité à le remplir, ce qu'Odoo aurait facturé en plus. -->
+                 aurait invité à le remplir, ce qu'Odoo aurait facturé en plus.
+
+                 ⓘ La colonne « On removal » (D-205) n'est plus affichée, à la
+                 demande de Gerry (2026-10-02) : le champ reste, l'avertissement au
+                 retrait d'une valeur aussi. -->
             <xpath expr="//field[@name='price_extra']" position="attributes">
                 <!-- ⚠️ Une valeur qui désigne un PRODUIT est facturée au prix de ce
                      produit : son `price_extra` est ignoré par le calcul. Le montrer
                      ici serait le même mensonge que dans le catalogue (D-199). -->
                 <attribute name="invisible">price_mode == 'per_sqm' or value_type == 'product'</attribute>
+                <attribute name="column_invisible">context.get('configurator_price_mode') == 'per_sqm' or context.get('configurator_value_type') == 'product'</attribute>
             </xpath>
-            <!-- ══ CE QUE LE RETRAIT FERA — B4, QC, D-205 ═══════════════════════
-                 « Si aucun variant n'a été créé on peut supprimer ; s'il y a déjà eu
-                 des variants on désactive. » Le cœur le fait déjà ; ce qui manquait
-                 était de le DIRE avant le clic — un bouton, deux effets, décidés par
-                 un état que l'utilisateur ne voit pas. -->
-            <xpath expr="//field[@name='price_extra']" position="before">
-                <field name="removal_effect" widget="badge" optional="show" />
+            <!-- ⓘ La couleur HTML ne sert qu'à une valeur SIMPLE affichée en
+                 couleur — même règle que la liste de l'attribut, plus haut. L'image,
+                 elle, reste : sur une carte, elle remplace l'image du produit
+                 (product_configurator_web_3d). -->
+            <xpath expr="//field[@name='html_color']" position="attributes">
+                <attribute name="column_invisible">context.get('configurator_value_type', 'value') != 'value' or context.get('configurator_display_type', 'color') != 'color'</attribute>
             </xpath>
             <xpath expr="//field[@name='price_extra']" position="after">
                 <field name="price_mode" column_invisible="True" />
@@ -686,13 +693,14 @@
                     name="product_price"
                     widget="monetary"
                     invisible="value_type != 'product'"
+                    column_invisible="context.get('configurator_value_type', 'product') != 'product'"
                     readonly="1"
                 />
                 <field
                     name="price_extra_sqm"
                     widget="monetary"
                     options="{'field_digits': True}"
-                    column_invisible="context.get('hide_sqm', False)"
+                    column_invisible="context.get('hide_sqm', False) or context.get('configurator_price_mode') == 'fixed' or context.get('configurator_value_type') == 'product'"
                     invisible="price_mode != 'per_sqm' or value_type == 'product'"
                 />
             </xpath>

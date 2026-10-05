@@ -2,79 +2,85 @@
 <templates xmlns:t="http://www.w3.org/1999/XSL/Transform">
 
     <t t-name="product_configurator_fa.ConfiguratorTree">
-        <table class="o_config_tree table table-sm w-100" t-ref="root">
-            <thead>
-                <tr>
-                    <th class="o_config_tree_handle"/>
-                    <th class="o_config_tree_name">Attributes</th>
-                    <th>Conditions</th>
-                    <th class="o_config_tree_view">3D view</th>
-                    <th class="o_config_tree_actions"/>
-                </tr>
-            </thead>
-            <!-- ⚠️ **UN `<tbody>` PAR BLOC, ET C'EST LE FANTÔME QUI L'EXIGE.**
-                 Demande de Gerry : *« borner le fantôme pour qu'il représente
-                 l'emplacement du relâcher »*. Le cœur sait le faire — `groups` +
-                 `connectGroups: false` fait du groupe le CONTENEUR de la rangée
-                 tirée —, mais il lui faut un élément PARENT par groupe. Un
-                 tableau n'admet qu'un seul genre de conteneur de rangées, d'où
-                 ce découpage : la tête du bloc d'un côté, ses valeurs de l'autre.
+        <!-- ⓘ L'ENVELOPPE porte ce que le cœur donne à `.o_list_renderer` : le
+             bord-à-bord dans l'onglet et le défilement horizontal sur téléphone
+             (`form_widget.scss`). Le `t-ref` reste sur le tableau : glisser et
+             gel des colonnes n'en savent rien. -->
+        <div class="o_config_tree_scroll table-responsive">
+            <table class="o_config_tree table table-sm w-100" t-ref="root">
+                <thead>
+                    <tr>
+                        <th class="o_config_tree_handle"/>
+                        <th class="o_config_tree_name">Attributes</th>
+                        <th class="o_config_tree_conditions">Conditions</th>
+                        <th class="o_config_tree_view">3D view</th>
+                        <th class="o_config_tree_actions"/>
+                    </tr>
+                </thead>
+                <!-- ⚠️ **UN `<tbody>` PAR BLOC, ET C'EST LE FANTÔME QUI L'EXIGE.**
+                     Demande de Gerry : *« borner le fantôme pour qu'il représente
+                     l'emplacement du relâcher »*. Le cœur sait le faire — `groups` +
+                     `connectGroups: false` fait du groupe le CONTENEUR de la rangée
+                     tirée —, mais il lui faut un élément PARENT par groupe. Un
+                     tableau n'admet qu'un seul genre de conteneur de rangées, d'où
+                     ce découpage : la tête du bloc d'un côté, ses valeurs de l'autre.
 
-                 ⓘ Bootstrap 5.3 ne pose AUCUNE bordure entre deux `<tbody>` —
-                 c'est `.table-group-divider` qui le fait, et on ne l'emploie
-                 pas. La découpe est donc invisible. -->
-            <t t-foreach="blocks" t-as="bloc" t-key="'b-' + bloc.lineId">
-                <tbody class="o_config_head">
-                    <t t-foreach="bloc.head" t-as="row" t-key="row.kind + '-' + row.id">
-                        <t t-if="row.kind === 'step'">
-                            <t t-call="product_configurator_fa.ConfiguratorTree.StepRow"/>
+                     ⓘ Bootstrap 5.3 ne pose AUCUNE bordure entre deux `<tbody>` —
+                     c'est `.table-group-divider` qui le fait, et on ne l'emploie
+                     pas. La découpe est donc invisible. -->
+                <t t-foreach="blocks" t-as="bloc" t-key="'b-' + bloc.lineId">
+                    <tbody class="o_config_head">
+                        <t t-foreach="bloc.head" t-as="row" t-key="row.kind + '-' + row.id">
+                            <t t-if="row.kind === 'step'">
+                                <t t-call="product_configurator_fa.ConfiguratorTree.StepRow"/>
+                            </t>
+                            <t t-else="">
+                                <t t-call="product_configurator_fa.ConfiguratorTree.Row"/>
+                            </t>
                         </t>
-                        <t t-else="">
+                    </tbody>
+                    <!-- ⓘ Le conteneur des valeurs n'existe QUE dépliées : une
+                         valeur cachée ne borne rien, et un `<tbody>` vide bornerait
+                         le fantôme sur une zone de hauteur nulle. -->
+                    <tbody t-if="bloc.values.length" class="o_config_values"
+                           t-att-data-line-id="bloc.lineId">
+                        <t t-foreach="bloc.values" t-as="row" t-key="'v-' + row.id">
                             <t t-call="product_configurator_fa.ConfiguratorTree.Row"/>
                         </t>
-                    </t>
+                    </tbody>
+                </t>
+                <!-- ⚠️ Une liste vide SANS point d'entrée se lit comme une panne.
+                     Le pied ci-dessous existe toujours ; ceci ne fait que le dire. -->
+                <tbody t-if="isEmpty">
+                    <tr>
+                        <td colspan="5" class="text-muted fst-italic">
+                            No attribute yet — add one in the &#8220;Attributes &amp; Variants&#8221; tab.
+                        </td>
+                    </tr>
                 </tbody>
-                <!-- ⓘ Le conteneur des valeurs n'existe QUE dépliées : une
-                     valeur cachée ne borne rien, et un `<tbody>` vide bornerait
-                     le fantôme sur une zone de hauteur nulle. -->
-                <tbody t-if="bloc.values.length" class="o_config_values"
-                       t-att-data-line-id="bloc.lineId">
-                    <t t-foreach="bloc.values" t-as="row" t-key="'v-' + row.id">
-                        <t t-call="product_configurator_fa.ConfiguratorTree.Row"/>
-                    </t>
-                </tbody>
-            </t>
-            <!-- ⚠️ Une liste vide SANS point d'entrée se lit comme une panne.
-                 Le pied ci-dessous existe toujours ; ceci ne fait que le dire. -->
-            <tbody t-if="isEmpty">
-                <tr>
-                    <td colspan="5" class="text-muted fst-italic">
-                        No attribute yet — add one in the &#8220;Attributes &amp; Variants&#8221; tab.
-                    </td>
-                </tr>
-            </tbody>
-            <tfoot>
-                <!-- ⚠️ **LE MARQUAGE DU CŒUR, À LA LETTRE** — `list_renderer.xml`,
-                     le pied de toute liste `one2many` : une cellule vide sous la
-                     colonne des poignées, puis `o_field_x2many_list_row_add` et de
-                     simples `<a>`. Demandé par Gerry : *« l'esthétisme des boutons
-                     doit être identique à Ajouter un produit / Ajouter une
-                     section »*. Un `btn btn-link` n'en avait ni la graisse ni le
-                     retrait.
+                <tfoot>
+                    <!-- ⚠️ **LE MARQUAGE DU CŒUR, À LA LETTRE** — `list_renderer.xml`,
+                         le pied de toute liste `one2many` : une cellule vide sous la
+                         colonne des poignées, puis `o_field_x2many_list_row_add` et de
+                         simples `<a>`. Demandé par Gerry : *« l'esthétisme des boutons
+                         doit être identique à Ajouter un produit / Ajouter une
+                         section »*. Un `btn btn-link` n'en avait ni la graisse ni le
+                         retrait.
 
-                     ⓘ « Ajouter un attribut » a disparu : il faisait doublon avec
-                     l'onglet « Attributs & Variantes », qui porte la même liste et
-                     la même séquence. -->
-                <tr>
-                    <td class="o_config_tree_handle"/>
-                    <td colspan="4" class="o_field_x2many_list_row_add">
-                        <a href="#" role="button" t-on-click.prevent="() => this.addStep()">
-                            Add a step
-                        </a>
-                    </td>
-                </tr>
-            </tfoot>
-        </table>
+                         ⓘ « Ajouter un attribut » a disparu : il faisait doublon avec
+                         l'onglet « Attributs & Variantes », qui porte la même liste et
+                         la même séquence. -->
+                    <tr>
+                        <td class="o_config_tree_handle"/>
+                        <td colspan="4" class="o_field_x2many_list_row_add">
+                            <a href="#" role="button" t-on-click.prevent="() => this.addStep()">
+                                Add a step
+                            </a>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     </t>
 
     <!-- ⓘ Les rangées deviennent des sous-gabarits : elles sont désormais

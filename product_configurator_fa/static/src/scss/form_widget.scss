@@ -44,11 +44,27 @@
         color: $o-main-text-color;
         opacity: 0.85;
     }
+    // ⚠️ **DES LARGEURS MINIMALES, PAS SEULEMENT DES LARGEURS.** Sur téléphone,
+    // un tableau en `table-layout: auto` comprime la colonne la plus souple —
+    // « Conditions », dont « Ajouter une condition » finissait sur trois lignes.
+    // Avec un minimum par colonne, le tableau déborde et l'enveloppe défile,
+    // comme la liste des attributs (`column_width_hook.js`).
+    //
+    // ⓘ Rapport arbitré par Gerry (2026-10-05) : la vue 3D réduite de moitié
+    // (14 → 7 rem), les conditions à 1,5 × l'ancienne vue 3D (21 rem).
+    .o_config_tree_name {
+        min-width: 10rem;
+    }
+    .o_config_tree_conditions {
+        min-width: 21rem;
+    }
     .o_config_tree_view {
-        width: 14rem;
+        width: 7rem;
+        min-width: 7rem;
     }
     .o_config_tree_actions {
         width: 4rem;
+        min-width: 4rem;
         text-align: right;
     }
 }
@@ -156,10 +172,47 @@
     width: 100%;
     table-layout: auto;
 }
-.o_field_widget:has(> .o_config_tree),
-td:has(> .o_config_tree),
-div:has(> .o_config_tree) {
+//
+// ⚠️ **PAS DE `width: 100%` SUR L'ENVELOPPE `.o_config_tree_scroll`.** Elle
+// porte les marges négatives du bord-à-bord ci-dessous : à largeur imposée,
+// elles la DÉCALERAIENT vers la gauche au lieu de l'élargir. Un bloc en
+// largeur automatique s'élargit de lui-même.
+.o_field_widget:has(> .o_config_tree_scroll) {
     width: 100%;
+}
+
+// ══ BORD À BORD DANS L'ONGLET, COMME LES LIGNES DE DEVIS ════════════════════
+//
+// ⚠️ Le cœur étire une liste jusqu'au bord de la feuille
+// (`form_controller.scss`, « Full width on first x2many ») — mais sa règle ne
+// vise que `.o_field_x2many_list .o_list_renderer`, et l'arbre n'en est pas
+// une. Constat de Gerry (2026-10-05) : *« contrairement aux lignes de devis,
+// les lignes de configuration ne vont pas jusqu'au bord »*.
+//
+// ⓘ On reprend les TROIS retouches du cœur, et ses variables : la marge
+// négative, le retrait de la première et de la dernière cellule (la poignée
+// reste sous l'onglet), l'en-tête collé aux onglets. Le cœur redéfinit
+// `--notebook-margin-x` / `--notebook-padding-x` sur petit écran : le
+// téléphone suit sans règle à nous.
+.o_form_view .o_notebook > .tab-content > .tab-pane > :first-child:not(.o_group) .o_config_tree_scroll {
+    @include media-only(screen) {
+        margin: (-$o-horizontal-padding) var(--notebook-margin-x) 0;
+
+        > .o_config_tree > :is(thead, tbody, tfoot) > tr {
+            > :first-child {
+                padding-left: var(--notebook-padding-x);
+            }
+            // ⓘ Sauf la POIGNÉE, qui garde son petit retrait — exception du cœur
+            // (« use original padding-left for handle cell »). Sans elle, la
+            // poignée tombait 11 px plus à droite que celle d'une ligne de devis.
+            > :first-child.o_config_tree_handle {
+                padding-left: 0.3rem;
+            }
+            > :last-child {
+                padding-right: var(--notebook-padding-x);
+            }
+        }
+    }
 }
 
 // ══ « DYNAMIC VALUES » À LA MÊME HAUTEUR QUE « VALUE TYPE » ═════════════════

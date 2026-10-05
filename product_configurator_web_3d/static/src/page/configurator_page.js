@@ -24,11 +24,9 @@ import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
 import { rpc } from "@web/core/network/rpc";
 import { localization } from "@web/core/l10n/localization";
-// ⓘ **LA SAISIE LIBRE** (D-353) : les deux composants de l'éditeur, pour la même raison —
-// `AutoComplete` pour le texte, `NumberAutoComplete` (`inputmode="decimal"`, jamais
-// `type="number"`, qui mange la virgule — [[L-218]]) pour le nombre.
+// ⓘ **LA SAISIE LIBRE** (D-353) : `AutoComplete` pour le texte, avec ses suggestions ; le
+// nombre a un champ nu, sans liste (Gerry, 2026-10-05 — [[L-504]]).
 import { AutoComplete } from "@web/core/autocomplete/autocomplete";
-import { NumberAutoComplete } from "@product_editor/components/number_autocomplete/number_autocomplete";
 import { PartViewer3D } from "@product_editor/components/part_viewer_3d/part_viewer_3d";
 import { projectSketchItems } from "@product_editor/engine/builder/project_items";
 import { toBuildable } from "@product_editor/engine/builder/to_buildable";
@@ -78,7 +76,7 @@ const FREE_ANSWER_DELAY_MS = 200;
 
 export class ConfiguratorPage extends Component {
     static template = "product_configurator_web_3d.ConfiguratorPage";
-    static components = { PartViewer3D, AutoComplete, NumberAutoComplete };
+    static components = { PartViewer3D, AutoComplete };
     static props = {
         token: { type: String },
         // ⓘ L'état DÉJÀ PRIS, quand quelqu'un l'a demandé avant nous : la fiche

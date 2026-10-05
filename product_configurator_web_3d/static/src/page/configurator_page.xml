@@ -299,14 +299,17 @@
              abandonné, 2026-09-08). Le discriminant est l'AJOUT, lu sur la ligne ; la
              liste de la question devient la liste des SUGGESTIONS.
              ⓘ Un nombre appelle le pavé numérique (`inputmode="decimal"`), jamais un
-             `type="number"`, qui mange la virgule ([[L-218]]). -->
+             `type="number"`, qui mange la virgule ([[L-218]]).
+             ⚠️ **UN NOMBRE N'A PAS DE LISTE** (Gerry, 2026-10-05) : la question autorise
+             l'ajout, les valeurs existantes ne sont qu'une partie des réponses possibles.
+             Un champ nu, sans la déroulante d'`AutoComplete` — elle se posait sur les
+             onglets, et sur Android le pavé se refermait dès la frappe ([[L-504]]). -->
         <t t-if="question.free">
             <div class="o_cfg3d_free">
-                <NumberAutoComplete t-if="question.free.numeric"
-                    value="this.freeText(question)"
-                    sources="this.freeSources(question)"
-                    onSelect="(option) => this.onFreeSelect(placementNodeId, question, option)"
-                    onChange="(ev) => this.onFreeChange(placementNodeId, question, ev.inputValue)"/>
+                <input t-if="question.free.numeric" type="text" inputmode="decimal"
+                       class="o_cfg3d_free_input" autocomplete="off"
+                       t-att-value="this.freeText(question)"
+                       t-on-change="(ev) => this.onFreeChange(placementNodeId, question, ev.target.value)"/>
                 <AutoComplete t-else=""
                     value="this.freeText(question)"
                     sources="this.freeSources(question)"

@@ -935,7 +935,9 @@ $o-cfg3d-compact-max: 900px;
     gap: 8px;
 
     .o-autocomplete { flex: 1 1 auto; }
-    .o-autocomplete--input {
+    /* ⓘ Le champ nu d'un NOMBRE (sans liste) prend la place de la déroulante. */
+    .o_cfg3d_free_input { flex: 1 1 auto; min-width: 0; }
+    .o-autocomplete--input, .o_cfg3d_free_input {
         width: 100%;
         font-size: 13px;
         padding: 6px 10px;

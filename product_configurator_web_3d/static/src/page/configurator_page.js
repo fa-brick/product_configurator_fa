@@ -56,6 +56,8 @@ import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, han
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
+// La photo d'une variante née de la confirmation (D-399, lot 5).
+import { photoCaptured, sendVariantPhoto } from "./variant_photo";
 
 /** Le calque par pose VIDE — une seule instance (voir `zoneMaterialsByNode`). */
 const NO_NODE_MATERIALS = Object.freeze({});
@@ -108,6 +110,8 @@ export class ConfiguratorPage extends Component {
     setup() {
         this.state = useState({
             model: null, loading: true, reason: null, cameraApply: null,
+            // La prise de vue de la variante confirmée, en cours (D-399, lot 5).
+            photoRequest: null,
             // ── LE PANNEAU DE CHOIX (D-382) ─────────────────────────────────────
             // ⚠️ **Des IDENTIFIANTS, jamais la question elle-même** ([[L-449]]) : elle est
             // relue dans l'état à chaque rendu (`panelQuestion`). Gardée ici, elle
@@ -399,6 +403,11 @@ export class ConfiguratorPage extends Component {
         } finally {
             this._remoteReading = false;
         }
+    }
+
+    /** Le retour du viewer pour la photo de la variante (D-399, lot 5). */
+    onPhotoCaptured(b64) {
+        photoCaptured(this, b64);
     }
 
     _call(route, params = {}) {
@@ -1567,6 +1576,13 @@ export class ConfiguratorPage extends Component {
         }
         this.state.reason = null;
         await this._applyModel(next);
+        // ⓘ **LA PHOTO DE LA VARIANTE** (D-399, lot 5) — avant le panier comme avant le devis :
+        // le serveur n'envoie `photo` que si cette confirmation a CRÉÉ la variante (ou qu'elle
+        // n'a pas d'image). Dans un budget de quelques secondes : une image perdue n'empêche
+        // jamais un achat.
+        this.state.loading = true;
+        await sendVariantPhoto(this, next.photo, this.state.model?.productId);
+        this.state.loading = false;
         // ⚠️ APRÈS `_applyModel` : c'est lui qui pose la variante née de la
         // confirmation dans l'état, et c'est elle que l'hôte attend.
         if (this.props.onConfirmed) {

@@ -59,6 +59,8 @@
             "product_editor/static/src/components/number_autocomplete/number_autocomplete.js",
             "product_configurator_web_3d/static/src/page/configurator_page.scss",
             "product_configurator_web_3d/static/src/page/configurator_page.xml",
+            # La photo d'une variante née de la confirmation (D-399, lot 5).
+            "product_configurator_web_3d/static/src/page/variant_photo.js",
             "product_configurator_web_3d/static/src/page/configurator_page.js",
         ],
         # ══ CE QUE LA FORME « CARTE » DOIT AU BACK-OFFICE ══════════════════════
@@ -84,6 +86,8 @@
             "product_configurator_web_3d/static/src/configurator_state.js",
             "product_configurator_web_3d/static/src/page/configurator_page.scss",
             "product_configurator_web_3d/static/src/page/configurator_page.xml",
+            # La photo d'une variante née de la confirmation (D-399, lot 5).
+            "product_configurator_web_3d/static/src/page/variant_photo.js",
             "product_configurator_web_3d/static/src/page/configurator_page.js",
             "product_configurator_web_3d/static/src/page/configurator_action.scss",
             "product_configurator_web_3d/static/src/page/configurator_action.xml",

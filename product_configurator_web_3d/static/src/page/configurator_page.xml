@@ -102,7 +102,9 @@
                               zoneMaterialsByNode="zoneMaterialsByNode"
                               cameraApply="state.cameraApply"
                               viewInsetTop="state.viewInsetTop"
-                              onCameraPose="(pose) => this.onCameraPose(pose)"/>
+                              onCameraPose="(pose) => this.onCameraPose(pose)"
+                              thumbnailRequest="state.photoRequest"
+                              onThumbnailCaptured.bind="onPhotoCaptured"/>
 
                 <!-- ⓘ LES ÉTAPES (D-385) — des pastilles en haut du viewer, centrées sur
                      sa largeur (demande de Gerry, 2026-09-30). Une pastille GRISÉE reste

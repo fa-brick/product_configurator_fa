@@ -24,6 +24,7 @@ d'erreur. Le renommage n'est donc pas cosmétique : il rend l'ambiguïté imposs
 | `product_configurator_fa` | le cœur — règles, session, attributs |
 | `product_configurator_fa_sale` | session → devis |
 | `product_configurator_fa_mrp` | configuration → nomenclature |
+| `product_configurator_fa_sale_matrix` | pont avec la grille des variantes d'Odoo (`sale_product_matrix`) : le Nom de variante à droite de « Sélection des variantes de vente ». Installé seul là où les deux sont présents ; sur une base existante, un `-i` explicite |
 
 ## Vérification statique
 

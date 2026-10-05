@@ -36,4 +36,61 @@
          le crochet — c'est tout ce qu'il a à faire, et cela reste du côté du pont,
          là où la caméra est connue (D-075). -->
 
+    <!-- ══ L'ONGLET « VIGNETTE PRODUIT » REÇOIT LES IMAGES DE CONFIGURATION (D-399) ══
+         Gerry, 2026-10-05 : *« crée un onglet dédié 'vignette produit'. Dedans migre
+         images de configuration »*. L'onglet naît dans `product_editor`, qui ne connaît
+         pas `config_ok` ; les images naissent dans `product_configurator_fa`, qui ne
+         connaît pas l'éditeur. Seul ce pont voit les deux : c'est lui qui déplace.
+
+         ⓘ `position="move"` emporte aussi les deux champs INVISIBLES de l'onglet
+         d'origine : le domaine des lignes de valeurs les lit par `parent.`, et l'onglet
+         vidé disparaît — rien de ce qu'il portait ne devient injoignable (la règle de
+         D-213). Sans ce pont, le configurateur seul garde son onglet.
+
+         ⓘ Les images gardent leurs conditions d'origine : produit configurable, et groupe
+         des utilisateurs du configurateur. -->
+    <record id="product_template_thumbnail_tab_config_images" model="ir.ui.view">
+        <field name="name">product.template.thumbnail.tab.config.images</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view" />
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='product_thumbnail']" position="inside">
+                <xpath
+                    expr="//page[@name='configurator_settings']/separator[@name='configurator_images']"
+                    position="move"
+                />
+                <xpath
+                    expr="//page[@name='configurator_settings']/field[@name='config_image_ids']"
+                    position="move"
+                />
+                <xpath
+                    expr="//page[@name='configurator_settings']/field[@name='attribute_line_val_ids']"
+                    position="move"
+                />
+                <xpath
+                    expr="//page[@name='configurator_settings']/field[@name='attribute_value_line_ids']"
+                    position="move"
+                />
+            </xpath>
+            <xpath expr="//page[@name='product_thumbnail']" position="attributes">
+                <attribute name="invisible">not model3d_piece_type and not config_ok</attribute>
+            </xpath>
+            <xpath expr="//separator[@name='configurator_images']" position="attributes">
+                <attribute name="invisible">not config_ok</attribute>
+                <attribute
+                    name="groups"
+                >product_configurator_fa.group_product_configurator_fa</attribute>
+            </xpath>
+            <xpath expr="//field[@name='config_image_ids']" position="attributes">
+                <attribute name="invisible">not config_ok</attribute>
+                <attribute
+                    name="groups"
+                >product_configurator_fa.group_product_configurator_fa</attribute>
+            </xpath>
+            <xpath expr="//page[@name='configurator_settings']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

@@ -2423,7 +2423,7 @@ msgstr ""
 "avec les règles actuelles"
 
 #. module: product_configurator_fa
-#: model_terms:ir.ui.view,arch_db:product_configurator_fa.product_template_only_form_view_inherited
+#: model_terms:ir.ui.view,arch_db:product_configurator_fa.product_template_variant_name_bottom
 msgid "Variant Name"
 msgstr "Nom de variante"
 

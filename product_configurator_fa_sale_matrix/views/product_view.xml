@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl). -->
+<odoo>
+
+    <!-- ══ LE NOM DE VARIANTE, À DROITE DE « SÉLECTION DES VARIANTES DE VENTE » (D-399) ══
+         Gerry, 2026-10-05 : le Nom de variante en bas d'« Attributs & Variantes », à
+         droite du choix entre configurateur et grille. Le groupe `product_mode` vient de
+         `sale_product_matrix` : seul un pont qui en dépend peut l'atteindre.
+
+         ⚠️ PRIORITÉ 110 : le groupe déplacé naît dans la vue
+         `product_configurator_fa.product_template_variant_name_bottom`, de priorité 100.
+         Les vues héritées s'appliquent par priorité croissante : à la priorité par
+         défaut, ce xpath passerait AVANT elle et ne trouverait rien.
+
+         ⓘ Le groupe intérieur part SEUL : les conditions de son ancien parent (produit
+         configurable, responsable du configurateur) lui sont reposées ici, et le parent
+         vidé ne dessine plus rien. -->
+    <record id="product_template_variant_name_beside_grid" model="ir.ui.view">
+        <field name="name">product.template.variant.name.beside.grid</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view" />
+        <field name="priority">110</field>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='product_mode']" position="inside">
+                <xpath
+                    expr="//group[@name='configurator_variant_name_field']"
+                    position="move"
+                />
+            </xpath>
+            <xpath
+                expr="//group[@name='configurator_variant_name_field']"
+                position="attributes"
+            >
+                <attribute name="invisible">not config_ok</attribute>
+                <attribute
+                    name="groups"
+                >product_configurator_fa.group_product_configurator_fa_manager</attribute>
+            </xpath>
+            <xpath
+                expr="//group[@name='configurator_variant_name']"
+                position="attributes"
+            >
+                <attribute name="invisible">1</attribute>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

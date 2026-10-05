@@ -1,0 +1,22 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* product_configurator_web_3d_mrp
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-05 05:23+0000\n"
+"PO-Revision-Date: 2026-10-05 05:23+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: product_configurator_web_3d_mrp
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_mrp/static/src/mrp_product_field.js:0
+msgid "%s — configure"
+msgstr "%s — configurer"

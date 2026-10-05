@@ -18,19 +18,19 @@ msgstr ""
 #. module: product_configurator_fa_sale
 #: model:ir.model.fields,field_description:product_configurator_fa_sale.field_sale_order_line__config_session_id
 msgid "Config Session"
-msgstr ""
+msgstr "Session de configuration"
 
 #. module: product_configurator_fa_sale
 #: model:ir.model.fields,field_description:product_configurator_fa_sale.field_sale_order_line__config_ok
 msgid "Configurable"
-msgstr ""
+msgstr "Configurable"
 
 #. module: product_configurator_fa_sale
 #: model:ir.model.fields,field_description:product_configurator_fa_sale.field_sale_order_line__custom_value_ids
 msgid "Configurator Custom Values"
-msgstr ""
+msgstr "Valeurs personnalisées du configurateur"
 
 #. module: product_configurator_fa_sale
 #: model:ir.model,name:product_configurator_fa_sale.model_sale_order_line
 msgid "Sales Order Line"
-msgstr ""
+msgstr "Ligne de commande"

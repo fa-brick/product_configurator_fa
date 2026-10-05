@@ -22,5 +22,145 @@ msgid ""
 "(%s): it is matched against the configured product, which does not carry "
 "them."
 msgstr ""
-"Une condition de nomenclature ne peut pas citer de réponse qui ne crée pas de "
-"variante (%s) : elle se compare à l'article configuré, qui ne la porte pas."
+"Une condition de nomenclature ne peut pas citer de réponse qui ne crée pas "
+"de variante (%s) : elle se compare au produit configuré, qui ne la porte "
+"pas."
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration__value_ids
+msgid "Attribute Values"
+msgstr "Valeurs d'attribut"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model,name:product_configurator_fa_mrp.model_mrp_bom
+msgid "Bill of Material"
+msgstr "Nomenclature"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model,name:product_configurator_fa_mrp.model_mrp_bom_line
+msgid "Bill of Material Line"
+msgstr "Ligne de nomenclature"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration_set__bom_line_ids
+msgid "BoM Lines"
+msgstr "Lignes de nomenclature"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_production__config_session_id
+msgid "Config Session"
+msgstr "Session de configuration"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration__config_set_id
+msgid "Config Set"
+msgstr "Jeu de configuration"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom__config_ok
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_production__config_ok
+msgid "Configurable"
+msgstr "Configurable"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration_set__name
+msgid "Configuration"
+msgstr "Configuration"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line__config_set_id
+msgid "Configuration Set"
+msgstr "Jeu de configuration"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.ui.menu,name:product_configurator_fa_mrp.product_menu_mrp_bom_line_config_set
+msgid "Configuration Sets"
+msgstr "Jeux de configuration"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration_set__configuration_ids
+msgid "Configurations"
+msgstr "Configurations"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.actions.server,name:product_configurator_fa_mrp.ir_cron_refresh_bom_cost_ir_actions_server
+msgid "Configurator: nightly BOM cost recompute"
+msgstr "Configurateur : recalcul nocturne du coût des nomenclatures"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration__create_uid
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration_set__create_uid
+msgid "Created by"
+msgstr "Créé par"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration__create_date
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration_set__create_date
+msgid "Created on"
+msgstr "Créé le"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_production__custom_value_ids
+#: model_terms:ir.ui.view,arch_db:product_configurator_fa_mrp.mrp_production_form_view_config
+msgid "Custom Values"
+msgstr "Valeurs personnalisées"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration__display_name
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration_set__display_name
+msgid "Display Name"
+msgstr "Nom d'affichage"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration__id
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration_set__id
+msgid "ID"
+msgstr "ID"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration__write_uid
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration_set__write_uid
+msgid "Last Updated by"
+msgstr "Mis à jour par"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration__write_date
+#: model:ir.model.fields,field_description:product_configurator_fa_mrp.field_mrp_bom_line_configuration_set__write_date
+msgid "Last Updated on"
+msgstr "Mis à jour le"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model,name:product_configurator_fa_mrp.model_mrp_production
+msgid "Manufacturing Order"
+msgstr "Ordre de fabrication"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model,name:product_configurator_fa_mrp.model_mrp_bom_line_configuration
+msgid "Mrp Bom Line Configuration"
+msgstr "Configuration de ligne de nomenclature"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model,name:product_configurator_fa_mrp.model_mrp_bom_line_configuration_set
+msgid "Mrp Bom Line Configuration Set"
+msgstr "Jeu de configuration de ligne de nomenclature"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.actions.act_window,name:product_configurator_fa_mrp.action_mrp_bom_line_config_set
+#: model:ir.ui.menu,name:product_configurator_fa_mrp.menu_mrp_bom_line_config_set
+msgid "Product Attribute Sets"
+msgstr "Jeux d'attributs de produit"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model,name:product_configurator_fa_mrp.model_product_config_session
+msgid "Product Config Session"
+msgstr "Session de configuration"
+
+#. module: product_configurator_fa_mrp
+#: model:ir.model,name:product_configurator_fa_mrp.model_product_product
+msgid "Product Variant"
+msgstr "Variante de produit"
+
+#. module: product_configurator_fa_mrp
+#: model:res.groups,name:product_configurator_fa_mrp.group_product_configurator_fa_mrp
+msgid "Products & BOMS"
+msgstr "Produits et nomenclatures"

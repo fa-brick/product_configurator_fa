@@ -330,8 +330,8 @@ msgstr "Répondez d'abord à : %s"
 
 #. module: product_configurator_web_3d
 #: model:ir.model.fields,field_description:product_configurator_web_3d.field_product_attribute_value__material_preview
-msgid "Preview"
-msgstr "Aperçu"
+msgid "Material preview"
+msgstr "Aperçu de la matière"
 
 #. module: product_configurator_web_3d
 #. odoo-javascript

@@ -242,7 +242,7 @@ class ProductAttributeValue(models.Model):
     )
     material_preview = fields.Image(
         related="material_id.preview_image",
-        string="Preview",
+        string="Material preview",
         readonly=True,
     )
 

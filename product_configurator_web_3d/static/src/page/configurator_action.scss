@@ -12,3 +12,13 @@
 .modal-body:has(> .o_cfg3d_action) {
     padding: 0;
 }
+
+// ⚠️ Sur téléphone le dialogue occupe l'écran : borné à 70vh, la colonne du bas flottait au-dessus d'un vide et le corps défilait (L-532).
+// ⓘ Même seuil que le plein écran d'Odoo (`dialog.scss`) : au-dessus, le corps n'a pas de hauteur à remplir.
+@include media-breakpoint-down(sm) {
+    .o_modal_full .modal-body:has(> .o_cfg3d_action) { overflow: hidden; }
+    .o_modal_full .o_cfg3d_action {
+        height: 100%;
+        .o_cfg3d_page { height: 100%; }
+    }
+}

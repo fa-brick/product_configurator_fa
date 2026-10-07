@@ -66,12 +66,25 @@ describe("la liste ne remonte pas jusqu'en haut", () => {
         expect(XML).toContain(`<aside class="o_cfg3d_side" t-att-class="{ 'o_cfg3d_side--panel': panelQuestion }">`);
     });
 
-    test("sur téléphone, à 58 % de l'écran, et la 3D peut descendre sous 45 %", () => {
-        expect(SCSS).toMatch(/&\.o_cfg3d_side--panel \{\s*flex-basis: 58vh;\s*flex-basis: 58dvh;\s*\}/);
+    // ⚠️ En % de la PAGE et non de l'écran (L-532) : dans le dialogue du back-office, la page
+    // n'est pas l'écran, et 58dvh + 30vh débordaient d'une page de 70vh.
+    test("sur téléphone, à 58 % de la page, et la 3D peut descendre sous 45 %", () => {
+        expect(SCSS).toMatch(/&\.o_cfg3d_side--panel \{\s*(\/\*[\s\S]*?\*\/\s*)?flex-basis: 58%;\s*\}/);
         const viewer = SCSS.slice(SCSS.indexOf(".o_cfg3d_viewer {"), SCSS.indexOf(".o_cfg3d_side {"));
-        expect(viewer).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*min-height: 30vh;/);
-        // 58 + 30 tiennent dans l'écran ; avec 45 %, la page aurait débordé.
+        expect(viewer).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*min-height: 30%;/);
+        // 58 + 30 tiennent dans la page ; avec 45 %, elle aurait débordé.
         expect(58 + 30).toBeLessThanOrEqual(100);
+    });
+
+    test("dans un dialogue plein écran, la page remplit le corps au lieu de 70vh (L-532)", () => {
+        const read = (p) => readFileSync(join(__dirname, "../src", p), "utf8");
+        for (const host of ["configurator_dialog.scss", "page/configurator_action.scss"]) {
+            const scss = read(host);
+            const full = scss.slice(scss.indexOf("@include media-breakpoint-down(sm)"));
+            expect(full).toContain(".o_modal_full");
+            expect(full).toMatch(/\.o_cfg3d_page \{ height: 100%; \}/);
+            expect(full).toMatch(/overflow: hidden;/);
+        }
     });
 
     test("la poignée ferme, sur téléphone seulement", () => {

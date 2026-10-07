@@ -65,8 +65,9 @@ $o-cfg3d-compact-max: 900px;
 
     /* ⓘ Sur téléphone, la 3D prend ce que la colonne laisse (D-389) — y compris quand le
        panneau de choix la fait grandir : elle doit pouvoir descendre sous 45 %. */
+    /* ⚠️ En % de la PAGE et non de l'écran : dans un dialogue, la page n'est pas l'écran (L-532). */
     @media (max-width: $o-cfg3d-compact-max) {
-        min-height: 30vh;
+        min-height: 30%;
     }
 }
 
@@ -101,12 +102,12 @@ $o-cfg3d-compact-max: 900px;
         border-top: 1px solid rgba(0, 0, 0, 0.08);
 
         /* ⓘ LE PANNEAU DE CHOIX NE MONTE PLUS JUSQU'EN HAUT (D-389, capture Roomle) : la
-           colonne grandit à 58 % de l'écran, et la 3D, au-dessus, RÉTRÉCIT au lieu d'être
+           colonne grandit à 58 % de la page, et la 3D, au-dessus, RÉTRÉCIT au lieu d'être
            couverte — on voit ce qu'on choisit, pièce entière. Le viewer suit la taille de
            son canevas sans recadrer : la cible reste au centre de ce qui se voit. */
         &.o_cfg3d_side--panel {
-            flex-basis: 58vh;
-            flex-basis: 58dvh;
+            /* ⚠️ En % de la PAGE et non de l'écran : dans un dialogue, la page n'est pas l'écran (L-532). */
+            flex-basis: 58%;
         }
     }
 }

@@ -1,0 +1,114 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* product_configurator_web_3d_environment
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-08 20:34+0000\n"
+"PO-Revision-Date: 2026-10-08 20:34+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.constraint,message:product_configurator_web_3d_environment.constraint_product_environment_placement_one_per_bay
+msgid "A bay holds one product."
+msgstr "Une baie accueille un seul produit."
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__opening_id
+msgid "Bay"
+msgstr "Baie"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_place.xml:0
+msgid "Change the product"
+msgstr "Changer de produit"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_place.xml:0
+msgid "Choose a product"
+msgstr "Choisir un produit"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__session_id
+msgid "Configuration"
+msgstr "Configuration"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__create_uid
+msgid "Created by"
+msgstr "Créé par"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__create_date
+msgid "Created on"
+msgstr "Créé le"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__display_name
+msgid "Display Name"
+msgstr "Nom d'affichage"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model,name:product_configurator_web_3d_environment.model_product_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__environment_id
+msgid "Environment"
+msgstr "Environnement"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__id
+msgid "ID"
+msgstr "ID"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,help:product_configurator_web_3d_environment.field_product_environment_placement__opening_id
+msgid "Identifier of the bay in the plan."
+msgstr "Identifiant de la baie dans le plan."
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__write_uid
+msgid "Last Updated by"
+msgstr "Dernière mise à jour par"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__write_date
+msgid "Last Updated on"
+msgstr "Dernière mise à jour le"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_place.xml:0
+msgid "Placed product"
+msgstr "Produit posé"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment__placement_ids
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_3d_environment.product_environment_view_form_placements
+msgid "Placed products"
+msgstr "Produits posés"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__product_tmpl_id
+msgid "Product"
+msgstr "Produit"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model,name:product_configurator_web_3d_environment.model_product_environment_placement
+msgid "Product placed in an environment bay"
+msgstr "Produit posé dans une baie d'environnement"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#. odoo-python
+#: code:addons/product_configurator_web_3d_environment/models/product_environment.py:0
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_place.js:0
+msgid "This product cannot be placed in this bay."
+msgstr "Ce produit ne peut pas être posé dans cette baie."

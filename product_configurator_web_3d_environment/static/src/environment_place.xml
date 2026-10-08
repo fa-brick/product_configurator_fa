@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Le produit posé dans une baie, sous le titre du panneau de l'ouverture (étape 8.4c). -->
+    <t t-inherit="product_editor_environment.EnvironmentEditor" t-inherit-mode="extension">
+        <xpath expr="//t[@t-if='opening']/h5" position="after">
+            <t t-set="placed" t-value="opening.kind === 'bay' and placementOf(opening.id)"/>
+            <div t-if="placed" class="o_env_placed alert alert-info small py-2">
+                <div class="text-muted">Placed product</div>
+                <strong t-esc="placed.productName"/>
+            </div>
+            <button t-if="opening.kind === 'bay' and state.canPlace and !readonly" type="button"
+                    class="btn btn-sm btn-light mb-2" t-on-click="() => this.openChooser(opening.id)">
+                <i class="fa fa-th me-1"/><t t-if="placed">Change the product</t><t t-else="">Choose a product</t>
+            </button>
+        </xpath>
+    </t>
+
+</templates>

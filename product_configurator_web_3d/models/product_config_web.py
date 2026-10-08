@@ -1110,12 +1110,21 @@ class ProductConfigSession(models.Model):
                     if value:
                         value_ids.append(value.id)
                 continue
-            if str(attribute.id) in formulas:
-                # ⚠️ Une FORMULE ne se résout qu'au moteur : la pièce prend la réponse d'en
-                # dessous (son défaut, sa variante). Dit dans le journal, pas en silence.
-                _logger.info("placement %s: “%s” is computed by a formula; its variant takes "
-                             "the answer below it", link_id, attribute.display_name)
-            value_id = self._web_value_of_entry(line, resolved.get(marker + str(attribute.id)))
+            entry = resolved.get(marker + str(attribute.id))
+            value_id = self._web_value_of_entry(line, entry)
+            if str(attribute.id) in formulas and not value_id:
+                # ⓘ Une FORMULE du lien est résolue par le moteur (`_node_answers`, P-a de
+                # W-111). Son résultat hors des valeurs offertes devient une VALEUR, comme une
+                # saisie (D-353) — une largeur calculée de 2 880 n'est dans aucune liste.
+                # ⚠️ Sinon (Node absent, attribut sans variante) : la réponse d'en dessous, dite.
+                value = (line.resolve_custom_value(entry)
+                         if entry is not None and attribute._resolves_to_values() else None)
+                if value:
+                    value_id = value.id
+                else:
+                    _logger.info("placement %s: “%s” is computed by a formula that gave no "
+                                 "value (%r); its variant takes the answer below it",
+                                 link_id, attribute.display_name, entry)
             if value_id:
                 value_ids.append(value_id)
         return value_ids

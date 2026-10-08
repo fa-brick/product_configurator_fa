@@ -212,3 +212,34 @@ class TestSaleSeparatelyPage(TransactionCase):
             lines = self._session(self.black, self.handle_value).web_separate_lines()
         self.assertEqual([line["qty"] for line in lines], [1])
         self.assertTrue(any("one per placement" in message for message in logs.output))
+
+    # ── Préalable P-a (W-111) : la réponse posée par FORMULE sur le lien ─────────────────
+    @skipUnless(HAS_NODE, "Node.js is not installed")
+    def test_la_variante_nait_dans_la_reponse_CALCULEE_par_le_lien(self):
+        """⚠️ Avant P-a, la poignée naissait dans la couleur d'en dessous (celle de la porte,
+        suivie) pendant que le moteur la dessinait dans la couleur calculée par le lien."""
+        self.link.attribute_overrides = {str(self.color.id): {"expr": str(self.black.id)}}
+        session = self._session(self.white, self.handle_value)
+        born = session._web_confirm_children()
+        variant = self.env["product.product"].browse(born[str(self.link.id)])
+        self.assertEqual(variant.product_template_attribute_value_ids.product_attribute_value_id,
+                         self.black)
+
+    @skipUnless(HAS_NODE, "Node.js is not installed")
+    def test_un_nombre_CALCULE_hors_liste_devient_une_valeur(self):
+        """Une largeur calculée (150) n'est dans aucune liste : elle devient une valeur,
+        comme une saisie (D-353) — sinon la pièce naîtrait à une largeur offerte voisine."""
+        Attribute = self.env["product.attribute"]
+        width = Attribute.create({"name": "Largeur poignée", "custom_type": "integer"})
+        w100, w200 = self.env["product.attribute.value"].create([
+            {"name": "100", "attribute_id": width.id},
+            {"name": "200", "attribute_id": width.id},
+        ])
+        self.handle_tmpl.write({"attribute_line_ids": [Command.create({
+            "attribute_id": width.id, "value_ids": [Command.set((w100 | w200).ids)]})]})
+        self.link.attribute_overrides = {str(width.id): {"expr": "100 + 50"}}
+        session = self._session(self.black, self.handle_value)
+        born = session._web_confirm_children()
+        variant = self.env["product.product"].browse(born[str(self.link.id)])
+        names = variant.product_template_attribute_value_ids.product_attribute_value_id.mapped("name")
+        self.assertIn("150", names)

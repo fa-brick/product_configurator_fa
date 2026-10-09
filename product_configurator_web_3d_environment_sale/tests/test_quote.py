@@ -7,7 +7,8 @@ configuration, confirmée ; redemander met à jour le MÊME devis ; une configur
 bloque et se nomme ; un visiteur se connecte d'abord ; au back-office, le devis est celui du
 client ; remplacer ou retirer un produit retire sa ligne ; commandé, le devis libère le chantier
 pour un nouveau montage, sur les mêmes baies ; le jeton d'un devis ouvre SON montage, en lecture
-seule une fois commandé (8.5b).
+seule une fois commandé (8.5b) ; modifier les murs d'un montage que d'autres devis lisent en fait une
+copie propre au devis, et un plan refusé n'en laisse aucune (8.5c).
 """
 from odoo import Command
 from odoo.tests import HttpCase, TransactionCase, tagged
@@ -124,6 +125,59 @@ class TestQuote(PlacementCommon, TransactionCase):
         self.assertEqual(action["tag"], "product_editor_environment.editor")
         self.assertEqual(action["params"]["token"], order.access_token)
         self.assertEqual(action["params"]["state"]["quote"]["name"], order.name)
+
+
+    def _wider_bay(self, environment, width=2600):
+        plan = dict(environment.plan)
+        plan["openings"] = [dict(opening, width=width) for opening in plan["openings"]]
+        return plan
+
+    def test_modifier_les_murs_depuis_un_devis_en_fait_une_copie(self):
+        # Devis A commandé, devis B en cours sur le même chantier : B modifie la baie.
+        self.site.place_product("b1", self.sectional.id)
+        self.site.request_quote()
+        first = self.site.order_ids
+        first.action_confirm()
+        self.site.place_product("b1", self.sectional.id)
+        self.site.request_quote()
+        second = self.site.order_ids - first
+        in_second = self.site.with_context(environment_order_id=second.id)
+        result = in_second.editor_save(self._wider_bay(self.site))
+        self.assertTrue(result["copied"])
+        self.assertEqual(result["token"], second.access_token)
+        copy = second.environment_id
+        self.assertNotEqual(copy, self.site)
+        self.assertEqual(first.environment_id, self.site)
+        self.assertEqual(self.site.plan["openings"][0]["width"], 2400)   # A garde son plan
+        self.assertEqual(copy.plan["openings"][0]["width"], 2600)
+        self.assertEqual(second.environment_placement_ids.environment_id, copy)
+        self.assertEqual(first.environment_placement_ids.environment_id, self.site)
+        # Le produit de B a suivi sa baie dans la copie (D-424).
+        answers = {c.attribute_id: c.value for c in second.environment_placement_ids.session_id.custom_value_ids}
+        self.assertEqual(answers[self.width], "2600")
+
+    def test_seul_lecteur_pas_de_copie(self):
+        self.site.place_product("b1", self.sectional.id)
+        self.site.request_quote()
+        result = self.site.editor_save(self._wider_bay(self.site))
+        self.assertTrue(result["ok"])
+        self.assertFalse(result.get("copied"))
+        self.assertEqual(self.site.order_ids.environment_id, self.site)
+
+    def test_un_plan_refuse_ne_laisse_pas_de_copie(self):
+        self.site.place_product("b1", self.sectional.id)
+        self.site.request_quote()
+        first = self.site.order_ids
+        first.action_confirm()
+        self.site.place_product("b1", self.sectional.id)
+        self.site.request_quote()
+        second = self.site.order_ids - first
+        sites = self.env["product.environment"].search_count([])
+        plan = self._wider_bay(self.site, width=9000)   # dépasse le mur
+        result = self.site.with_context(environment_order_id=second.id).editor_save(plan)
+        self.assertEqual(result["error"], "invalid")
+        self.assertEqual(self.env["product.environment"].search_count([]), sites)
+        self.assertEqual(second.environment_id, self.site)
 
 
 @tagged("post_install", "-at_install")

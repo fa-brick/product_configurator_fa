@@ -4,6 +4,7 @@
     <!-- Demander un devis depuis l'environnement, puis le mettre à jour (étape 8.5a). -->
     <t t-inherit="product_editor_environment.EnvironmentEditor" t-inherit-mode="extension">
         <xpath expr="//button[@t-on-click='save']" position="before">
+            <!-- ⓘ En bulle SOUS la barre : dans la barre, un texte long la faisait passer à la ligne. -->
             <span t-if="state.quoteNotice" class="small o_env_quote_notice"
                   t-att-class="state.quoteNotice.ok ? 'text-success' : 'text-danger'" t-esc="state.quoteNotice.text"/>
             <button t-if="state.canPlace and !readonly and state.placements.length" type="button"

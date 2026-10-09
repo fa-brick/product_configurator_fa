@@ -51,6 +51,39 @@ class ProductEnvironment(models.Model):
         state["quote"] = {"name": order.name, "state": order.state} if order else None
         return state
 
+    def _copy_for_order(self, order):
+        """Une COPIE de ce chantier, propre au devis (O-2) : le devis la lit, son montage y passe."""
+        copy = self.copy_for_site(partner=self.partner_id, project=self.project_id, name=self.name,
+                                  product=self.product_tmpl_id)
+        copy._portal_ensure_token()
+        order.environment_placement_ids.write({"environment_id": copy.id})
+        order.environment_id = copy
+        return copy
+
+    def editor_save(self, plan, wall_height=None, wall_thickness=None, start_view=False):
+        """Enregistrer le plan — dans une COPIE propre au devis quand d'autres devis le lisent (8.5c, O-2).
+
+        ⓘ *« Pousser les murs crée une copie, les autres devis ne sont pas impactés »* (Gerry) : le montage
+        du devis en cours suit le plan modifié, celui des autres devis garde le plan qu'il lisait.
+        """
+        self.ensure_one()
+        order = self._open_order()
+        others = (self.sudo().order_ids - order) if order and order.state in OPEN_STATES else None
+        if not others:
+            return super().editor_save(plan, wall_height=wall_height, wall_thickness=wall_thickness,
+                                       start_view=start_view)
+        with self.env.cr.savepoint() as savepoint:
+            copy = self._copy_for_order(order)
+            result = copy.with_context(environment_order_id=order.id).editor_save(
+                plan, wall_height=wall_height, wall_thickness=wall_thickness, start_view=start_view)
+            if not result.get("ok"):
+                # ⓘ Un plan refusé ne laisse ni copie ni montage déplacé.
+                savepoint.rollback()
+                return result
+        # ⓘ Le jeton du DEVIS désigne désormais ce montage : la page ouverte par celui du chantier y passe.
+        result.update(copied=True, token=order.access_token)
+        return result
+
     @staticmethod
     def _drop_line(line):
         """Retirer la ligne d'un produit qui quitte le montage — seulement d'un devis encore modifiable."""

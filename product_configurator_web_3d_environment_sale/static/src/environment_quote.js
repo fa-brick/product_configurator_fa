@@ -6,6 +6,9 @@
  * configuration posée et en fait une ligne ; ensuite, il met à jour ce même devis tant qu'il n'est
  * pas commandé (Q-12.4). Une configuration incomplète bloque, et la première s'ouvre dans la barre
  * latérale (Q-12.3).
+ *
+ * Étape 8.5c : modifier les murs d'un montage que d'autres devis lisent en fait une COPIE propre au
+ * devis (O-2) ; la page ouverte par le jeton du chantier passe alors sur celui du devis.
  */
 import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
@@ -26,6 +29,31 @@ patch(EnvironmentEditor.prototype, {
         this.state.quote = state.quote || null;
     },
 
+    onSaved(result) {
+        super.onSaved(result);
+        if (!result.copied) return;
+        if (result.token && result.token !== this.props.token) {
+            // ⓘ Au back-office, la page est un dialogue d'Odoo : on ne la quitte pas, on dit où aller.
+            if (document.querySelector(".o_web_client")) {
+                this._notify({ ok: true, text: _t("This quotation now has its own copy of the environment: open it from the quotation.") });
+            } else {
+                window.location.replace(`/environment/${result.token}`);
+            }
+        } else {
+            this._notify({ ok: true, text: _t("This quotation now has its own copy of the environment.") });
+        }
+    },
+
+    /** Une annonce réussie s'efface seule : la bulle couvre le haut du panneau. */
+    _notify(notice) {
+        this.state.quoteNotice = notice;
+        // ⚠️ Un COMPTEUR, pas l'objet : relu dans l'état, il revient en proxy réactif, jamais égal.
+        const serial = this._noticeSerial = (this._noticeSerial || 0) + 1;
+        if (notice?.ok) setTimeout(() => {
+            if (this._noticeSerial === serial) this.state.quoteNotice = null;
+        }, 6000);
+    },
+
     get quoteLabel() {
         return this.state.quote ? _t("Update the quotation") : _t("Ask for a quotation");
     },
@@ -37,7 +65,7 @@ patch(EnvironmentEditor.prototype, {
             const result = await rpc("/environment/quote", { token: this.props.token });
             if (result.quote) {
                 this.state.quote = result.quote;
-                this.state.quoteNotice = { ok: true, text: _t("Quotation %(name)s is up to date.", { name: result.quote.name }) };
+                this._notify({ ok: true, text: _t("Quotation %(name)s is up to date.", { name: result.quote.name }) });
                 await this._reloadPlacements();
             } else if (result.error === "login_required") {
                 // ⓘ Un devis est celui d'un client : le visiteur se connecte, et son chantier le suit

@@ -15,10 +15,12 @@
     ],
     "assets": {
         "web.assets_backend": [
+            "product_configurator_web_3d_environment_sale/static/src/environment_quote.scss",
             "product_configurator_web_3d_environment_sale/static/src/environment_quote.xml",
             "product_configurator_web_3d_environment_sale/static/src/environment_quote.js",
         ],
         "web.assets_frontend": [
+            "product_configurator_web_3d_environment_sale/static/src/environment_quote.scss",
             "product_configurator_web_3d_environment_sale/static/src/environment_quote.xml",
             "product_configurator_web_3d_environment_sale/static/src/environment_quote.js",
         ],

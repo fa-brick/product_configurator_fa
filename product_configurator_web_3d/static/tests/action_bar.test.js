@@ -37,7 +37,8 @@ describe("la barre d'action", () => {
 
     test("le bouton reste celui qui termine — et disparaît une fois la configuration close", () => {
         expect(bar).toContain('t-on-click="() => this.onConfirm()"');
-        expect(bar).toContain('t-if="state.model and !state.model.closed and !state.model.error"');
+        // ⓘ Et pas en panneau seul : l'environnement confirme au devis (W-111, 8.4e).
+        expect(bar).toContain('t-if="state.model and !state.model.closed and !state.model.error and !props.panelOnly"');
         expect(bar).not.toMatch(/\bnot\b/);
     });
 

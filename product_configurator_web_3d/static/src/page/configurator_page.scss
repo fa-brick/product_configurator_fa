@@ -1073,3 +1073,27 @@ $o-cfg3d-compact-max: 900px;
 
     &:hover { opacity: 1; }
 }
+
+/* ⓘ **PANNEAU SEUL** (W-111, 8.4e) : la page n'est plus qu'une colonne de questions, dans celle de
+   son hôte — l'environnement montre le produit dans sa propre scène. En FIN de feuille : elle
+   l'emporte sur les règles de base par sa spécificité, et ne s'intercale pas entre elles. */
+.o_cfg3d_page--panel {
+    height: 100%;
+    background: transparent;
+
+    /* ⚠️ HORS DE L'ÉCRAN, pas masqué : c'est ce viewer qui fait la copie remise à l'hôte, et un
+       viewer de taille nulle n'a rien à copier. */
+    .o_cfg3d_viewer {
+        position: fixed;
+        left: -10000px;
+        top: 0;
+        width: 960px;
+        height: 720px;
+        min-height: 0;
+        pointer-events: none;
+    }
+    .o_cfg3d_side {
+        flex: 1 1 auto;
+        border-left: 0;
+    }
+}

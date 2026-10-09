@@ -16,6 +16,12 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. module: product_configurator_web_3d_environment
+#. odoo-python
+#: code:addons/product_configurator_web_3d_environment/models/product_environment.py:0
+msgid "%(product)s cannot follow its bay: %(reason)s"
+msgstr "%(product)s ne peut pas suivre sa baie : %(reason)s"
+
+#. module: product_configurator_web_3d_environment
 #: model:ir.model.constraint,message:product_configurator_web_3d_environment.constraint_product_environment_placement_one_per_bay
 msgid "A bay holds one product."
 msgstr "Une baie accueille un seul produit."
@@ -43,6 +49,12 @@ msgid "Configuration"
 msgstr "Configuration"
 
 #. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_place.xml:0
+msgid "Configure"
+msgstr "Configurer"
+
+#. module: product_configurator_web_3d_environment
 #: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__create_uid
 msgid "Created by"
 msgstr "Créé par"
@@ -62,6 +74,12 @@ msgstr "Nom d'affichage"
 #: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__environment_id
 msgid "Environment"
 msgstr "Environnement"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_place.xml:0
+msgid "Height:"
+msgstr "Hauteur :"
 
 #. module: product_configurator_web_3d_environment
 #: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_placement__id
@@ -112,3 +130,21 @@ msgstr "Produit posé dans une baie d'environnement"
 #: code:addons/product_configurator_web_3d_environment/static/src/environment_place.js:0
 msgid "This product cannot be placed in this bay."
 msgstr "Ce produit ne peut pas être posé dans cette baie."
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_place.xml:0
+msgid "Width:"
+msgstr "Largeur :"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_place.js:0
+msgid "bay + %(offset)s mm"
+msgstr "baie + %(offset)s mm"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_place.js:0
+msgid "bay − %(offset)s mm"
+msgstr "baie − %(offset)s mm"

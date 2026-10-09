@@ -16,10 +16,12 @@
     "assets": {
         # ⓘ Le même éditeur au site et au back-office (E-5) : la pose se branche des deux côtés.
         "web.assets_backend": [
+            "product_configurator_web_3d_environment/static/src/environment_place.scss",
             "product_configurator_web_3d_environment/static/src/environment_place.xml",
             "product_configurator_web_3d_environment/static/src/environment_place.js",
         ],
         "web.assets_frontend": [
+            "product_configurator_web_3d_environment/static/src/environment_place.scss",
             "product_configurator_web_3d_environment/static/src/environment_place.xml",
             "product_configurator_web_3d_environment/static/src/environment_place.js",
         ],

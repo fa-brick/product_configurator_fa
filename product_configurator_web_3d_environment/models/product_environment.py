@@ -26,6 +26,69 @@ class ProductEnvironment(models.Model):
         unit = (attribute.value_in_mm(1.0) or 1.0) if attribute.converts_to_mm() else 1.0
         return "%g" % round(millimetres / unit, 3)
 
+    @staticmethod
+    def _session_measure(session, attribute):
+        """La réponse d'une session à un attribut de mesure, en mm — saisie libre ou valeur offerte, ou ``None``."""
+        custom = session.custom_value_ids.filtered(lambda c: c.attribute_id == attribute)[:1]
+        raw = custom.value if custom else session.value_ids.filtered(lambda v: v.attribute_id == attribute)[:1].name
+        number = attribute.parse_number(raw) if raw else None
+        if number is None:
+            return None
+        return attribute.value_in_mm(number) if attribute.converts_to_mm() else number
+
+    def _placement_offsets(self, placement):
+        """L'écart de la configuration à sa baie, en mm, par mesure : ``{"width": -400.0, "height": 0.0}``."""
+        bay = self._bay(placement.opening_id)
+        session = placement.session_id.sudo()
+        offsets = {}
+        if not bay or not session:
+            return offsets
+        for key, attribute in zip(("width", "height"), self._common_attributes()):
+            measure = attribute and self._session_measure(session, attribute)
+            if measure is not None:
+                offsets[key] = round(measure - bay[key], 3)
+        return offsets
+
+    def editor_save(self, plan, wall_height=None, wall_thickness=None, start_view=False):
+        """Enregistrer le plan — et faire SUIVRE aux produits posés les cotes de leur baie (U-2, D-424).
+
+        ⓘ Comme une formule et sa constante (D-047) : le produit reste lié à sa baie, et l'écart que
+        le client y a mis se garde. Il se lit au changement — réponse actuelle moins ANCIENNE cote —,
+        si bien qu'aucun décalage n'est stocké qui pourrait diverger de la configuration.
+        """
+        self.ensure_one()
+        before = {placement.id: (placement, self._bay(placement.opening_id), self._placement_offsets(placement))
+                  for placement in self.sudo().placement_ids.filtered("session_id")}
+        result = super().editor_save(plan, wall_height=wall_height, wall_thickness=wall_thickness,
+                                     start_view=start_view)
+        if not result.get("ok"):
+            return result
+        followed, messages = [], []
+        attributes = dict(zip(("width", "height"), self._common_attributes()))
+        for placement, old_bay, offsets in before.values():
+            new_bay = self._bay(placement.opening_id)
+            if not old_bay or not new_bay:
+                continue
+            session = placement.session_id.sudo()
+            changed = False
+            for key, attribute in attributes.items():
+                if not attribute or new_bay[key] == old_bay[key]:
+                    continue
+                target = new_bay[key] + offsets.get(key, 0.0)
+                answer = session.web_set_custom_value(attribute.id, self._attribute_raw(attribute, target))
+                if isinstance(answer, dict) and answer.get("error"):
+                    # ⓘ La baie est enregistrée quand même : c'est elle qui fait foi, le produit
+                    # garde sa réponse et le client est prévenu.
+                    messages.append(_("%(product)s cannot follow its bay: %(reason)s",
+                                      product=placement.product_tmpl_id.display_name,
+                                      reason=answer.get("message") or attribute.display_name))
+                else:
+                    changed = True
+            if changed:
+                followed.append(session.access_token)
+        result.update(followed=followed, messages=messages)
+        return result
+
     def place_product(self, opening_id, product_tmpl_id):
         """POSER un produit dans une baie : la configuration naît avec les mesures de la baie (U-2).
 

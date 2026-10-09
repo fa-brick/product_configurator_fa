@@ -5,7 +5,7 @@
 Ce qui est éprouvé : la pose d'un produit configurable crée sa configuration avec la largeur et la
 hauteur de la baie (U-2) ; un produit qui ne se configure pas se pose tel quel ; un produit que la
 baie ne propose pas est refusé ; reposer REMPLACE ; l'éditeur sait poser et lit ce qui est posé ;
-la route passe par le jeton.
+la route passe par le jeton ; le produit suit sa baie en gardant l'écart du client (8.4e, D-424).
 """
 from odoo import Command
 from odoo.tests import HttpCase, TransactionCase, tagged
@@ -95,6 +95,63 @@ class TestPlacement(PlacementCommon, TransactionCase):
         self.site.place_product("b1", self.simple.id)
         self.assertEqual(self.site.placement_ids.product_tmpl_id, self.simple)
         self.assertEqual([p["productId"] for p in self.site.editor_state()["placements"]], [self.simple.id])
+
+
+@tagged("post_install", "-at_install")
+class TestPlacementFollowsBay(PlacementCommon, TransactionCase):
+    """Le produit SUIT sa baie, en gardant l'écart que le client y a mis (D-424, comme D-047)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._fixture()
+
+    def setUp(self):
+        super().setUp()
+        self.site.place_product("b1", self.sectional.id)
+        self.session = self.site.placement_ids.session_id
+
+    def _resize_bay(self, **dims):
+        plan = dict(self.site.plan)
+        plan["openings"] = [dict(opening, **dims) for opening in plan["openings"]]
+        return self.site.editor_save(plan)
+
+    def _answers(self):
+        return {c.attribute_id: c.value for c in self.session.custom_value_ids}
+
+    def test_le_produit_suit_sa_baie(self):
+        result = self._resize_bay(width=2600)
+        self.assertEqual(result["followed"], [self.session.access_token])
+        self.assertEqual(result["messages"], [])
+        self.assertEqual(self._answers()[self.width], "2600")
+        self.assertEqual(self._answers()[self.height], "2100")
+
+    def test_l_ecart_du_client_se_garde(self):
+        self.session.web_set_custom_value(self.width.id, "2300")
+        self.assertEqual(self.site.editor_state()["placements"][0]["offsets"], {"width": -100.0, "height": 0.0})
+        self._resize_bay(width=2600)
+        self.assertEqual(self._answers()[self.width], "2500")
+
+    def test_une_valeur_offerte_suit_aussi(self):
+        # « 2000 » est une valeur OFFERTE : la réponse est un choix, pas une saisie.
+        self.session.web_set_custom_value(self.width.id, "2000")
+        self.assertNotIn(self.width, self._answers())
+        self._resize_bay(width=2600)
+        self.assertEqual(self._answers()[self.width], "2200")
+
+    def test_un_refus_se_dit_et_la_baie_est_enregistree(self):
+        # 2 450 dépasse la hauteur maximale du produit (2 400) : la baie fait foi, le produit garde sa réponse.
+        result = self._resize_bay(height=2450)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["followed"], [])
+        self.assertEqual(len(result["messages"]), 1)
+        self.assertEqual(self._answers()[self.height], "2100")
+        self.assertEqual(self.site.plan["openings"][0]["height"], 2450)
+
+    def test_une_baie_inchangee_ne_touche_a_rien(self):
+        self.session.web_set_custom_value(self.width.id, "2300")
+        self.assertEqual(self._resize_bay(sill=0)["followed"], [])
+        self.assertEqual(self._answers()[self.width], "2300")
 
 
 @tagged("post_install", "-at_install")

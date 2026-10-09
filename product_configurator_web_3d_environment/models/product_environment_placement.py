@@ -33,4 +33,6 @@ class ProductEnvironmentPlacement(models.Model):
             "productId": self.product_tmpl_id.id,
             "productName": self.product_tmpl_id.display_name,
             "token": session.access_token if session else None,
+            # ⓘ L'écart à la baie, que le produit garde quand la baie change (D-424).
+            "offsets": self.environment_id._placement_offsets(self),
         }

@@ -8,11 +8,32 @@
             <div t-if="placed" class="o_env_placed alert alert-info small py-2">
                 <div class="text-muted">Placed product</div>
                 <strong t-esc="placed.productName"/>
+                <!-- ⓘ L'écart que le produit garde quand la baie change (D-424). -->
+                <div t-if="offsetLabel(placed, 'width')">Width: <t t-esc="offsetLabel(placed, 'width')"/></div>
+                <div t-if="offsetLabel(placed, 'height')">Height: <t t-esc="offsetLabel(placed, 'height')"/></div>
             </div>
+            <button t-if="placed and placed.token and state.canPlace and !readonly" type="button"
+                    class="btn btn-sm btn-primary mb-2 me-1" t-on-click="() => this.configure(opening.id)">
+                <i class="fa fa-sliders me-1"/>Configure
+            </button>
             <button t-if="opening.kind === 'bay' and state.canPlace and !readonly" type="button"
                     class="btn btn-sm btn-light mb-2" t-on-click="() => this.openChooser(opening.id)">
                 <i class="fa fa-th me-1"/><t t-if="placed">Change the product</t><t t-else="">Choose a product</t>
             </button>
+        </xpath>
+        <!-- CONFIGURER dans l'environnement (étape 8.4e) : la page du configurateur, en panneau seul,
+             prend la place du panneau de l'éditeur ; sa flèche y ramène. -->
+        <xpath expr="//div[hasclass('o_env_panel')]" position="attributes">
+            <attribute name="t-if">!configuringPlacement</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_env_panel')]" position="before">
+            <t t-set="configured" t-value="configuringPlacement"/>
+            <div t-if="configured" class="o_env_panel o_env_configure">
+                <ConfiguratorPage t-key="configured.token + ':' + state.configureSerial" token="configured.token"
+                                  closable="false" panelOnly="true"
+                                  onBack="() => this.stopConfiguring()"
+                                  onScene="(group) => this.onPlacedScene(configured.openingId, configured.token, group)"/>
+            </div>
         </xpath>
         <!-- Le produit posé se MONTRE (étape 8.4d) : la page du configurateur construit hors de
              l'écran, et rend une copie de sa scène. ⚠️ Hors de l'écran, pas masquée : un viewer de

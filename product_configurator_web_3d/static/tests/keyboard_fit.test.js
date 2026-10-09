@@ -130,7 +130,7 @@ describe("la page suit le clavier", () => {
 
 describe("le gabarit et le style", () => {
     test("la racine porte la classe et le style du calage", () => {
-        expect(XML).toMatch(/<div class="o_cfg3d_page" t-ref="page"\s+t-att-class="\{ 'o_cfg3d_page--keyboard': state\.keyboard \}"\s+t-att-style="keyboardStyle">/);
+        expect(XML).toMatch(/<div class="o_cfg3d_page" t-ref="page"\s+t-att-class="\{ 'o_cfg3d_page--keyboard': state\.keyboard, 'o_cfg3d_page--panel': props\.panelOnly \}"\s+t-att-style="keyboardStyle">/);
     });
 
     test("calée, la page est FIXE à la place et à la taille données ; la 3D cède, le titre aussi", () => {

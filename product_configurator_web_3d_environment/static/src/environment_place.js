@@ -8,6 +8,12 @@
  * Étape 8.4d : le produit posé se MONTRE dans sa baie. La page du configurateur, montée hors de
  * l'écran, construit la configuration avec son viewer et en rend une copie habillée (`onScene`),
  * que l'éditeur pose dans la baie. Une page à la fois : chaque viewer est un contexte WebGL.
+ *
+ * Étape 8.4e : CONFIGURER dans l'environnement. La même page, en panneau seul, prend la barre
+ * latérale ; chaque réponse reconstruit le produit, dont la copie remplace celle de la baie. La
+ * flèche ramène à l'environnement sans rien valider : la configuration reste en cours (Q-11.4).
+ * Le produit SUIT sa baie quand elle change, en gardant l'écart que le client y a mis (D-424) : le
+ * serveur le fait à l'enregistrement, ce pont redessine ce qui a suivi.
  */
 import { _t } from "@web/core/l10n/translation";
 import { rpc } from "@web/core/network/rpc";
@@ -24,6 +30,64 @@ patch(EnvironmentEditor.prototype, {
         this.state.placements = [];
         // ⓘ Les configurations déjà montrées dans leur baie, par jeton de session.
         this.state.shownTokens = [];
+        // ⓘ La baie dont on configure le produit dans la barre latérale, ou rien.
+        this.state.configuringId = null;
+        // ⓘ Relance la page de la barre latérale quand sa configuration a changé sans elle.
+        this.state.configureSerial = 0;
+    },
+
+    /** Relire les placements — leur écart à la baie a pu changer. */
+    async _reloadPlacements() {
+        const state = await rpc("/environment/state", { token: this.props.token });
+        if (!state.error) this.state.placements = state.placements || [];
+    },
+
+    /** Les produits qui ont suivi leur baie se redessinent ; un refus se dit (D-424). */
+    onSaved(result) {
+        super.onSaved(result);
+        const followed = result.followed || [];
+        if (followed.length) {
+            this.state.shownTokens = this.state.shownTokens.filter((token) => !followed.includes(token));
+            if (followed.includes(this.configuringPlacement?.token)) this.state.configureSerial++;
+        }
+        if (result.messages?.length) this.state.messages = result.messages;
+        this._reloadPlacements();
+    },
+
+    /** Le placement en cours de configuration — seulement là où l'on peut poser. */
+    get configuringPlacement() {
+        if (!this.state.canPlace || this.readonly || !this.state.configuringId) return null;
+        const placement = this.placementOf(this.state.configuringId);
+        return placement?.token ? placement : null;
+    },
+
+    configure(openingId) {
+        this.state.selection = { kind: "opening", id: openingId };
+        this.state.configuringId = openingId;
+    },
+
+    /** La flèche : retour à l'environnement, la configuration reste en cours (Q-11.4). */
+    stopConfiguring() {
+        this.state.configuringId = null;
+        this.state.selection = null;
+        this._reloadPlacements();
+    },
+
+    /** L'écart d'une mesure à la baie, lisible : « baie − 400 mm », ou rien s'il est nul. */
+    offsetLabel(placement, key) {
+        const offset = placement.offsets?.[key];
+        if (!offset) return "";
+        const fmt = new Intl.NumberFormat(document.documentElement.lang || undefined, { maximumFractionDigits: 1 });
+        return offset > 0 ? _t("bay + %(offset)s mm", { offset: fmt.format(offset) })
+            : _t("bay − %(offset)s mm", { offset: fmt.format(-offset) });
+    },
+
+    onPickBayObject(openingId) {
+        if (this.placementOf(openingId)?.token && this.state.canPlace && !this.readonly) {
+            this.configure(openingId);
+        } else {
+            super.onPickBayObject(openingId);
+        }
     },
 
     _load(state) {
@@ -33,8 +97,10 @@ patch(EnvironmentEditor.prototype, {
 
     /** La prochaine configuration à construire hors de l'écran pour la montrer, ou rien. */
     get placementToRender() {
+        // ⓘ Celui qu'on configure a sa page dans la barre latérale : elle fait sa copie elle-même.
+        const configuring = this.configuringPlacement;
         return (this.state.placements || []).find((placement) => placement.token
-            && !this.state.shownTokens.includes(placement.token));
+            && placement !== configuring && !this.state.shownTokens.includes(placement.token));
     },
 
     /**
@@ -67,6 +133,8 @@ patch(EnvironmentEditor.prototype, {
         this.state.placements = [
             ...this.state.placements.filter((placement) => placement.openingId !== bay.id), result.placement,
         ];
-        this.state.selection = { kind: "opening", id: bay.id };
+        // ⓘ Le produit posé est sélectionné pour commencer sa configuration (parcours §10).
+        if (result.placement.token) this.configure(bay.id);
+        else this.state.selection = { kind: "opening", id: bay.id };
     },
 });

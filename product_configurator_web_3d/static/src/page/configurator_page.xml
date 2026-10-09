@@ -6,7 +6,7 @@
          vient voir, et le lien arrive souvent par courriel. -->
     <!-- ⓘ La classe « keyboard » : la page CALÉE AU-DESSUS DU CLAVIER du téléphone (`_watchKeyboard`). -->
     <div class="o_cfg3d_page" t-ref="page"
-         t-att-class="{ 'o_cfg3d_page--keyboard': state.keyboard }"
+         t-att-class="{ 'o_cfg3d_page--keyboard': state.keyboard, 'o_cfg3d_page--panel': props.panelOnly }"
          t-att-style="keyboardStyle">
 
         <!-- ⚠️ **LA SORTIE — et elle manquait à qui arrive par un LIEN.** La croix ne vivait
@@ -107,11 +107,7 @@
                               onThumbnailCaptured.bind="onPhotoCaptured"
                               onRegisterViewerApi.bind="onRegisterViewerApi"/>
 
-                <!-- ⓘ LES ÉTAPES (D-385) — des pastilles en haut du viewer, centrées sur
-                     sa largeur (demande de Gerry, 2026-09-30). Une pastille GRISÉE reste
-                     cliquable : elle dit ce qui manque et y mène (`onStepChip`), comme une
-                     valeur éteinte dit pourquoi (D-178). ⚠️ `aria-disabled` et non
-                     `disabled` : un bouton désactivé ne reçoit plus le clic. -->
+                <!-- ⓘ LES ÉTAPES (D-385) : le gabarit `Steps`, plus bas. -->
                 <!-- ⓘ SUR TÉLÉPHONE, LA BARRE D'ACTION MONTE SUR LA 3D (D-389) — en haut, la
                      croix à sa droite (Gerry, 2026-10-01) : le pied de la colonne disparaît, et
                      c'est autant de hauteur rendue à la 3D. Les étapes passent sous elle. -->
@@ -119,17 +115,7 @@
                     <t t-call="product_configurator_web_3d.ActionBar"/>
                 </div>
 
-                <nav t-if="stepChips.length" class="o_cfg3d_steps" t-att-aria-label="stepsLabel">
-                    <t t-foreach="stepChips" t-as="chip" t-key="chip.id">
-                        <button type="button" class="o_cfg3d_panel_chip o_cfg3d_step_chip"
-                                t-att-class="{ 'o_cfg3d_panel_chip--on': chip.active,
-                                               'o_cfg3d_step_chip--locked': chip.locked }"
-                                t-att-aria-current="chip.active ? 'step' : false"
-                                t-att-aria-disabled="chip.locked ? 'true' : false"
-                                t-on-click="() => this.onStepChip(chip)"
-                                t-esc="chip.name"/>
-                    </t>
-                </nav>
+                <t t-if="!props.panelOnly" t-call="product_configurator_web_3d.Steps"/>
             </div>
 
             <!-- ⓘ La marque `o_cfg3d_side` + `panel` : sur téléphone, la colonne GRANDIT le temps du panneau de choix,
@@ -153,7 +139,17 @@
                     </button>
                     <span t-esc="selectedPlacement.label"/>
                 </h1>
-                <h1 t-else="" class="o_cfg3d_title" t-esc="state.model and state.model.productName"/>
+                <!-- ⓘ PANNEAU SEUL (W-111, 8.4e) : la flèche à gauche du nom rend la main à l'hôte. -->
+                <h1 t-else="" class="o_cfg3d_title" t-att-class="{ 'o_cfg3d_title--piece': props.onBack }">
+                    <button t-if="props.onBack" class="o_cfg3d_backarrow"
+                            t-on-click="() => this.props.onBack()"
+                            t-att-title="backLabel" t-att-aria-label="backLabel">
+                        <i class="oi oi-arrow-left" role="img"/>
+                    </button>
+                    <span t-esc="state.model and state.model.productName"/>
+                </h1>
+                <!-- ⓘ Sans viewer à l'écran, les étapes passent sous le titre. -->
+                <t t-if="props.panelOnly" t-call="product_configurator_web_3d.Steps"/>
 
                 <div t-if="state.model and state.model.closed" class="o_cfg3d_closed"
                      t-esc="closedLabel"/>
@@ -245,6 +241,25 @@
     </div>
 </t>
 
+<!-- ⓘ LES ÉTAPES (D-385) — des pastilles en haut du viewer, centrées sur sa largeur (demande de
+     Gerry, 2026-09-30) ; sous le titre en panneau seul (W-111, 8.4e). Une pastille GRISÉE reste
+     cliquable : elle dit ce qui manque et y mène (`onStepChip`), comme une valeur éteinte dit
+     pourquoi (D-178). ⚠️ `aria-disabled` et non `disabled` : un bouton désactivé ne reçoit plus
+     le clic. ⓘ Un gabarit nommé, appelé hors de toute boucle ([[L-453]]). -->
+<t t-name="product_configurator_web_3d.Steps">
+    <nav t-if="stepChips.length" class="o_cfg3d_steps" t-att-aria-label="stepsLabel">
+        <t t-foreach="stepChips" t-as="chip" t-key="chip.id">
+            <button type="button" class="o_cfg3d_panel_chip o_cfg3d_step_chip"
+                    t-att-class="{ 'o_cfg3d_panel_chip--on': chip.active,
+                                   'o_cfg3d_step_chip--locked': chip.locked }"
+                    t-att-aria-current="chip.active ? 'step' : false"
+                    t-att-aria-disabled="chip.locked ? 'true' : false"
+                    t-on-click="() => this.onStepChip(chip)"
+                    t-esc="chip.name"/>
+        </t>
+    </nav>
+</t>
+
 <!-- ⓘ LA BARRE D'ACTION (D-389) — le prix et le geste qui termine, sur UNE ligne (Gerry,
      2026-10-01). ⓘ Pas de composant à emplacement : un gabarit nommé, appelé par `t-call`
      hors de toute boucle ([[L-453]]). -->
@@ -262,7 +277,8 @@
              plus haut, dit alors ce qu'il en est. Deux états, un seul endroit qui parle.
              ⚠️ `!` ET NON `not` : OWL en ferait une VARIABLE, et la page entière resterait
              BLANCHE (L-209). -->
-        <button t-if="state.model and !state.model.closed and !state.model.error"
+        <!-- ⓘ Pas de panier en panneau seul : l'environnement confirme au devis (Q-11.4). -->
+        <button t-if="state.model and !state.model.closed and !state.model.error and !props.panelOnly"
                 type="button"
                 class="btn btn-primary o_cfg3d_confirm"
                 t-att-disabled="state.loading or watching"

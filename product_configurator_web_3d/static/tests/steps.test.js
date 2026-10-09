@@ -102,11 +102,15 @@ describe("ce qui manque, dans l'ordre où on le trouvera", () => {
 });
 
 describe("la page branche les étapes", () => {
-    test("les pastilles sont celles du panneau, en haut du VIEWER", () => {
+    test("les pastilles sont celles du panneau, en haut du VIEWER — sous le titre en panneau seul", () => {
         const viewer = XML.slice(XML.indexOf('class="o_cfg3d_viewer"'), XML.indexOf('class="o_cfg3d_side"'));
-        expect(viewer).toContain('class="o_cfg3d_steps"');
-        expect(viewer).toContain("o_cfg3d_panel_chip o_cfg3d_step_chip");
-        expect(viewer).toContain("this.onStepChip(chip)");
+        expect(viewer).toContain('<t t-if="!props.panelOnly" t-call="product_configurator_web_3d.Steps"/>');
+        const side = XML.slice(XML.indexOf('class="o_cfg3d_side"'), XML.indexOf('class="o_cfg3d_footer"'));
+        expect(side).toContain('<t t-if="props.panelOnly" t-call="product_configurator_web_3d.Steps"/>');
+        const steps = XML.slice(XML.indexOf('t-name="product_configurator_web_3d.Steps"'), XML.indexOf("</nav>"));
+        expect(steps).toContain('class="o_cfg3d_steps"');
+        expect(steps).toContain("o_cfg3d_panel_chip o_cfg3d_step_chip");
+        expect(steps).toContain("this.onStepChip(chip)");
     });
 
     test("⚠️ grisée mais CLIQUABLE : `aria-disabled`, jamais `disabled`", () => {

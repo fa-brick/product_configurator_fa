@@ -111,6 +111,12 @@ export class ConfiguratorPage extends Component {
         // (W-111, 8.4d). Reçoit, après chaque construction, une copie autonome du produit habillé
         // (`THREE.Group` en mm, dont il devient propriétaire), ou `null` s'il n'y a rien à montrer.
         onScene: { type: Function, optional: true },
+        // ⓘ **PANNEAU SEUL** (W-111, 8.4e) : l'hôte montre le produit dans sa scène, la page n'y
+        // met que ses questions. Le viewer reste monté hors de l'écran — c'est lui qui fait la
+        // copie (`onScene`) ; ni panier (l'hôte confirme ailleurs), ni mode téléphone.
+        panelOnly: { type: Boolean, optional: true },
+        // ⓘ La flèche à gauche du nom du produit : rendre la main à l'hôte.
+        onBack: { type: Function, optional: true },
     };
 
     setup() {
@@ -170,8 +176,12 @@ export class ConfiguratorPage extends Component {
             // voir `_watchKeyboard`.
             keyboard: null,
         });
-        this._watchCompact();
-        this._watchKeyboard();
+        // ⚠️ Pas en panneau seul : la largeur de la FENÊTRE ne dit rien d'une colonne d'hôte, et
+        // la page n'y est pas calée sur l'écran.
+        if (!this.props.panelOnly) {
+            this._watchCompact();
+            this._watchKeyboard();
+        }
         this._worlds = new Map();
         this._solids = new Map();
         this._bakedSolids = new Map();
@@ -1517,6 +1527,7 @@ export class ConfiguratorPage extends Component {
 
     get takeHandLabel() { return _t("Take over"); }
     get backToProductLabel() { return _t("Back to product"); }
+    get backLabel() { return _t("Back"); }
     /**
      * Prendre la main — et le dire à ceux qui regardent.
      *

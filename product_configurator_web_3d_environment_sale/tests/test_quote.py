@@ -8,7 +8,8 @@ bloque et se nomme ; un visiteur se connecte d'abord ; au back-office, le devis 
 client ; remplacer ou retirer un produit retire sa ligne ; commandé, le devis libère le chantier
 pour un nouveau montage, sur les mêmes baies ; le jeton d'un devis ouvre SON montage, en lecture
 seule une fois commandé (8.5b) ; modifier les murs d'un montage que d'autres devis lisent en fait une
-copie propre au devis, et un plan refusé n'en laisse aucune (8.5c).
+copie propre au devis, et un plan refusé n'en laisse aucune (8.5c) ; la commande reçoit sa copie
+gelée, et le jeton du chantier reprend le devis en cours même quand il lit une copie (8.5d).
 """
 from odoo import Command
 from odoo.tests import HttpCase, TransactionCase, tagged
@@ -88,6 +89,20 @@ class TestQuote(PlacementCommon, TransactionCase):
         self.site.remove_product("b1")
         self.assertFalse(self._lines(order))
 
+    def _wider_bay(self, environment, width=2600):
+        plan = dict(environment.plan)
+        plan["openings"] = [dict(opening, width=width) for opening in plan["openings"]]
+        return plan
+
+    def _two_open_quotes(self):
+        """Le devis A, demandé depuis le chantier, et un devis B que le commercial rattache au même
+        chantier (E-1) : deux montages ouverts lisent le même environnement."""
+        self.site.place_product("b1", self.sectional.id)
+        self.site.request_quote()
+        first = self.site.order_ids
+        second = self.env["sale.order"].create({"partner_id": self.customer.id, "environment_id": self.site.id})
+        return first, second
+
     def test_commande_le_chantier_accueille_un_nouveau_montage(self):
         self.site.place_product("b1", self.sectional.id)
         self.site.request_quote()
@@ -95,27 +110,36 @@ class TestQuote(PlacementCommon, TransactionCase):
         order.action_confirm()
         self.assertEqual(self.site.editor_state()["placements"], [])
         self.assertIsNone(self.site.editor_state()["quote"])
-        # ⚠️ La même baie reçoit un produit pour un nouveau devis : « une baie, un produit » vaut par montage.
+        # La même baie reçoit un produit pour un nouveau devis : « une baie, un produit » vaut par montage.
         self.site.place_product("b1", self.sectional.id)
-        self.assertEqual(len(self.site.placement_ids), 2)
+        self.assertEqual(len(self.site.placement_ids), 1)
         self.assertEqual(len(self._lines(order)), 1)
 
-
-    def test_chaque_devis_montre_son_montage(self):
-        # Devis A commandé, puis un nouveau montage sur la même baie : chaque devis montre le sien.
+    def test_la_commande_recoit_sa_copie_gelee(self):
         self.site.place_product("b1", self.sectional.id)
         self.site.request_quote()
-        first = self.site.order_ids
-        first.action_confirm()
-        self.site.place_product("b1", self.simple.id)
-        self.site.request_quote()
-        second = self.site.order_ids - first
+        order = self.site.order_ids
+        order.action_confirm()
+        frozen = order.environment_id
+        self.assertNotEqual(frozen, self.site)
+        self.assertEqual(frozen.source_environment_id, self.site)
+        self.assertEqual(order.environment_placement_ids.environment_id, frozen)
+        self.assertFalse(self.site._resume_order())
+        # Le chantier évolue, la commande ne bouge pas.
+        self.site.editor_save(self._wider_bay(self.site))
+        self.assertEqual(frozen.plan["openings"][0]["width"], 2400)
+
+    def test_chaque_devis_montre_son_montage(self):
+        first, second = self._two_open_quotes()
         in_first = self.site.with_context(environment_order_id=first.id)
         self.assertEqual([p["productId"] for p in in_first.editor_state()["placements"]], [self.sectional.id])
-        self.assertFalse(in_first.editor_state()["can_write"])  # commandé : lecture seule
+        self.assertTrue(in_first.editor_state()["can_write"])
         in_second = self.site.with_context(environment_order_id=second.id)
-        self.assertEqual([p["productId"] for p in in_second.editor_state()["placements"]], [self.simple.id])
-        self.assertTrue(in_second.editor_state()["can_write"])
+        self.assertEqual(in_second.editor_state()["placements"], [])
+        first.action_confirm()
+        frozen = first.environment_id.with_context(environment_order_id=first.id)
+        self.assertEqual([p["productId"] for p in frozen.editor_state()["placements"]], [self.sectional.id])
+        self.assertFalse(frozen.editor_state()["can_write"])  # commandé : lecture seule
 
     def test_le_bouton_montage_ouvre_l_editeur_par_le_jeton_du_devis(self):
         self.site.place_product("b1", self.sectional.id)
@@ -126,35 +150,24 @@ class TestQuote(PlacementCommon, TransactionCase):
         self.assertEqual(action["params"]["token"], order.access_token)
         self.assertEqual(action["params"]["state"]["quote"]["name"], order.name)
 
-
-    def _wider_bay(self, environment, width=2600):
-        plan = dict(environment.plan)
-        plan["openings"] = [dict(opening, width=width) for opening in plan["openings"]]
-        return plan
-
     def test_modifier_les_murs_depuis_un_devis_en_fait_une_copie(self):
-        # Devis A commandé, devis B en cours sur le même chantier : B modifie la baie.
-        self.site.place_product("b1", self.sectional.id)
-        self.site.request_quote()
-        first = self.site.order_ids
-        first.action_confirm()
-        self.site.place_product("b1", self.sectional.id)
-        self.site.request_quote()
-        second = self.site.order_ids - first
-        in_second = self.site.with_context(environment_order_id=second.id)
-        result = in_second.editor_save(self._wider_bay(self.site))
+        first, second = self._two_open_quotes()
+        result = self.site.with_context(environment_order_id=first.id).editor_save(self._wider_bay(self.site))
         self.assertTrue(result["copied"])
-        self.assertEqual(result["token"], second.access_token)
-        copy = second.environment_id
+        self.assertEqual(result["token"], first.access_token)
+        copy = first.environment_id
         self.assertNotEqual(copy, self.site)
-        self.assertEqual(first.environment_id, self.site)
-        self.assertEqual(self.site.plan["openings"][0]["width"], 2400)   # A garde son plan
+        self.assertEqual(copy.source_environment_id, self.site)
+        self.assertEqual(second.environment_id, self.site)
+        self.assertEqual(self.site.plan["openings"][0]["width"], 2400)   # B garde son plan
         self.assertEqual(copy.plan["openings"][0]["width"], 2600)
-        self.assertEqual(second.environment_placement_ids.environment_id, copy)
-        self.assertEqual(first.environment_placement_ids.environment_id, self.site)
-        # Le produit de B a suivi sa baie dans la copie (D-424).
-        answers = {c.attribute_id: c.value for c in second.environment_placement_ids.session_id.custom_value_ids}
+        self.assertEqual(first.environment_placement_ids.environment_id, copy)
+        # Le produit de A a suivi sa baie dans la copie (D-424).
+        answers = {c.attribute_id: c.value for c in first.environment_placement_ids.session_id.custom_value_ids}
         self.assertEqual(answers[self.width], "2600")
+        # Commandée, une copie déjà propre au devis n'est pas recopiée.
+        first.action_confirm()
+        self.assertEqual(first.environment_id, copy)
 
     def test_seul_lecteur_pas_de_copie(self):
         self.site.place_product("b1", self.sectional.id)
@@ -165,20 +178,13 @@ class TestQuote(PlacementCommon, TransactionCase):
         self.assertEqual(self.site.order_ids.environment_id, self.site)
 
     def test_un_plan_refuse_ne_laisse_pas_de_copie(self):
-        self.site.place_product("b1", self.sectional.id)
-        self.site.request_quote()
-        first = self.site.order_ids
-        first.action_confirm()
-        self.site.place_product("b1", self.sectional.id)
-        self.site.request_quote()
-        second = self.site.order_ids - first
+        first, second = self._two_open_quotes()
         sites = self.env["product.environment"].search_count([])
         plan = self._wider_bay(self.site, width=9000)   # dépasse le mur
-        result = self.site.with_context(environment_order_id=second.id).editor_save(plan)
+        result = self.site.with_context(environment_order_id=first.id).editor_save(plan)
         self.assertEqual(result["error"], "invalid")
         self.assertEqual(self.env["product.environment"].search_count([]), sites)
-        self.assertEqual(second.environment_id, self.site)
-
+        self.assertEqual(first.environment_id, self.site)
 
 @tagged("post_install", "-at_install")
 class TestQuoteRoute(PlacementCommon, HttpCase):
@@ -209,3 +215,14 @@ class TestQuoteRoute(PlacementCommon, HttpCase):
         self.assertFalse(state["can_write"])
         self.assertEqual(self.make_jsonrpc_request("/environment/unplace", {"token": order.access_token, "opening_id": "b1"}),
                          {"error": "read_only"})
+
+    def test_le_jeton_du_chantier_reprend_le_devis_qui_lit_une_copie(self):
+        self.site.partner_id = self.env["res.partner"].create({"name": "Client reprise"})
+        self.site.place_product("b1", self.sectional.id)
+        self.site.request_quote()
+        order = self.site.order_ids
+        copy = self.site._copy_for_order(order)
+        state = self.make_jsonrpc_request("/environment/state", {"token": self.site.access_token})
+        self.assertEqual(state["quote"]["name"], order.name)
+        self.assertEqual([p["openingId"] for p in state["placements"]], ["b1"])
+        self.assertEqual(copy.source_environment_id, self.site)

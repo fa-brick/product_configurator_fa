@@ -33,6 +33,11 @@ msgid "Ask for a quotation"
 msgstr "Demander un devis"
 
 #. module: product_configurator_web_3d_environment_sale
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment_sale.field_product_environment__source_environment_id
+msgid "Copied from"
+msgstr "Copié de"
+
+#. module: product_configurator_web_3d_environment_sale
 #: model:ir.model,name:product_configurator_web_3d_environment_sale.model_product_environment
 #: model:ir.model.fields,field_description:product_configurator_web_3d_environment_sale.field_sale_order__environment_id
 msgid "Environment"

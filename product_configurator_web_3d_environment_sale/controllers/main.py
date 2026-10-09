@@ -15,6 +15,13 @@ class EnvironmentQuoteController(EnvironmentEditorController):
 
     def _environment(self, token):
         environment = super()._environment(token)
+        if environment and not environment.env.context.get("environment_order_id"):
+            # ⓘ Reprendre son projet, c'est reprendre son devis en cours (Q-12.4) — même quand celui-ci
+            # lit une COPIE du chantier (8.5c) : la page s'ouvre sur elle, le devis en contexte.
+            order = environment._resume_order()
+            if order and order.environment_id != environment:
+                return order.environment_id.with_context(environment_order_id=order.id,
+                                                         lang=environment.env.context.get("lang"))
         if environment or not token or not isinstance(token, str):
             return environment
         order = request.env["sale.order"].sudo().search(

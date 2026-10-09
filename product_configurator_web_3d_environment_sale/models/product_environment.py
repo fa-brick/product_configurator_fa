@@ -10,6 +10,17 @@ class ProductEnvironment(models.Model):
     _inherit = "product.environment"
 
     order_ids = fields.One2many("sale.order", "environment_id", string="Quotations")
+    # ⓘ Le chantier dont cette copie est née pour un devis (8.5c-d) : reprendre le projet par le jeton du
+    # chantier retrouve le devis en cours qui lit cette copie, et le portail ne la liste pas à part.
+    source_environment_id = fields.Many2one("product.environment", string="Copied from", copy=False,
+                                            index=True, ondelete="set null")
+
+    def _resume_order(self):
+        """Le devis en cours de CE PROJET : celui qui lit le chantier ou l'une de ses copies (Q-12.4)."""
+        self.ensure_one()
+        return self.env["sale.order"].sudo().search(
+            [("state", "in", OPEN_STATES), "|", ("environment_id", "=", self.id),
+             ("environment_id.source_environment_id", "=", self.id)], order="id desc", limit=1)
 
     def _open_order(self):
         """Le devis EN COURS du chantier : le plus récent, brouillon ou envoyé (Q-12.4).
@@ -56,6 +67,7 @@ class ProductEnvironment(models.Model):
         copy = self.copy_for_site(partner=self.partner_id, project=self.project_id, name=self.name,
                                   product=self.product_tmpl_id)
         copy._portal_ensure_token()
+        copy.source_environment_id = self.source_environment_id or self
         order.environment_placement_ids.write({"environment_id": copy.id})
         order.environment_id = copy
         return copy

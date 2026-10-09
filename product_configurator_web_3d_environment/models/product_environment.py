@@ -89,6 +89,19 @@ class ProductEnvironment(models.Model):
         result.update(followed=followed, messages=messages)
         return result
 
+    def remove_product(self, opening_id):
+        """RETIRER le produit posé dans une baie — le menu flottant (étape 8.4f).
+
+        ⓘ La configuration n'est pas supprimée : elle reste une session en cours, comme une
+        configuration abandonnée sur le site ; seul le lien à la baie disparaît.
+        """
+        self.ensure_one()
+        placement = self.sudo().placement_ids.filtered(lambda p: p.opening_id == opening_id)
+        if not placement:
+            return {"error": "not_placed"}
+        placement.unlink()
+        return {"ok": True}
+
     def place_product(self, opening_id, product_tmpl_id):
         """POSER un produit dans une baie : la configuration naît avec les mesures de la baie (U-2).
 

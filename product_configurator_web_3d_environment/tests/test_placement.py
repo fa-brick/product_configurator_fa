@@ -90,6 +90,14 @@ class TestPlacement(PlacementCommon, TransactionCase):
         self.assertEqual(self.site.place_product("nope", self.sectional.id)["error"], "not_offered")
         self.assertFalse(self.site.placement_ids)
 
+    def test_retirer_libere_la_baie_et_garde_la_configuration(self):
+        self.site.place_product("b1", self.sectional.id)
+        session = self.site.placement_ids.session_id
+        self.assertEqual(self.site.remove_product("b1"), {"ok": True})
+        self.assertFalse(self.site.placement_ids)
+        self.assertTrue(session.exists())
+        self.assertEqual(self.site.remove_product("b1"), {"error": "not_placed"})
+
     def test_reposer_remplace(self):
         self.site.place_product("b1", self.sectional.id)
         self.site.place_product("b1", self.simple.id)
@@ -169,3 +177,11 @@ class TestPlacementRoute(PlacementCommon, HttpCase):
         self.assertEqual(self.make_jsonrpc_request("/environment/place", {
             "token": "nope", "opening_id": "b1", "product_tmpl_id": self.sectional.id}),
             {"error": "unknown_environment"})
+
+    def test_la_route_retire_par_le_jeton(self):
+        self.site.place_product("b1", self.sectional.id)
+        self.assertEqual(self.make_jsonrpc_request("/environment/unplace", {"token": "nope", "opening_id": "b1"}),
+                         {"error": "unknown_environment"})
+        self.assertEqual(self.make_jsonrpc_request("/environment/unplace", {
+            "token": self.site.access_token, "opening_id": "b1"}), {"ok": True})
+        self.assertFalse(self.site.placement_ids)

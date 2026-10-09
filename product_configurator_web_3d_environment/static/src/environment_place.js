@@ -73,6 +73,27 @@ patch(EnvironmentEditor.prototype, {
         this._reloadPlacements();
     },
 
+    /** Le menu flottant gagne le RETRAIT du produit (étape 8.4f). */
+    bayMenuActions(opening) {
+        const actions = super.bayMenuActions(opening);
+        if (this.placementOf(opening.id)) {
+            actions.push({ id: "remove", label: _t("Remove"), icon: "fa-trash", danger: true });
+        }
+        return actions;
+    },
+
+    async onBayMenu(actionId, openingId) {
+        if (actionId !== "remove") return super.onBayMenu(actionId, openingId);
+        const result = await rpc("/environment/unplace", { token: this.props.token, opening_id: openingId });
+        if (result.error) {
+            this.state.messages = [_t("This product could not be removed.")];
+            return;
+        }
+        if (this.state.configuringId === openingId) this.state.configuringId = null;
+        this.state.placements = this.state.placements.filter((placement) => placement.openingId !== openingId);
+        this.setBayObject(openingId, null);
+    },
+
     /** L'écart d'une mesure à la baie, lisible : « baie − 400 mm », ou rien s'il est nul. */
     offsetLabel(placement, key) {
         const offset = placement.offsets?.[key];

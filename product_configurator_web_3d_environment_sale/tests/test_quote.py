@@ -6,7 +6,8 @@ Ce qui est éprouvé : le montage devient un devis — une ligne par produit pos
 configuration, confirmée ; redemander met à jour le MÊME devis ; une configuration incomplète
 bloque et se nomme ; un visiteur se connecte d'abord ; au back-office, le devis est celui du
 client ; remplacer ou retirer un produit retire sa ligne ; commandé, le devis libère le chantier
-pour un nouveau montage, sur les mêmes baies.
+pour un nouveau montage, sur les mêmes baies ; le jeton d'un devis ouvre SON montage, en lecture
+seule une fois commandé (8.5b).
 """
 from odoo import Command
 from odoo.tests import HttpCase, TransactionCase, tagged
@@ -99,6 +100,32 @@ class TestQuote(PlacementCommon, TransactionCase):
         self.assertEqual(len(self._lines(order)), 1)
 
 
+    def test_chaque_devis_montre_son_montage(self):
+        # Devis A commandé, puis un nouveau montage sur la même baie : chaque devis montre le sien.
+        self.site.place_product("b1", self.sectional.id)
+        self.site.request_quote()
+        first = self.site.order_ids
+        first.action_confirm()
+        self.site.place_product("b1", self.simple.id)
+        self.site.request_quote()
+        second = self.site.order_ids - first
+        in_first = self.site.with_context(environment_order_id=first.id)
+        self.assertEqual([p["productId"] for p in in_first.editor_state()["placements"]], [self.sectional.id])
+        self.assertFalse(in_first.editor_state()["can_write"])  # commandé : lecture seule
+        in_second = self.site.with_context(environment_order_id=second.id)
+        self.assertEqual([p["productId"] for p in in_second.editor_state()["placements"]], [self.simple.id])
+        self.assertTrue(in_second.editor_state()["can_write"])
+
+    def test_le_bouton_montage_ouvre_l_editeur_par_le_jeton_du_devis(self):
+        self.site.place_product("b1", self.sectional.id)
+        self.site.request_quote()
+        order = self.site.order_ids
+        action = order.action_open_montage()
+        self.assertEqual(action["tag"], "product_editor_environment.editor")
+        self.assertEqual(action["params"]["token"], order.access_token)
+        self.assertEqual(action["params"]["state"]["quote"]["name"], order.name)
+
+
 @tagged("post_install", "-at_install")
 class TestQuoteRoute(PlacementCommon, HttpCase):
 
@@ -113,3 +140,18 @@ class TestQuoteRoute(PlacementCommon, HttpCase):
                          {"error": "unknown_environment"})
         self.assertEqual(self.make_jsonrpc_request("/environment/quote", {"token": self.site.access_token}),
                          {"error": "login_required"})
+
+    def test_le_jeton_du_devis_ouvre_son_montage(self):
+        self.site.partner_id = self.env["res.partner"].create({"name": "Client route"})
+        self.site.place_product("b1", self.sectional.id)
+        self.site.request_quote()
+        order = self.site.order_ids
+        state = self.make_jsonrpc_request("/environment/state", {"token": order.access_token})
+        self.assertEqual(state["quote"]["name"], order.name)
+        self.assertEqual([p["openingId"] for p in state["placements"]], ["b1"])
+        # Le devis commandé : son montage se lit, ne s'écrit plus.
+        order.action_confirm()
+        state = self.make_jsonrpc_request("/environment/state", {"token": order.access_token})
+        self.assertFalse(state["can_write"])
+        self.assertEqual(self.make_jsonrpc_request("/environment/unplace", {"token": order.access_token, "opening_id": "b1"}),
+                         {"error": "read_only"})

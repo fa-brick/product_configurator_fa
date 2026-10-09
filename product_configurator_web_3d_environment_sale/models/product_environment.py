@@ -18,8 +18,19 @@ class ProductEnvironment(models.Model):
         nouveau montage.
         """
         self.ensure_one()
+        # ⓘ Ouvert par le jeton d'un devis (8.5b) : SON montage, même commandé — alors en lecture seule.
+        order_id = self.env.context.get("environment_order_id")
+        if order_id:
+            return self.env["sale.order"].sudo().browse(order_id).exists()
         return self.env["sale.order"].sudo().search(
             [("environment_id", "=", self.id), ("state", "in", OPEN_STATES)], order="id desc", limit=1)
+
+    def _editor_can_write(self):
+        # ⚠️ Le montage d'un devis COMMANDÉ ne bouge plus : la commande engage ce qui est posé (D-371).
+        order_id = self.env.context.get("environment_order_id")
+        if order_id and self.env["sale.order"].sudo().browse(order_id).state not in OPEN_STATES:
+            return False
+        return super()._editor_can_write()
 
     def _montage(self):
         # ⓘ Le montage du devis en cours, sinon celui en préparation (sans devis) — jamais celui d'un
@@ -98,6 +109,8 @@ class ProductEnvironment(models.Model):
             self.sudo().partner_id = partner
         order = self._open_order() or self.env["sale.order"].sudo().create(
             {"partner_id": partner.id, "environment_id": self.id})
+        # ⓘ Le jeton du devis ouvre son montage, au portail comme au back-office (8.5b).
+        order._portal_ensure_token()
         Line = self.env["sale.order.line"].sudo()
         for placement in montage:
             session = placement.session_id.sudo()

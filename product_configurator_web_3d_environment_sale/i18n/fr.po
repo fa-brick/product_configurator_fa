@@ -22,6 +22,11 @@ msgid "%(product)s: %(questions)s"
 msgstr "%(product)s : %(questions)s"
 
 #. module: product_configurator_web_3d_environment_sale
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_3d_environment_sale.sale_order_portal_montage
+msgid "<i class=\"fa fa-cube me-1\"/>Montage"
+msgstr "<i class=\"fa fa-cube me-1\"/>Montage"
+
+#. module: product_configurator_web_3d_environment_sale
 #. odoo-javascript
 #: code:addons/product_configurator_web_3d_environment_sale/static/src/environment_quote.js:0
 msgid "Ask for a quotation"
@@ -35,8 +40,15 @@ msgstr "Environnement"
 
 #. module: product_configurator_web_3d_environment_sale
 #: model:ir.model.fields,field_description:product_configurator_web_3d_environment_sale.field_sale_order__environment_placement_ids
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_3d_environment_sale.view_order_form_environment
 msgid "Montage"
 msgstr "Montage"
+
+#. module: product_configurator_web_3d_environment_sale
+#. odoo-python
+#: code:addons/product_configurator_web_3d_environment_sale/models/sale_order.py:0
+msgid "Montage of %s"
+msgstr "Montage de %s"
 
 #. module: product_configurator_web_3d_environment_sale
 #. odoo-python

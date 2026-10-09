@@ -20,9 +20,12 @@ class ProductEnvironmentPlacement(models.Model):
     # ⓘ Vide pour un produit qui ne se configure pas : il est posé tel quel.
     session_id = fields.Many2one("product.config.session", string="Configuration", ondelete="set null")
 
-    _sql_constraints = [
-        ("one_per_bay", "UNIQUE(environment_id, opening_id)", "A bay holds one product."),
-    ]
+    def init(self):
+        # ⚠️ « Une baie, un produit » vaut par MONTAGE, et un chantier en porte un par devis (E-1) :
+        # l'ancienne contrainte SQL sur (environnement, baie) refuserait le second devis. Odoo ne
+        # retire pas une contrainte qu'on cesse de déclarer : on la retire ici (D-426).
+        self.env.cr.execute("ALTER TABLE product_environment_placement DROP CONSTRAINT IF EXISTS "
+                            "product_environment_placement_one_per_bay")
 
     def editor_entry(self):
         """Ce que l'éditeur lit d'un placement."""

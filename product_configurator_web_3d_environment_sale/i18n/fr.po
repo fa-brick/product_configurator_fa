@@ -1,0 +1,94 @@
+# Translation of Odoo Server.
+# This file contains the translation of the following modules:
+# 	* product_configurator_web_3d_environment_sale
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 18.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-08 20:34+0000\n"
+"PO-Revision-Date: 2026-10-08 20:34+0000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: \n"
+"Plural-Forms: \n"
+
+#. module: product_configurator_web_3d_environment_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment_sale/static/src/environment_quote.js:0
+msgid "%(product)s: %(questions)s"
+msgstr "%(product)s : %(questions)s"
+
+#. module: product_configurator_web_3d_environment_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment_sale/static/src/environment_quote.js:0
+msgid "Ask for a quotation"
+msgstr "Demander un devis"
+
+#. module: product_configurator_web_3d_environment_sale
+#: model:ir.model,name:product_configurator_web_3d_environment_sale.model_product_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment_sale.field_sale_order__environment_id
+msgid "Environment"
+msgstr "Environnement"
+
+#. module: product_configurator_web_3d_environment_sale
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment_sale.field_sale_order__environment_placement_ids
+msgid "Montage"
+msgstr "Montage"
+
+#. module: product_configurator_web_3d_environment_sale
+#. odoo-python
+#: code:addons/product_configurator_web_3d_environment_sale/models/product_environment.py:0
+msgid "Place a product in a bay before asking for a quotation."
+msgstr "Posez un produit dans une baie avant de demander un devis."
+
+#. module: product_configurator_web_3d_environment_sale
+#: model:ir.model,name:product_configurator_web_3d_environment_sale.model_product_environment_placement
+msgid "Product placed in an environment bay"
+msgstr "Produit posé dans une baie d'environnement"
+
+#. module: product_configurator_web_3d_environment_sale
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment_sale.field_product_environment_placement__order_id
+msgid "Quotation"
+msgstr "Devis"
+
+#. module: product_configurator_web_3d_environment_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment_sale/static/src/environment_quote.js:0
+msgid "Quotation %(name)s is up to date."
+msgstr "Le devis %(name)s est à jour."
+
+#. module: product_configurator_web_3d_environment_sale
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment_sale.field_product_environment_placement__order_line_id
+msgid "Quotation line"
+msgstr "Ligne de devis"
+
+#. module: product_configurator_web_3d_environment_sale
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment_sale.field_product_environment__order_ids
+msgid "Quotations"
+msgstr "Devis"
+
+#. module: product_configurator_web_3d_environment_sale
+#: model:ir.model,name:product_configurator_web_3d_environment_sale.model_sale_order
+msgid "Sales Order"
+msgstr "Bon de commande"
+
+#. module: product_configurator_web_3d_environment_sale
+#. odoo-python
+#: code:addons/product_configurator_web_3d_environment_sale/models/product_environment.py:0
+msgid "Set the customer of this environment first."
+msgstr "Indiquez d'abord le client de cet environnement."
+
+#. module: product_configurator_web_3d_environment_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment_sale/static/src/environment_quote.js:0
+msgid "The quotation could not be updated."
+msgstr "Le devis n'a pas pu être mis à jour."
+
+#. module: product_configurator_web_3d_environment_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment_sale/static/src/environment_quote.js:0
+msgid "Update the quotation"
+msgstr "Mettre à jour le devis"

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- L'environnement que le montage du devis lit (étape 8.5a). -->
+    <record id="view_order_form_environment" model="ir.ui.view">
+        <field name="name">sale.order.form.environment</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='order_details']" position="inside">
+                <field name="environment_id" invisible="not environment_id" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

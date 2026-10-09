@@ -12,13 +12,26 @@ class ProductEnvironment(models.Model):
 
     placement_ids = fields.One2many("product.environment.placement", "environment_id", string="Placed products")
 
+    def _montage(self):
+        """Les placements du MONTAGE courant de ce chantier.
+
+        ⓘ Ici, tous ceux de l'environnement ; le pont de vente le restreint au devis en cours
+        (E-1 : le montage est lié au devis), si bien qu'un même chantier porte un montage par devis.
+        """
+        return self.sudo().placement_ids
+
+    def _placement_values(self, opening_id, product, session):
+        """Les valeurs d'un placement neuf — ⓘ le pont de vente y ajoute son devis."""
+        return {"environment_id": self.id, "opening_id": opening_id,
+                "product_tmpl_id": product.id, "session_id": session.id or False}
+
     def _editor_can_place(self):
         # ⓘ Ce pont installé, une baie peut recevoir un produit : le « + » s'affiche.
         return True
 
     def editor_state(self):
         state = super().editor_state()
-        state["placements"] = [placement.editor_entry() for placement in self.sudo().placement_ids]
+        state["placements"] = [placement.editor_entry() for placement in self._montage()]
         return state
 
     def _attribute_raw(self, attribute, millimetres):
@@ -58,7 +71,7 @@ class ProductEnvironment(models.Model):
         """
         self.ensure_one()
         before = {placement.id: (placement, self._bay(placement.opening_id), self._placement_offsets(placement))
-                  for placement in self.sudo().placement_ids.filtered("session_id")}
+                  for placement in self._montage().filtered("session_id")}
         result = super().editor_save(plan, wall_height=wall_height, wall_thickness=wall_thickness,
                                      start_view=start_view)
         if not result.get("ok"):
@@ -96,7 +109,7 @@ class ProductEnvironment(models.Model):
         configuration abandonnée sur le site ; seul le lien à la baie disparaît.
         """
         self.ensure_one()
-        placement = self.sudo().placement_ids.filtered(lambda p: p.opening_id == opening_id)
+        placement = self._montage().filtered(lambda p: p.opening_id == opening_id)
         if not placement:
             return {"error": "not_placed"}
         placement.unlink()
@@ -129,8 +142,8 @@ class ProductEnvironment(models.Model):
                     # peut encore refuser. La pose a lieu, la question reste à régler par le client.
                     _logger.info("Bay %s of environment %s: %s refused %s (%s)", opening_id, self.id,
                                  product.display_name, attribute.display_name, answer.get("message"))
-        Placement = self.env["product.environment.placement"].sudo()
-        Placement.search([("environment_id", "=", self.id), ("opening_id", "=", opening_id)]).unlink()
-        placement = Placement.create({"environment_id": self.id, "opening_id": opening_id,
-                                      "product_tmpl_id": product.id, "session_id": session.id or False})
+        # ⓘ Une baie, un produit — dans le montage COURANT : un autre devis du même chantier garde le sien.
+        self._montage().filtered(lambda p: p.opening_id == opening_id).unlink()
+        placement = self.env["product.environment.placement"].sudo().create(
+            self._placement_values(opening_id, product, session))
         return {"placement": placement.editor_entry()}

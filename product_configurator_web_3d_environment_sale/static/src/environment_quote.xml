@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Demander un devis depuis l'environnement, puis le mettre à jour (étape 8.5a). -->
+    <t t-inherit="product_editor_environment.EnvironmentEditor" t-inherit-mode="extension">
+        <xpath expr="//button[@t-on-click='save']" position="before">
+            <span t-if="state.quoteNotice" class="small o_env_quote_notice"
+                  t-att-class="state.quoteNotice.ok ? 'text-success' : 'text-danger'" t-esc="state.quoteNotice.text"/>
+            <button t-if="state.canPlace and !readonly and state.placements.length" type="button"
+                    class="btn btn-sm btn-secondary" t-att-disabled="state.quoting" t-on-click="requestQuote">
+                <i class="fa me-1" t-att-class="state.quoting ? 'fa-spinner fa-spin' : 'fa-file-text-o'"/>
+                <t t-esc="quoteLabel"/>
+            </button>
+        </xpath>
+    </t>
+
+</templates>

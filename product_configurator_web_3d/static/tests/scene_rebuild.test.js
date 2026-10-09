@@ -64,7 +64,7 @@ describe("la scène se construit par la SESSION du moteur (D-329)", () => {
 
     test("les QUATRE projections viennent de la session — aucune n'est refaite ici", () => {
         const corps = buildScene();
-        expect(corps).toContain("const { worlds, solids, baked: bakedSolids, pieces, postBuild } =");
+        expect(corps).toContain("const { tree, worlds, solids, baked: bakedSolids, pieces, postBuild } =");
         expect(corps).toContain("this._bakedSolids = bakedSolids");
         expect(corps).toContain("this.state.postBuild = postBuild");
     });

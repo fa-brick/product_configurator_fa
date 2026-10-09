@@ -58,6 +58,8 @@ import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, han
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
 // La photo d'une variante née de la confirmation (D-399, lot 5).
 import { photoCaptured, sendVariantPhoto } from "./variant_photo";
+// La copie du produit pour un HÔTE qui le montre dans sa propre scène (W-111, 8.4d).
+import { disposeSnapshot } from "@product_editor/engine/three/scene_snapshot";
 
 /** Le calque par pose VIDE — une seule instance (voir `zoneMaterialsByNode`). */
 const NO_NODE_MATERIALS = Object.freeze({});
@@ -105,6 +107,10 @@ export class ConfiguratorPage extends Component {
         // boutique. ⓘ Le défaut par défaut est de DESSINER : la page sans hôte — celle du
         // lien reçu — est justement celle qui n'a personne pour la fermer.
         closable: { type: Boolean, optional: true },
+        // ⓘ **L'HÔTE QUI MONTRE LE PRODUIT DANS SA PROPRE SCÈNE** — la baie d'un environnement
+        // (W-111, 8.4d). Reçoit, après chaque construction, une copie autonome du produit habillé
+        // (`THREE.Group` en mm, dont il devient propriétaire), ou `null` s'il n'y a rien à montrer.
+        onScene: { type: Function, optional: true },
     };
 
     setup() {
@@ -243,6 +249,8 @@ export class ConfiguratorPage extends Component {
                 this._buildScene(model);
             } else {
                 this.state.ready = true;
+                // ⓘ L'hôte qui attend une scène apprend qu'il n'y en aura pas.
+                this.props?.onScene?.(null);
             }
         });
         this._listenToOthers();
@@ -364,6 +372,8 @@ export class ConfiguratorPage extends Component {
             document.removeEventListener("keydown", onKey, true);
             // Les workers du décodeur ne s'arrêtent qu'ici ([[L-449]]).
             this._dracoDecoder?.dispose();
+            // ⓘ Une copie de scène encore en route ne sera plus publiée (`_publishSnapshot`).
+            this._unmounted = true;
         });
     }
 
@@ -579,6 +589,7 @@ export class ConfiguratorPage extends Component {
             this._solids = new Map();
             this._bakedSolids = new Map();
             this.state.ready = true;
+            this.props?.onScene?.(null);
             return;
         }
         try {
@@ -599,9 +610,12 @@ export class ConfiguratorPage extends Component {
             // Une construction plus récente a été lancée pendant les lectures : elle seule
             // publiera. Sortir AVANT `build()` épargne en plus son calcul.
             if (ticket !== this._buildTicket) return;
-            const { worlds, solids, baked: bakedSolids, pieces, postBuild } =
+            const { tree, worlds, solids, baked: bakedSolids, pieces, postBuild } =
                 this._session.build(buildable, scope || {},
                                     { bakedParts, importedGeometries, chronicle });
+            // ⚠️ Projeter la racine sur SA portée résolue, pas sur celle des attributs : une
+            // esquisse qui cite une variable de la racine retombait sinon sur son défaut (L-547).
+            this._rootScope = tree?.scope || null;
             this._lastBuild = chronicle.snapshot();
             this._worlds = worlds;
             // ⚠️ **LES VOLUMES DU MOTEUR** — percés, chanfreinés, fusionnés. Le viewer
@@ -625,6 +639,8 @@ export class ConfiguratorPage extends Component {
                 this._select(null, false, { broadcast: false });
             }
             this.state.sceneSerial++;
+            // ⓘ La copie pour l'hôte part APRÈS le rendu qui donne au viewer ses nouvelles poses.
+            if (this.props?.onScene) this._snapshotTicket = ticket;
             // ⓘ La photo s'efface quand la SCÈNE est là — la caméra, elle, a été
             // demandée dès que l'état est arrivé.
             this.state.ready = true;
@@ -644,7 +660,31 @@ export class ConfiguratorPage extends Component {
             // croire à un chargement éternel, alors que la page est vivante et que
             // les questions, elles, répondent.
             this.state.ready = true;
+            this.props?.onScene?.(null);
         }
+    }
+
+    /** L'API du viewer — sa copie du produit habillé, pour `onScene` (W-111, 8.4d). */
+    onRegisterViewerApi(api) {
+        this._viewerApi = api;
+    }
+
+    /**
+     * Envoyer à l'hôte la copie de la scène que le viewer vient de reconstruire.
+     * ⚠️ Une copie dépassée par une construction plus récente, ou arrivée après le démontage, est
+     * libérée et jamais publiée : l'hôte montrerait l'ancien produit par-dessus le nouveau.
+     */
+    _publishSnapshot() {
+        const ticket = this._snapshotTicket;
+        if (!ticket || !this._viewerApi?.snapshotSolids) return;
+        this._snapshotTicket = null;
+        this._viewerApi.snapshotSolids().then((group) => {
+            if (this._unmounted || ticket !== this._buildTicket) {
+                disposeSnapshot(group);
+                return;
+            }
+            this.props.onScene?.(group);
+        });
     }
 
     /**
@@ -910,6 +950,7 @@ export class ConfiguratorPage extends Component {
     }
 
     _afterRender() {
+        this._publishSnapshot();
         this._settleRows();
         this._settleTabs();
         this._measureViewInset();
@@ -1281,10 +1322,12 @@ export class ConfiguratorPage extends Component {
         // objet neuf à chaque réponse : elle se compare par valeur.
         const model = this.state.sceneModel;
         if (!model?.definition) return NO_SKETCH_ITEMS;
-        const scope = JSON.stringify(model.scope || {});
+        // ⓘ La portée RÉSOLUE de la dernière construction ; avant elle, celle des attributs.
+        const values = this._rootScope || model.scope || {};
+        const scope = JSON.stringify(values);
         if (this._memos.items?.definition !== model.definition || this._memos.items?.scope !== scope) {
             this._memos.items = { definition: model.definition, scope,
-                               items: projectSketchItems(model.definition, model.scope || {}) };
+                               items: projectSketchItems(model.definition, values) };
         }
         return this._memos.items.items;
     }

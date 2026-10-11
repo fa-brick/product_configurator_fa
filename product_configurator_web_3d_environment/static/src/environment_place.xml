@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-    <!-- Le produit posé dans une baie, sous le titre du panneau de l'ouverture (étape 8.4c). -->
-    <t t-inherit="product_editor_environment.EnvironmentEditor" t-inherit-mode="extension">
+    <!-- Le produit posé dans une baie, sous le titre du panneau de l'ouverture (étape 8.4c). ⓘ Le panneau est
+         un gabarit à part depuis W-113 (E-2d) : rendu dans la barre latérale ou dans le panneau bas. -->
+    <t t-inherit="product_editor_environment.EnvironmentPanel" t-inherit-mode="extension">
         <xpath expr="//t[@t-if='opening']/h5" position="after">
             <t t-set="placed" t-value="opening.kind === 'bay' and placementOf(opening.id)"/>
             <div t-if="placed" class="o_env_placed alert alert-info small py-2">
@@ -35,6 +36,9 @@
                                   onScene="(group) => this.onPlacedScene(configured.openingId, configured.token, group)"/>
             </div>
         </xpath>
+    </t>
+
+    <t t-inherit="product_editor_environment.EnvironmentEditor" t-inherit-mode="extension">
         <!-- Le produit posé se MONTRE (étape 8.4d) : la page du configurateur construit hors de
              l'écran, et rend une copie de sa scène. ⚠️ Hors de l'écran, pas masquée : un viewer de
              taille nulle n'a rien à copier. -->

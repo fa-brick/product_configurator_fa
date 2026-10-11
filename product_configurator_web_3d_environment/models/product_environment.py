@@ -72,7 +72,7 @@ class ProductEnvironment(models.Model):
                 if isinstance(opening, dict) and opening.get("kind") == "bay"}
         return self._montage().filtered(lambda placement: placement.opening_id not in bays)
 
-    def editor_save(self, plan, wall_height=None, wall_thickness=None, start_view=False):
+    def editor_save(self, plan, wall_height=None, wall_thickness=None, start_view=False, template_id=None):
         """Enregistrer le plan — et faire SUIVRE aux produits posés les cotes de leur baie (U-2, D-424).
 
         ⓘ Comme une formule et sa constante (D-047) : le produit reste lié à sa baie, et l'écart que
@@ -88,7 +88,7 @@ class ProductEnvironment(models.Model):
         before = {placement.id: (placement, self._bay(placement.opening_id), self._placement_offsets(placement))
                   for placement in self._montage().filtered("session_id")}
         result = super().editor_save(plan, wall_height=wall_height, wall_thickness=wall_thickness,
-                                     start_view=start_view)
+                                     start_view=start_view, template_id=template_id)
         if not result.get("ok"):
             return result
         followed, messages = [], []

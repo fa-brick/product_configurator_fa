@@ -72,7 +72,7 @@ class ProductEnvironment(models.Model):
         order.environment_id = copy
         return copy
 
-    def editor_save(self, plan, wall_height=None, wall_thickness=None, start_view=False):
+    def editor_save(self, plan, wall_height=None, wall_thickness=None, start_view=False, template_id=None):
         """Enregistrer le plan — dans une COPIE propre au devis quand d'autres devis le lisent (8.5c, O-2).
 
         ⓘ *« Pousser les murs crée une copie, les autres devis ne sont pas impactés »* (Gerry) : le montage
@@ -83,11 +83,12 @@ class ProductEnvironment(models.Model):
         others = (self.sudo().order_ids - order) if order and order.state in OPEN_STATES else None
         if not others:
             return super().editor_save(plan, wall_height=wall_height, wall_thickness=wall_thickness,
-                                       start_view=start_view)
+                                       start_view=start_view, template_id=template_id)
         with self.env.cr.savepoint() as savepoint:
             copy = self._copy_for_order(order)
             result = copy.with_context(environment_order_id=order.id).editor_save(
-                plan, wall_height=wall_height, wall_thickness=wall_thickness, start_view=start_view)
+                plan, wall_height=wall_height, wall_thickness=wall_thickness, start_view=start_view,
+                template_id=template_id)
             if not result.get("ok"):
                 # ⓘ Un plan refusé ne laisse ni copie ni montage déplacé.
                 savepoint.rollback()

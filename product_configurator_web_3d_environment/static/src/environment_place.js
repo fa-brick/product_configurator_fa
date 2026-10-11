@@ -87,7 +87,7 @@ patch(EnvironmentEditor.prototype, {
     bayMenuActions(opening) {
         const actions = super.bayMenuActions(opening);
         if (this.placementOf(opening.id)) {
-            actions.push({ id: "remove", label: _t("Remove"), icon: "fa-trash", danger: true });
+            actions.push({ id: "remove", label: _t("Remove"), icon: "delete-outline", danger: true });
         }
         return actions;
     },

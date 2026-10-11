@@ -54,6 +54,11 @@ patch(EnvironmentEditor.prototype, {
         this._reloadPlacements();
     },
 
+    /** Le produit posé dans une baie, sous elle dans l'arbre de la barre latérale (W-113, E-2b). */
+    placedProductName(openingId) {
+        return this.placementOf(openingId)?.productName || null;
+    },
+
     /** Un produit posé fige aussi la forme : la changer effacerait sa baie (Q-14.4). */
     get canChangeShape() {
         return super.canChangeShape && !(this.state.placements || []).length;

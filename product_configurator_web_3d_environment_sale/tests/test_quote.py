@@ -149,6 +149,10 @@ class TestQuote(PlacementCommon, TransactionCase):
         self.assertEqual(action["tag"], "product_editor_environment.editor")
         self.assertEqual(action["params"]["token"], order.access_token)
         self.assertEqual(action["params"]["state"]["quote"]["name"], order.name)
+        # W-113, E-2a : pleine page, rouverte sur CE devis au rechargement.
+        self.assertNotEqual(action.get("target"), "new")
+        self.assertEqual((action["context"]["active_model"], action["context"]["active_id"]), ("sale.order", order.id))
+        self.assertEqual(order.editor_open_params()["state"]["quote"]["name"], order.name)
 
     def test_modifier_les_murs_depuis_un_devis_en_fait_une_copie(self):
         first, second = self._two_open_quotes()

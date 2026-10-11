@@ -1,6 +1,7 @@
 # Copyright 2026 fa-brick
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 from odoo import _, fields, models
+from odoo.tools.safe_eval import safe_eval
 
 
 class SaleOrder(models.Model):
@@ -23,16 +24,28 @@ class SaleOrder(models.Model):
             environment._copy_for_order(order)
         return result
 
-    def action_open_montage(self):
-        """Le bouton « Montage » du devis : l'éditeur de son environnement, sur SES placements (8.5b)."""
+    def editor_open_params(self):
+        """Le jeton du DEVIS et l'état de son montage — ce que l'action pleine page redemande au rechargement."""
         self.ensure_one()
         self._portal_ensure_token()
         environment = self.environment_id.with_context(environment_order_id=self.id)
-        return {
-            "type": "ir.actions.client",
-            "tag": "product_editor_environment.editor",
-            "name": _("Montage of %s", self.name),
-            "target": "new",
-            "context": {"footer": False, "dialog_size": "extra-large"},
-            "params": {"token": self.access_token, "state": environment.editor_state()},
-        }
+        return {"token": self.access_token, "state": environment.editor_state(),
+                "title": _("Montage of %s", self.name)}
+
+    def action_open_montage(self):
+        """Le bouton « Montage » du devis : l'éditeur de son environnement, sur SES placements, en pleine page.
+
+        ⚠️ Le DEVIS voyage par `active_id`, et son action dit `active_model` : au rechargement, l'éditeur
+        redemande le montage de CE devis, pas l'environnement nu (8.5b, W-113 E-2a).
+        """
+        self.ensure_one()
+        action = self.env["ir.actions.actions"]._for_xml_id(
+            "product_configurator_web_3d_environment_sale.environment_montage_client_action")
+        params = self.editor_open_params()
+        action.update({
+            "name": params["title"], "display_name": params["title"],
+            # ⚠️ `_for_xml_id` rend le contexte de l'action en TEXTE : le compléter tel quel lève.
+            "context": {**safe_eval(action.get("context") or "{}"), "active_id": self.id},
+            "params": params,
+        })
+        return action

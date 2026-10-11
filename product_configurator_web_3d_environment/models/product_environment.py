@@ -62,6 +62,16 @@ class ProductEnvironment(models.Model):
                 offsets[key] = round(measure - bay[key], 3)
         return offsets
 
+    def _lost_placements(self, plan):
+        """Les placements du montage dont ce plan RETIRE la baie.
+
+        ⚠️ Sans ce refus, une baie recréée sous le même identifiant (`o1` d'une autre forme) reprenait le
+        produit de l'ancienne, sans contrôle ni message (§14.5).
+        """
+        bays = {opening.get("id") for opening in (plan or {}).get("openings") or []
+                if isinstance(opening, dict) and opening.get("kind") == "bay"}
+        return self._montage().filtered(lambda placement: placement.opening_id not in bays)
+
     def editor_save(self, plan, wall_height=None, wall_thickness=None, start_view=False):
         """Enregistrer le plan — et faire SUIVRE aux produits posés les cotes de leur baie (U-2, D-424).
 
@@ -70,6 +80,11 @@ class ProductEnvironment(models.Model):
         si bien qu'aucun décalage n'est stocké qui pourrait diverger de la configuration.
         """
         self.ensure_one()
+        lost = self._lost_placements(plan)
+        if lost:
+            return {"error": "invalid", "messages": [
+                _("%(product)s is placed in a bay that this plan removes: remove the product first.",
+                  product=placement.product_tmpl_id.display_name) for placement in lost]}
         before = {placement.id: (placement, self._bay(placement.opening_id), self._placement_offsets(placement))
                   for placement in self._montage().filtered("session_id")}
         result = super().editor_save(plan, wall_height=wall_height, wall_thickness=wall_thickness,

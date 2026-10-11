@@ -54,6 +54,11 @@ patch(EnvironmentEditor.prototype, {
         this._reloadPlacements();
     },
 
+    /** Un produit posé fige aussi la forme : la changer effacerait sa baie (Q-14.4). */
+    get canChangeShape() {
+        return super.canChangeShape && !(this.state.placements || []).length;
+    },
+
     /** Le placement en cours de configuration — seulement là où l'on peut poser. */
     get configuringPlacement() {
         if (!this.state.canPlace || this.readonly || !this.state.configuringId) return null;

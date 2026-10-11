@@ -156,6 +156,21 @@ class TestPlacementFollowsBay(PlacementCommon, TransactionCase):
         self.assertEqual(self._answers()[self.height], "2100")
         self.assertEqual(self.site.plan["openings"][0]["height"], 2450)
 
+    def test_un_plan_qui_retire_une_baie_equipee_est_refuse(self):
+        """§14.5 : la forme d'un autre modèle ne reprend pas le produit d'une baie qu'elle efface."""
+        before = self.site.plan
+        plan = dict(before, openings=[])
+        result = self.site.editor_save(plan)
+        self.assertEqual(result["error"], "invalid")
+        self.assertIn("Sectionnelle à poser", result["messages"][0])
+        self.assertEqual(self.site.plan, before)
+        # Une fenêtre à la place de la baie ne la remplace pas non plus.
+        window = dict(before["openings"][0], kind="window")
+        self.assertEqual(self.site.editor_save(dict(before, openings=[window]))["error"], "invalid")
+        # Le produit retiré, la baie peut partir.
+        self.site.remove_product("b1")
+        self.assertTrue(self.site.editor_save(plan)["ok"])
+
     def test_une_baie_inchangee_ne_touche_a_rien(self):
         self.session.web_set_custom_value(self.width.id, "2300")
         self.assertEqual(self._resize_bay(sill=0)["followed"], [])

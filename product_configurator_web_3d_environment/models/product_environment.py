@@ -68,8 +68,8 @@ class ProductEnvironment(models.Model):
         ⚠️ Sans ce refus, une baie recréée sous le même identifiant (`o1` d'une autre forme) reprenait le
         produit de l'ancienne, sans contrôle ni message (§14.5).
         """
-        bays = {opening.get("id") for opening in (plan or {}).get("openings") or []
-                if isinstance(opening, dict) and opening.get("kind") == "bay"}
+        # ⓘ Tout trou reçoit un produit : il n'y a plus de rôle « baie » (D-452).
+        bays = {opening.get("id") for opening in (plan or {}).get("openings") or [] if isinstance(opening, dict)}
         return self._montage().filtered(lambda placement: placement.opening_id not in bays)
 
     def editor_save(self, plan, wall_height=None, wall_thickness=None, start_view=False, template_id=None):

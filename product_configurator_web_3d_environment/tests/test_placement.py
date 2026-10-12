@@ -11,13 +11,12 @@ from odoo import Command
 from odoo.tests import HttpCase, TransactionCase, tagged
 
 
-def garage_plan(accepts):
+def garage_plan():
     nodes = [{"id": "n1", "x": 0, "y": 0}, {"id": "n2", "x": 3000, "y": 0},
              {"id": "n3", "x": 3000, "y": 6000}, {"id": "n4", "x": 0, "y": 6000}]
     walls = [{"id": "w%d" % i, "a": "n%d" % i, "b": "n%d" % (i % 4 + 1)} for i in range(1, 5)]
     return {"version": 1, "nodes": nodes, "walls": walls, "openings": [
-        {"id": "b1", "wall": "w1", "kind": "bay", "offset": 300, "width": 2400, "height": 2100,
-         "sill": 0, "accepts": accepts}]}
+        {"id": "b1", "wall": "w1", "offset": 300, "width": 2400, "height": 2100, "sill": 0}]}
 
 
 class PlacementCommon:
@@ -55,7 +54,7 @@ class PlacementCommon:
         cls.narrow = env["product.template"].create({
             "name": "Porte étroite à poser", "config_ok": True, "categ_id": cls.doors.id,
             "attribute_line_ids": [line(cls.width, 1000, 2000), line(cls.height, 1800, 2400)]})
-        cls.site = env["product.environment"].create({"name": "Garage", "plan": garage_plan(cls.doors.id)})
+        cls.site = env["product.environment"].create({"name": "Garage", "plan": garage_plan()})
 
 
 @tagged("post_install", "-at_install")
@@ -164,9 +163,6 @@ class TestPlacementFollowsBay(PlacementCommon, TransactionCase):
         self.assertEqual(result["error"], "invalid")
         self.assertIn("Sectionnelle à poser", result["messages"][0])
         self.assertEqual(self.site.plan, before)
-        # Une fenêtre à la place de la baie ne la remplace pas non plus.
-        window = dict(before["openings"][0], kind="window")
-        self.assertEqual(self.site.editor_save(dict(before, openings=[window]))["error"], "invalid")
         # Le produit retiré, la baie peut partir.
         self.site.remove_product("b1")
         self.assertTrue(self.site.editor_save(plan)["ok"])

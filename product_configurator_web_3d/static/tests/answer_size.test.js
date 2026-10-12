@@ -9,7 +9,8 @@ import { join } from "node:path";
 import { toViewModel, ANSWER_SIZES } from "@product_configurator_web_3d/configurator_state";
 
 const SRC = join(__dirname, "..", "src");
-const XML = readFileSync(join(SRC, "page", "configurator_page.xml"), "utf8")
+// ⓘ Les grilles des réponses sont un composant commun depuis E-3c-1 (D-451).
+const XML = readFileSync(join(SRC, "answers", "answers.xml"), "utf8")
     .replace(/<!--[\s\S]*?-->/g, " ");
 const SCSS = readFileSync(join(SRC, "page", "configurator_page.scss"), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, " ");

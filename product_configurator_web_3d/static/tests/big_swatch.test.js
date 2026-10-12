@@ -7,7 +7,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const SRC = join(__dirname, "..", "src");
-const XML = readFileSync(join(SRC, "page", "configurator_page.xml"), "utf8");
+// ⓘ Les formes des réponses sont un composant commun depuis E-3c-1 (D-451).
+const XML = readFileSync(join(SRC, "answers", "answers.xml"), "utf8");
 const SCSS = readFileSync(join(SRC, "page", "configurator_page.scss"), "utf8");
 // ⓘ Ancré sur les `t-elif` : le résumé (D-382) cite aussi `displayType === 'swatch'`.
 const bloc = XML.slice(XML.indexOf("t-elif=\"question.displayType === 'swatch'\""),
@@ -30,8 +31,8 @@ describe("la grande pastille", () => {
         expect(puck).toContain('class="o_cfg3d_bigswatch_label" t-esc="value.name"');
     });
 
-    test("elle répond comme les autres formes — par onAnswer, placement compris", () => {
-        expect(puck).toContain("this.onAnswer(placementNodeId, question.id, value)");
+    test("elle répond comme les autres formes — par `pick`, que l'hôte relie à sa réponse", () => {
+        expect(puck).toContain('t-on-click="() => this.pick(value)"');
     });
 
     test("⚠️ l'anneau est une OMBRE dans une marge réservée — un contour se faisait rogner", () => {

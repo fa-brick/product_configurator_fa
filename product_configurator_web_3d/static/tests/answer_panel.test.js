@@ -14,6 +14,10 @@ const XML = readFileSync(join(SRC, "page", "configurator_page.xml"), "utf8")
 const SCSS = readFileSync(join(SRC, "page", "configurator_page.scss"), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, " ");
 const JS = readFileSync(join(SRC, "page", "configurator_page.js"), "utf8");
+// ⓘ La liste des réponses et le panneau sont des composants communs depuis E-3c-1 (D-451).
+const AXML = readFileSync(join(SRC, "answers", "answers.xml"), "utf8").replace(/<!--[\s\S]*?-->/g, " ");
+const LIST_JS = readFileSync(join(SRC, "answers", "answer_list.js"), "utf8");
+const PANEL_JS = readFileSync(join(SRC, "answers", "answer_panel.js"), "utf8");
 
 const values = (n, chosen = -1) =>
     Array.from({ length: n }, (_, i) => ({ id: i + 1, name: `V${i + 1}`, chosen: i === chosen }));
@@ -107,7 +111,10 @@ describe("la vue d'ouverture et le choix résumé", () => {
 describe("le panneau — ce que la page en garde, et quand il se ferme", () => {
     test("⚠️ l'état ne garde que des IDENTIFIANTS, jamais la question ([[L-449]])", () => {
         const open = method("openPanel");
-        expect(open).toMatch(/this\.state\.panel = \{\s*nodeId: nodeId \|\| null, questionId: question\.id, search: "", view: panelViewOf\(question\),\s*category: null,\s*\};/);
+        expect(open).toContain("this.state.panel = { nodeId: nodeId || null, questionId: question.id, key: this._panelKey };");
+        // ⓘ La recherche, la vue et la catégorie vivent dans le composant, et repartent de zéro à chaque ouverture.
+        expect(PANEL_JS).toContain('this.state = useState({ search: "", view: panelViewOf(this.props.question), category: null });');
+        expect(XML).toContain('<AnswerPanel t-if="panelQuestion" t-key="state.panel.key" question="panelQuestion"');
     });
 
     test("⚠️ la question est RELUE par un getter qui n'écrit rien ([[L-384]])", () => {
@@ -120,7 +127,8 @@ describe("le panneau — ce que la page en garde, et quand il se ferme", () => {
         for (const name of ["onAnswer", "onPick"]) {
             expect(method(name)).not.toContain("panel");
         }
-        expect(XML).toContain('t-on-click="() => this.closePanel()"');
+        expect(XML).toContain('onClose="() => this.closePanel()"');
+        expect(AXML).toContain('t-on-click="() => this.props.onClose()"');
     });
 
     test("Échap ferme le panneau AVANT la sélection ; changer de pièce le ferme", () => {
@@ -129,38 +137,48 @@ describe("le panneau — ce que la page en garde, et quand il se ferme", () => {
     });
 
     test("pas de clavier imposé au doigt : la recherche ne prend le focus qu'à la souris", () => {
-        expect(method("_afterRender")).toMatch(/if \(window\.matchMedia\("\(hover: hover\)"\)\.matches\) \{\s*this\.panelSearchRef\.el\.focus\(\{ preventScroll: true \}\);/);
+        expect(PANEL_JS).toMatch(/onMounted\(\(\) => \{[\s\S]*?if \(this\.panelSearchRef\.el && window\.matchMedia\("\(hover: hover\)"\)\.matches\) \{\s*this\.panelSearchRef\.el\.focus\(\{ preventScroll: true \}\);/);
     });
 
     test("une seule définition de chaque méthode neuve ([[L-361]])", () => {
-        for (const name of ["openPanel", "closePanel", "panelValues", "onPanelSearch", "onPanelView",
-                            "shownAnswers", "pickedAnswer", "isImageForm", "_afterRender", "_observeAnswers"]) {
-            expect(JS.match(new RegExp(`^ {4}${name}\\(`, "gm"))).toHaveLength(1);
+        const count = (src, name) => (src.match(new RegExp(`^ {4}${name}\\(`, "gm")) || []).length;
+        for (const name of ["openPanel", "closePanel", "_afterRender", "_observeAnswers"]) {
+            expect(count(JS, name)).toBe(1);
+        }
+        for (const name of ["panelValues", "onPanelSearch", "onPanelView", "isImageForm"]) {
+            expect(count(PANEL_JS, name)).toBe(1);
+            expect(count(JS, name)).toBe(0);
+        }
+        for (const name of ["shownAnswers", "pickedAnswer"]) {
+            expect(count(LIST_JS, name)).toBe(1);
+            expect(count(JS, name)).toBe(0);
         }
     });
 });
 
 describe("le gabarit du panneau, de la ligne et du résumé", () => {
-    const panel = XML.slice(XML.indexOf('t-name="product_configurator_web_3d.AnswerPanel"'),
-                            XML.indexOf('t-name="product_configurator_web_3d.ScrollArrows"'));
-    const question = XML.slice(XML.indexOf('t-name="product_configurator_web_3d.Question"'),
-                               XML.indexOf('t-name="product_configurator_web_3d.Card"'));
+    const panel = AXML.slice(AXML.indexOf('t-name="product_configurator_web_3d.AnswerPanel"'),
+                             AXML.indexOf('t-name="product_configurator_web_3d.ScrollArrows"'));
+    const start = XML.indexOf('t-name="product_configurator_web_3d.Question"');
+    const question = XML.slice(start, XML.indexOf("<t t-name=", start + 1));
+    const list = AXML.slice(AXML.indexOf('t-name="product_configurator_web_3d.AnswerList"'),
+                            AXML.indexOf('t-name="product_configurator_web_3d.Card"'));
 
     test("la carte et la pastille sont UN bouton, appelé par la question ET le panneau", () => {
         for (const name of ["Card", "BigSwatch"]) {
             const call = `<t t-call="product_configurator_web_3d.${name}"/>`;
-            expect(question).toContain(call);
+            expect(list).toContain(call);
             expect(panel).toContain(call);
         }
     });
 
     test("⚠️ la raison d'un refus s'affiche DANS le panneau (D-178)", () => {
-        expect(panel).toContain('<p t-if="state.reason" class="o_cfg3d_reason o_cfg3d_panel_reason" t-esc="state.reason"/>');
+        expect(panel).toContain('<p t-if="props.reason" class="o_cfg3d_reason o_cfg3d_panel_reason" t-esc="props.reason"/>');
     });
 
     test("le panneau répond par la même porte, pour la bonne pièce", () => {
-        expect(panel).toContain('<t t-set="placementNodeId" t-value="state.panel.nodeId"/>');
-        expect(panel).toContain("this.onAnswer(placementNodeId, question.id, value)");
+        expect(XML).toContain('onPick="(value) => this.onAnswer(state.panel.nodeId, panelQuestion.id, value)"');
+        expect(panel).toContain('t-on-click="() => this.pick(value)"');
     });
 
     test("la bascule de vue n'existe que pour les formes à image", () => {
@@ -169,19 +187,21 @@ describe("le gabarit du panneau, de la ligne et du résumé", () => {
 
     test("le résumé passe après la saisie libre, avant les formes ; le titre ne s'y répète pas", () => {
         const free = question.indexOf('<t t-if="question.free">');
-        const summary = question.indexOf(`t-elif="question.answerLayout === 'summary'"`);
-        const card = question.indexOf(`t-elif="question.displayType === 'card'"`);
         expect(free).toBeGreaterThan(0);
-        expect(summary).toBeGreaterThan(free);
+        expect(question.indexOf('<AnswerList t-else=""')).toBeGreaterThan(free);
+        const summary = list.indexOf(`t-if="question.answerLayout === 'summary'"`);
+        const card = list.indexOf(`t-elif="question.displayType === 'card'"`);
+        expect(summary).toBeGreaterThan(0);
         expect(card).toBeGreaterThan(summary);
         // ⓘ Et jamais en mode compact : l'onglet porte le nom (D-389).
         expect(question).toMatch(/<h2 t-if="!state.compact and \(question.free or question.answerLayout !== 'summary'\)"\s*t-esc="question.name"\/>/);
     });
 
     test("« +N » : dans les deux grilles, il ouvre le panneau", () => {
-        const more = question.match(/<button t-if="shown\.more"[^>]*\s+t-on-click="\(\) => this\.openPanel\(placementNodeId, question\)">/g);
+        const more = list.match(/<button t-if="shown\.more"[^>]*\s+t-on-click="\(\) => this\.openPanel\(\)">/g);
         expect(more).toHaveLength(2);
-        expect(question.match(/<t t-set="shown" t-value="this\.shownAnswers\(question\)"\/>/g)).toHaveLength(2);
+        expect(list.match(/<t t-set="shown" t-value="this\.shownAnswers\(question\)"\/>/g)).toHaveLength(2);
+        expect(question).toContain('onOpenPanel="() => this.openPanel(placementNodeId, question)"');
     });
 });
 

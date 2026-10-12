@@ -48,16 +48,18 @@ import { collectGlbAttachments, extractImportedGeometries }
 import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
 import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
          placementOf, selectableNodeIds, familyOf, answerForPlacement,
-         freeText, boundsLabel, freeSuggestions, customAnswerFor, customError, revealScrollLeft,
-         rowEdges, lineOf, filterAnswers, panelViewOf, pickedAnswer, isImageForm,
-         panelChips, filterByCategory, activeStepId, stepQuestions, missingBefore, stepChips,
-         questionView, COMPACT_QUERY, activeQuestionId, centerScrollLeft, layoutOn, viewInset,
+         freeText, boundsLabel, freeSuggestions, customAnswerFor, customError,
+         activeStepId, stepQuestions, missingBefore, stepChips,
+         questionView, COMPACT_QUERY, activeQuestionId, centerScrollLeft, viewInset,
          keyboardFit, isTypingField }
     from "@product_configurator_web_3d/configurator_state";
 // Le sous-arbre d'une pose, par la parenté que le moteur publie (D-331) — pour l'ISOLER.
 import { subtreeOf } from "@product_editor/engine/builder/project_items";
 // La photo d'une variante née de la confirmation (D-399, lot 5).
 import { photoCaptured, sendVariantPhoto } from "./variant_photo";
+// Les réponses d'une question et le panneau de choix, communs avec l'éditeur d'environnement (E-3c-1).
+import { AnswerList } from "../answers/answer_list";
+import { AnswerPanel } from "../answers/answer_panel";
 // La copie du produit pour un HÔTE qui le montre dans sa propre scène (W-111, 8.4d).
 import { disposeSnapshot } from "@product_editor/engine/three/scene_snapshot";
 
@@ -80,7 +82,7 @@ const FREE_ANSWER_DELAY_MS = 200;
 
 export class ConfiguratorPage extends Component {
     static template = "product_configurator_web_3d.ConfiguratorPage";
-    static components = { PartViewer3D, AutoComplete };
+    static components = { PartViewer3D, AutoComplete, AnswerList, AnswerPanel };
     static props = {
         token: { type: String },
         // ⓘ L'état DÉJÀ PRIS, quand quelqu'un l'a demandé avant nous : la fiche
@@ -128,7 +130,8 @@ export class ConfiguratorPage extends Component {
             // ⚠️ **Des IDENTIFIANTS, jamais la question elle-même** ([[L-449]]) : elle est
             // relue dans l'état à chaque rendu (`panelQuestion`). Gardée ici, elle
             // afficherait une coche en retard après chaque réponse.
-            // `{ nodeId, questionId, search, view, category }`, ou `null` quand il est fermé.
+            // `{ nodeId, questionId, key }`, ou `null` quand il est fermé ; la recherche, la vue et la
+            // catégorie vivent dans `AnswerPanel`.
             panel: null,
             // La largeur utile des questions, mesurée — ce que la rangée `line` partage.
             lineWidth: 0,
@@ -242,11 +245,10 @@ export class ConfiguratorPage extends Component {
             this._settleCamera();
             this.state.loading = false;
         });
-        // ⓘ APRÈS CHAQUE RENDU (D-382) : les rangées qui défilent, la largeur des questions
-        // que la rangée `line` partage, la recherche du panneau qui vient de s'ouvrir.
+        // ⓘ APRÈS CHAQUE RENDU (D-382) : la largeur des questions que la rangée `line` partage ; les rangées
+        // qui défilent et la recherche du panneau se règlent dans leurs composants (E-3c-1).
         this.pageRef = useRef("page");
         this.answersRef = useRef("answers");
-        this.panelSearchRef = useRef("panelSearch");
         this.tabsRef = useRef("tabs");
         onMounted(() => this._afterRender());
         onPatched(() => this._afterRender());
@@ -916,65 +918,12 @@ export class ConfiguratorPage extends Component {
         this.state.cameraApply = { ...req, serial: (this.state.cameraApply?.serial ?? 0) + 1 };
     }
 
-    /**
-     * Ce qui est choisi pour une question, en une clé — ce que la rangée qui défile
-     * compare à ce qu'elle a déjà montré, pour ramener un choix NOUVEAU à l'écran (D-382). ⓘ Une méthode et non une expression du gabarit :
-     * OWL y résout les identifiants sur le composant.
-     */
-    chosenKey(question) {
-        return question.values.filter((value) => value.chosen).map((value) => value.id).join(",");
-    }
-
-    /**
-     * Régler les rangées qui défilent après un rendu — D-382.
-     *
-     * ⚠️ **Pas de composant enfant à emplacement ici**, et c'est mesuré : la rangée avait
-     * d'abord été un composant `ScrollRow` recevant la grille par son slot. Dans le gabarit
-     * `Question`, appelé par `t-call` depuis une boucle, OWL ne recopie pas le contexte du
-     * slot (ni boucle ni `t-set` dans CE gabarit : il le croit sûr) ; toutes les questions
-     * rendaient alors les réponses de la DERNIÈRE ([[L-453]]). La page porte donc la rangée
-     * elle-même, et la règle ici par le DOM.
-     *
-     * ⓘ Le choix n'est ramené que lorsqu'il CHANGE (`data-chosen` contre `data-shown`) :
-     * la page se rend à chaque réponse, au prix, au bus — ramener la rangée à chaque rendu
-     * reprendrait la main à qui fait défiler.
-     */
-    _settleRows() {
-        const root = this.pageRef.el;
-        if (!root) return;
-        for (const row of root.querySelectorAll(".o_cfg3d_scrollrow--active")) {
-            const grid = row.firstElementChild;
-            if (!grid) continue;
-            if (row.dataset.chosen !== row.dataset.shown) {
-                row.dataset.shown = row.dataset.chosen;
-                const chosen = grid.querySelector(".o_cfg3d_card--chosen, .o_cfg3d_bigswatch--chosen");
-                if (chosen) {
-                    // ⓘ `offsetLeft` se lit depuis la grille, qui est positionnée (SCSS).
-                    const left = revealScrollLeft(grid.scrollLeft, grid.clientWidth,
-                                                  chosen.offsetLeft, chosen.offsetWidth);
-                    if (left !== null) grid.scrollLeft = left;
-                }
-            }
-            this._markEdges(row);
-        }
-    }
-
     _afterRender() {
         this._publishSnapshot();
-        this._settleRows();
         this._settleTabs();
         this._measureViewInset();
         this._observeAnswers();
         this._revealQuestion();
-        if (this._focusPanelSearch && this.panelSearchRef.el) {
-            this._focusPanelSearch = false;
-            // ⚠️ Pas au doigt : le clavier du téléphone mangerait la moitié du panneau.
-            // ⚠️ `preventScroll` : le panneau glisse encore, et montrer la recherche faisait
-            // défiler la page entière sous lui.
-            if (window.matchMedia("(hover: hover)").matches) {
-                this.panelSearchRef.el.focus({ preventScroll: true });
-            }
-        }
     }
 
     /**
@@ -998,41 +947,6 @@ export class ConfiguratorPage extends Component {
         this._answersObserver = new ResizeObserver(measure);
         this._answersObserver.observe(el);
         measure();
-    }
-
-    /** Les bords atteints d'une rangée — ce qui cache la flèche devenue inutile. */
-    _markEdges(row) {
-        const grid = row.firstElementChild;
-        const edges = rowEdges(grid.scrollLeft, grid.clientWidth, grid.scrollWidth);
-        // ⓘ Des classes posées à la main : OWL ne retire que celles qu'il gère lui-même.
-        row.classList.toggle("o_cfg3d_scrollrow--start", edges.start);
-        row.classList.toggle("o_cfg3d_scrollrow--end", edges.end);
-    }
-
-    /** Le défilement d'une rangée, capturé sur elle — et le survol, qui la remesure. */
-    onRowScroll(ev) {
-        const row = ev.currentTarget;
-        if (row.classList.contains("o_cfg3d_scrollrow--active") && row.firstElementChild) {
-            this._markEdges(row);
-        }
-    }
-
-    onRowArrow(ev, direction) {
-        const grid = ev.currentTarget.closest(".o_cfg3d_scrollrow")?.firstElementChild;
-        if (grid) grid.scrollBy({ left: direction * grid.clientWidth * 0.8, behavior: "smooth" });
-    }
-
-    /**
-     * Les réponses qu'une question MONTRE sur la page : toutes, ou — en disposition `line` —
-     * celles d'une seule ligne et le compte de celles qui restent (D-382).
-     */
-    shownAnswers(question) {
-        if (this.layoutOn(question) !== "line") return { values: question.values, more: 0 };
-        return lineOf(question.values, this.state.lineWidth, question.displayType, question.answerSize);
-    }
-
-    pickedAnswer(question) {
-        return pickedAnswer(question);
     }
 
     /**
@@ -1061,11 +975,6 @@ export class ConfiguratorPage extends Component {
         }
         const inset = viewInset(bottom);
         if (inset !== this.state.viewInsetTop) this.state.viewInsetTop = inset;
-    }
-
-    /** La disposition À L'ÉCRAN : une grille devient une rangée en mode compact (D-389). */
-    layoutOn(question) {
-        return layoutOn(question, this.state.compact);
     }
 
     // ── LES ONGLETS DU MODE COMPACT (D-389) ─────────────────────────────────────
@@ -1118,21 +1027,15 @@ export class ConfiguratorPage extends Component {
         row.scrollTo({ left, behavior: first ? "auto" : "smooth" });
     }
 
-    isImageForm(question) {
-        return isImageForm(question);
-    }
-
     // ── LE PANNEAU DE CHOIX (D-382) ─────────────────────────────────────────────
 
     /** Ouvrir le panneau d'une question — de la racine (`nodeId` nul) ou d'une pièce. */
     openPanel(nodeId, question) {
         if (!nodeId) this._showQuestionView(question.id);
         this.state.reason = null;
-        this.state.panel = {
-            nodeId: nodeId || null, questionId: question.id, search: "", view: panelViewOf(question),
-            category: null,
-        };
-        this._focusPanelSearch = true;
+        // ⓘ Une clé neuve à chaque ouverture : le panneau repart de zéro (recherche, vue, catégorie).
+        this._panelKey = (this._panelKey || 0) + 1;
+        this.state.panel = { nodeId: nodeId || null, questionId: question.id, key: this._panelKey };
     }
 
     /**
@@ -1167,29 +1070,6 @@ export class ConfiguratorPage extends Component {
             ? (panel.nodeId === this.state.selection.nodeId ? this.selectedPlacement?.questions : null)
             : this.questions;
         return (questions || []).find((question) => question.id === panel.questionId) || null;
-    }
-
-    /** Les réponses du panneau, filtrées par la pastille de catégorie PUIS par la recherche. */
-    panelValues(question) {
-        const panel = this.state.panel;
-        return filterAnswers(filterByCategory(question.values, panel.category), panel.search);
-    }
-
-    /** Les pastilles de catégories du panneau — aucune sous deux groupes (D-382). */
-    panelChips(question) {
-        return panelChips(question, this.allLabel, this.otherLabel);
-    }
-
-    onPanelCategory(key) {
-        this.state.panel.category = key;
-    }
-
-    onPanelSearch(ev) {
-        this.state.panel.search = ev.target.value;
-    }
-
-    onPanelView(view) {
-        this.state.panel.view = view;
     }
 
     /**
@@ -1270,13 +1150,6 @@ export class ConfiguratorPage extends Component {
         await this._applyModel(next);
         this.state.loading = false;
         if (!nodeId) await this._showQuestionViewAfterPaint(question.id);
-    }
-
-    /** La liste déroulante d'un placement — même porte que `onSelect` pour la racine. */
-    onAnswerSelect(nodeId, question, ev) {
-        const chosenId = Number(ev.target.value);
-        const value = question.values.find((v) => v.id === chosenId);
-        if (value) this.onAnswer(nodeId, question.id, value);
     }
 
     /**
@@ -1734,24 +1607,9 @@ export class ConfiguratorPage extends Component {
 
     // ── Libellés — remontés du gabarit, où `_t()` n'est pas résoluble ────────
     get priceLabel() { return _t("Price"); }
-    get chooseLabel() { return _t("Choose…"); }
     get backLabel() { return _t("Back"); }
-    get searchLabel() { return _t("Search…"); }
-    get seeAllLabel() { return _t("See all"); }
-    get noMatchLabel() { return _t("No answer matches this search."); }
-    get listViewLabel() { return _t("List"); }
-    get smallViewLabel() { return _t("Small grid"); }
-    get largeViewLabel() { return _t("Large grid"); }
-    get allLabel() { return _t("All"); }
-    get otherLabel() { return _t("Others"); }
     get stepsLabel() { return _t("Steps"); }
     get missingLabel() { return _t("Answer required"); }
-    get closeLabel() { return _t("Close"); }
-
-    /** Une question est repondue des qu'une de ses valeurs est retenue. */
-    isAnswered(question) {
-        return question.values.some((value) => value.chosen);
-    }
 
     get closedLabel() {
         return _t("This configuration is confirmed and can no longer be changed.");

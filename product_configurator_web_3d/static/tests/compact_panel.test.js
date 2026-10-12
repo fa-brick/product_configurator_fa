@@ -10,6 +10,8 @@ import { ConfiguratorPage } from "@product_configurator_web_3d/page/configurator
 const SRC = join(__dirname, "..", "src", "page");
 const XML = readFileSync(join(SRC, "configurator_page.xml"), "utf8").replace(/<!--[\s\S]*?-->/g, " ");
 const SCSS = readFileSync(join(SRC, "configurator_page.scss"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+// ⓘ Le panneau de choix est un composant commun depuis E-3c-1 (D-451).
+const AXML = readFileSync(join(SRC, "..", "answers", "answers.xml"), "utf8").replace(/<!--[\s\S]*?-->/g, " ");
 
 /** Une page sans montage, un panneau ouvert ou non, et les sélections qu'elle aurait faites. */
 function makePage({ compact, panel }) {
@@ -88,14 +90,14 @@ describe("la liste ne remonte pas jusqu'en haut", () => {
     });
 
     test("la poignée ferme, sur téléphone seulement", () => {
-        const panel = XML.slice(XML.indexOf('<t t-name="product_configurator_web_3d.AnswerPanel">'));
-        expect(panel).toMatch(/<button t-if="state.compact" type="button" class="o_cfg3d_panel_grip"[\s\S]*?t-on-click="\(\) => this.closePanel\(\)">\s*<i class="oi oi-chevron-down" role="img"\/>/);
+        const panel = AXML.slice(AXML.indexOf('<t t-name="product_configurator_web_3d.AnswerPanel">'));
+        expect(panel).toMatch(/<button t-if="props.compact" type="button" class="o_cfg3d_panel_grip"[\s\S]*?t-on-click="\(\) => this.props.onClose\(\)">\s*<i class="oi oi-chevron-down" role="img"\/>/);
     });
 });
 
 describe("l'en-tête du panneau : la flèche, puis le nom, sur une ligne (Gerry, 2026-10-01)", () => {
     test("la flèche est le retour, DANS le titre ; « Retour » ne vit plus que dans son nom", () => {
-        const panel = XML.slice(XML.indexOf('<t t-name="product_configurator_web_3d.AnswerPanel">'));
+        const panel = AXML.slice(AXML.indexOf('<t t-name="product_configurator_web_3d.AnswerPanel">'));
         const head = panel.slice(panel.indexOf('<header class="o_cfg3d_panel_head">'), panel.indexOf("</header>"));
         expect(head).toMatch(/<h2 class="o_cfg3d_panel_title">\s*<button type="button" class="o_cfg3d_panel_back"/);
         expect(head).toContain('t-att-aria-label="backLabel"');

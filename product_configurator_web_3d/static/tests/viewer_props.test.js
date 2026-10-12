@@ -214,8 +214,9 @@ describe("la page publique et son viewer", () => {
 
 
 describe("la carte d'une réponse, quand elle n'a pas de vignette", () => {
+    // ⓘ La carte est un gabarit des réponses communes depuis E-3c-1 (D-451).
     const TEMPLATE_PAGE = readFileSync(
-        join(__dirname, "..", "src", "page", "configurator_page.xml"), "utf8");
+        join(__dirname, "..", "src", "answers", "answers.xml"), "utf8");
 
     test("le CADRE ne se dessine que s'il y a une image", () => {
         // ⚠️ Un cadre vide se lit comme un chargement en panne. Une valeur qui ne

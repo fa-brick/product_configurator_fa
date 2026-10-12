@@ -8,9 +8,10 @@ import { toViewModel, panelChips, filterByCategory, OTHER_CATEGORY }
     from "@product_configurator_web_3d/configurator_state";
 
 const SRC = join(__dirname, "..", "src");
-const XML = readFileSync(join(SRC, "page", "configurator_page.xml"), "utf8")
+// ⓘ Le panneau de choix est un composant commun depuis E-3c-1 (D-451).
+const AXML = readFileSync(join(SRC, "answers", "answers.xml"), "utf8")
     .replace(/<!--[\s\S]*?-->/g, " ");
-const JS = readFileSync(join(SRC, "page", "configurator_page.js"), "utf8");
+const PANEL_JS = readFileSync(join(SRC, "answers", "answer_panel.js"), "utf8");
 
 const question = (values, categories) => ({ values, categories });
 const v = (id, keys) => ({ id, name: `V${id}`, categoryKeys: keys });
@@ -68,20 +69,21 @@ describe("ce que la page reçoit, et ce qu'elle en garde", () => {
     });
 
     test("le panneau filtre par la pastille PUIS par la recherche, et s'ouvre sur « Tout »", () => {
-        const body = JS.slice(JS.indexOf("    panelValues(question) {"), JS.indexOf("    panelChips(question) {"));
-        expect(body).toContain("filterAnswers(filterByCategory(question.values, panel.category), panel.search)");
-        expect(JS).toMatch(/view: panelViewOf\(question\),\s*category: null,/);
+        const body = PANEL_JS.slice(PANEL_JS.indexOf("    panelValues(question) {"),
+                                    PANEL_JS.indexOf("    panelChips(question) {"));
+        expect(body).toContain("filterAnswers(filterByCategory(question.values, this.state.category), this.state.search)");
+        expect(PANEL_JS).toContain('view: panelViewOf(this.props.question), category: null });');
     });
 
     test("les pastilles sont sous la recherche, et disent laquelle est active", () => {
-        const panel = XML.slice(XML.indexOf('t-name="product_configurator_web_3d.AnswerPanel"'));
+        const panel = AXML.slice(AXML.indexOf('t-name="product_configurator_web_3d.AnswerPanel"'));
         const tools = panel.indexOf('class="o_cfg3d_panel_tools"');
         const chips = panel.indexOf('class="o_cfg3d_panel_chips"');
         const body = panel.indexOf('class="o_cfg3d_panel_body"');
         expect(tools).toBeGreaterThan(0);
         expect(chips).toBeGreaterThan(tools);
         expect(body).toBeGreaterThan(chips);
-        expect(panel).toContain("'o_cfg3d_panel_chip--on': state.panel.category === chip.key");
+        expect(panel).toContain("'o_cfg3d_panel_chip--on': state.category === chip.key");
         expect(panel).toContain('t-on-click="() => this.onPanelCategory(chip.key)"');
     });
 });

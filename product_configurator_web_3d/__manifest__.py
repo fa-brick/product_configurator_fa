@@ -58,6 +58,10 @@
             "product_editor/static/src/components/number_autocomplete/number_autocomplete.xml",
             "product_editor/static/src/components/number_autocomplete/number_autocomplete.js",
             "product_configurator_web_3d/static/src/page/configurator_page.scss",
+            # Les réponses d'une question et le panneau de choix (E-3c-1) — avant la page qui les monte.
+            "product_configurator_web_3d/static/src/answers/answers.xml",
+            "product_configurator_web_3d/static/src/answers/answer_list.js",
+            "product_configurator_web_3d/static/src/answers/answer_panel.js",
             "product_configurator_web_3d/static/src/page/configurator_page.xml",
             # La photo d'une variante née de la confirmation (D-399, lot 5).
             "product_configurator_web_3d/static/src/page/variant_photo.js",
@@ -85,6 +89,10 @@
             "product_configurator_web_3d/static/src/sale_card_tolerance.js",
             "product_configurator_web_3d/static/src/configurator_state.js",
             "product_configurator_web_3d/static/src/page/configurator_page.scss",
+            # Les réponses d'une question et le panneau de choix (E-3c-1) — avant la page qui les monte.
+            "product_configurator_web_3d/static/src/answers/answers.xml",
+            "product_configurator_web_3d/static/src/answers/answer_list.js",
+            "product_configurator_web_3d/static/src/answers/answer_panel.js",
             "product_configurator_web_3d/static/src/page/configurator_page.xml",
             # La photo d'une variante née de la confirmation (D-399, lot 5).
             "product_configurator_web_3d/static/src/page/variant_photo.js",

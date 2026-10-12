@@ -14,6 +14,9 @@ const XML = readFileSync(join(SRC, "page", "configurator_page.xml"), "utf8")
 const SCSS = readFileSync(join(SRC, "page", "configurator_page.scss"), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, " ");
 const JS = readFileSync(join(SRC, "page", "configurator_page.js"), "utf8");
+// ⓘ Les réponses sont un composant commun depuis E-3c-1 (D-451) : la rangée s'y règle.
+const AXML = readFileSync(join(SRC, "answers", "answers.xml"), "utf8").replace(/<!--[\s\S]*?-->/g, " ");
+const LIST_JS = readFileSync(join(SRC, "answers", "answer_list.js"), "utf8");
 
 describe("la disposition effective — le miroir de `_web_answer_layout`", () => {
     const of = (displayType, answerLayout) => answerLayoutOf({ displayType, answerLayout });
@@ -67,10 +70,10 @@ describe("ramener le choix à l'écran", () => {
 describe("le gabarit — une enveloppe autour des deux grilles à image", () => {
     // ⓘ Ancré sur les `t-elif` : le résumé cite aussi `displayType === 'swatch'`, plus haut.
     const branch = (form, next) => {
-        const start = XML.indexOf(`t-elif="question.displayType === '${form}'"`);
-        const end = XML.indexOf(next, start);
+        const start = AXML.indexOf(`t-elif="question.displayType === '${form}'"`);
+        const end = AXML.indexOf(next, start);
         if (start < 0 || end < 0) throw new Error(`branche introuvable : ${form}`);
-        return XML.slice(start, end);
+        return AXML.slice(start, end);
     };
     const BRANCHES = [
         ["card", `t-elif="question.displayType === 'swatch'"`, "o_cfg3d_cards"],
@@ -94,32 +97,37 @@ describe("le gabarit — une enveloppe autour des deux grilles à image", () => 
     test("⚠️ AUCUN composant à emplacement dans une question — il y voyait la DERNIÈRE ([[L-453]])", () => {
         // Le gabarit `Question` est appelé par `t-call` depuis une boucle ; un slot n'y
         // recopie pas son contexte, et toutes les questions rendaient la même liste.
-        const question = XML.slice(XML.indexOf('t-name="product_configurator_web_3d.Question"'),
-                                   XML.indexOf('t-name="product_configurator_web_3d.ScrollArrows"'));
-        expect(question).not.toMatch(/<[A-Z][A-Za-z]*[^>]*>\s*<div class="o_cfg3d_(cards|bigswatches)"/);
+        const start = XML.indexOf('t-name="product_configurator_web_3d.Question"');
+        const question = XML.slice(start, XML.indexOf("<t t-name=", start + 1));
+        for (const source of [question, AXML]) {
+            expect(source).not.toMatch(/<[A-Z][A-Za-z]*[^>]*>\s*<div class="o_cfg3d_(cards|bigswatches)"/);
+        }
+        // ⓘ La liste des réponses est un composant SANS emplacement : tout passe par ses props.
+        expect(question).toContain('<AnswerList t-else=""');
+        expect(question).not.toContain("</AnswerList>");
         expect(JS).not.toMatch(/class ScrollRow/);
     });
 
     test("les flèches avancent et reculent la rangée", () => {
-        const arrows = XML.slice(XML.indexOf('t-name="product_configurator_web_3d.ScrollArrows"'));
+        const arrows = AXML.slice(AXML.indexOf('t-name="product_configurator_web_3d.ScrollArrows"'));
         expect(arrows).toContain('t-on-click="(ev) => this.onRowArrow(ev, -1)"');
         expect(arrows).toContain('t-on-click="(ev) => this.onRowArrow(ev, 1)"');
     });
 
     test("une seule définition de chaque méthode de rangée ([[L-361]])", () => {
-        for (const name of ["chosenKey", "_settleRows", "_markEdges", "onRowScroll", "onRowArrow"]) {
-            expect(JS.match(new RegExp(`^ {4}${name}\\(`, "gm"))).toHaveLength(1);
+        for (const name of ["chosenKey", "_settleRow", "_markEdges", "onRowScroll", "onRowArrow"]) {
+            expect(LIST_JS.match(new RegExp(`^ {4}${name}\\(`, "gm"))).toHaveLength(1);
+            expect(JS.match(new RegExp(`^ {4}${name}\\(`, "gm"))).toBeNull();
         }
     });
 
     test("⚠️ la rangée ne ramène le choix que lorsqu'il CHANGE — pas à chaque rendu", () => {
-        const settle = JS.slice(JS.indexOf("    _settleRows() {"), JS.indexOf("    _markEdges("));
+        const settle = LIST_JS.slice(LIST_JS.indexOf("    _settleRow() {"), LIST_JS.indexOf("    _markEdges("));
         expect(settle).toMatch(/if \(row\.dataset\.chosen !== row\.dataset\.shown\) \{\s*row\.dataset\.shown = row\.dataset\.chosen;/);
-        const setup = JS.slice(JS.indexOf("export class ConfiguratorPage"));
-        expect(setup).toContain("onMounted(() => this._afterRender());");
-        expect(setup).toContain("onPatched(() => this._afterRender());");
-        const after = JS.slice(JS.indexOf("    _afterRender() {"), JS.indexOf("    _observeAnswers() {"));
-        expect(after).toContain("this._settleRows();");
+        expect(LIST_JS).toContain("onMounted(() => this._settleRow());");
+        expect(LIST_JS).toContain("onPatched(() => this._settleRow());");
+        // ⓘ Les deux branches à rangée portent la référence que `_settleRow` lit.
+        expect(AXML.match(/<div class="o_cfg3d_scrollrow" t-ref="row"/g)).toHaveLength(2);
     });
 });
 

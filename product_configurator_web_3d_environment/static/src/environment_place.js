@@ -9,9 +9,9 @@
  * l'écran, construit la configuration avec son viewer et en rend une copie habillée (`onScene`),
  * que l'éditeur pose dans la baie. Une page à la fois : chaque viewer est un contexte WebGL.
  *
- * Étape 8.4e : CONFIGURER dans l'environnement. La même page, en panneau seul, prend la barre
- * latérale ; chaque réponse reconstruit le produit, dont la copie remplace celle de la baie. La
- * flèche ramène à l'environnement sans rien valider : la configuration reste en cours (Q-11.4).
+ * Étape 8.4e : CONFIGURER dans l'environnement. La même page, en panneau seul, est la barre de DROITE d'un
+ * produit posé sélectionné (W-113, E-3b) ; chaque réponse reconstruit le produit, dont la copie remplace celle
+ * de la baie. La flèche ramène à l'environnement sans rien valider : la configuration reste en cours (Q-11.4).
  * Le produit SUIT sa baie quand elle change, en gardant l'écart que le client y a mis (D-424) : le
  * serveur le fait à l'enregistrement, ce pont redessine ce qui a suivi.
  */
@@ -30,9 +30,7 @@ patch(EnvironmentEditor.prototype, {
         this.state.placements = [];
         // ⓘ Les configurations déjà montrées dans leur baie, par jeton de session.
         this.state.shownTokens = [];
-        // ⓘ La baie dont on configure le produit dans la barre latérale, ou rien.
-        this.state.configuringId = null;
-        // ⓘ Relance la page de la barre latérale quand sa configuration a changé sans elle.
+        // ⓘ Relance la page de la barre de droite quand sa configuration a changé sans elle.
         this.state.configureSerial = 0;
     },
 
@@ -64,23 +62,37 @@ patch(EnvironmentEditor.prototype, {
         return super.canChangeShape && !(this.state.placements || []).length;
     },
 
-    /** Le placement en cours de configuration — seulement là où l'on peut poser. */
+    /**
+     * Le placement en cours de configuration : celui de la baie SÉLECTIONNÉE (W-113, E-3b) — seulement là où l'on
+     * peut poser.
+     */
     get configuringPlacement() {
-        if (!this.state.canPlace || this.readonly || !this.state.configuringId) return null;
-        const placement = this.placementOf(this.state.configuringId);
+        const opening = this.selectedOpening;
+        if (!this.state.canPlace || this.readonly || !opening) return null;
+        const placement = this.placementOf(opening.id);
         return placement?.token ? placement : null;
+    },
+
+    /** La page du configurateur EST la barre de droite d'un produit posé : elle a son titre et sa flèche. */
+    get rightReplaced() {
+        return super.rightReplaced || !!this.configuringPlacement;
     },
 
     configure(openingId) {
         this.state.selection = { kind: "opening", id: openingId };
-        this.state.configuringId = openingId;
+        this.state.faceMenu = null;
     },
 
-    /** La flèche : retour à l'environnement, la configuration reste en cours (Q-11.4). */
+    /** Fermer la barre de droite d'un produit : ses écarts à la baie ont pu changer, on les relit. */
+    closeRight() {
+        const configuring = this.configuringPlacement;
+        super.closeRight();
+        if (configuring) this._reloadPlacements();
+    },
+
+    /** La flèche de la page : retour à l'environnement, la configuration reste en cours (Q-11.4). */
     stopConfiguring() {
-        this.state.configuringId = null;
-        this.state.selection = null;
-        this._reloadPlacements();
+        this.closeRight();
     },
 
     /** Le menu flottant gagne le RETRAIT du produit (étape 8.4f). */
@@ -99,7 +111,7 @@ patch(EnvironmentEditor.prototype, {
             this.state.messages = [_t("This product could not be removed.")];
             return;
         }
-        if (this.state.configuringId === openingId) this.state.configuringId = null;
+        if (this.selectedOpening?.id === openingId) this.selectRoot();
         this.state.placements = this.state.placements.filter((placement) => placement.openingId !== openingId);
         this.setBayObject(openingId, null);
     },

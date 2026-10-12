@@ -13,23 +13,21 @@
                 <div t-if="offsetLabel(placed, 'width')">Width: <t t-esc="offsetLabel(placed, 'width')"/></div>
                 <div t-if="offsetLabel(placed, 'height')">Height: <t t-esc="offsetLabel(placed, 'height')"/></div>
             </div>
-            <button t-if="placed and placed.token and state.canPlace and !readonly" type="button"
-                    class="btn btn-sm btn-primary mb-2 me-1" t-on-click="() => this.configure(opening.id)">
-                <i class="fa fa-sliders me-1"/>Configure
-            </button>
             <button t-if="opening.kind === 'bay' and state.canPlace and !readonly" type="button"
                     class="btn btn-sm btn-light mb-2" t-on-click="() => this.openChooser(opening.id)">
                 <i class="fa fa-th me-1"/><t t-if="placed">Change the product</t><t t-else="">Choose a product</t>
             </button>
         </xpath>
-        <!-- CONFIGURER dans l'environnement (étape 8.4e) : la page du configurateur, en panneau seul,
-             prend la place du panneau de l'éditeur ; sa flèche y ramène. -->
-        <xpath expr="//div[hasclass('o_env_panel')]" position="attributes">
-            <attribute name="t-if">!configuringPlacement</attribute>
-        </xpath>
-        <xpath expr="//div[hasclass('o_env_panel')]" position="before">
+    </t>
+
+    <!-- CONFIGURER dans l'environnement (étape 8.4e) : la page du configurateur, en panneau seul, est la barre de
+         DROITE d'un produit posé sélectionné (W-113, E-3b) — ses réponses s'affichent comme des attributs ; sa
+         flèche ramène à l'environnement. -->
+    <t t-inherit="product_editor_environment.EnvironmentRightPanel" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_env_right')]" position="before">
             <t t-set="configured" t-value="configuringPlacement"/>
-            <div t-if="configured" class="o_env_panel o_env_configure">
+            <div t-if="configured" class="o_env_right o_env_configure ce-sidebar"
+                 t-att-class="{ 'o_env_right--sheet': state.isSmall }">
                 <ConfiguratorPage t-key="configured.token + ':' + state.configureSerial" token="configured.token"
                                   closable="false" panelOnly="true"
                                   onBack="() => this.stopConfiguring()"

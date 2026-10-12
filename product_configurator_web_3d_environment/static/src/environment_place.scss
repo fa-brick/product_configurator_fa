@@ -1,6 +1,6 @@
-// La configuration d'un produit posé, dans la barre latérale de l'environnement (W-111, 8.4e) :
+// La configuration d'un produit posé, dans la barre de droite de l'environnement (W-111 8.4e, W-113 E-3b) :
 // la colonne prend la largeur de celle du configurateur, et la page y défile seule.
-.o_env_panel.o_env_configure {
+.o_env_right.o_env_configure {
     flex: 0 0 340px;
     display: flex;
     flex-direction: column;

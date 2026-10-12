@@ -1,0 +1,16 @@
+// Les listes de matières dans l'affichage d'un attribut (W-113, E-3c-3) : le panneau de choix du configurateur se
+// pose DANS la barre de droite, qui le borne (il est en `absolute; inset: 0`).
+// ⚠️ Pas sur le panneau bas du téléphone : il est déjà `fixed`, ce qui borne aussi le panneau.
+.o_env_right:not(.o_env_right--sheet) { position: relative; }
+.o_env_use_display {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem 0.5rem;
+    margin-top: 0.4rem;
+}
+.o_env_use_display_field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    margin: 0;
+}

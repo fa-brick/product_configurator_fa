@@ -1,6 +1,6 @@
 {
     "name": "Product Configurator 3D — Environments (fa-brick)",
-    "version": "18.0.0.1.0",
+    "version": "18.0.0.2.0",
     "category": "Website/Website",
     "summary": "Place configurable products in the bays of an environment, and configure them there",
     "author": "fa-brick",
@@ -19,11 +19,19 @@
             "product_configurator_web_3d_environment/static/src/environment_place.scss",
             "product_configurator_web_3d_environment/static/src/environment_place.xml",
             "product_configurator_web_3d_environment/static/src/environment_place.js",
+            # Les listes de matières dans l'affichage d'un attribut (W-113, E-3c-3).
+            "product_configurator_web_3d_environment/static/src/environment_materials.scss",
+            "product_configurator_web_3d_environment/static/src/environment_materials.xml",
+            "product_configurator_web_3d_environment/static/src/environment_materials.js",
         ],
         "web.assets_frontend": [
             "product_configurator_web_3d_environment/static/src/environment_place.scss",
             "product_configurator_web_3d_environment/static/src/environment_place.xml",
             "product_configurator_web_3d_environment/static/src/environment_place.js",
+            # Les listes de matières dans l'affichage d'un attribut (W-113, E-3c-3).
+            "product_configurator_web_3d_environment/static/src/environment_materials.scss",
+            "product_configurator_web_3d_environment/static/src/environment_materials.xml",
+            "product_configurator_web_3d_environment/static/src/environment_materials.js",
         ],
     },
     "installable": True,

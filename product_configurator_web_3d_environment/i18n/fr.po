@@ -159,3 +159,45 @@ msgstr "baie + %(offset)s mm"
 #: code:addons/product_configurator_web_3d_environment/static/src/environment_place.js:0
 msgid "bay − %(offset)s mm"
 msgstr "baie − %(offset)s mm"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_materials.js:0
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_material_use__answer_layout
+msgid "Answer layout"
+msgstr "Disposition des réponses"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_materials.js:0
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_material_use__answer_size
+msgid "Answer size"
+msgstr "Taille des réponses"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_material_use__display_type
+msgid "Display"
+msgstr "Affichage"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_materials.js:0
+msgid "Display type"
+msgstr "Type d'affichage"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model,name:product_configurator_web_3d_environment.model_product_environment_material_use
+msgid "Environment material use"
+msgstr "Usage de matière d'un environnement"
+
+#. module: product_configurator_web_3d_environment
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_environment/static/src/environment_materials.js:0
+#: model:ir.model.fields,field_description:product_configurator_web_3d_environment.field_product_environment_material_use__swatch_mark
+msgid "Selection mark"
+msgstr "Marque de sélection"
+
+#. module: product_configurator_web_3d_environment
+#: model:ir.model.fields,help:product_configurator_web_3d_environment.field_product_environment_material_use__display_type
+msgid "The form of the materials, as for an attribute."
+msgstr "La forme des matières, comme pour un attribut."

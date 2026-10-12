@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Les listes de matières de la barre de droite, dans l'affichage d'un attribut (W-113, E-3c-3, D-451) : les
+         composants de la page du configurateur. Les pastilles simples de l'environnement restent le repli d'un
+         serveur qui ne sert pas encore l'affichage. -->
+    <t t-inherit="product_editor_environment.EnvironmentRightPanel" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_env_face_swatches')]" position="before">
+            <div t-if="section.displayType and section.values.length" class="o_env_material_answers">
+                <AnswerList question="section" compact="state.isSmall" lineWidth="state.rightLineWidth"
+                            onPick="(value) => this.onPickMaterial(section.id, value.id)"
+                            onOpenPanel="() => this.openMaterialPanel(section.id)"/>
+            </div>
+        </xpath>
+        <xpath expr="//div[hasclass('o_env_face_swatches')]" position="attributes">
+            <attribute name="t-if"/>
+            <attribute name="t-elif">section.values.length</attribute>
+        </xpath>
+        <!-- ⓘ Le panneau de choix couvre la barre de droite, comme celui de la page couvre sa colonne. -->
+        <xpath expr="//div[hasclass('o_env_right_body')]" position="after">
+            <AnswerPanel t-if="materialPanelQuestion" t-key="state.materialPanel.key" question="materialPanelQuestion"
+                         compact="state.isSmall"
+                         onPick="(value) => this.onPickMaterial(materialPanelQuestion.id, value.id)"
+                         onClose="() => this.closeMaterialPanel()"/>
+        </xpath>
+    </t>
+
+    <!-- L'onglet Infos : sous la liste de chaque usage, son affichage (Q-24.2). -->
+    <t t-inherit="product_editor_environment.EnvironmentPanel" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_env_material_use')]" position="inside">
+            <div t-if="state.canSetMaterialUses and state.materialDisplayOptions and use.displayType"
+                 class="o_env_use_display">
+                <label t-foreach="this.materialDisplayFields(use)" t-as="field" t-key="field.key"
+                       class="o_env_use_display_field small">
+                    <span class="text-muted" t-esc="field.label"/>
+                    <select class="form-select form-select-sm" t-att-data-field="field.key"
+                            t-on-change="(ev) => this.onMaterialDisplay(use.use, field.key, ev)">
+                        <option t-foreach="this.displayOptions(field.key)" t-as="option" t-key="option[0]"
+                                t-att-value="option[0]" t-att-selected="this.useDisplayValue(use, field.key) === option[0]"
+                                t-esc="option[1]"/>
+                    </select>
+                </label>
+            </div>
+        </xpath>
+    </t>
+
+</templates>

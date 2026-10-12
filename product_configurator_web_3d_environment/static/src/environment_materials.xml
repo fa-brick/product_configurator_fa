@@ -28,19 +28,19 @@
     <!-- L'onglet Infos : sous la liste de chaque usage, son affichage (Q-24.2). -->
     <t t-inherit="product_editor_environment.EnvironmentPanel" t-inherit-mode="extension">
         <xpath expr="//div[hasclass('o_env_material_use')]" position="inside">
-            <div t-if="state.canSetMaterialUses and state.materialDisplayOptions and use.displayType"
-                 class="o_env_use_display">
-                <label t-foreach="this.materialDisplayFields(use)" t-as="field" t-key="field.key"
-                       class="o_env_use_display_field small">
-                    <span class="text-muted" t-esc="field.label"/>
-                    <select class="form-select form-select-sm" t-att-data-field="field.key"
+            <!-- ⓘ Une ligne par réglage, comme la barre de l'éditeur 3D : libellé à gauche, liste `o_input` à droite. -->
+            <t t-if="state.canSetMaterialUses and state.materialDisplayOptions and use.displayType">
+                <div t-foreach="this.materialDisplayFields(use)" t-as="field" t-key="field.key"
+                     class="ce-sidebar-param-row o_env_use_display_field">
+                    <span class="o_form_label" t-esc="field.label"/>
+                    <select class="o_input" t-att-data-field="field.key"
                             t-on-change="(ev) => this.onMaterialDisplay(use.use, field.key, ev)">
                         <option t-foreach="this.displayOptions(field.key)" t-as="option" t-key="option[0]"
                                 t-att-value="option[0]" t-att-selected="this.useDisplayValue(use, field.key) === option[0]"
                                 t-esc="option[1]"/>
                     </select>
-                </label>
-            </div>
+                </div>
+            </t>
         </xpath>
     </t>
 

@@ -5,22 +5,23 @@
          composants de la page du configurateur. Les pastilles simples de l'environnement restent le repli d'un
          serveur qui ne sert pas encore l'affichage. -->
     <t t-inherit="product_editor_environment.EnvironmentRightPanel" t-inherit-mode="extension">
-        <xpath expr="//div[hasclass('o_env_face_swatches')]" position="before">
+        <!-- ⓘ Avant la PREMIÈRE forme de la chaîne t-if / t-elif (les trous, puis les pastilles), qui devient t-elif. -->
+        <xpath expr="//div[hasclass('o_env_opening_types')]" position="before">
             <div t-if="section.displayType and section.values.length" class="o_env_material_answers">
                 <AnswerList question="section" compact="state.isSmall" lineWidth="state.rightLineWidth"
-                            onPick="(value) => this.onPickMaterial(section.id, value.id)"
+                            onPick="(value) => this.onPickSection(section.id, value.id)"
                             onOpenPanel="() => this.openMaterialPanel(section.id)"/>
             </div>
         </xpath>
-        <xpath expr="//div[hasclass('o_env_face_swatches')]" position="attributes">
+        <xpath expr="//div[hasclass('o_env_opening_types')]" position="attributes">
             <attribute name="t-if"/>
-            <attribute name="t-elif">section.values.length</attribute>
+            <attribute name="t-elif">section.kind === 'openingTypes'</attribute>
         </xpath>
         <!-- ⓘ Le panneau de choix couvre la barre de droite, comme celui de la page couvre sa colonne. -->
         <xpath expr="//div[hasclass('o_env_right_body')]" position="after">
             <AnswerPanel t-if="materialPanelQuestion" t-key="state.materialPanel.key" question="materialPanelQuestion"
                          compact="state.isSmall"
-                         onPick="(value) => this.onPickMaterial(materialPanelQuestion.id, value.id)"
+                         onPick="(value) => this.onPickSection(materialPanelQuestion.id, value.id)"
                          onClose="() => this.closeMaterialPanel()"/>
         </xpath>
     </t>

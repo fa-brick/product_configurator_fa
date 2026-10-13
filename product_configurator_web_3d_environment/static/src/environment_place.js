@@ -74,7 +74,8 @@ patch(EnvironmentEditor.prototype, {
      * peut poser.
      */
     get configuringPlacement() {
-        const opening = this.selectedOpening;
+        // ⓘ La configuration est celle du PRODUIT sélectionné (Q-35.2) : le trou, sélectionné par son champ, montre ses cotes.
+        const opening = this.selectedProductOpening;
         if (!this.state.canPlace || this.readonly || !opening) return null;
         // ⓘ Permuter (Q-26.2) : la barre de droite liste les produits qui peuvent le remplacer, pas sa configuration.
         if (this.state.swapOpeningId === opening.id) return null;
@@ -88,8 +89,7 @@ patch(EnvironmentEditor.prototype, {
     },
 
     configure(openingId) {
-        this.state.selection = { kind: "opening", id: openingId };
-        this.state.faceMenu = null;
+        this.selectProduct(openingId);
     },
 
     /** Fermer la barre de droite d'un produit : ses écarts à la baie ont pu changer, on les relit. */
@@ -120,7 +120,7 @@ patch(EnvironmentEditor.prototype, {
             this.state.messages = [_t("This product could not be removed.")];
             return;
         }
-        if (this.selectedOpening?.id === openingId) this.selectRoot();
+        if ((this.selectedProductOpening || this.selectedOpening)?.id === openingId) this.selectRoot();
         this.state.placements = this.state.placements.filter((placement) => placement.openingId !== openingId);
         this.setBayObject(openingId, null);
         // ⓘ Le trou du neuf part avec son produit (Q-14.15) ; un trou existant reste.
@@ -202,6 +202,6 @@ patch(EnvironmentEditor.prototype, {
         ];
         // ⓘ Le produit posé est sélectionné pour commencer sa configuration (parcours §10).
         if (result.placement.token) this.configure(bay.id);
-        else this.state.selection = { kind: "opening", id: bay.id };
+        else this.selectProduct(bay.id);
     },
 });

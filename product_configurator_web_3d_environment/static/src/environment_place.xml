@@ -13,10 +13,7 @@
                 <div t-if="offsetLabel(placed, 'width')">Width: <t t-esc="offsetLabel(placed, 'width')"/></div>
                 <div t-if="offsetLabel(placed, 'height')">Height: <t t-esc="offsetLabel(placed, 'height')"/></div>
             </div>
-            <button t-if="state.canPlace and !readonly" type="button"
-                    class="btn btn-sm btn-light mb-2" t-on-click="() => this.swapProduct(opening.id)">
-                <i class="fa fa-th me-1"/><t t-if="placed">Change the product</t><t t-else="">Choose a product</t>
-            </button>
+            <!-- ⓘ Permuter n'est pas un choix du trou (Q-35.2) : c'est le menu flottant du PRODUIT sélectionné. -->
         </xpath>
     </t>
 

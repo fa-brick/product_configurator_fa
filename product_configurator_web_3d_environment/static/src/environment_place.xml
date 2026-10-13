@@ -28,10 +28,14 @@
             <t t-set="configured" t-value="configuringPlacement"/>
             <div t-if="configured" class="o_env_right o_env_configure ce-sidebar"
                  t-att-class="{ 'o_env_right--sheet': state.isSmall }">
-                <ConfiguratorPage t-key="configured.token + ':' + state.configureSerial" token="configured.token"
+                <!-- ⓘ Le contour du trou pilote la ligne guide du produit (rénovation, E-3d-4c) : un trou qui change de
+                     forme recrée la page, d'où la clé. -->
+                <ConfiguratorPage t-key="configured.token + ':' + state.configureSerial + ':' + holeContourKeyOf(configured.openingId)"
+                                  token="configured.token"
                                   closable="false" panelOnly="true"
+                                  holeContour="holeContourOf(configured.openingId)"
                                   onBack="() => this.stopConfiguring()"
-                                  onScene="(group) => this.onPlacedScene(configured.openingId, configured.token, group)"/>
+                                  onScene="(group, info) => this.onPlacedScene(configured.openingId, configured.token, group, info)"/>
             </div>
         </xpath>
     </t>
@@ -45,8 +49,9 @@
             <t t-set="job" t-value="placementToRender"/>
             <div t-if="job" class="o_env_render_stage" aria-hidden="true"
                  style="position:fixed;left:-10000px;top:0;width:960px;height:720px;overflow:hidden;pointer-events:none">
-                <ConfiguratorPage t-key="job.token" token="job.token" closable="false"
-                                  onScene="(group) => this.onPlacedScene(job.openingId, job.token, group)"/>
+                <ConfiguratorPage t-key="job.token + ':' + holeContourKeyOf(job.openingId)" token="job.token" closable="false"
+                                  holeContour="holeContourOf(job.openingId)"
+                                  onScene="(group, info) => this.onPlacedScene(job.openingId, job.token, group, info)"/>
             </div>
         </xpath>
     </t>

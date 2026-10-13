@@ -57,7 +57,9 @@ class ProductEnvironment(models.Model):
         if not bay or not session:
             return offsets
         for key, attribute in zip(("width", "height"), self._common_attributes()):
-            measure = attribute and self._session_measure(session, attribute)
+            # ⚠️ Pas `attribute and …` : un attribut non réglé est un recordset VIDE, que `and` rendrait au lieu de
+            # `None` — et la soustraction tombait à la première pose (L-561).
+            measure = self._session_measure(session, attribute) if attribute else None
             if measure is not None:
                 offsets[key] = round(measure - bay[key], 3)
         return offsets

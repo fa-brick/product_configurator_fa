@@ -240,3 +240,20 @@ class TestPlacementShape(PlacementCommon, TransactionCase):
         self._hole(self.oculus_type)
         self.assertNotIn(self.sectional.id, [p["id"] for p in self.site.bay_products("b1")["products"]])
         self.assertEqual(self.site.place_product("b1", self.sectional.id)["error"], "not_offered")
+
+
+@tagged("post_install", "-at_install")
+class TestPlacementWithoutCommonAttributes(PlacementCommon, TransactionCase):
+    """⚠️ L-561 : sans attributs communs Largeur / Hauteur dans les Paramètres, la pose tombait (recordset vide)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._fixture()
+        params = cls.env["ir.config_parameter"].sudo()
+        params.set_param("product_editor_environment.width_attribute_id", "")
+        params.set_param("product_editor_environment.height_attribute_id", "")
+
+    def test_la_pose_se_fait_sans_ecart(self):
+        result = self.site.place_product("b1", self.sectional.id)
+        self.assertEqual(result["placement"]["offsets"], {})

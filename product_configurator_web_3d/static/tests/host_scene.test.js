@@ -37,7 +37,8 @@ test("la copie d'une construction est publiée à l'hôte, une fois", async () =
     expect(p.pending).toHaveLength(1);
     p.pending[0]("copie 1");
     await flush();
-    expect(onScene).toHaveBeenCalledWith("copie 1");
+    // ⓘ Avec le perçage du produit (E-3d-4c) — ici aucun : l'hôte se cale alors sur la boîte.
+    expect(onScene).toHaveBeenCalledWith("copie 1", { machining: null });
 });
 
 test("⚠️ une copie DÉPASSÉE par une construction plus récente est libérée, jamais publiée", async () => {

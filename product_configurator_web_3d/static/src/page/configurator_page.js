@@ -62,6 +62,7 @@ import { AnswerList } from "../answers/answer_list";
 import { AnswerPanel } from "../answers/answer_panel";
 // La copie du produit pour un HÔTE qui le montre dans sa propre scène (W-111, 8.4d).
 import { disposeSnapshot } from "@product_editor/engine/three/scene_snapshot";
+import { machiningOutline } from "@product_editor/engine/builder/hole_contour";
 
 /** Le calque par pose VIDE — une seule instance (voir `zoneMaterialsByNode`). */
 const NO_NODE_MATERIALS = Object.freeze({});
@@ -119,6 +120,9 @@ export class ConfiguratorPage extends Component {
         panelOnly: { type: Boolean, optional: true },
         // ⓘ La flèche à gauche du nom du produit : rendre la main à l'hôte.
         onBack: { type: Function, optional: true },
+        // ⓘ **LE TROU OÙ LE PRODUIT EST POSÉ** (W-113, E-3d-4c) : son contour, dans le repère du produit
+        // (`[[x, y], …]`), pilote la ligne guide de la racine — l'environnement en rénovation (Q-34.4).
+        holeContour: { type: Array, optional: true },
     };
 
     setup() {
@@ -622,9 +626,13 @@ export class ConfiguratorPage extends Component {
             // Une construction plus récente a été lancée pendant les lectures : elle seule
             // publiera. Sortir AVANT `build()` épargne en plus son calcul.
             if (ticket !== this._buildTicket) return;
+            const buildOpts = { bakedParts, importedGeometries, chronicle };
+            // ⓘ Le trou de l'environnement, s'il y en a un : la session refuse une option inconnue, pas une absente.
+            if (this.props?.holeContour) buildOpts.holeContour = this.props.holeContour;
             const { tree, worlds, solids, baked: bakedSolids, pieces, postBuild } =
-                this._session.build(buildable, scope || {},
-                                    { bakedParts, importedGeometries, chronicle });
+                this._session.build(buildable, scope || {}, buildOpts);
+            // ⓘ Le contour d'USINAGE, dans le repère du produit : l'hôte cale le produit sur son trou par lui (E-3d-4c).
+            this._machining = this.props?.onScene ? machiningOutline(tree, buildable, tree?.scope || {}) : null;
             // ⚠️ Projeter la racine sur SA portée résolue, pas sur celle des attributs : une
             // esquisse qui cite une variable de la racine retombait sinon sur son défaut (L-547).
             this._rootScope = tree?.scope || null;
@@ -695,7 +703,7 @@ export class ConfiguratorPage extends Component {
                 disposeSnapshot(group);
                 return;
             }
-            this.props.onScene?.(group);
+            this.props.onScene?.(group, { machining: this._machining || null });
         });
     }
 

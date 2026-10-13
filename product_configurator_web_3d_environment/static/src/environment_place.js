@@ -21,6 +21,7 @@ import { patch } from "@web/core/utils/patch";
 import { EnvironmentEditor } from "@product_editor_environment/editor/environment_editor";
 import { ConfiguratorPage } from "@product_configurator_web_3d/page/configurator_page";
 import { disposeSnapshot } from "@product_editor/engine/three/scene_snapshot";
+import { holeContourKey } from "@product_editor_environment/engine/product_hole";
 
 EnvironmentEditor.components = { ...EnvironmentEditor.components, ConfiguratorPage };
 
@@ -28,7 +29,8 @@ patch(EnvironmentEditor.prototype, {
     setup() {
         super.setup();
         this.state.placements = [];
-        // ⓘ Les configurations déjà montrées dans leur baie, par jeton de session.
+        // ⓘ Les configurations déjà montrées dans leur baie : `jeton|contour du trou` (E-3d-4c) — un trou qui change
+        // de forme redessine son produit, même à cotes égales.
         this.state.shownTokens = [];
         // ⓘ Relance la page de la barre de droite quand sa configuration a changé sans elle.
         this.state.configureSerial = 0;
@@ -45,7 +47,7 @@ patch(EnvironmentEditor.prototype, {
         super.onSaved(result);
         const followed = result.followed || [];
         if (followed.length) {
-            this.state.shownTokens = this.state.shownTokens.filter((token) => !followed.includes(token));
+            this.state.shownTokens = this.state.shownTokens.filter((key) => !followed.includes(key.split("|")[0]));
             if (followed.includes(this.configuringPlacement?.token)) this.state.configureSerial++;
         }
         if (result.messages?.length) this.state.messages = result.messages;
@@ -150,20 +152,33 @@ patch(EnvironmentEditor.prototype, {
         // ⓘ Celui qu'on configure a sa page dans la barre latérale : elle fait sa copie elle-même.
         const configuring = this.configuringPlacement;
         return (this.state.placements || []).find((placement) => placement.token
-            && placement !== configuring && !this.state.shownTokens.includes(placement.token));
+            && placement !== configuring
+            && !this.state.shownTokens.includes(this._shownKey(placement.openingId, placement.token)));
     },
 
     /**
      * La copie du produit construit arrive : elle se pose dans sa baie.
      * ⚠️ Une copie dont la baie a changé de produit entre-temps est libérée, jamais montrée.
      */
-    onPlacedScene(openingId, token, group) {
-        if (!this.state.shownTokens.includes(token)) this.state.shownTokens.push(token);
+    onPlacedScene(openingId, token, group, info = null) {
+        const key = this._shownKey(openingId, token);
+        if (!this.state.shownTokens.includes(key)) this.state.shownTokens.push(key);
         if (this.placementOf(openingId)?.token !== token) {
             disposeSnapshot(group);
             return;
         }
-        this.setBayObject(openingId, group);
+        // ⓘ Avec son perçage : le produit se cale par lui sur son trou (E-3d-4c).
+        this.setBayObject(openingId, group, info);
+    },
+
+    /** Ce qui dit qu'un produit est montré pour son trou tel qu'il est : son jeton et le contour du trou. */
+    _shownKey(openingId, token) {
+        return `${token}|${holeContourKey(this.holeContourOf(openingId))}`;
+    },
+
+    /** La clé du contour d'un trou, pour la page de configuration de la barre de droite (recréée s'il change). */
+    holeContourKeyOf(openingId) {
+        return holeContourKey(this.holeContourOf(openingId));
     },
 
     /** Le produit posé dans une baie, ou rien. */

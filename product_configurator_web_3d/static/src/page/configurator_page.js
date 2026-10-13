@@ -120,8 +120,8 @@ export class ConfiguratorPage extends Component {
         panelOnly: { type: Boolean, optional: true },
         // ⓘ La flèche à gauche du nom du produit : rendre la main à l'hôte.
         onBack: { type: Function, optional: true },
-        // ⓘ **LE TROU OÙ LE PRODUIT EST POSÉ** (W-113, E-3d-4c) : son contour, dans le repère du produit
-        // (`[[x, y], …]`), pilote la ligne guide de la racine — l'environnement en rénovation (Q-34.4).
+        // ⓘ **LE TROU OÙ LE PRODUIT EST POSÉ** (W-113, E-3d-4c) : sa forme, dans le repère du produit — des segments,
+        // traits et arcs (Q-35.3) —, pilote la ligne guide de la racine — l'environnement en rénovation (Q-34.4).
         holeContour: { type: Array, optional: true },
     };
 

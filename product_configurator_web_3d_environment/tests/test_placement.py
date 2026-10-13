@@ -196,3 +196,47 @@ class TestPlacementRoute(PlacementCommon, HttpCase):
         self.assertEqual(self.make_jsonrpc_request("/environment/unplace", {
             "token": self.site.access_token, "opening_id": "b1"}), {"ok": True})
         self.assertFalse(self.site.placement_ids)
+
+
+@tagged("post_install", "-at_install")
+class TestPlacementShape(PlacementCommon, TransactionCase):
+    """La FORME d'un produit posé dans un trou existant (W-113, E-3d-4b, Q-30.4, Q-30.5) : la valeur du type du trou."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._fixture()
+        Type = cls.env["product.environment.opening.type"]
+        cls.straight_type = Type.create({"name": "Fenêtre droite pose", "width": 2400, "height": 2100})
+        cls.arched_type = Type.create({"name": "Fenêtre cintrée pose", "shape": "segmental_arch", "width": 2400,
+                                       "height": 2100, "rise": 300})
+        cls.oculus_type = Type.create({"name": "Œil-de-bœuf pose", "shape": "ellipse", "width": 2400, "height": 2100})
+        shape = cls.env["product.attribute"].create({"name": "Forme pose", "create_variant": "no_variant"})
+        Value = cls.env["product.attribute.value"]
+        cls.straight = Value.create({"name": "Droite", "attribute_id": shape.id,
+                                     "environment_opening_type_id": cls.straight_type.id})
+        cls.arched = Value.create({"name": "Cintrée", "attribute_id": shape.id,
+                                   "environment_opening_type_id": cls.arched_type.id})
+        cls.sectional.write({
+            "environment_opening_type_ids": [Command.set((cls.straight_type | cls.arched_type | cls.oculus_type).ids)],
+            "attribute_line_ids": [Command.create({"attribute_id": shape.id,
+                                                   "value_ids": [Command.set((cls.straight | cls.arched).ids)]})]})
+
+    def _hole(self, opening_type):
+        plan = garage_plan()
+        plan["openings"][0]["type"] = opening_type.id
+        self.site.plan = plan
+
+    def test_la_forme_suit_le_type_du_trou(self):
+        for opening_type, value in ((self.straight_type, self.straight), (self.arched_type, self.arched)):
+            self._hole(opening_type)
+            self.site.place_product("b1", self.sectional.id)
+            chosen = self.site.placement_ids.session_id.value_ids
+            self.assertIn(value, chosen)
+            self.assertNotIn((self.straight | self.arched) - value, chosen)
+
+    def test_un_trou_sans_valeur_de_forme_ne_propose_pas_le_produit(self):
+        # ⚠️ Lié au type « Œil-de-bœuf », mais sans valeur de forme pour lui : pas proposé (Q-30.5).
+        self._hole(self.oculus_type)
+        self.assertNotIn(self.sectional.id, [p["id"] for p in self.site.bay_products("b1")["products"]])
+        self.assertEqual(self.site.place_product("b1", self.sectional.id)["error"], "not_offered")

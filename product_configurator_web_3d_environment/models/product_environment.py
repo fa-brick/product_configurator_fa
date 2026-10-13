@@ -130,6 +130,19 @@ class ProductEnvironment(models.Model):
         placement.unlink()
         return {"ok": True}
 
+    @staticmethod
+    def _select_shape_value(session, product, opening_type_id):
+        """Répondre à la *Forme* du produit par la valeur du type de trou — rien s'il n'en a pas.
+
+        ⓘ La règle de `/configurator/set_value` pour une question à choix unique : la valeur remplace celle de son
+        attribut.
+        """
+        value = product._environment_shape_value(opening_type_id) if opening_type_id else None
+        if not value:
+            return
+        others = session.value_ids.filtered(lambda v, a=value.attribute_id: v.attribute_id != a)
+        session.write({"value_ids": [(6, 0, (others | value).ids)]})
+
     def place_product(self, opening_id, product_tmpl_id):
         """POSER un produit dans une baie : la configuration naît avec les mesures de la baie (U-2).
 
@@ -147,6 +160,9 @@ class ProductEnvironment(models.Model):
         if product.config_ok:
             session = session.sudo().create_get_session(product.id, force_create=True)
             session._ensure_access_token()
+            # ⓘ La FORME d'abord (E-3d-4b, Q-30.4) : la valeur du type du trou — une fenêtre cintrée dans un trou cintré ;
+            # les bornes des cotes peuvent en dépendre.
+            self._select_shape_value(session, product, bay.get("type"))
             width_attr, height_attr = self._common_attributes()
             for attribute, measure in ((width_attr, bay["width"]), (height_attr, bay["height"])):
                 if not attribute or not product.attribute_line_ids.filtered(lambda l, a=attribute: l.attribute_id == a):

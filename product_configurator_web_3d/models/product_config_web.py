@@ -17,6 +17,8 @@ from collections import Counter
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
+from odoo.addons.product_editor.models.product_model3d_count import EngineCountError
+
 _logger = logging.getLogger(__name__)
 
 
@@ -1535,9 +1537,15 @@ class ProductConfigSession(models.Model):
                 "error": "incomplete",
                 "missing": missing.attribute_id.mapped("name"),
             }
-        self.action_confirm()
-        self._web_confirm_children()
-        self._web_after_confirm()
+        # ⚠️ Le compte du moteur est EXIGÉ ici : un compte manqué donnerait une quantité ou une variante fausse sur la commande (D-457, Q-1).
+        try:
+            with self.env.cr.savepoint():
+                confirming = self.with_context(engine_count_required=True)
+                confirming.action_confirm()
+                confirming._web_confirm_children()
+                confirming._web_after_confirm()
+        except EngineCountError as exc:
+            return {"error": "engine", "message": exc.args[0]}
         # ⓘ Close, la configuration n'a plus de conducteur : la main est rendue (D-371).
         self._release_hand()
         return self.web_state()

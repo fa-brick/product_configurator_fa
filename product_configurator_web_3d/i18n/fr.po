@@ -536,6 +536,12 @@ msgstr "Cette condition est illisible."
 #. module: product_configurator_web_3d
 #. odoo-javascript
 #: code:addons/product_configurator_web_3d/static/src/configurator_state.js:0
+msgid "This configuration could not be confirmed. Please try again in a moment."
+msgstr "Cette configuration n'a pas pu être confirmée. Réessayez dans un instant."
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/configurator_state.js:0
 msgid "This configuration is already confirmed."
 msgstr "Cette configuration est déjà confirmée."
 

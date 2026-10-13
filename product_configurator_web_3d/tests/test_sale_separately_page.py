@@ -213,6 +213,22 @@ class TestSaleSeparatelyPage(TransactionCase):
         self.assertEqual([line["qty"] for line in lines], [1])
         self.assertTrue(any("one per placement" in message for message in logs.output))
 
+    def test_sans_node_une_CONFIRMATION_qui_exige_le_moteur_est_refusee(self):
+        """⚠️ D-457 (Q-1) : le repli suffit à l'affichage, jamais à ce qui part sur la commande.
+        Une réponse CALCULÉE par le lien ne se résout qu'au moteur : sans lui, la variante
+        naîtrait dans la couleur d'en dessous."""
+        self.link.attribute_overrides = {str(self.color.id): {"expr": str(self.black.id)}}
+        self.env["ir.config_parameter"].sudo().set_param(
+            "product_editor.node_path", "/nonexistent/node")
+        session = self._session(self.white, self.handle_value)
+        state = session.state
+        with self.assertLogs(level="WARNING"):
+            result = session.web_confirm()
+        self.assertEqual(result.get("error"), "engine")
+        self.assertTrue(result.get("message"))
+        self.assertEqual(session.state, state)
+        self.assertFalse(session.child_variants)
+
     # ── Préalable P-a (W-111) : la réponse posée par FORMULE sur le lien ─────────────────
     @skipUnless(HAS_NODE, "Node.js is not installed")
     def test_la_variante_nait_dans_la_reponse_CALCULEE_par_le_lien(self):

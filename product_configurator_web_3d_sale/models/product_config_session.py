@@ -52,7 +52,8 @@ class ProductConfigSession(models.Model):
         """
         self.ensure_one()
         line.linked_line_ids.unlink()
-        for separate in self.web_separate_lines():
+        # ⚠️ Une quantité de commande : le compte du moteur est EXIGÉ, jamais le repli d'un par emplacement (D-457).
+        for separate in self.with_context(engine_count_required=True).web_separate_lines():
             if not separate["productId"]:
                 continue
             self.env["sale.order.line"].sudo().create({

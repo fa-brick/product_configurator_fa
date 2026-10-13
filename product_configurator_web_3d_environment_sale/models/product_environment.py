@@ -2,6 +2,8 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 from odoo import _, fields, models
 
+from odoo.addons.product_editor.models.product_model3d_count import EngineCountError
+
 #: Les états d'un devis encore modifiable — comme la réouverture d'une configuration (D-371).
 OPEN_STATES = ("draft", "sent")
 
@@ -153,22 +155,29 @@ class ProductEnvironment(models.Model):
                 return {"error": "no_customer", "message": _("Set the customer of this environment first.")}
             partner = user.partner_id
             self.sudo().partner_id = partner
-        order = self._open_order() or self.env["sale.order"].sudo().create(
-            {"partner_id": partner.id, "environment_id": self.id})
-        # ⓘ Le jeton du devis ouvre son montage, au portail comme au back-office (8.5b).
-        order._portal_ensure_token()
-        Line = self.env["sale.order.line"].sudo()
-        for placement in montage:
-            session = placement.session_id.sudo()
-            if session and session.state == "draft":
-                # ⓘ La variante naît ici ; une ligne déjà là suit d'elle-même (`_web_after_confirm`).
-                session.web_confirm()
-            product = session.product_id if session else placement.product_tmpl_id.product_variant_id
-            line = placement.order_line_id
-            if not line.exists() or line.order_id != order:
-                line = Line.create({"order_id": order.id, "product_id": product.id, "product_uom_qty": 1,
-                                    "config_session_id": session.id or False})
-                if session:
-                    session._web_sync_separate_lines(line)
-            placement.write({"order_id": order.id, "order_line_id": line.id})
+        # ⚠️ Tout ou rien : une configuration que le moteur n'a pas pu compter annule le devis entier, sinon une quantité fausse y entrerait (D-457).
+        try:
+            with self.env.cr.savepoint():
+                order = self._open_order() or self.env["sale.order"].sudo().create(
+                    {"partner_id": partner.id, "environment_id": self.id})
+                # ⓘ Le jeton du devis ouvre son montage, au portail comme au back-office (8.5b).
+                order._portal_ensure_token()
+                Line = self.env["sale.order.line"].sudo()
+                for placement in montage:
+                    session = placement.session_id.sudo()
+                    if session and session.state == "draft":
+                        # ⓘ La variante naît ici ; une ligne déjà là suit d'elle-même (`_web_after_confirm`).
+                        confirmed = session.web_confirm()
+                        if confirmed.get("error") == "engine":
+                            raise EngineCountError(confirmed["message"])
+                    product = session.product_id if session else placement.product_tmpl_id.product_variant_id
+                    line = placement.order_line_id
+                    if not line.exists() or line.order_id != order:
+                        line = Line.create({"order_id": order.id, "product_id": product.id, "product_uom_qty": 1,
+                                            "config_session_id": session.id or False})
+                        if session:
+                            session._web_sync_separate_lines(line)
+                    placement.write({"order_id": order.id, "order_line_id": line.id})
+        except EngineCountError as exc:
+            return {"error": "engine", "message": exc.args[0]}
         return {"quote": {"name": order.name, "state": order.state}}

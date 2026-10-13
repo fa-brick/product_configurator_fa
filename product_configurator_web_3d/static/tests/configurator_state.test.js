@@ -213,6 +213,14 @@ describe("le refus de confirmation ne doit pas effacer la page", () => {
         expect(confirmError({ error: "incomplete" })).toBeTruthy();
     });
 
+    test("un compte du moteur manqué (D-457) dit le message du serveur, pas un lien invalide", () => {
+        expect(confirmError({ error: "engine", message: "Le moteur n'a pas pu compter." }))
+            .toBe("Le moteur n'a pas pu compter.");
+        const fallback = confirmError({ error: "engine" });
+        expect(fallback).toBeTruthy();
+        expect(fallback).not.toContain("link");
+    });
+
     test("une session déjà confirmée le dit, et ne parle pas de lien invalide", () => {
         const message = confirmError({ error: "session_closed" });
         expect(message).toBeTruthy();

@@ -751,6 +751,10 @@ export function confirmError(payload) {
     if (payload.error === "session_closed") {
         return _t("This configuration is already confirmed.");
     }
+    if (payload.error === "engine") {
+        // ⓘ Le message vient du serveur, déjà traduit (D-457) : le moteur n'a pas pu compter les pièces.
+        return payload.message || _t("This configuration could not be confirmed. Please try again in a moment.");
+    }
     if (payload.error === "not_holding") {
         // ⓘ Le serveur rend l'état de la main AVEC son refus : la page peut donc
         // nommer celui qui conduit sans redemander l'état complet.

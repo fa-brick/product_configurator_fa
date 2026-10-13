@@ -257,3 +257,30 @@ class TestPlacementWithoutCommonAttributes(PlacementCommon, TransactionCase):
     def test_la_pose_se_fait_sans_ecart(self):
         result = self.site.place_product("b1", self.sectional.id)
         self.assertEqual(result["placement"]["offsets"], {})
+
+
+@tagged("post_install", "-at_install")
+class TestPlacementNewBuild(PlacementCommon, TransactionCase):
+    """Le NEUF (W-113, E-3d-5b) : un trou qui SUIT son produit ne lui impose rien, et ne le fait pas suivre."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._fixture()
+        plan = garage_plan()
+        plan["openings"][0]["follows"] = "product"
+        cls.site.plan = plan
+
+    def test_le_produit_nait_a_ses_reponses_par_defaut(self):
+        self.site.place_product("b1", self.sectional.id)
+        self.assertFalse(self.site.placement_ids.session_id.custom_value_ids)
+
+    def test_le_trou_qui_change_ne_reecrit_pas_le_produit(self):
+        """⚠️ Sinon chacun suivrait l'autre : le trou prend le perçage du produit, le produit reprendrait le trou."""
+        self.site.place_product("b1", self.sectional.id)
+        plan = dict(self.site.plan)
+        plan["openings"] = [dict(plan["openings"][0], width=2600)]
+        result = self.site.editor_save(plan)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["followed"], [])
+        self.assertFalse(self.site.placement_ids.session_id.custom_value_ids)

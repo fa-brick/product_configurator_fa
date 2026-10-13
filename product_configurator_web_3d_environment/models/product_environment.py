@@ -87,8 +87,11 @@ class ProductEnvironment(models.Model):
             return {"error": "invalid", "messages": [
                 _("%(product)s is placed in a bay that this plan removes: remove the product first.",
                   product=placement.product_tmpl_id.display_name) for placement in lost]}
+        # ⚠️ Pas le trou qui SUIT son produit (E-3d-5b) : le produit y suivrait le trou qui le suit — chacun écrirait
+        # l'autre à chaque enregistrement.
         before = {placement.id: (placement, self._bay(placement.opening_id), self._placement_offsets(placement))
-                  for placement in self._montage().filtered("session_id")}
+                  for placement in self._montage().filtered("session_id")
+                  if (self._bay(placement.opening_id) or {}).get("follows") != "product"}
         result = super().editor_save(plan, wall_height=wall_height, wall_thickness=wall_thickness,
                                      start_view=start_view, template_id=template_id)
         if not result.get("ok"):
@@ -159,9 +162,13 @@ class ProductEnvironment(models.Model):
         if not offered:
             return {"error": "not_offered", "message": _("This product cannot be placed in this bay.")}
         session = self.env["product.config.session"]
+        # ⓘ Un trou qui SUIT son produit (le neuf, E-3d-5b) ne lui impose rien : le produit naît à ses réponses par
+        # défaut, et c'est le trou qui prendra son perçage.
+        follows = bay.get("follows") == "product"
         if product.config_ok:
             session = session.sudo().create_get_session(product.id, force_create=True)
             session._ensure_access_token()
+        if product.config_ok and not follows:
             # ⓘ La FORME d'abord (E-3d-4b, Q-30.4) : la valeur du type du trou — une fenêtre cintrée dans un trou cintré ;
             # les bornes des cotes peuvent en dépendre.
             self._select_shape_value(session, product, bay.get("type"))

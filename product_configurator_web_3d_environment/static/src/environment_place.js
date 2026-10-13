@@ -123,6 +123,8 @@ patch(EnvironmentEditor.prototype, {
         if (this.selectedOpening?.id === openingId) this.selectRoot();
         this.state.placements = this.state.placements.filter((placement) => placement.openingId !== openingId);
         this.setBayObject(openingId, null);
+        // ⓘ Le trou du neuf part avec son produit (Q-14.15) ; un trou existant reste.
+        this.removeFollowingHole(openingId);
     },
 
     /** L'écart d'une mesure à la baie, lisible : « baie − 400 mm », ou rien s'il est nul. */

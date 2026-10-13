@@ -14,7 +14,7 @@
                 <div t-if="offsetLabel(placed, 'height')">Height: <t t-esc="offsetLabel(placed, 'height')"/></div>
             </div>
             <button t-if="state.canPlace and !readonly" type="button"
-                    class="btn btn-sm btn-light mb-2" t-on-click="() => this.openChooser(opening.id)">
+                    class="btn btn-sm btn-light mb-2" t-on-click="() => this.swapProduct(opening.id)">
                 <i class="fa fa-th me-1"/><t t-if="placed">Change the product</t><t t-else="">Choose a product</t>
             </button>
         </xpath>
@@ -40,7 +40,8 @@
         <!-- Le produit posé se MONTRE (étape 8.4d) : la page du configurateur construit hors de
              l'écran, et rend une copie de sa scène. ⚠️ Hors de l'écran, pas masquée : un viewer de
              taille nulle n'a rien à copier. -->
-        <xpath expr="//ProductChooser" position="after">
+        <!-- ⓘ Après la vue de la vignette : le dialogue de choix qui servait d'ancre a disparu (E-3d-4a). -->
+        <xpath expr="//div[hasclass('o_env_thumb_stage')]" position="after">
             <t t-set="job" t-value="placementToRender"/>
             <div t-if="job" class="o_env_render_stage" aria-hidden="true"
                  style="position:fixed;left:-10000px;top:0;width:960px;height:720px;overflow:hidden;pointer-events:none">

@@ -52,6 +52,11 @@ patch(EnvironmentEditor.prototype, {
         this._reloadPlacements();
     },
 
+    /** Le produit posé dans un trou — sa carte est cochée dans la liste de Permuter. */
+    placedProductId(openingId) {
+        return this.placementOf(openingId)?.productId || null;
+    },
+
     /** Le produit posé dans une baie, sous elle dans l'arbre de la barre latérale (W-113, E-2b). */
     placedProductName(openingId) {
         return this.placementOf(openingId)?.productName || null;
@@ -69,6 +74,8 @@ patch(EnvironmentEditor.prototype, {
     get configuringPlacement() {
         const opening = this.selectedOpening;
         if (!this.state.canPlace || this.readonly || !opening) return null;
+        // ⓘ Permuter (Q-26.2) : la barre de droite liste les produits qui peuvent le remplacer, pas sa configuration.
+        if (this.state.swapOpeningId === opening.id) return null;
         const placement = this.placementOf(opening.id);
         return placement?.token ? placement : null;
     },

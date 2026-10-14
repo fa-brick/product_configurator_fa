@@ -41,8 +41,9 @@
         <!-- Le produit posé se MONTRE (étape 8.4d) : la page du configurateur construit hors de
              l'écran, et rend une copie de sa scène. ⚠️ Hors de l'écran, pas masquée : un viewer de
              taille nulle n'a rien à copier. -->
-        <!-- ⓘ Après la vue de la vignette : le dialogue de choix qui servait d'ancre a disparu (E-3d-4a). -->
-        <xpath expr="//div[hasclass('o_env_thumb_stage')]" position="after">
+        <!-- ⓘ Au bout du corps de l'éditeur : la vue de la vignette qui servait d'ancre a disparu avec la vue de dessus
+             (W-113, E-5e). -->
+        <xpath expr="//div[hasclass('o_env_body')]" position="inside">
             <t t-set="job" t-value="placementToRender"/>
             <div t-if="job" class="o_env_render_stage" aria-hidden="true"
                  style="position:fixed;left:-10000px;top:0;width:960px;height:720px;overflow:hidden;pointer-events:none">

@@ -87,3 +87,32 @@ class ProductConfigSession(models.Model):
                 continue
             out[value.id] = self._web_amount_label(amount, currency, signed=True, suffix=suffix)
         return out
+
+    # ── LE TOTAL AFFICHÉ — W-100, lot 2 ─────────────────────────────────────
+
+    def web_state(self):
+        """`totalLabel` : le total formaté avec sa devise, à côté du nombre `total`.
+
+        ⚠️ Le nombre `total` reste HORS taxes : le prix de la session et la ligne de commande n'en dépendent pas (D-396).
+        """
+        state = super().web_state()
+        state["totalLabel"] = self._web_amount_label(self._web_displayed_total(state))
+        return state
+
+    def _web_displayed_total(self, state):
+        """Le total tel qu'on l'affiche : le produit, puis chaque ligne à part, chacun avec SES taxes."""
+        Product = self.env["product.product"].sudo()
+        Value = self.env["product.attribute.value"].sudo()
+        total = self._web_displayed_price(state["price"], self.product_tmpl_id)
+        for line in state.get("separateLines") or []:
+            product = (Product.browse(line["productId"]) if line.get("productId")
+                       else Value.browse(line["valueId"]).product_id)
+            total += self._web_displayed_price(line["price"], product) * line["qty"]
+        return total
+
+    def _web_displayed_price(self, unit_price, product):
+        """Le prix UNITAIRE affiché d'un article — hors taxes ici, le module boutique le taxe selon le site.
+
+        ⚠️ Unitaire puis multiplié : une taxe fixe s'applique par unité, pas une fois par ligne.
+        """
+        return unit_price

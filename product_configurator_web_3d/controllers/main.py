@@ -58,6 +58,16 @@ class ProductConfiguratorWeb3D(http.Controller):
             session = session.with_context(lang=lang)
         if session and holder:
             session = session.with_context(cfg_author=holder)
+        return self._on_site(session)
+
+    @staticmethod
+    def _on_site(session):
+        """Marquer la session appelée depuis le SITE — la page le dit par `site` (W-100).
+
+        ⚠️ Ces routes sont `website=False` : sans ce drapeau, le dialogue du devis et la page du site sont indiscernables, et le total s'afficherait taxé au back-office (D-396).
+        """
+        if session and request.params.get("site"):
+            session = session.with_context(cfg_on_site=True)
         return session
 
     @http.route(
@@ -197,7 +207,7 @@ class ProductConfiguratorWeb3D(http.Controller):
             tmpl.id, force_create=True,
         )
         session._ensure_access_token()
-        return {"token": session.access_token, "state": session.web_state()}
+        return {"token": session.access_token, "state": self._on_site(session).web_state()}
 
     @http.route(
         "/configurator/take_hand", type="json", auth="public", methods=["POST"],

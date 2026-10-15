@@ -17,3 +17,5 @@ from . import placement_condition
 from . import ir_http
 # L'IMAGE d'une variante née d'une configuration (D-399, lot 5).
 from . import product_config_variant_image
+# Les MONTANTS affichés par la page : supplément de chaque réponse, total avec sa devise (W-100).
+from . import product_config_price_label

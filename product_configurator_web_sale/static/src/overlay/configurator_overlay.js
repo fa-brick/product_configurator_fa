@@ -72,8 +72,9 @@ export class ConfiguratorOverlay extends Component {
 
     async _prepare() {
         try {
+            // ⓘ `site` : l'état préparé porte le total taxé selon le site, comme la page (W-100).
             const answer = await rpc("/configurator/prepare",
-                                     { product_tmpl_id: this.props.productTmplId });
+                                     { product_tmpl_id: this.props.productTmplId, site: true });
             if (!answer || answer.error) return;
             // ⓘ Poser les deux ENSEMBLE : la page se monte sur le jeton, et son
             // état préparé lui évite un second aller-retour.

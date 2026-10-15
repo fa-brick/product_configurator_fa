@@ -23,6 +23,7 @@ import { useService } from "@web/core/utils/hooks";
 import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
 import { rpc } from "@web/core/network/rpc";
+import { session } from "@web/session";
 import { localization } from "@web/core/l10n/localization";
 // ⓘ **LA SAISIE LIBRE** (D-353) : `AutoComplete` pour le texte, avec ses suggestions ; le
 // nombre a un champ nu, sans liste (Gerry, 2026-10-05 — [[L-504]]).
@@ -80,6 +81,15 @@ const CAMERA_SHARE_MS = 150;
 // refus (« 15 est sous le minimum ») pour un geste qui n'en demandait aucun. Le choix
 // d'une suggestion ANNULE la saisie en attente.
 const FREE_ANSWER_DELAY_MS = 200;
+
+/**
+ * La page tourne-t-elle sur le SITE ? Le back-office ne pose pas `is_frontend` (W-100).
+ *
+ * ⚠️ Le dialogue du devis monte le même composant : sans ce test, son total s'afficherait taxé selon le site (D-396).
+ */
+export function onSite() {
+    return !!session.is_frontend;
+}
 
 export class ConfiguratorPage extends Component {
     static template = "product_configurator_web_3d.ConfiguratorPage";
@@ -439,7 +449,8 @@ export class ConfiguratorPage extends Component {
     _call(route, params = {}) {
         // ⓘ Le porteur accompagne le jeton sur TOUS les appels : les routes qui
         // s'en moquent l'ignorent, et aucune ne peut l'oublier.
-        return rpc(route, { token: this.props.token, holder: this.holder, ...params });
+        // ⚠️ `site` : les routes sont `website=False`, sans lui le total du site s'afficherait HT (W-100, D-396).
+        return rpc(route, { token: this.props.token, holder: this.holder, site: onSite(), ...params });
     }
 
     /**
@@ -1377,7 +1388,8 @@ export class ConfiguratorPage extends Component {
     get price() {
         // ⓘ Le TOTAL (D-368) : le produit plus ses pièces vendues à part — le détail se
         // lit au panier et au devis (Gerry, 2026-09-28).
-        return this.state.model?.total ?? this.state.model?.price ?? 0;
+        // ⓘ Son LIBELLÉ d'abord : devise, taxes selon le site (W-100) ; le nombre nu d'un serveur ancien.
+        return this.state.model?.totalLabel ?? this.state.model?.total ?? this.state.model?.price ?? 0;
     }
 
     reasonFor(value) {

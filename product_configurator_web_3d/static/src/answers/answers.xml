@@ -4,7 +4,9 @@
      l'identique. Les gestes passent par le composant hôte : `pick`, `openPanel`, `props.onClose`. -->
 <templates xml:space="preserve">
 
-<!-- ⓘ LES FORMES D'UNE QUESTION (`AnswerList`) — le nom de la question et la saisie libre restent à l'hôte. -->
+<!-- ⓘ LES FORMES D'UNE QUESTION (`AnswerList`) — le nom de la question et la saisie libre restent à l'hôte.
+     ⓘ LE SUPPLÉMENT (`value.extra`, W-100) : déjà formaté au serveur, absent quand il est nul ; dans chaque forme,
+     la couleur et la liste déroulante le portent dans leur texte (`answerTitle`). -->
 <t t-name="product_configurator_web_3d.AnswerList">
     <!-- ── LA LIGNE RÉSUMÉ (D-382) : la question, ce qui est choisi, et le panneau au
          clic. Pour les formes à image, les boutons et la liste (Gerry, 2026-09-30).
@@ -25,6 +27,7 @@
                   t-att-class="{ 'o_cfg3d_summary_answer--empty': !picked }"
                   t-esc="picked ? picked.name : chooseLabel"/>
         </span>
+        <span t-if="picked and picked.extra" class="o_cfg3d_extra small text-muted text-nowrap" t-esc="picked.extra"/>
         <i class="oi oi-chevron-right o_cfg3d_summary_chevron" role="img"/>
     </button>
 
@@ -91,7 +94,7 @@
                     t-att-class="{
                         'o_cfg3d_swatch--chosen': value.chosen,
                         'o_cfg3d_swatch--muted': value.muted }"
-                    t-att-title="value.name"
+                    t-att-title="this.answerTitle(value)"
                     t-att-style="value.color ? 'background-color: ' + value.color : ''"
                     t-on-click="() => this.pick(value)">
                 <img t-if="value.image" t-att-src="value.image"
@@ -113,7 +116,7 @@
         <t t-foreach="question.values" t-as="value" t-key="value.id">
             <option t-att-value="value.id"
                     t-att-selected="value.chosen"
-                    t-esc="value.name"/>
+                    t-esc="this.answerTitle(value)"/>
         </t>
     </select>
 
@@ -129,6 +132,7 @@
                 <input type="checkbox" t-att-checked="value.chosen"
                        t-on-change="() => this.pick(value)"/>
                 <span t-esc="value.name"/>
+                <span t-if="value.extra" class="o_cfg3d_extra small text-muted text-nowrap" t-esc="value.extra"/>
             </label>
         </t>
     </div>
@@ -145,6 +149,7 @@
                         'o_cfg3d_value--muted': value.muted }"
                     t-on-click="() => this.pick(value)">
                 <span t-esc="value.name"/>
+                <span t-if="value.extra" class="o_cfg3d_extra small text-muted text-nowrap" t-esc="value.extra"/>
             </button>
         </t>
     </div>
@@ -167,6 +172,7 @@
             <img t-att-src="value.image" t-att-alt="value.name" loading="lazy"/>
         </span>
         <span class="o_cfg3d_card_label" t-esc="value.name"/>
+        <span t-if="value.extra" class="o_cfg3d_extra small text-muted text-nowrap" t-esc="value.extra"/>
     </button>
 </t>
 
@@ -187,6 +193,7 @@
             </span>
         </span>
         <span class="o_cfg3d_bigswatch_label" t-esc="value.name"/>
+        <span t-if="value.extra" class="o_cfg3d_extra small text-muted text-nowrap" t-esc="value.extra"/>
     </button>
 </t>
 
@@ -278,6 +285,7 @@
                             <img t-if="value.image" t-att-src="value.image" t-att-alt="value.name" loading="lazy"/>
                         </span>
                         <span class="o_cfg3d_panel_name" t-esc="value.name"/>
+                        <span t-if="value.extra" class="o_cfg3d_extra small text-muted text-nowrap" t-esc="value.extra"/>
                         <i t-if="value.chosen" class="fa fa-check o_cfg3d_panel_check"/>
                     </button>
                 </t>

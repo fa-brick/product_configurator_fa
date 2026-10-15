@@ -580,6 +580,9 @@ function toValue(raw) {
         // ⓘ Les catégories de la réponse, par clé (D-382) — les pastilles du panneau.
         // ⚠️ Recopiées ICI, faute de quoi elles s'arrêteraient à cette fonction ([[L-212]]).
         categoryKeys: Array.isArray(raw.categoryKeys) ? raw.categoryKeys : [],
+        // ⓘ Le supplément, déjà formaté au serveur (« +5,00 € ») ; `null` quand il est nul (W-100).
+        // ⚠️ Recopié ICI, sans quoi il s'arrêterait à cette fonction ([[L-212]]).
+        extra: raw.extra || null,
     };
 }
 
@@ -616,6 +619,8 @@ export function toViewModel(payload, previous = null) {
         // ⓘ D-368 — le TOTAL affiché (le produit plus ses lignes à part), et ces lignes,
         // qui partent au devis ou au panier rattachées à celle du produit.
         total: payload.total ?? payload.price ?? 0,
+        // ⓘ Le total tel qu'on l'affiche : sa devise, ses taxes selon le site (W-100) ; `null` d'un serveur ancien.
+        totalLabel: payload.totalLabel || null,
         separateLines: payload.separateLines || [],
         noVariantPtavIds: payload.noVariantPtavIds || [],
         closed: payload.state && payload.state !== "draft",

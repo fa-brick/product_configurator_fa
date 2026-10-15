@@ -73,6 +73,14 @@ export class AnswerList extends Component {
         return pickedAnswer(question);
     }
 
+    /**
+     * Le nom d'une réponse suivi de son supplément — pour les formes sans place sous le libellé : l'infobulle d'une
+     * couleur, l'option d'une liste déroulante (W-100).
+     */
+    answerTitle(value) {
+        return value.extra ? `${value.name} (${value.extra})` : value.name;
+    }
+
     /** Une question est répondue dès qu'une de ses valeurs est retenue. */
     isAnswered(question) {
         return question.values.some((value) => value.chosen);

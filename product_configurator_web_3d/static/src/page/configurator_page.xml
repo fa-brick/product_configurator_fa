@@ -75,6 +75,8 @@
                      qu'un survol CONTOURE en orange, comme dans l'éditeur, sans nom
                      (arbitrage Gerry, 2026-09-23) ; `selectedNodeIds` allume le contour de
                      sélection ; les deux rappels remontent clic et double clic. -->
+                <!-- ⓘ `answersSerial` = `sceneSerial` : chaque scène de la page naît d'une réponse ; si la taille
+                     change, la caméra recadre (D-473). -->
                 <PartViewer3D sketchItems="viewerSketchItems"
                               pieces="viewerPieces"
                               selectedNodeIds="selectedNodeIds"
@@ -82,6 +84,7 @@
                               onSelectPiece.bind="onSelectPiece"
                               onActivatePiece.bind="onActivatePiece"
                               resolvedTreeSerial="state.sceneSerial"
+                              answersSerial="state.sceneSerial"
                               getResolvedWorldByNodeId.bind="getResolvedWorldByNodeId"
                               getResolvedSolidsByNodeId.bind="getResolvedSolidsByNodeId"
                               getResolvedBakedSolids.bind="getResolvedBakedSolids"

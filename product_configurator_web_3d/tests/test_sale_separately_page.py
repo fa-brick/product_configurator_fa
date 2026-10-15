@@ -24,7 +24,8 @@ class TestSaleSeparatelyPage(TransactionCase):
         super().setUpClass()
         Attribute = cls.env["product.attribute"]
         Value = cls.env["product.attribute.value"]
-        cls.color = Attribute.create({"name": "Couleur"})
+        # ⚠️ `always` explicite : la réponse désigne une variante de la poignée, qui n'en aurait aucune en `dynamic`, défaut de D-474.
+        cls.color = Attribute.create({"name": "Couleur", "create_variant": "always"})
         cls.white, cls.black = Value.create([
             {"name": "Blanc", "attribute_id": cls.color.id},
             {"name": "Noir", "attribute_id": cls.color.id},

@@ -224,6 +224,26 @@ $o-cfg3d-compact-max: 900px;
     &--muted { opacity: 0.4; }
 }
 
+/* ⓘ LE BADGE DU SUPPLÉMENT (W-100) — `badge text-bg-info border` d'Odoo ; ses retouches vivent sous
+   `.variant_attribute` (`website_sale/…/product_configurator.scss`), absent de cette page : recopiées ici. */
+.o_cfg3d_extra {
+    margin-left: 3px;
+    padding-left: 3px;
+    vertical-align: middle;
+
+    /* Sous le libellé d'une carte ou d'une pastille, centré : la marge d'Odoo le décalerait. */
+    .o_cfg3d_card &, .o_cfg3d_bigswatch & { margin-left: 0; }
+}
+.o_cfg3d_extra_sign {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    color: $o-brand-primary;
+    background: white;
+    line-height: 1rem;
+    border-radius: 50%;
+}
+
 /* ⓘ LA BARRE D'ACTION (D-389) — UNE ligne : le prix à gauche, le geste à droite (Gerry,
    2026-10-01). Elle vit au pied de la colonne ; le mode compact la pose en haut du viewer. */
 .o_cfg3d_actionbar {

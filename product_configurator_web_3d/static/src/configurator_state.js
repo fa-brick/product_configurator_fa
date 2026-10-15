@@ -583,6 +583,21 @@ function toValue(raw) {
         // ⓘ Le supplément, déjà formaté au serveur (« +5,00 € ») ; `null` quand il est nul (W-100).
         // ⚠️ Recopié ICI, sans quoi il s'arrêterait à cette fonction ([[L-212]]).
         extra: raw.extra || null,
+        // ⓘ Son signe et son montant, à part : le badge d'Odoo les dessine chacun dans sa forme.
+        ...splitExtra(raw.extra),
+    };
+}
+
+/**
+ * « +5,00 € » → `{extraSign: "+", extraAmount: "5,00 €"}` — les deux moitiés du badge d'Odoo
+ * (`website_sale.badge_extra_price`) ; les deux `null` sans supplément (W-100).
+ */
+export function splitExtra(label) {
+    if (!label) return { extraSign: null, extraAmount: null };
+    const signed = label[0] === "+" || label[0] === "\u2212" || label[0] === "-";
+    return {
+        extraSign: signed ? label[0] : null,
+        extraAmount: signed ? label.slice(1) : label,
     };
 }
 

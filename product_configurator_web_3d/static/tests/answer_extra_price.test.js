@@ -12,7 +12,7 @@ jest.mock("@product_editor/engine/builder/to_buildable", () => new Proxy({}, {
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { session } from "@web/session";
-import { toViewModel } from "@product_configurator_web_3d/configurator_state";
+import { splitExtra, toViewModel } from "@product_configurator_web_3d/configurator_state";
 import { AnswerList } from "@product_configurator_web_3d/answers/answer_list";
 import { ConfiguratorPage, onSite } from "@product_configurator_web_3d/page/configurator_page";
 
@@ -31,7 +31,7 @@ function branch(condition, until) {
     return XML.slice(XML.indexOf(condition), XML.indexOf(until));
 }
 
-const SHOWN = 't-if="value.extra" class="o_cfg3d_extra small text-muted text-nowrap" t-esc="value.extra"';
+const SHOWN = '<t t-if="value.extra" t-call="product_configurator_web_3d.ExtraBadge"><t t-set="badge" t-value="value"/></t>';
 
 describe("le supplément traverse la mise en forme", () => {
     const model = toViewModel({
@@ -46,6 +46,13 @@ describe("le supplément traverse la mise en forme", () => {
         expect(model.questions[0].values.map((v) => v.extra)).toEqual(["+10,00 €", null]);
     });
 
+    test("le signe et le montant, à part — les deux moitiés du badge d'Odoo", () => {
+        const [light, none] = model.questions[0].values;
+        expect([light.extraSign, light.extraAmount]).toEqual(["+", "10,00 €"]);
+        expect([none.extraSign, none.extraAmount]).toEqual([null, null]);
+        expect(splitExtra("\u22123,00 €")).toEqual({ extraSign: "\u2212", extraAmount: "3,00 €" });
+    });
+
     test("le total garde son libellé à côté du nombre", () => {
         expect(model.totalLabel).toBe("48,51 €");
         expect(model.total).toBe(40.5);
@@ -57,6 +64,13 @@ describe("le supplément traverse la mise en forme", () => {
 });
 
 describe("le supplément se voit dans chaque forme", () => {
+    test("⚠️ le badge est CELUI d'Odoo : `badge text-bg-info border`, signe puis montant estompé", () => {
+        const badge = template("ExtraBadge");
+        expect(badge).toContain('class="o_cfg3d_extra badge text-bg-info border"');
+        expect(badge).toContain('class="o_cfg3d_extra_sign sign_badge_price_extra" t-esc="badge.extraSign"');
+        expect(badge).toContain('class="variant_price_extra text-muted fst-italic text-nowrap" t-esc="badge.extraAmount"');
+    });
+
     test("la carte, la grande pastille : sous le libellé", () => {
         expect(template("Card")).toContain(SHOWN);
         expect(template("BigSwatch")).toContain(SHOWN);
@@ -69,7 +83,7 @@ describe("le supplément se voit dans chaque forme", () => {
 
     test("la ligne résumé : le supplément de la réponse CHOISIE", () => {
         expect(branch("t-if=\"question.answerLayout === 'summary'\"", "<!-- ── LA CARTE"))
-            .toContain('t-if="picked and picked.extra"');
+            .toContain('<t t-if="picked and picked.extra" t-call="product_configurator_web_3d.ExtraBadge"><t t-set="badge" t-value="picked"/></t>');
     });
 
     test("la liste du panneau de choix", () => {

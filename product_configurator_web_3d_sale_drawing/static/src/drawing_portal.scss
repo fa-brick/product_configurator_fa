@@ -1,0 +1,11 @@
+// ⓘ La page SVG porte sa taille en mm de FEUILLE : à l'écran, elle suit la largeur de la colonne.
+.o_drawing_portal_page {
+    max-width: 640px;
+    background: white;
+
+    svg {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+}

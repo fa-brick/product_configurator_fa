@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ⚠️ Des formats PROPRES aux plans : dpi 96 (donc zoom 1) et sans réduction automatique. Avec ceux d'Odoo,
+         100 mm sortent à 85,6 ou à 106,9 mm, et l'échelle écrite sous le plan serait fausse ([[L-573]]).
+         Marges nulles : la page SVG porte déjà sa marge de 10 mm (D-470). -->
+    <record id="paperformat_drawing_portrait" model="report.paperformat">
+        <field name="name">A4 drawing (portrait)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+        <field name="disable_shrinking" eval="True"/>
+    </record>
+    <record id="paperformat_drawing_landscape" model="report.paperformat">
+        <field name="name">A4 drawing (landscape)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+        <field name="disable_shrinking" eval="True"/>
+    </record>
+
+    <!-- ⓘ Deux actions, une par orientation : wkhtmltopdf n'applique qu'UN format par rendu, les pages se joignent ensuite. -->
+    <record id="action_report_drawing_portrait" model="ir.actions.report">
+        <field name="name">Drawing pages (portrait)</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">product_configurator_web_3d_sale_drawing.pages</field>
+        <field name="paperformat_id" ref="paperformat_drawing_portrait"/>
+    </record>
+    <record id="action_report_drawing_landscape" model="ir.actions.report">
+        <field name="name">Drawing pages (landscape)</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">product_configurator_web_3d_sale_drawing.pages</field>
+        <field name="paperformat_id" ref="paperformat_drawing_landscape"/>
+    </record>
+
+    <!-- ⓘ Le gabarit ne fait qu'INSÉRER les pages SVG déjà dessinées par le moteur : changer de moteur PDF (Paper Muncher)
+         ne touchera que lui (D-464). -->
+    <template id="pages">
+        <t t-call="web.html_container">
+            <t t-foreach="svgs" t-as="svg">
+                <div class="article o_drawing_pdf_page">
+                    <!-- ⚠️ Le corps d'un rapport Odoo porte la classe `container` de Bootstrap : ses marges décaleraient le plan. -->
+                    <style>
+                        body.o_body_pdf { max-width: none !important; width: auto !important; margin: 0 !important; padding: 0 !important; }
+                        .o_drawing_pdf_page { margin: 0; padding: 0; overflow: hidden; }
+                        .o_drawing_pdf_page svg { display: block; }
+                    </style>
+                    <t t-out="svg"/>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

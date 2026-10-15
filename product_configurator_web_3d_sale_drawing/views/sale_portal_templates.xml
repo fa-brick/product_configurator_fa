@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ⓘ Une vue À PART, priorité 100 : la rangée du plan reste juste sous SA ligne, quels que soient les modules qui complètent la ligne ([[L-502]]). -->
+    <template id="sale_order_portal_content_drawing" inherit_id="sale.sale_order_portal_content" priority="100">
+        <xpath expr="//t[@t-foreach='lines_to_report']/tr[1]" position="after">
+            <t t-if="report_type == 'html' and not line.display_type and line._drawing_template()">
+                <t t-set="drawing_pages" t-value="line._drawing_pages()"/>
+                <tr t-if="drawing_pages" class="o_drawing_portal_row">
+                    <td colspan="99">
+                        <details>
+                            <summary class="text-muted small">Dimensioned drawing</summary>
+                            <div t-foreach="drawing_pages" t-as="drawing_page" class="o_drawing_portal_page border my-2">
+                                <t t-out="line._drawing_markup(drawing_page)"/>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+            </t>
+        </xpath>
+    </template>
+</odoo>

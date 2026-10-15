@@ -108,11 +108,7 @@ class ProductConfigSession(models.Model):
             "fov": view["fov"],
             "backdrop": root.preview_backdrop_effective,
             "bgColor": root.preview_bg_color_effective,
-            "surfaces": {
-                "floor": camera.shadow_floor,
-                "backWall": camera.shadow_back_wall,
-                "sideWall": camera.shadow_side_wall,
-            },
+            # ⓘ Pas de surfaces d'ombre : ce sont les panneaux de l'AMBIANCE, que la page reçoit déjà (D-475).
             "framing": framing,
             "size": MAX_IMAGE_SIDE,
         }

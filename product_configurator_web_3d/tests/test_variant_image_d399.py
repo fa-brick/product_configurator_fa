@@ -51,7 +51,6 @@ class TestVariantImageD399(HttpCase):
         })
         cls.camera = cls.env["product.model3d.camera"].create({
             "model3d_id": cls.model3d.id, "name": "Vue D-399", "is_thumbnail": True,
-            "shadow_back_wall": True,
         })
 
     def _session(self, values):
@@ -89,7 +88,8 @@ class TestVariantImageD399(HttpCase):
         self.assertTrue(session.variant_created)
         photo = state["photo"]
         self.assertEqual(photo["backdrop"], "studio")
-        self.assertEqual(photo["surfaces"], {"floor": True, "backWall": True, "sideWall": False})
+        # ⓘ Les surfaces d'ombre viennent de l'ambiance, plus de la vue (D-475).
+        self.assertNotIn("surfaces", photo)
         self.assertIn("pose", photo)
         self.assertEqual(photo["size"], 1024)
         # Pas de passe encore : pas de cadre commun à rejouer.

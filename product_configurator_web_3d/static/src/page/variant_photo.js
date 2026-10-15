@@ -5,7 +5,8 @@
  * Gerry, 2026-10-05 : *« A pour l'ajout au panier puis B quand c'est possible »*, *« pour tout
  * devis / commande dont le variant n'est pas créé »*. Quand la confirmation CRÉE la variante,
  * le serveur joint à son état la prise de vue à rejouer (`state.photo` : la vue de l'appareil
- * photo, le décor, les surfaces d'ombre, le cadre commun des variantes). La page la rejoue
+ * photo, le décor, le cadre commun des variantes ; les surfaces d'ombre viennent de l'ambiance,
+ * D-475). La page la rejoue
  * avec SON viewer, hors de l'orbite où le client l'a laissé, et envoie l'image.
  *
  * ⚠️ **Une image perdue n'empêche jamais un achat.** Tout tient dans un budget (4 s) ; au-delà,

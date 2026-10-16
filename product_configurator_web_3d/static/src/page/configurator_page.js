@@ -520,7 +520,7 @@ export class ConfiguratorPage extends Component {
      * ⚠️ **La page ne les lisait pas du tout** : sans `importedGeometries`, la session rend
      * un volume vide pour chaque pièce de fichier — les inserts du JeNo manquaient à tout
      * client, sans une erreur (Gerry, 2026-09-24). Les URL portent leur jeton : un
-     * visiteur anonyme n'a pas d'autre droit sur la pièce jointe ([[L-377]]).
+     * visiteur anonyme n'a pas d'autre droit sur la pièce jointe ([[L-599]]).
      *
      * ⓘ Un fichier est lu UNE fois pour la vie de la page — une serrure de douze pièces,
      * c'est un téléchargement — et un échec n'est pas mémorisé : il se retente au tour

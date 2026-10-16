@@ -39,7 +39,7 @@ class TestTotalLabel(TransactionCase):
             "name": "Poignée W-100", "list_price": 10.0,
             "taxes_id": [Command.set(cls.tax_6.ids)],
         })
-        # ⚠️ UNE LISTE DE PRIX À SOI : celle de la base porte parfois des règles ([[L-453]]).
+        # ⚠️ UNE LISTE DE PRIX À SOI : celle de la base porte parfois des règles ([[L-600]]).
         cls.pricelist = cls.env["product.pricelist"].create({"name": "Sans règle W-100"})
         cls.env.user.partner_id.specific_property_product_pricelist = cls.pricelist
         cls.env.user.partner_id.property_account_position_id = False

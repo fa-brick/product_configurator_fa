@@ -72,7 +72,7 @@ class TestAnswerExtraPrice(TransactionCase):
         by_value[cls.rough].price_extra = -3.0
         # ⓘ Un supplément posé sur une COTE : il ne doit pas s'afficher (cas 4).
         by_value[cls.width_2000].price_extra = 7.0
-        # ⚠️ UNE LISTE DE PRIX À SOI : celle de la base porte parfois des règles ([[L-453]]).
+        # ⚠️ UNE LISTE DE PRIX À SOI : celle de la base porte parfois des règles ([[L-600]]).
         cls.pricelist = cls.env["product.pricelist"].create({"name": "Sans règle W-100"})
         cls.env.user.partner_id.specific_property_product_pricelist = cls.pricelist
         cls.currency = cls.pricelist.currency_id

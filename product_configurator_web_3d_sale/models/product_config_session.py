@@ -2,9 +2,8 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 """Où la configuration ATTERRIT : la ligne de devis.
 
-C'est la moitié qui manquait — le commercial pouvait ouvrir la page depuis une
-ligne, configurer, et rien ne revenait sur le devis. Le prix suivait (le lien
-existait), mais la VARIANTE n'était créée que par l'assistant.
+⚠️ Sans `_web_after_confirm` ici, une configuration confirmée depuis une ligne ne pose
+pas sa VARIANTE sur le devis : seul le prix suivrait, par `config_session_id`.
 """
 from odoo import models
 
@@ -69,14 +68,14 @@ class ProductConfigSession(models.Model):
     def _web_reopen_if_open_quote(self):
         """Rouvrir la configuration tant que TOUTES ses lignes sont dans un devis — D-371.
 
-        ⓘ **Rien n'est joué au stade du devis** (Gerry) : c'est la COMMANDE qui engage la
+        ⓘ **Rien n'est joué au stade du devis** : c'est la COMMANDE qui engage la
         variante. Un devis brouillon ou envoyé se corrige ; une commande confirmée (ou
         verrouillée) garde sa configuration close, comme D-190 le voulait pour elle.
 
         ⚠️ **Sans ligne de devis, rien ne se rouvre** : une configuration confirmée ailleurs
         (la boutique) n'a pas de devis qui la porte, et son panier ne suivrait pas.
 
-        ⓘ **Une pièce dont la ligne a été SUPPRIMÉE du devis est désélectionnée** (Gerry) :
+        ⓘ **Une pièce dont la ligne a été SUPPRIMÉE du devis est désélectionnée** :
         rouvrir le configurateur montre ce que le devis porte. Seulement pour une
         configuration CONFIRMÉE — tant qu'elle ne l'est pas, ses lignes rattachées n'existent
         pas encore, et leur absence ne dit rien.

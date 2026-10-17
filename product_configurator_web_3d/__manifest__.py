@@ -15,7 +15,7 @@
         # chercher les textures par URL — `/web/image/product.model3d.texture/<id>/image`,
         # construite dans `pbr_material.js` —, et ce contrôleur vérifie le droit de
         # LECTURE sur l'enregistrement. Sans cette ligne, un visiteur reçoit un 403 par
-        # texture et la 3D reste sans matière, comme elle l'était jusqu'au 2026-09-06.
+        # texture et la 3D reste sans matière.
         #
         # ⓘ Ce qui est ouvert : la LECTURE des images de texture, par identifiant. Ce
         # sont des images de catalogue — un carbone, un bois — que tout visiteur voit de
@@ -34,9 +34,8 @@
     "assets": {
         # ══ LA PAGE PUBLIQUE A BESOIN DU VIEWER, PAS DE L'ÉDITEUR ══════════════
         #
-        # ⚠️ C'est le blocage n° 2 du lot 6, relevé le 2026-08-23 : les assets de
-        # `product_editor` étaient TOUS back-office, et le montage « pleine page depuis le
-        # site » demande le moteur et la vue 3D côté client.
+        # ⚠️ Les assets propres de `product_editor` sont back-office : sans ce sous-bundle,
+        # la page du site n'a ni moteur ni vue 3D (D-189).
         #
         # Le sous-bundle `product_editor._viewer3d` est la FERMETURE des imports du viewer
         # — ni sidebar, ni dialogues, ni widgets de champ, ni action de client web. Un

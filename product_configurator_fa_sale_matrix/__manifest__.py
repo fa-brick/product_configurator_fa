@@ -7,12 +7,9 @@
     "author": "fa-brick",
     "license": "AGPL-3",
     "website": "https://github.com/fa-brick/product_configurator_fa",
-    # ⓘ UN PONT, et rien d'autre (D-399, Gerry 2026-10-05, option B). « Sélection des
-    # variantes de vente » vient de `sale_product_matrix` (la saisie des variantes en
-    # grille, une option des Ventes) ; le configurateur n'en dépend pas, et ne doit pas en
-    # dépendre : la grille est un choix de vente propre à chaque concepteur. Ce module ne
-    # s'installe donc QUE là où les deux sont déjà présents (`auto_install`), et n'impose
-    # rien ailleurs — le Nom de variante y reste simplement en bas de l'onglet.
+    # ⚠️ UN PONT en `auto_install` : faire dépendre le configurateur de `sale_product_matrix`
+    # imposerait la grille des variantes à tout concepteur (D-399, option B).
+    # ⓘ Sans la grille, le Nom de variante reste simplement en bas de l'onglet.
     "depends": ["product_configurator_fa", "sale_product_matrix"],
     "data": ["views/product_view.xml"],
     "installable": True,

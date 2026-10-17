@@ -10,8 +10,8 @@
     "website": "https://github.com/fa-brick/product_configurator_fa",
     "depends": ["sale_management", "product_configurator_fa", "stock"],
     "data": [
-        # ⓘ Plus aucun droit à déclarer : les deux lignes qui restaient portaient
-        # sur `product.configurator.sale`, supprimé avec le wizard (2026-09-19).
+        # ⓘ Aucun droit à déclarer : `product.configurator.sale` est parti avec
+        # l'assistant OCA (D-097).
         "data/menu_product.xml",
         "views/sale_view.xml",
     ],

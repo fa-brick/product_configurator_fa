@@ -198,13 +198,10 @@ class ProductConfigurator(models.TransientModel):
     ):
         """Retient d'office la valeur quand il n'en reste qu'UNE — D-167.
 
-        Règle donnée par Gerry : *« si on laisse une valeur sans condition, et que
-        c'est la seule solution pour l'attribut, alors elle se sélectionne
-        automatiquement. »* Elle ferme deux points d'un coup : l'attribut DÉRIVÉ de
-        Q-3 — restreindre à une seule valeur **vaut** poser cette valeur, et la
-        cascade « laquage spécial → couleur profil ∈ {blanc} » n'a plus besoin d'un
-        moteur de règles — et la teinte que l'enfant n'a pas (D-166), où la valeur
-        sans condition reste seule et devient le repli.
+        ⓘ Restreindre à une seule valeur **vaut** poser cette valeur : la cascade
+        « laquage spécial → couleur profil ∈ {blanc} » n'a pas besoin d'un moteur de
+        règles (D-165, Q-3), et la valeur sans condition devient le repli d'une teinte
+        que l'enfant n'a pas (D-166).
 
         ⚠️ **L'autre moitié existait déjà** : `get_form_vals` sait effacer une
         réponse devenue indisponible ; elle ne savait pas retenir celle qui reste.
@@ -216,9 +213,8 @@ class ProductConfigurator(models.TransientModel):
           transformerait une option en obligation ;
         · un attribut **facultatif** est écarté lui aussi, et c'est le point à
           arbitrer : le remplir d'office le rendrait impossible à laisser vide,
-          puisque chaque onchange le reposerait. Les cas cités par Gerry (la
-          couleur, la teinte du profil) sont tous obligatoires — « non interdit,
-          obligatoirement présent » (D-165, Q-7).
+          puisque chaque onchange le reposerait. Les cas de D-167 (la couleur, la
+          teinte du profil) sont tous obligatoires (D-165, Q-7).
 
         ⓘ Cette méthode ne décide PAS si la question reste affichée : c'est un
         réglage, porté par l'attribut et surchargeable par le produit (D-168), et

@@ -98,12 +98,11 @@ class ProductAttribute(models.Model):
         if not self.val_custom:
             self.custom_type = False
 
-    # ─ CE QU'UNE VALEUR DÉSIGNE — A2, arbitré par Gerry le 2026-08-28 ────────
+    # ─ CE QU'UNE VALEUR DÉSIGNE ──────────────────────────────────────────────
     #
-    # ⚠️ TROIS notions, et non une. La première tentative en proposait cinq —
-    # « liste, nombre, texte, produit, matière » — et mélangeait deux axes. Gerry
-    # a tranché : *« pour moi liste et texte sont la même chose, et même nombre,
-    # la saisie libre est possible »*. Ce qui distingue réellement les attributs :
+    # ⚠️ TROIS notions, pas une liste de « types » qui mêlerait deux axes : liste, texte
+    # et nombre ne sont pas des types, la saisie libre vaut pour les trois. Ce qui
+    # distingue réellement les attributs :
     #
     #   · le TYPE, ici          — ce que la valeur DÉSIGNE ;
     #   · le FORMAT             — comment elle se LIT (`custom_type`, plus bas) ;
@@ -119,7 +118,7 @@ class ProductAttribute(models.Model):
     # doit continuer de fonctionner.
     # ─ LA LISTE PROPOSÉE PAR UN FILTRE — C2, D-207 ──────────────────────────
     #
-    # Arbitrages de Gerry (§12) : **QI** un filtre sur des PRODUITS uniquement,
+    # D-207 : **QI** un filtre sur des PRODUITS uniquement,
     # **QJ** la valeur choisie est matérialisée, **QK** la liste dynamique n'existe
     # donc que pour les attributs de type produit. Les trois se referment l'une
     # l'autre : le filtre ne sert qu'à **proposer**, et ce qui est retenu devient
@@ -139,16 +138,12 @@ class ProductAttribute(models.Model):
     # la garde ci-dessous, qui l'évalue à l'enregistrement.
     # ─ LISTE FIXE OU LISTE DYNAMIQUE — le mode, D-218 ───────────────────────
     #
-    # Demande de Gerry (2026-08-28) : une coche *« dynamic values »*, offerte
-    # seulement quand la valeur désigne un produit, et qui commande l'apparition
-    # du filtre.
+    # ⓘ Une coche « Dynamic values », offerte seulement quand la valeur désigne un
+    # produit, et qui commande l'apparition du filtre.
     #
-    # ⚠️ **CE N'EST PAS UN INTERRUPTEUR D'AFFICHAGE.** Il répond à la question que
-    # Gerry avait posée lui-même : *« si la liste de valeurs d'un attribut est
-    # dynamique, il n'y a plus d'intérêt à tenir une liste ? »*. Deux régimes
-    # existent donc, et il fallait un champ pour dire lequel : soit on **tient** la
-    # liste, soit un **filtre la propose** et la liste n'est plus qu'une trace de
-    # ce qui a été choisi (QJ).
+    # ⚠️ **CE N'EST PAS UN INTERRUPTEUR D'AFFICHAGE.** Deux régimes existent, et ce
+    # champ dit lequel : soit on **tient** la liste, soit un **filtre la propose** et la
+    # liste n'est plus qu'une trace de ce qui a été choisi (QJ).
     #
     # ⓘ Réservé au type « produit » (QK) : l'égalité d'une condition se vérifie sur
     # des produits, et un filtre ne sait proposer que cela.
@@ -224,9 +219,7 @@ class ProductAttribute(models.Model):
 
     # ─ CE QUE LE FILTRE DONNE, AVANT DE S'EN SERVIR — C2, D-208 ─────────────
     #
-    # Demande de Gerry (2026-08-28) : *« il est intéressant, une fois le filtre
-    # appliqué, de connaître le nombre de produits qui en ressortent et de pouvoir
-    # afficher la liste des résultats dans un dialogue »*.
+    # ⓘ Le nombre de produits que le filtre donne, et leur liste dans un dialogue.
     #
     # ⚠️ Un domaine est une PROMESSE tant qu'on ne l'a pas appliqué. Écrit sans
     # retour, il se vérifie au pire moment — devant le client, quand la liste
@@ -260,11 +253,9 @@ class ProductAttribute(models.Model):
     def action_open_proposed_values(self):
         """Montre les VALEURS que ce filtre propose — dans un dialogue.
 
-        ⚠️ **DES VALEURS, PLUS DES PRODUITS** — demande de Gerry (2026-08-29) :
-        *« le clic renvoie sur valeurs d'attribut, rempli avec les résultats »*.
-        C'est ce que l'attribut porte réellement ; le produit n'était qu'une
-        étape. ⓘ Depuis D-222 elles existent déjà : poser le filtre les
-        matérialise, ce dialogue n'a donc rien à créer.
+        ⚠️ **DES VALEURS, PAS DES PRODUITS** (D-227) : c'est ce que l'attribut porte
+        réellement. ⓘ Elles existent déjà : poser le filtre les matérialise (D-222),
+        ce dialogue n'a rien à créer.
 
         ⓘ Un dialogue, comme pour les valeurs (D-206) : on revient là où on l'a
         ouvert, sans perdre la fiche d'attribut qu'on est en train de régler.
@@ -281,12 +272,9 @@ class ProductAttribute(models.Model):
                 ("product_id", "in", self._proposed_products().ids),
             ],
             "target": "new",
-            # ⚠️ **NI CRÉER NI SUPPRIMER ICI** — constat de Gerry : *« la fenêtre
-            # montre un bouton nouveau qui n'a pas de sens »*. Cette liste est le
-            # RÉSULTAT d'un filtre : une valeur ajoutée à la main n'en ferait pas
-            # partie, et une valeur retirée reviendrait au prochain
-            # enregistrement (D-228). Un geste qui se défait tout seul ne doit
-            # pas être offert.
+            # ⚠️ **NI CRÉER NI SUPPRIMER ICI** : cette liste est le RÉSULTAT d'un
+            # filtre — une valeur ajoutée à la main n'en ferait pas partie, une
+            # valeur retirée reviendrait au prochain enregistrement (D-228).
             #
             # ⓘ La liste tenue à la main, elle, reste l'onglet « Valeurs
             # d'attribut » — c'est là qu'on ajoute et qu'on retire.
@@ -318,12 +306,9 @@ class ProductAttribute(models.Model):
     def _retract_stale_values(self, proposees):
         """Retire ce qu'un filtre PRÉCÉDENT proposait et que celui-ci ne propose plus.
 
-        ⚠️ **LE MANQUE DE D-222, constaté par Gerry :** *« j'ai un résultat, et
-        plusieurs produits dans la liste »*. La matérialisation était idempotente
-        mais ne se **rétractait** jamais : chaque essai de filtre laissait ses
-        valeurs derrière lui, et la liste finissait par contredire le compteur
-        qui l'annonçait. Le ménage existant ne passe qu'après 90 jours — bien
-        trop tard pour un réglage qu'on ajuste en direct.
+        ⚠️ Sans rétractation, chaque essai de filtre laisse ses valeurs derrière lui,
+        et la liste contredit le compteur qui l'annonce (D-228). Le ménage existant ne
+        passe qu'après 90 jours — trop tard pour un réglage qu'on ajuste en direct.
 
         **⚠️ CE QUI EST ÉPARGNÉ, et pourquoi chaque exception compte :**
 
@@ -337,7 +322,7 @@ class ProductAttribute(models.Model):
           toujours fausse, sans un mot.
 
         ⓘ On **supprime** ce qui peut l'être et on **archive** le reste, selon la
-        même prévision que la colonne « à la suppression » (`removal_effect`) :
+        même prévision que le champ « On removal » (`removal_effect`) :
         une valeur déjà portée par une variante vendue doit rester lisible.
         """
         self.ensure_one()
@@ -460,12 +445,9 @@ class ProductAttribute(models.Model):
             concernes = self.filtered(lambda a: a.value_type != nouveau)
             concernes.value_ids._purge_designation(nouveau)
         res = super().write(vals)
-        # ⚠️ **LE FILTRE SE MATÉRIALISE DÈS QU'IL EST POSÉ** — demande de Gerry :
-        # *« affiche les enregistrements du filtre dans les valeurs d'attribut »*.
-        # Sans cela, les valeurs n'apparaissaient qu'à la première ouverture de
-        # l'assistant : la page d'attribut montrait une liste vide alors que le
-        # filtre annonçait cinquante-trois produits — deux écrans qui se
-        # contredisent.
+        # ⚠️ **LE FILTRE SE MATÉRIALISE DÈS QU'IL EST POSÉ** (D-222) : sinon les
+        # valeurs n'apparaissent qu'à la première ouverture de l'assistant, et la
+        # page d'attribut montre une liste vide quand le filtre annonce des produits.
         #
         # ⓘ L'opération est idempotente (D-221) : la refaire ne crée rien.
         if "product_filter_domain" in vals or "dynamic_values" in vals:
@@ -473,17 +455,11 @@ class ProductAttribute(models.Model):
                 attribute._materialise_proposed_values()
         return res
 
-    # ⚠️ **`value_type` et `custom_type` ont DÉMÉNAGÉ** vers `product_attribute_advanced`
-    # (2026-09-02) — avec leurs gardes, et sans une ligne de changement. Cadrage de
-    # Gerry : *« custom_type et value_type tels qu'ils étaient définis précédemment
-    # étaient très bien, je ne voulais pas modifier — je voulais juste transférer tout ce
-    # qui touchait à l'attribut dans un module spécifique »*.
-    #
-    # ⓘ `NUMERIC_TYPES` les accompagne, mais ce n'est PAS un champ d'origine : il date du
-    # 2026-08-28 (« trois formats, et l'unité qualifie un NOMBRE »), où il a remplacé un
-    # `("integer", "float")` écrit en clair à trois endroits. Relevé par Gerry — la
-    # distinction compte, « tel qu'il était » ne veut pas dire la même chose pour un
-    # champ hérité d'OCA et pour une constante extraite la semaine dernière.
+    # ⓘ `value_type`, `custom_type` et `NUMERIC_TYPES` vivent dans
+    # `product_attribute_advanced`, avec leurs gardes, tels qu'ils étaient ici :
+    # l'éditeur 3D en a besoin et ne peut pas dépendre d'un module AGPL-3 (D-075).
+    # ⓘ `NUMERIC_TYPES` n'est pas d'origine OCA : il remplace un `("integer", "float")`
+    # écrit en clair à trois endroits (D-195).
     #
     # ⓘ Les constantes de classe suivent l'héritage, Odoo ne construisant qu'UNE classe
     # par modèle : `self.NUMERIC_TYPES` répondrait toujours ici. Plus personne ne le lit
@@ -506,9 +482,7 @@ class ProductAttribute(models.Model):
         # ⚠️ « Valeur personnalisée » décrivait mal ce que ce drapeau DÉCLENCHE.
         # Une saisie libre ne reste pas éphémère : elle crée une vraie
         # `product.attribute.value`, marquée `configurator_generated`, avec une
-        # unicité `(attribut, nom)` garantie en base (D-081). Gerry l'a relu
-        # ainsi le 2026-08-27 — « custom, qui est ajout par l'utilisateur
-        # possible finalement » —, et c'est exactement ce que le code fait.
+        # unicité `(attribut, nom)` garantie en base (D-081).
         string="Default: customer may add a value",
         help="Default applied to a NEW product line. A value typed by the "
              "customer becomes a real attribute value, kept and reusable — not "
@@ -521,7 +495,7 @@ class ProductAttribute(models.Model):
         "the same configuration, do we "
         "include this field in the search?",
     )
-    # ─ LES QUATRE SEMENCES — A4, arbitrage Gerry (2026-08-28) ───────────────
+    # ─ LES QUATRE SEMENCES ──────────────────────────────────────────────────
     #
     # ⚠️ `required`, `multi`, `val_custom` et `price_mode` existent AUSSI sur la
     # ligne d'attribut d'un produit, et c'est la LIGNE que tout le monde lit — le
@@ -530,15 +504,13 @@ class ProductAttribute(models.Model):
     # à l'exécution : `onchange_attribute` les recopie sur la ligne à sa création,
     # et c'est tout.
     #
-    # Mesuré sur `fabk18` avant de trancher : 10 attributs sur 10 portent
-    # `required`, mais 2 lignes sur 12 seulement — les autres ont été créées sans
-    # que l'onchange joue. Elles ne sont pas obligatoires, et personne ne s'en est
-    # plaint : la preuve que ces champs ne décident de rien.
+    # ⓘ Mesuré sur `fabk18` : 10 attributs sur 10 portent `required`, mais 2 lignes
+    # sur 12 seulement — les autres sont nées sans que l'onchange joue. Ces champs ne
+    # décident de rien.
     #
-    # Gerry a choisi de les GARDER — la semence est un confort réel, déclarer
-    # « Couleur » obligatoire par nature évite de la cocher produit par produit —
-    # à condition que leur libellé cesse de faire croire à un réglage actif. D'où
-    # le « Default: » qui ouvre chacun d'eux.
+    # ⓘ Gardés pour le confort : « Couleur » obligatoire par nature évite de la cocher
+    # produit par produit. ⚠️ Leur libellé commence par « Default: » — sans lui, on les
+    # prend pour un réglage actif.
     required = fields.Boolean(
         default=True,
         string="Default: required",
@@ -600,7 +572,7 @@ class ProductAttribute(models.Model):
     def _is_numeric_custom(self):
         """Un attribut dont la valeur EST un nombre.
 
-        ⚠️ **Le corps a DÉMÉNAGÉ, le nom reste** (2026-09-02). La même question se pose
+        ⚠️ **Le corps a DÉMÉNAGÉ, le nom reste.** La même question se pose
         désormais depuis l'éditeur 3D, qui ne peut pas dépendre d'ici (D-075) :
         `product_attribute_advanced` porte donc `is_numeric()`, et cette méthode s'y
         adosse. Deux corps identiques dans deux modules divergeraient au premier format
@@ -615,7 +587,7 @@ class ProductAttribute(models.Model):
         return self.is_numeric()
 
     # ⓘ **`canonical_custom_value` et `format_custom_value` ONT DÉMÉNAGÉ** vers
-    # `product_attribute_advanced` (2026-09-07). Elles ne lisent que ce qu'il
+    # `product_attribute_advanced`. Elles ne lisent que ce qu'il
     # porte — le format, l'unité, et le lecteur de nombre — et l'ÉDITEUR en a
     # besoin sans le configurateur : c'est lui qui affiche « 2,5 mm » dans ses
     # listes de valeurs, et il ne peut pas dépendre d'un module AGPL-3 (D-075).
@@ -631,8 +603,7 @@ class ProductAttribute(models.Model):
         le peut, et c'est tout l'objet de D-081 : le stock ne sait distinguer
         deux portes que par leurs valeurs d'attribut.
 
-        ⚠️ **LE TEXTE AUSSI, depuis D-353** (Gerry, 2026-09-25 : *« comme pour le
-        nombre, le texte ajoute une valeur à l'attribut »*). Seul le libellé est
+        ⚠️ **LE TEXTE AUSSI, comme le nombre** (D-353). Seul le libellé est
         concerné : une réponse qui désigne un produit ou une matière ne se tape pas
         au clavier. Et le `no_variant` reste la porte des saisies qui ne doivent
         pas devenir un article — des prénoms, une dédicace : elles restent sur la
@@ -828,13 +799,12 @@ class ProductAttributeLine(models.Model):
 
     # ─ ON PRÉVIENT AVANT DE DÉSACTIVER — B4, QC, D-205 ──────────────────────
     #
-    # ⚠️ *« Il faut que l'onglet DISE ce qu'il va faire avant de le faire. »* Le
-    # cœur archive une valeur qu'il ne peut pas supprimer, en silence : le même
-    # clic détruit ici et masque là. L'écart ne se voit qu'après coup, quand la
-    # valeur est toujours là, grisée.
+    # ⚠️ Le cœur archive en silence une valeur qu'il ne peut pas supprimer : sans
+    # annonce, le même clic détruit ici et masque là, et l'écart ne se voit qu'après
+    # coup, la valeur toujours là, grisée (D-205).
     #
-    # ⓘ Un `onchange` et non une contrainte : on ne REFUSE pas le geste — Gerry a
-    # tranché qu'il est légitime —, on annonce son effet réel.
+    # ⓘ Un `onchange` et non une contrainte : le geste est légitime (D-205), on
+    # annonce son effet réel.
     @api.onchange("value_ids")
     def _onchange_values_warns_about_deactivation(self):
         if not self._origin:
@@ -896,9 +866,6 @@ class ProductAttributeLine(models.Model):
 
     # ─ LES VALEURS S'OUVRENT DANS UN DIALOGUE — B5, QE, D-206 ───────────────
     #
-    # Arbitrage de Gerry : *« une ligne qui au clic ouvre la liste des valeurs »*,
-    # et *« dans un dialogue »*.
-    #
     # ⓘ **C'est le geste que le cœur d'Odoo emploie déjà** pour le même problème :
     # au-delà d'une poignée de valeurs, des pastilles `many2many_tags` deviennent
     # illisibles, et le cœur bascule sur une liste. La convergence est un bon
@@ -908,8 +875,7 @@ class ProductAttributeLine(models.Model):
     # pleine page perd le contexte de l'arbre, qui est justement ce que l'onglet
     # apporte. On revient de la liste des valeurs là où on l'a ouverte.
 
-    #: Au-delà, les pastilles cessent d'être affichées — le nombre vient de Gerry
-    #: (*« à voir comment afficher les valeurs quand il y en a plus de 200 »*).
+    #: Au-delà, les pastilles cessent d'être affichées (D-206).
     #: ⓘ Une seule constante : le jour où le seuil se révèle trop haut, c'est ici.
     VALUES_SHOWN_AS_TAGS = 200
 
@@ -953,9 +919,8 @@ class ProductAttributeLine(models.Model):
     def action_open_configurator_line(self):
         """Ouvre les réglages de CETTE ligne — D-217.
 
-        ⚠️ **ILS ÉTAIENT INJOIGNABLES DEPUIS LA FICHE PRODUIT.** Constat de Gerry :
-        *« je ne vois pas comment modifier price_mode dans la fiche produit »*.
-        Vérifié : le bouton « Configurer » du cœur ouvre les **valeurs**
+        ⚠️ **SANS ELLE, ILS SONT INJOIGNABLES DEPUIS LA FICHE PRODUIT** : le bouton
+        « Configurer » du cœur ouvre les **valeurs**
         (`action_open_attribute_values`), pas la ligne. Or c'est la ligne qui porte
         le mode de prix, le rôle de dimension, les bornes et la vue 3D — et c'est
         **elle** qui est lue à l'exécution, pas la semence de l'attribut.
@@ -1040,9 +1005,9 @@ class ProductAttributeLine(models.Model):
     # ⓘ Pourquoi porté par la LIGNE et non par une ligne-séparateur à part, comme
     # les sections d'un devis : `product_template_attribute_line.attribute_id` est
     # **NOT NULL en base** (vérifié : `is_nullable = NO`). Aucune règle d'interface
-    # ne lève ce plancher — une ligne sans attribut ne peut pas exister. Arbitré
-    # avec Gerry le 2026-08-28, forme (A) ; le bandeau pourra venir plus tard SANS
-    # toucher au modèle, l'appartenance restant déduite de la position.
+    # ne lève ce plancher — une ligne sans attribut ne peut pas exister (D-202). Un
+    # bandeau pourra venir SANS toucher au modèle, l'appartenance restant déduite de
+    # la position.
     #
     # ⚠️ L'ORDRE DEVIENT UNE DONNÉE PORTEUSE. Glisser une ligne change son étape,
     # en silence. C'est le prix du séparateur, et c'est pourquoi l'étape à laquelle
@@ -1170,7 +1135,7 @@ class ProductAttributeLine(models.Model):
         "the attribute's setting applies.",
     )
 
-    # ─ VENDUE À PART — D-368 (option B de Gerry) ────────────────────────────
+    # ─ VENDUE À PART — D-368, option B ──────────────────────────────────────
     #
     # ⓘ Le couple PRODUIT + QUESTION porte la nature commerciale d'une option : le même
     # bumper est consommé par un produit et vendu à part avec un autre. C'est ce qui ferme
@@ -1216,7 +1181,7 @@ class ProductAttributeLine(models.Model):
         """Ce qu'une question vendue à part exige — et le refus DIT quoi faire (D-077)."""
         for line in self.filtered("sale_separately"):
             attribute = line.attribute_id
-            # ⓘ D-371 (Gerry) : une question OBLIGATOIRE ne peut pas se trouver sur une ligne
+            # ⓘ D-371 : une question OBLIGATOIRE ne peut pas se trouver sur une ligne
             # séparée — une option se retire, et supprimer sa ligne du devis la désélectionne.
             if line.required:
                 raise ValidationError(self.env._(
@@ -1238,7 +1203,7 @@ class ProductAttributeLine(models.Model):
     @api.constrains("attribute_id", "product_tmpl_id", "sale_separately", "dimension_role")
     def _check_no_variant_on_configurable(self):
         """Ce qu'une question « sans variante » n'a pas le droit d'être sur un produit
-        CONFIGURABLE — W-99 / D-393 (Gerry, 2026-10-01).
+        CONFIGURABLE — W-99 / D-393.
 
         Sa réponse va sur la ligne de commande, pas dans l'article : deux configurations qui
         ne diffèrent que par elle sont le MÊME article. Deux choses ne le supportent pas :
@@ -1718,19 +1683,17 @@ class ProductAttributeLine(models.Model):
         """Values accepted for template attribute lines in `self`.
 
         ⚠️ **SUR UN ATTRIBUT DYNAMIQUE, C'EST LE FILTRE QUI ALIMENTE** — C3,
-        D-221. Arbitrage de Gerry : *« on part sur 1, le filtre qui alimente
-        l'assistant »*. La liste de la ligne cesse alors d'être un catalogue à
-        tenir pour devenir la **trace** de ce qui a été choisi (QJ).
+        D-221. La liste de la ligne cesse alors d'être un catalogue à tenir pour
+        devenir la **trace** de ce qui a été choisi (QJ).
 
         ⓘ On rend l'UNION, jamais le seul filtre : une valeur déjà retenue doit
         rester offerte même si le filtre a changé depuis — sinon une
         configuration en cours perdrait son choix, et une reconfiguration
         deviendrait impossible.
 
-        ⚠️ **CE CROCHET EXISTAIT, et j'avais commencé par en écrire un second.**
-        Deux méthodes pour « les valeurs offertes » auraient divergé au premier
-        appelant oublié — et c'est justement ce que le test a montré : le
-        domaine de l'assistant passe par ICI, pas par la construction de la vue.
+        ⚠️ **LE SEUL point « valeurs offertes »** : le domaine de l'assistant passe
+        par ICI, pas par la construction de la vue — une seconde méthode divergerait
+        au premier appelant oublié (D-221).
         """
         values = self.value_ids
         for line in self.filtered(lambda l: l.attribute_id.dynamic_values):
@@ -1761,7 +1724,7 @@ class ProductAttributeValue(models.Model):
     )
 
     # ⓘ **`display_value` A DÉMÉNAGÉ** vers `product_attribute_advanced`
-    # (2026-09-07), avec le formateur dont il dépend : ce qu'une valeur MONTRE
+    # (D-160), avec le formateur dont il dépend : ce qu'une valeur MONTRE
     # ne dépend que de son format et de son unité, et l'éditeur en a besoin
     # sans le configurateur.
 
@@ -1893,12 +1856,9 @@ class ProductAttributeValue(models.Model):
     def _purge_designation(self, value_type):
         """Efface ce que la valeur désignait, si le nouveau type l'interdit — D-219.
 
-        ⚠️ **CHANGER LE TYPE D'UN ATTRIBUT LAISSAIT SES VALEURS INCOHÉRENTES.**
-        Constat de Gerry : basculer de « produit » à « matière » gardait les
-        `product_id` sur les valeurs, et la garde de D-196 refusait alors
-        l'enregistrement — sur des champs devenus invisibles, et pour une
-        contradiction que l'utilisateur n'avait pas écrite. C'est la même faute
-        que D-194 corrigeait sur l'attribut, restée un étage plus bas.
+        ⚠️ Sans purge, basculer de « produit » à « matière » garde les `product_id`
+        sur les valeurs, et la garde de D-196 refuse l'enregistrement — sur des
+        champs devenus invisibles. Même faute que D-194, un étage plus bas.
 
         ⓘ Un crochet, parce que `material_id` vit dans le PONT : le cœur ne peut
         pas nommer un champ de l'éditeur (D-075). Chaque module efface ce qu'il a
@@ -1942,13 +1902,9 @@ class ProductAttributeValue(models.Model):
 
     # ─ LE PRIX D'UNE VALEUR-PRODUIT SE LIT, IL NE SE SAISIT PAS — D-199 ─────
     #
-    # Arbitrage de Gerry (2026-08-28), après mesure : *« pour les produits on va
-    # rester sur le prix du produit sans modification possible. car s'il est
-    # possible de modifier et que seul un produit de la liste a son prix modifié,
-    # ça peut être trompeur pour l'utilisateur et fausser les prix. »*
-    #
-    # ⚠️ La tentation était de rendre le montant modifiable. ESSAYÉ ET MESURÉ sur la
-    # base de démo : le prix d'une configuration tombait de 35 748 à 25 000, parce
+    # ⚠️ Un montant modifiable serait trompeur : un seul produit de la liste corrigé
+    # fausse les prix (D-199). MESURÉ sur la base de démo : le prix d'une
+    # configuration tombait de 35 748 à 25 000, parce
     # qu'aucune valeur existante ne stocke de montant — toutes s'appuient sur le
     # prix du produit, et `test_04_compute_cfg_price` énonce cette règle ligne à
     # ligne. Un prix mi-saisi mi-hérité au sein d'une même liste, c'est en outre
@@ -1971,11 +1927,9 @@ class ProductAttributeValue(models.Model):
 
     # ─ LA LIGNE SE REMPLIT SEULE — D-198 ────────────────────────────────────
     #
-    # Attente de Gerry : *« lors du clic la matière est sélectionnée, toute la ligne
-    # est pré-remplie »*. ⚠️ Ce n'était PAS le cas : la miniature suivait toute
-    # seule (elle est `related`), mais **rien ne recopiait le nom** — et `name` est
-    # REQUIS. Il fallait donc retaper à la main ce qu'on venait de désigner, sous
-    # peine de ne pas pouvoir enregistrer.
+    # ⚠️ La miniature suit seule (elle est `related`), pas le nom — et `name` est
+    # REQUIS : sans ce remplissage, il faut retaper ce qu'on vient de désigner pour
+    # pouvoir enregistrer (D-198).
     #
     # ⚠️ Le nom n'est pas ÉCRASÉ s'il a été personnalisé. On ne remplace que le vide
     # ou le nom hérité du produit précédent (lu sur `_origin`, l'enregistrement en
@@ -2018,12 +1972,9 @@ class ProductAttributeValue(models.Model):
         et de l'option. Le prix suit donc le catalogue et la liste de prix du
         client, sans reprise.
 
-        ⚠️ **NE PAS LA REMPLACER SANS ARBITRAGE.** Rendre le montant enregistré
-        décisionnaire — pour qu'un utilisateur puisse corriger le prix semé par le
-        produit — a été essayé le 2026-08-28 et MESURÉ sur la base de démo : le
-        prix d'une configuration tombait de 35 748 à 25 000, parce que les valeurs
-        existantes ne stockent aucun montant. La question est ouverte (voir la
-        question posée à Gerry le 2026-08-28), et elle porte sur la facture.
+        ⚠️ **NE PAS RENDRE LE MONTANT ENREGISTRÉ DÉCISIONNAIRE** (D-199) : MESURÉ sur
+        la base de démo, le prix d'une configuration tombait de 35 748 à 25 000, parce
+        que les valeurs existantes ne stockent aucun montant.
         """
         extra_prices = {}
         if not pricelist:
@@ -2037,7 +1988,7 @@ class ProductAttributeValue(models.Model):
             # RÉPOND 403. Une valeur qui désigne un COMPOSANT (une top plate, un bras)
             # pointe un produit non publié : la règle d'enregistrement le cache au
             # visiteur, et lire son prix ici lève un `AccessError` qui emporte le rendu
-            # de la page entière. Mesuré le 2026-09-06 sur le JeNo, produit 50.
+            # de la page entière. Mesuré sur le JeNo, produit 50.
             #
             # ⓘ Ce qu'on lit est un PRIX, et il entre dans un total que le visiteur voit
             # de toute façon. Publier le composant serait l'autre issue — mais elle
@@ -2107,7 +2058,7 @@ class ProductAttributeValue(models.Model):
             rate = rates.get(attribute.id)
             if rate and surface:
                 # La surface est connue : le client voit ce que ÇA lui coûte,
-                # sans avoir à multiplier (arbitrage Gerry, 2026-08-23).
+                # sans avoir à multiplier (D-162).
                 amount = rate * surface
                 name = f"{attribute.name} ( +{amount:.{price_precision}f} )"
                 attribute.display_name = name
@@ -2248,9 +2199,9 @@ class ProductAttributePrice(models.Model):
     )
     # ─ LA CORBEILLE A DEUX VISAGES — B4, QC, D-205 ──────────────────────────
     #
-    # Arbitrage de Gerry : *« si aucun variant n'a été créé on peut supprimer ;
-    # s'il y a déjà eu des variants on désactive »*, et *« si on peut afficher une
-    # poubelle ou une icône d'archivage suivant l'état, ça reste le mieux »*.
+    # ⓘ Supprimer tant qu'aucune variante n'existe, désactiver sinon — et le DIRE avant
+    # le clic, par l'avertissement de `_onchange_values_warns_about_deactivation`.
+    # ⓘ `removal_effect` n'est plus montré en colonne (D-205, amendé) : le champ reste.
     #
     # ⚠️ **LE CŒUR LE FAIT DÉJÀ.** `ProductTemplateAttributeValue.unlink()`
     # supprime, et **archive quand il ne peut pas** — sa docstring le dit :

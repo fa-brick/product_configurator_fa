@@ -1,11 +1,10 @@
 # Copyright 2026 fa-brick
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""Configurer — ou REPRENDRE — depuis une ligne de devis (arbitrage Gerry, 2026-09-05).
+"""Configurer — ou REPRENDRE — une ligne de devis dans la page 3D.
 
-Le bouton existe déjà : la roue dentée que `product_configurator_fa_sale` pose
-sur chaque ligne configurable d'un devis en brouillon. Comme la clé à molette de
-la fiche produit, il ne change ni de place ni d'icône — seulement de
-destination.
+ⓘ Aucun bouton de vue n'appelle plus `reconfigure_product` : la roue dentée a quitté la
+ligne, et choisir le produit ouvre le configurateur (D-259). La méthode reste, et ses
+tests avec.
 """
 from odoo import Command, api, fields, models
 

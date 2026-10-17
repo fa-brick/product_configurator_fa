@@ -4,11 +4,8 @@
 from odoo import api, fields, models
 
 
-# ⓘ **`sale.order.action_config_start` A DISPARU** — arbitrage Gerry, 2026-09-19 :
-# *« pour moi le wizard est mort, on peut le supprimer. »* Elle n'existait que pour
-# ouvrir l'assistant OCA depuis un bouton « Configure Product » au-dessus des lignes,
-# lui-même retiré. Le configurateur 3D s'ouvre désormais au CHOIX du produit sur la
-# ligne, ce qui ne demande plus de bouton.
+# ⓘ Pas d'`action_config_start` : le configurateur 3D s'ouvre au CHOIX du produit sur la
+# ligne, sans bouton ni assistant OCA (D-097, D-259).
 
 
 class SaleOrderLine(models.Model):

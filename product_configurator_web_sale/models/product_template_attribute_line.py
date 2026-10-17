@@ -13,7 +13,7 @@ class ProductTemplateAttributeLine(models.Model):
         variantes ou non (« Type de TopPlate : Classic » sur la fiche du JeNo) : pour un
         produit configurable, c'est une question du configurateur, réglée là-bas. Seuls
         restent les attributs « sans variante » — une information pure (une matière, une
-        gamme), qui ne se choisit pas (Gerry, 2026-10-01 — W-69, Q6).
+        gamme), qui ne se choisit pas (D-392).
 
         ⚠️ **En Python, et non par `xpath`** : `website_sale_comparison` REMPLACE le bloc
         `#product_attributes_simple`, et un `xpath` sur lui dépendrait de l'ordre
@@ -22,7 +22,7 @@ class ProductTemplateAttributeLine(models.Model):
 
         ⓘ La comparaison lit aussi cette méthode pour ses spécifications : elle en suit la
         règle. Ses lignes à plusieurs valeurs et son bouton « Comparer », eux, restent
-        (Gerry, Q4) — ils passent par `_prepare_categories_for_display`, intouché.
+        (D-392) — ils passent par `_prepare_categories_for_display`, intouché.
 
         ⓘ Filtré PAR LIGNE avant `super()` : un recordset peut mêler plusieurs produits, et
         le type rendu (`OrderedDict`, que les gabarits itèrent) reste celui d'Odoo.

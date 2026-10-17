@@ -69,7 +69,7 @@ class ProductConfigSession(models.Model):
         étapes ouvertes).
 
         ⓘ **Les lignes AVANT la première étape rejoignent la première étape
-        visible** — arbitré par Gerry le 2026-09-30. Sans étape visible, elles
+        visible** (D-385). Sans étape visible, elles
         restent hors étape, et la page les montre à plat comme avant.
 
         :returns: ``(steps, step_of, hidden)`` — les étapes visibles
@@ -212,7 +212,7 @@ class ProductConfigSession(models.Model):
                         # Sur une question numérique, la valeur en base est le
                         # nombre nu ; le client, lui, lit « 2400 mm ». Sans cette
                         # ligne le back-office portait l'unité et la page non,
-                        # pour la même largeur (demande de Gerry, 2026-09-07).
+                        # pour la même largeur.
                         # Sur toute autre question, le formateur rend le libellé
                         # inchangé — il n'y a rien à ajouter à « Chêne ».
                         "name": value.display_value or value.name,
@@ -254,7 +254,7 @@ class ProductConfigSession(models.Model):
         la liste de ses clés. Les catégories viennent de `_web_categories()` de la valeur :
         la MATIÈRE ici, le PRODUIT par la boutique (`product_configurator_web_sale`).
 
-        ⓘ **Seule la FEUILLE se nomme** (Gerry, 2026-09-30) — sauf quand deux feuilles
+        ⓘ **Seule la FEUILLE se nomme** — sauf quand deux feuilles
         portent le même nom : le parent vient alors entre parenthèses, et seulement là.
         """
         seen, keys = {}, {}
@@ -281,7 +281,7 @@ class ProductConfigSession(models.Model):
 
         ⚠️ **Le discriminant est l'AJOUT, lu sur la LIGNE**, jamais une nouvelle forme
         d'affichage : une forme inconnue disparaît sans erreur des pages d'Odoo, et le
-        lot C qui en ajoutait une a été abandonné pour cette raison (2026-09-08).
+        lot C qui en ajoutait une a été abandonné pour cette raison (D-353).
 
         ⓘ Trois exclusions, chacune pour sa raison : une question MULTIPLE garde ses cases
         (hors v1, D-353 arbitrage 5) ; une réponse qui désigne un PRODUIT ou une MATIÈRE ne
@@ -311,9 +311,9 @@ class ProductConfigSession(models.Model):
 
         ⚠️ `_configurator_value_ids()` ajoute cette valeur spéciale à toute ligne qui
         autorise l'ajout : c'est le jeton par lequel l'ancien assistant ouvrait son champ.
-        Elle appartient à un AUTRE attribut, et la page la rendait comme une réponse —
-        un bouton « Custom » sur chaque question de la Caisse, qu'on ne pouvait que
-        refuser (relevé le 2026-09-25). Ici, la saisie a son propre champ.
+        ⚠️ Elle appartient à un AUTRE attribut : rendue par la page, elle devient un
+        bouton « Custom » sans issue sur chaque question qui autorise l'ajout (D-353).
+        Ici, la saisie a son propre champ.
         """
         return line._configurator_value_ids() - self.get_custom_value_id()
 
@@ -380,7 +380,7 @@ class ProductConfigSession(models.Model):
         3. **est-elle valide ?** — bornes et pas d'un nombre, longueur et format d'un
            texte, **au serveur** : la route est publique ;
         4. **la ranger dans la session**, jamais au catalogue. La valeur d'attribut naît à
-           la CONFIRMATION (Gerry, 2026-09-25), réutilisée si elle existe déjà.
+           la CONFIRMATION (D-353), réutilisée si elle existe déjà.
 
         Une saisie VIDE efface la réponse tapée.
 
@@ -526,15 +526,10 @@ class ProductConfigSession(models.Model):
 
         ─ Ce qui reste VOLONTAIREMENT sans garde-fou ───────────────────────────
 
-        ⚠️ **Le reflet au sol et la photo d'environnement passent tels quels**, alors qu'ils
-        coûtent cher sur un téléphone — un rendu complet de la scène par image pour l'un,
-        deux à vingt mégaoctets à télécharger pour l'autre.
-
-        C'est un arbitrage de Gerry (2026-09-18) : *« les rendre disponibles sur mobile si
-        c'est ce que veut celui qui a édité la scène »*. Les filtrer ici aurait été plus
-        simple à écrire et faux à l'usage — un présentoir de bijoux vaut peut-être son reflet
-        au sol même sur un téléphone, et personne d'autre que l'auteur de la scène ne peut en
-        juger. L'éditeur AVERTIT à la place, dans son onglet Rendu.
+        ⚠️ **Le reflet au sol et la photo d'environnement passent tels quels**, même sur un
+        téléphone où ils coûtent cher (un rendu de la scène par image ; deux à vingt
+        mégaoctets) : les filtrer ici les ferait disparaître chez le client alors que
+        l'auteur de la scène les a voulus. L'éditeur AVERTIT à la place, dans son onglet Rendu.
 
         ⓘ Absente, le viewer retombe sur ses constantes mesurées — c'est-à-dire sur le rendu
         d'avant ce chantier, jamais sur du noir. Un produit dont personne n'a choisi
@@ -734,7 +729,7 @@ class ProductConfigSession(models.Model):
         travailler est la vue que l'on veut montrer »*. Un seul drapeau pour les
         deux, donc **l'image du produit et la 3D se superposent** — la page peut
         montrer la photo pendant le chargement, puis se poser exactement dessus
-        (demande de Gerry, 2026-09-06).
+        (D-333).
 
         ⚠️ La reproductibilité vient de la POSE REJOUÉE, pas de bornes figées :
         c'est ce que dit `is_thumbnail`, et c'est pourquoi on envoie la pose et
@@ -764,11 +759,11 @@ class ProductConfigSession(models.Model):
             "fov": camera.fov,
             "projection": camera.projection,
             "fitDistance": camera.fit_distance,
-            # ⚠️ **LES BORNES — la page ne les servait pas** (Gerry, 2026-10-01 : « les limites
-            # définies pour la caméra ne sont pas prises en compte »). Le viewer bornait bien,
-            # mais seulement ce qu'on lui donnait. Les distances partent en FACTEURS, telles
-            # qu'en base (`distanceIn`) : le rayon qui les convertit en millimètres dépend de
-            # la scène et du canevas, que seul le viewer connaît (D-389).
+            # ⚠️ **LES BORNES** : le viewer ne borne que ce qu'on lui donne — sans elles, les
+            # limites de la vue sont ignorées sur la page (D-389).
+            # ⓘ Les distances partent en FACTEURS, telles qu'en base (`distanceIn`) : le rayon
+            # qui les convertit en millimètres dépend de la scène et du canevas, que seul le
+            # viewer connaît (D-389).
             "limits": {
                 "azimuthMin": camera.azimuth_min,
                 "azimuthMax": camera.azimuth_max,
@@ -778,10 +773,9 @@ class ProductConfigSession(models.Model):
                 "distanceMax": camera.distance_max,
                 "distanceIn": "factor",
             },
-            # ⓘ LA CIBLE fait partie de la vue (D-116). Sans elle, la page posait la
-            # pose sans centre — et une pièce isolée puis quittée gardait le centre de
-            # la pièce. Gerry (2026-09-23) : « lorsque l'on quitte, il faut revenir à
-            # la vue caméra en cours, qui donnera la target ».
+            # ⚠️ LA CIBLE fait partie de la vue (D-116) : sans elle, la page pose la vue
+            # sans centre, et une pièce isolée puis quittée garde son centre — le retour
+            # doit rejouer la vue du produit avec sa cible (D-333).
             "target": self._web_camera_target(camera, definition),
         }
 
@@ -826,8 +820,8 @@ class ProductConfigSession(models.Model):
 
         ⚠️ **PAS `/web/image` — le visiteur n'a aucun droit sur ce produit.** Ce
         contrôleur vérifie la lecture de l'enregistrement : un produit non publié
-        rendait donc le pictogramme d'Odoo, et l'attente montrait un appareil
-        photo barré au lieu de la pièce (relevé le 2026-09-07). C'est le même mur
+        rend le pictogramme d'Odoo, et l'attente montre un appareil photo barré
+        au lieu de la pièce. C'est le même mur
         que celui des vignettes de valeurs, franchi de la même façon : une route
         à nous, en `sudo` (D-258).
 
@@ -888,7 +882,7 @@ class ProductConfigSession(models.Model):
         posé par l'éditeur : les questions du gabarit que l'auteur n'a pas fixées). La
         redire ici ferait deux règles pour une même pièce ([[L-034]]). Un placement sans
         question éditable n'apparaît pas : le rail piloté par son parent ne se sélectionne
-        pas, et le survol ne le nomme pas (arbitrage Gerry, 2026-09-23).
+        pas, et le survol ne le nomme pas (D-333).
 
         ⓘ Les questions ont la MÊME forme que celles de la racine (`_web_attribute_lines`) :
         la page les rend avec le code qu'elle a déjà. La disponibilité se demande au même
@@ -1407,8 +1401,8 @@ class ProductConfigSession(models.Model):
         identifiant.** `to_scope_entry` traduit une réponse numérique par
         `parse_number(brut)` : l'`id` de la valeur « 2 » y entrait comme **292**,
         un nombre parfaitement valide et faux. La plaque du JeNo se construisait
-        donc à 292 mm d'épaisseur — relevé de Gerry le 2026-09-07, mesuré :
-        `scope = {'__attribute_144': 292.0}`.
+        donc à 292 mm d'épaisseur — mesuré : `scope = {'__attribute_144': 292.0}`
+        (D-262).
 
         ⓘ Le danger était ANNONCÉ, à un autre endroit : *« les options portent
         leur libellé, jamais leur identifiant »* (`answer_field`). La règle
@@ -1477,7 +1471,7 @@ class ProductConfigSession(models.Model):
     def _notify_configuration_changed(self):
         """Prévenir ceux qui regardent que la configuration a changé — D-253.
 
-        ⚠️ **UN SIGNAL, PLUS L'ÉTAT COMPLET** ([[L-451]], 2026-09-29). Le message
+        ⚠️ **UN SIGNAL, PLUS L'ÉTAT COMPLET** ([[L-451]]). Le message
         portait tout `web_state()` — environ 500 Ko sur le JeNo, définition 3D
         comprise — et il coûtait trois fois :
           · un second `web_state()` à CHAQUE clic, calculé dans le `write` (0,47 s
@@ -1509,7 +1503,7 @@ class ProductConfigSession(models.Model):
     def _web_reopen_if_open_quote(self):
         """Rouvrir une configuration CONFIRMÉE tant que son devis n'est pas une commande — D-371.
 
-        ⓘ **Rien n'est joué au stade du devis** (Gerry, 2026-09-29) : la variante d'une ligne
+        ⓘ **Rien n'est joué au stade du devis** : la variante d'une ligne
         n'est qu'un nom posé sur des réponses, et c'est la COMMANDE qui l'engage. D-190
         fermait la configuration dès sa confirmation ; c'est désormais la commande qui la
         verrouille.
@@ -1558,11 +1552,9 @@ class ProductConfigSession(models.Model):
         au back-office — c'est ce qui permet d'ouvrir la même page, pour un
         interne comme pour un client (D-091).
 
-        ⚠️ **UN DIALOGUE, PLUS UN ONGLET** — relevé de Gerry, 2026-09-07 :
-        *« une nouvelle page s'ouvre au lieu d'un dialogue comme pour une ligne
-        de devis »*. Un onglet fait perdre de vue ce qu'on faisait, et c'est
-        justement ce qu'on ne veut pas d'un configurateur ouvert depuis un devis.
-        Une action CLIENTE en `target: "new"` : Odoo l'enveloppe lui-même.
+        ⚠️ **UN DIALOGUE, PAS UN ONGLET** (D-262) : un onglet fait perdre de vue ce
+        qu'on faisait, au devis comme ailleurs. Une action CLIENTE en `target: "new"` :
+        Odoo l'enveloppe lui-même.
 
         ⓘ **L'état part AVEC l'action.** On vient de le calculer ; le redemander
         au montage coûterait un aller-retour pour la même réponse, et la page
@@ -1572,8 +1564,7 @@ class ProductConfigSession(models.Model):
         (D-091) : c'est lui qui permet d'ouvrir la même configuration pour un
         interne et pour un client. L'URL publique existe toujours et se partage.
 
-        ⓘ **`footer: False`** — relevé de Gerry, 2026-09-07 : *« le Ok et donc le
-        footer est inutile car la croix est présente »*. Le pied qu'Odoo ajoute
+        ⓘ **`footer: False`** (D-263) : la croix suffit. Le pied qu'Odoo ajoute
         d'office ne porte qu'un bouton « Ok » qui ferme, exactement comme la
         croix du titre ; deux façons de faire le même geste, et l'une des deux
         ressemble à une validation qu'elle n'est pas. C'est `action_service`
@@ -1642,8 +1633,8 @@ class ProductConfigSession(models.Model):
             # comme la même largeur choisie dans la liste.
             "price": price,
             # ⓘ D-368 — les lignes À PART (une pièce vendue à part) et le TOTAL que la page
-            # affiche : le produit plus ses lignes. Le détail se lit au panier et au devis
-            # (arbitrage de Gerry, 2026-09-28).
+            # affiche : le produit plus ses lignes. Le détail des lignes à part se lit au
+            # panier et au devis (D-368).
             "separateLines": separate,
             "total": price + sum(line["price"] * line["qty"] for line in separate),
             # ⚠️ Les réponses « sans variante », en `product.template.attribute.value` — à passer
@@ -1655,10 +1646,9 @@ class ProductConfigSession(models.Model):
             # La VARIANTE née de la confirmation, quand elle existe : c'est par elle
             # qu'une boutique met la configuration au panier.
             "productId": self.product_id.id or None,
-            # ⚠️ **LA SORTIE — sans elle, la page atteinte par un LIEN est une porte fermée.**
-            # La croix ne vivait que dans l'overlay de la fiche produit ; qui arrive par la
-            # grille de la boutique, par un courriel ou par un clic donné avant la fin de la
-            # préparation n'avait aucun moyen de revenir (relevé de Gerry, 2026-09-22).
+            # ⚠️ **LA SORTIE — sans elle, la page atteinte par un LIEN est une porte fermée** :
+            # la croix de l'overlay de la fiche produit n'existe pas pour qui arrive par la
+            # grille de la boutique, par un courriel ou avant la fin de la préparation.
             #
             # ⓘ Elle vient d'ICI et non du navigateur : revenir en arrière retomberait sur
             # `/configurator/start/<produit>`, qui crée une configuration NEUVE et renvoie
@@ -1692,7 +1682,7 @@ class ProductConfigSession(models.Model):
             "baked": model3d.baked_parts(values) if model3d else {},
             # ⚠️ **LES FICHIERS IMPORTÉS, avec leur URL à jeton** — hors de la définition
             # pour la même raison que la cuisson. Sans eux, toute pièce de fichier était un
-            # volume VIDE sur la page : les inserts du JeNo manquaient (Gerry, 2026-09-24).
+            # volume VIDE sur la page : les inserts du JeNo manquaient (D-487).
             "imported": model3d.imported_files(values) if model3d else {},
             # Les PLACEMENTS que le client peut régler — et eux seuls (D-332, D-333).
             "placements": self._web_placements(model3d, definition, values) if model3d else {},

@@ -1,13 +1,10 @@
 # Copyright 2026 fa-brick
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""Le CRAYON de la fiche produit ouvre la configuration 3D — arbitrage Gerry, 2026-09-05.
+"""Le CRAYON de la fiche produit (`configure_product`) ouvre la configuration 3D.
 
-Le bouton ne change pas de place : il change de destination. Son dessin est
-passé de la clé à molette au crayon le 2026-09-07, pour rejoindre l'icône
-qu'Odoo emploie déjà sur la cellule produit d'une ligne de devis.
-L'assistant OCA reste en vie pour les autres chemins (le bon de commande, la
-reprise depuis un devis sans 3D) — il ne sera retiré que lorsque tous auront
-leur remplaçant (lot 6, point c).
+ⓘ Même bouton et même place que dans le cœur du fork : seule la destination change ; le
+crayon est l'icône qu'Odoo emploie sur la cellule produit d'une ligne de devis.
+ⓘ L'assistant OCA n'a plus aucune entrée d'interface (D-097).
 """
 from odoo import models
 from odoo.exceptions import UserError

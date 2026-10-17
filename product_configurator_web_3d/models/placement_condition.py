@@ -2,10 +2,6 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 """La condition d'un EMPLACEMENT s'écrit dans le dialogue du configurateur — D-267.
 
-Demande de Gerry (2026-09-07) : *« à l'instar des conditions dans configurator, il
-serait également possible dans cette dialogue de définir les conditions de visibilité
-de l'emplacement »*.
-
 ⚠️ **POURQUOI ICI, ET NULLE PART AILLEURS.** L'éditeur 3D est LGPL-3 et ne peut pas
 dépendre du configurateur, qui est AGPL-3 (D-075) : il porte le stockage de la
 condition et le moteur qui l'évalue, mais pas de quoi l'écrire. Le configurateur, lui,
@@ -20,21 +16,18 @@ chez le configurateur — et comparent des IDENTIFIANTS de valeurs, jamais des l
 clause que le moteur lit. La traduction est donc une correspondance, pas une
 interprétation.
 
-─ CE QUE CETTE PREMIÈRE ÉTAPE NE FAIT PAS ────────────────────────────────────────
+─ LE ET / OU ─────────────────────────────────────────────────────────────────────
 
-⚠️ **Le OU entre DEUX questions** — `montage in [...] OU hauteur in [...]`. Le
-configurateur sait le stocker (une ligne porte un opérateur), notre JSON ne connaît
-qu'un ET de clauses. Il est REFUSÉ à la validation, avec la phrase qui dit pourquoi,
-plutôt qu'accepté puis perdu en silence (noté pour plus tard, arbitrage Gerry).
+ⓘ Le OU entre DEUX questions — `montage in [...] OU hauteur in [...]` — devient un
+GROUPE `{"any": [...]}` ; entre valeurs d'une même question, il reste UNE feuille `in [...]`.
 
-ⓘ Le OU qu'on emploie le plus souvent, lui, passe : *« montage parmi ces trois
-valeurs »* est UNE feuille `in [...]`, des deux côtés.
+⚠️ `A OU (B ET C)` est REFUSÉ par `_parse_condition_groups`, avec la phrase qui dit
+pourquoi : aucun des deux stockages ne sait le garder (D-267).
 
-ⓘ **Les comparaisons numériques passent depuis le 2026-09-07** (`épaisseur > 4`), des
-deux côtés : le modèle-sujet décrit une question numérique en `float`, la ligne de
-condition du configurateur porte un `numeric_value`, et notre moteur les évaluait déjà
-(D-080). Une question numérique se répond en SAISISSANT : c'est cette réponse que la
-comparaison lit.
+ⓘ **Les comparaisons numériques passent** (`épaisseur > 4`), des deux côtés : le
+modèle-sujet décrit une question numérique en `float`, la ligne de condition du
+configurateur porte un `numeric_value`, et notre moteur les évaluait déjà (D-080). Une
+question numérique se répond en SAISISSANT : c'est cette réponse que la comparaison lit.
 """
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -46,9 +39,9 @@ ATTRIBUTE_PREFIX = "__attribute_"
 #: Opérateurs discrets que les deux grammaires partagent.
 DISCRETE_OPS = ("in", "not in")
 
-#: Comparaisons à un NOMBRE — demandées par Gerry pour l'éditeur comme pour le
-#: configurateur (2026-09-07). Le moteur 3D les évalue depuis D-080 ; ce sont les mêmes
-#: que `VISIBILITY_OPS_NUMERIC` côté JS, et un test le vérifie.
+#: Comparaisons à un NOMBRE, pour l'éditeur comme pour le configurateur (D-267).
+#: ⚠️ Les mêmes que `VISIBILITY_OPS_NUMERIC` (`visibility.js` de l'éditeur) : aucun test
+#: ne tient l'égalité — un opérateur ajouté d'un seul côté serait lu par l'un, refusé par l'autre.
 NUMERIC_OPS = ("=", "!=", ">", ">=", "<", "<=")
 
 
@@ -63,7 +56,7 @@ def clauses_to_domain(presence):
     """Les clauses d'un emplacement → le domaine préfixé que l'éditeur sait montrer.
 
     ⚠️ **LA GRAMMAIRE EST CELLE DE LA BARRE DE RECHERCHE** : ET entre les éléments, OU à
-    l'intérieur d'un groupe (arbitrage Gerry, 2026-09-07 ; D-203 côté configurateur).
+    l'intérieur d'un groupe (D-267 ; D-203 côté configurateur).
     C'est la MÊME des deux côtés, à dessein — un utilisateur qui passe de l'un à l'autre
     ne doit pas avoir à changer de façon de penser.
 

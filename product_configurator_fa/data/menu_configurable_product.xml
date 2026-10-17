@@ -59,31 +59,6 @@
         sequence="25"
     />
 
-    <record
-        id="action_product_configurator_fa_configuration"
-        model="ir.actions.act_window"
-    >
-        <field name="name">Settings</field>
-        <field name="type">ir.actions.act_window</field>
-        <field name="res_model">res.config.settings</field>
-        <field name="view_mode">form</field>
-        <field name="target">inline</field>
-        <field
-            name="view_id"
-            ref="product_configurator_fa.configurator_settings_view_form"
-        />
-        <field name="context">{'module' : 'product_configurator_fa'}</field>
-    </record>
-
-    <menuitem
-        id="menu_action_product_configurator_fa_configuration"
-        action="action_product_configurator_fa_configuration"
-        name="Settings"
-        active="False"
-        parent="menu_product_configurable_settings"
-        sequence="0"
-    />
-
     <record id="product_config_steps_action" model="ir.actions.act_window">
         <field name="name">Configuration Steps</field>
         <field name="type">ir.actions.act_window</field>

@@ -89,14 +89,6 @@
 
                  ⚠️ La MÉTHODE `toggle_config`, elle, RESTE : elle est publique, couverte par
                  `test_03_toggle_config`, et un autre module peut l'appeler. -->
-            <xpath
-                expr="//label[@for='purchase_ok' or @for='sale_ok']"
-                position="after"
-            >
-                <div class="oe_left" name="options" groups="base.group_user">
-                    <field name="id" invisible="True" />
-                </div>
-            </xpath>
 
             <!-- Product attributes -->
             <xpath expr="//field[@name='attribute_line_ids']" position="attributes">
@@ -375,28 +367,9 @@
                     invisible="not config_ok"
                 />
             </xpath>
-            <!-- <xpath expr="//button[@name='toggle_config']" position="attributes">
-                <attribute name="invisible">1</attribute>
-            </xpath> -->
             <xpath expr="//div[@name='options']" position="inside">
                 <field name="config_preset_ok" invisible="not config_ok" />
                 <label for="config_preset_ok" invisible="not config_ok" />
-            </xpath>
-        </field>
-    </record>
-
-    <record id="product_variant_easy_edit_view_inherit" model="ir.ui.view">
-        <field name="name">product.product.view.form.easy</field>
-        <field name="model">product.product</field>
-        <field name="inherit_id" ref="product.product_variant_easy_edit_view" />
-        <field name="mode">primary</field>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='active']" position="after">
-                <field name="config_ok" invisible="1" />
-                <field name="config_preset_ok" invisible="not config_ok" />
-            </xpath>
-            <xpath expr="//field[@name='weight']" position="attributes">
-                <attribute name="readonly">config_ok</attribute>
             </xpath>
         </field>
     </record>

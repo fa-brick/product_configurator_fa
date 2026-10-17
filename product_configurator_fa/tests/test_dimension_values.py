@@ -55,7 +55,7 @@ class DimensionValues(BaseCommon):
     # ── la résolution ────────────────────────────────────────────────────────
 
     def test_01_free_entry_becomes_an_attribute_value(self):
-        value = self.line_width.resolve_numeric_value("3200")
+        value = self.line_width.resolve_custom_value("3200")
         self.assertEqual(value.name, "3200")
         self.assertTrue(value.configurator_generated)
         self.assertIn(value, self.line_width.value_ids, "elle doit être SUR la ligne")
@@ -67,9 +67,9 @@ class DimensionValues(BaseCommon):
         )
 
     def test_02_the_same_number_is_the_same_value(self):
-        first = self.line_width.resolve_numeric_value("3200")
-        second = self.line_width.resolve_numeric_value(3200)
-        third = self.line_width.resolve_numeric_value("3200.0")
+        first = self.line_width.resolve_custom_value("3200")
+        second = self.line_width.resolve_custom_value(3200)
+        third = self.line_width.resolve_custom_value("3200.0")
         self.assertEqual(first, second)
         self.assertEqual(first, third, "la forme canonique fait l'identité (D-160)")
         self.assertEqual(
@@ -81,7 +81,7 @@ class DimensionValues(BaseCommon):
 
     def test_03_unicity_is_enforced_by_the_DATABASE(self):
         """⚠️ Le vrai garde-fou. Aucun verrou applicatif ne le remplace."""
-        self.line_width.resolve_numeric_value("3200")
+        self.line_width.resolve_custom_value("3200")
         with mute_logger("odoo.sql_db"), self.assertRaises(IntegrityError):
             with self.cr.savepoint():
                 self.value_obj.create(
@@ -90,16 +90,16 @@ class DimensionValues(BaseCommon):
                 self.env.flush_all()
 
     def test_04_an_archived_width_comes_back_instead_of_doubling(self):
-        value = self.line_width.resolve_numeric_value("3200")
+        value = self.line_width.resolve_custom_value("3200")
         value.active = False
-        again = self.line_width.resolve_numeric_value("3200")
+        again = self.line_width.resolve_custom_value("3200")
         self.assertEqual(again, value)
         self.assertTrue(again.active, "une largeur qui revient est la MÊME largeur")
 
     def test_05_widths_are_ordered_by_their_number(self):
         """Sans séquence, la liste s'afficherait dans l'ordre des VENTES."""
         for width in ("3200", "900", "1500"):
-            self.line_width.resolve_numeric_value(width)
+            self.line_width.resolve_custom_value(width)
         names = self.line_width.value_ids.sorted(
             lambda value: (value.sequence, value.id)
         ).mapped("name")
@@ -155,7 +155,7 @@ class DimensionValues(BaseCommon):
     # ── le ménage ────────────────────────────────────────────────────────────
 
     def test_08_the_vacuum_archives_what_was_never_sold(self):
-        unsold = self.line_width.resolve_numeric_value("4444")
+        unsold = self.line_width.resolve_custom_value("4444")
         sold = self._session(3200).create_get_variant()
         sold_value = sold.product_template_attribute_value_ids.mapped(
             "product_attribute_value_id"
@@ -177,7 +177,7 @@ class DimensionValues(BaseCommon):
         )
 
     def test_09_the_vacuum_spares_recent_and_hand_made_values(self):
-        recent = self.line_width.resolve_numeric_value("4444")
+        recent = self.line_width.resolve_custom_value("4444")
         hand_made = self.value_obj.create(
             {"attribute_id": self.attr_width.id, "name": "1234"}
         )

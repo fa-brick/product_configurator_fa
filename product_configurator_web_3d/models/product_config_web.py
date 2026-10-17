@@ -108,9 +108,9 @@ class ProductConfigSession(models.Model):
     def _web_views(self, steps, model3d):
         """Les VUES 3D des étapes et des questions — D-385, D-387.
 
-        ⓘ Une vue est celle qu'on a posée, sinon RIEN : la caméra ne bouge pas —
-        l'arbitrage de `_resolve_view_camera`. La page résout ensuite « l'attribut,
-        sinon son étape » (D-163) au moment où l'on ouvre ou répond à une question.
+        ⓘ Une vue est celle qu'on a posée, sinon RIEN : la caméra ne bouge pas (D-163).
+        La page résout ensuite « l'attribut, sinon son étape » au moment où l'on ouvre
+        ou répond à une question.
 
         ⚠️ La définition n'est calculée qu'UNE fois, et seulement si une vue vise une
         pièce : c'est l'objet le plus cher de la réponse.
@@ -181,7 +181,6 @@ class ProductConfigSession(models.Model):
             out.append({
                 "id": line.attribute_id.id,
                 "name": line.attribute_id.name,
-                "required": bool(line.required),
                 "multi": bool(line.multi),
                 # ⓘ D-385 — l'étape (`step.line`) qui porte la question, `None` hors
                 # étape ; et si une réponse obligatoire y manque encore.
@@ -231,7 +230,7 @@ class ProductConfigSession(models.Model):
                         "color": value.html_color or None,
                         # ⓘ Une URL, jamais des octets : elle passe par le cache du
                         # navigateur, là où un base64 repartirait à chaque réponse.
-                        # `_web_value_image` dit si l'image EXISTE — une vignette
+                        # `_web_value_has_image` dit si l'image EXISTE — une vignette
                         # promise et vide est pire qu'une absence.
                         "image": (
                             "/configurator/value/%s/image" % value.id
@@ -301,9 +300,7 @@ class ProductConfigSession(models.Model):
             # ⓘ `None` pour « pas de borne » : une borne à zéro est une vraie borne.
             "min": spec.get("min_val") if numeric and spec.get("has_min_val") else None,
             "max": spec.get("max_val") if numeric and spec.get("has_max_val") else None,
-            "step": (spec.get("step") or None) if numeric else None,
             "maxLength": spec.get("max_length") or None,
-            "regexp": spec.get("regexp") or None,
         }
 
     def _web_offered_values(self, line):
@@ -663,8 +660,6 @@ class ProductConfigSession(models.Model):
                 zone["material"] = materials.get(zone["renderMaterialId"]) or None
         return {
             "zonesByPiece": zones_by_piece,
-            # Par ID : la page y puise sans que la même fiche voyage deux fois.
-            "materials": materials,
             "byNode": {
                 node_id: {str(zone_id): (materials.get(material_id) or None) if material_id else None
                           for zone_id, material_id in by_zone.items()}
@@ -966,7 +961,6 @@ class ProductConfigSession(models.Model):
             questions.append({
                 "id": line.attribute_id.id,
                 "name": line.attribute_id.name,
-                "required": bool(line.required),
                 "multi": bool(line.multi),
                 "free": self._web_free_field(line),
                 "customValue": typed.get(line.attribute_id.id),
@@ -1290,8 +1284,6 @@ class ProductConfigSession(models.Model):
                 "productId": found.id or None,
                 "price": price if price is not None else self._web_price(found, pricelist)}
 
-        return out
-
     def _web_no_variant_ptav_ids(self):
         """Les `product.template.attribute.value` de TOUTES les réponses « sans variante » —
         celles qui vont sur la LIGNE de commande, et non dans l'article (W-99 / D-393).
@@ -1378,21 +1370,6 @@ class ProductConfigSession(models.Model):
         except (TypeError, ValueError):
             return None
         return entry if entry in values.ids else None
-
-    @api.model
-    def _web_placement_overrides(self, definition, node_id):
-        found = {}
-
-        def walk(node):
-            nonlocal found
-            for child in node.get("children") or []:
-                if child.get("id") == node_id:
-                    found = child.get("attributeOverrides") or {}
-                    return
-                walk(child)
-
-        walk(definition or {})
-        return found
 
     def _web_values(self):
         """`{attribut → réponse}` — la forme que le moteur 3D attend (D-163).

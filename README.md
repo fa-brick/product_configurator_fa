@@ -37,9 +37,8 @@ python3 tools/check_module_refs.py .
 ```
 
 Il signale les identifiants XML irrésolus, les survivances de l'ancien nom, et les templates QWeb
-réclamés par du JavaScript sans définition correspondante. C'est ce dernier contrôle qui a trouvé
-`boolean_button_widget.esm.js` lors du renommage initial — la définition avait été renommée, pas la
-référence.
+réclamés par du JavaScript sans définition correspondante. C'est ce dernier contrôle qui, lors du
+renommage initial, a trouvé un widget dont la définition avait été renommée, mais pas la référence.
 
 ⚠️ Ce contrôle **ne remplace pas les tests** : il vérifie que les références se résolvent, pas que
 le code fait ce qu'il doit.

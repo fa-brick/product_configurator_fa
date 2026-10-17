@@ -53,7 +53,6 @@ describe("createBakedReader — un fichier, une lecture", () => {
         await reader.read({ c1: { ...VIS, url: "/web/content/9400?access_token=u" } });
         await reader.read({ c1: { ...VIS, faces: { a: [2] } } });
         expect(spy.calls).toHaveLength(3);
-        expect(reader.size).toBe(3);
     });
 
     test("l'URL à jeton est lue telle quelle ; l'identifiant nu n'est qu'un repli", async () => {

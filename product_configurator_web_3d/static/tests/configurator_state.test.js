@@ -327,7 +327,7 @@ describe("les PLACEMENTS réglables — ce qui se sélectionne, et ce qu'on y r�
         { key: "c10", pieceId: 1, nodeId: "c10", label: "Sous-ensemble", linkId: 10, sourceLinkId: 10, parentKey: "m1" },
         { key: "c11", pieceId: 2, nodeId: "c11", label: "Poignée", linkId: 11, sourceLinkId: 11, parentKey: "c10" },
         { key: "c11/f5/occ_001", pieceId: 2, nodeId: "c11/f5/occ_001", label: "Poignée", linkId: null,
-          sourceLinkId: 11, occurrence: { of: "c11" }, parentKey: "c10" },
+          sourceLinkId: 11, sourceKey: "c11", occurrence: { of: "c11" }, parentKey: "c10" },
         { key: "c12", pieceId: 3, nodeId: "c12", label: "Rail", linkId: 12, sourceLinkId: 12, parentKey: "c10" },
     ];
 

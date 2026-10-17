@@ -347,7 +347,6 @@ function toQuestion(line) {
     return {
         id: line.id,
         name: line.name,
-        required: !!line.required,
         multi: !!line.multi,
         // ⓘ Le repli est `radio`, comme chez Odoo : une question sans forme
         // déclarée reste une question, elle ne disparaît pas.
@@ -386,9 +385,7 @@ function toFreeField(raw) {
         // ⚠️ `?? null` et non `|| null` : une borne à ZÉRO est une vraie borne.
         min: raw.min ?? null,
         max: raw.max ?? null,
-        step: raw.step || null,
         maxLength: raw.maxLength || null,
-        regexp: raw.regexp || null,
     };
 }
 
@@ -477,7 +474,6 @@ function toPlacements(raw) {
     const out = {};
     for (const [nodeId, placement] of Object.entries(raw || {})) {
         out[nodeId] = {
-            nodeId,
             linkId: placement.linkId ?? null,
             label: placement.label || "",
             questions: (placement.questions || []).map(toQuestion),
@@ -495,9 +491,7 @@ function toPlacements(raw) {
  *
  * ⚠️ **La source est `sourceKey`, publiée par le moteur (D-375)** — et non `occurrence.of`,
  * qui ne fait qu'UN pas : la copie d'une copie (le quatrième bras du JeNo, deux miroirs
- * enchaînés) a pour `of` une autre copie, que les placements ne connaissent pas. Elle
- * n'était donc pas sélectionnable. `occurrence.of` ne reste lu que pour une projection
- * d'avant D-375.
+ * enchaînés) a pour `of` une autre copie, que les placements ne connaissent pas.
  *
  * @param {object} model  le modèle de la page (`toViewModel`)
  * @param {Array} pieces  la projection du moteur (`projectAssemblyPieces`)
@@ -510,9 +504,8 @@ export function placementOf(model, pieces, nodeId) {
     // ⚠️ **PAR L'IDENTITÉ DE NŒUD, jamais recomposée depuis le lien.** Les placements sont
     // rangés sous l'`id` du nœud de la définition ; depuis D-349 un nœud IMBRIQUÉ porte le
     // chemin de sa pose (`c10/c11`), et `c${linkId}` ne le nomme plus. La clé de la pièce
-    // EST cet id ; une copie de répétition renvoie à celui de sa source (`occurrence.of`).
-    return placements[piece.key] || placements[piece.sourceKey]
-        || placements[piece.occurrence?.of] || null;
+    // EST cet id ; une copie de répétition renvoie à celui de sa source (`sourceKey`).
+    return placements[piece.key] || placements[piece.sourceKey] || null;
 }
 
 /**
@@ -828,8 +821,8 @@ export function reasonFor(value) {
  * @param {(url: string, faces: object) => Promise<Array>} readFile  lit et décode un fichier,
  *        rend ses volumes (`bakedSolidsFromScene`)
  * @param {{onError?: (nodeId: string, error: Error) => void}} [options]
- * @returns {{read: (baked: object) => Promise<Map>, size: number}} `read` rend la forme que le
- *          moteur attend, `Map(nodeId → {solids})`
+ * @returns {{read: (baked: object) => Promise<Map>}} `read` rend la forme que le moteur attend,
+ *          `Map(nodeId → {solids})`
  */
 export function createBakedReader(readFile, { onError = () => {} } = {}) {
     const files = new Map();
@@ -861,9 +854,6 @@ export function createBakedReader(readFile, { onError = () => {} } = {}) {
                 }
             }));
             return loaded;
-        },
-        get size() {
-            return files.size;
         },
     };
 }

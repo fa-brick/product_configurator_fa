@@ -86,8 +86,7 @@ class TestFreeAnswer(FreeAnswerCommon, TransactionCase):
     def test_la_question_avec_ajout_porte_son_champ(self):
         question = self._question(self.session.web_state(), self.width)
         self.assertEqual(question["free"], {
-            "numeric": True, "unit": "mm", "min": 100.0, "max": 600.0,
-            "step": None, "maxLength": None, "regexp": None,
+            "numeric": True, "unit": "mm", "min": 100.0, "max": 600.0, "maxLength": None,
         })
         texte = self._question(self.session.web_state(), self.dedication)["free"]
         self.assertEqual((texte["numeric"], texte["maxLength"]), (False, 12))

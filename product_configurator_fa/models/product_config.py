@@ -7,7 +7,6 @@ from itertools import chain
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.fields import Command
-from odoo.tools.misc import formatLang
 from markupsafe import Markup, escape
 
 _logger = logging.getLogger(__name__)
@@ -303,39 +302,6 @@ class ProductConfigDomain(models.Model):
         return True
 
     name = fields.Char(required=True)
-    # ─ LA CONDITION SE LIT COMME UNE BARRE DE RECHERCHE — B2, D-203 ─────────
-    #
-    # ⓘ La sémantique des pastilles tombe juste sur le stockage existant (Q3) :
-    # **ET entre les pastilles, OU à l'intérieur d'une pastille** — c'est exactement
-    # ce que produit `compute_domain`, où le marqueur `|` ne marque qu'une ligne et
-    # où une ligne porte plusieurs valeurs.
-    #
-    # ⚠️ Ce champ est un RÉSUMÉ POUR L'ŒIL, pas un stockage. La condition reste
-    # faite d'enregistrements (D-080) ; ceci n'en est que la lecture. Le
-    # reconstruire à l'envers pour éditer serait revenir au texte que D-080 a
-    # écarté.
-    condition_summary = fields.Char(
-        compute="_compute_condition_summary",
-        help="The condition read as search facets: AND between facets, OR "
-             "inside one.",
-    )
-
-    #: Ce qui sépare deux pastilles, et ce qui sépare deux valeurs dans l'une.
-    FACET_SEPARATOR = " \u2022 "
-
-    @api.depends(
-        "domain_line_ids.attribute_id",
-        "domain_line_ids.condition",
-        "domain_line_ids.value_ids",
-        "domain_line_ids.product_ids",
-        "domain_line_ids.operator",
-        "domain_line_ids.sequence",
-    )
-    def _compute_condition_summary(self):
-        for domain in self:
-            domain.condition_summary = domain.FACET_SEPARATOR.join(
-                domain._facet_labels()
-            )
 
     def _facet_data(self):
         """Les pastilles AVEC l'identité de la règle que chacune porte — D-211.
@@ -716,25 +682,6 @@ class ProductConfigLine(models.Model):
         self.value_ids = False
         self.domain_id = False
 
-    @api.depends(
-        "product_tmpl_id",
-        "attribute_line_id",
-        "product_tmpl_id.attribute_line_ids",
-        "product_tmpl_id.config_line_ids",
-    )
-    def _compute_template_attribute_ids(self):
-        for config_line in self:
-            product_template = config_line.product_tmpl_id
-            attribute_line_ids = product_template.attribute_line_ids
-            config_line.template_attribute_ids = attribute_line_ids.mapped(
-                "attribute_id"
-            )
-
-    template_attribute_ids = fields.Many2many(
-        comodel_name="product.attribute",
-        string="Template Attributes",
-        compute="_compute_template_attribute_ids",
-    )
     product_tmpl_id = fields.Many2one(
         comodel_name="product.template",
         string="Product Template",
@@ -766,11 +713,6 @@ class ProductConfigLine(models.Model):
         comodel_name="product.config.domain",
         required=True,
         string="Restrictions",
-    )
-    # ⓘ Même raison que sur la ligne d'étape : un widget posé sur un Many2one ne
-    # reçoit que l'identifiant et le nom de la cible (B2, D-203).
-    domain_summary = fields.Char(
-        related="domain_id.condition_summary", readonly=True
     )
     sequence = fields.Integer(default=10)
 
@@ -951,13 +893,6 @@ class ProductConfigStepLine(models.Model):
             ).sorted()[:1]
             step_line.sequence = ouvreuse.sequence if ouvreuse else 9999
 
-    # ⓘ Le résumé du domaine, remonté sur la ligne pour que la vue puisse le
-    # lire : un widget posé sur un Many2one ne reçoit que l'identifiant et le nom
-    # de la cible — pas ses champs. Déclarer le résumé ici est ce qui permet aux
-    # pastilles de s'afficher (B2, D-203).
-    visibility_domain_summary = fields.Char(
-        related="visibility_domain_id.condition_summary", readonly=True
-    )
     visibility_domain_id = fields.Many2one(
         comodel_name="product.config.domain",
         string="Visibility Condition",
@@ -1185,11 +1120,6 @@ class ProductConfigSession(models.Model):
         index=True,
         tracking=True,
         help="Session this one was forked from when another identity took it over",
-    )
-    child_ids = fields.One2many(
-        comodel_name="product.config.session",
-        inverse_name="parent_id",
-        string="Forks",
     )
     access_token = fields.Char(
         string="Resume Token",
@@ -1722,51 +1652,6 @@ class ProductConfigSession(models.Model):
             if value and value.id not in resolved:
                 resolved.append(value.id)
         return resolved
-
-    def _get_option_values(self, pricelist, value_ids=None):
-        """Return only attribute values that have products attached with a
-        price set to them"""
-        if value_ids is None:
-            value_ids = self.value_ids.ids
-
-        value_obj = self.env["product.attribute.value"].with_context(
-            pricelist=pricelist.id
-        )
-        values = (
-            value_obj.sudo()
-            .browse(value_ids)
-            .filtered(lambda x: x.product_id._get_contextual_price())
-        )
-        return values
-
-    def get_components_prices(self, prices, pricelist, value_ids=None):
-        """Return prices of the components which make up the final
-        configured variant"""
-        if value_ids is None:
-            value_ids = self.value_ids.ids
-        vals = self._get_option_values(pricelist, value_ids)
-        for val in vals:
-            prices["vals"].append(
-                (
-                    val.attribute_id.name,
-                    val.product_id.name,
-                    val.product_id._get_contextual_price(),
-                )
-            )
-            product = val.product_id.with_context(pricelist=pricelist.id)
-            product_prices = product.taxes_id.sudo().compute_all(
-                price_unit=product._get_contextual_price(),
-                currency=pricelist.currency_id,
-                quantity=1,
-                product=self,
-                partner=self.env.user.partner_id,
-            )
-
-            total_included = product_prices["total_included"]
-            taxes = total_included - product_prices["total_excluded"]
-            prices["taxes"] += taxes
-            prices["total"] += total_included
-        return prices
 
     @api.model
     def get_cfg_price(self, value_ids=None, custom_vals=None, pricelist=None):
@@ -2638,18 +2523,6 @@ class ProductConfigSession(models.Model):
 
         flat_val_ids = set(self.flatten_attribute_value_ids(value_ids))
         return list(flat_val_ids)
-
-    def formatPrices(self, prices=None, dp="Product Price"):
-        if prices is None:
-            prices = {}
-        dp = None
-        prices["taxes"] = formatLang(self.env, prices["taxes"], monetary=True, dp=dp)
-        prices["total"] = formatLang(self.env, prices["total"], monetary=True, dp=dp)
-        prices["vals"] = [
-            (v[0], v[1], formatLang(self.env, v[2], monetary=True, dp=dp))
-            for v in prices["vals"]
-        ]
-        return prices
 
     @api.model
     def get_child_specification(self, model, parent):

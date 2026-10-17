@@ -108,4 +108,4 @@ class TestNumericCondition(TransactionCase):
     # ── CE QUE L'ŒIL EN LIT ──────────────────────────────────────────────
 
     def test_la_pastille_se_lit_comme_elle_s_ecrit(self):
-        self.assertEqual(self.domaine.condition_summary, "Épaisseur > 4")
+        self.assertEqual(self.domaine._facet_labels(), ["Épaisseur > 4"])

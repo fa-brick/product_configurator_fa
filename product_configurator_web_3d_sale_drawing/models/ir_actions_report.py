@@ -1,12 +1,10 @@
 # Copyright 2026 fa-brick
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 import io
-import logging
 
 from odoo import models
 from odoo.tools.pdf import PdfFileReader, PdfFileWriter
 
-_logger = logging.getLogger(__name__)
 
 SALE_REPORT = "sale.report_saleorder"
 ACTIONS = {

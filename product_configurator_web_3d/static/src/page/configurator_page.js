@@ -1308,7 +1308,7 @@ export class ConfiguratorPage extends Component {
      * Afficher une étape — et prendre SA vue, si elle en déclare une.
      *
      * ⓘ Sans vue, la caméra ne bouge pas : le client garde le cadrage qu'il s'est donné
-     * (l'arbitrage de `_resolve_view_camera`, côté serveur).
+     * (D-163).
      */
     _goToStep(stepId) {
         if (stepId === this.activeStepId) return;
@@ -1381,17 +1381,6 @@ export class ConfiguratorPage extends Component {
         return this.state.model?.totalLabel ?? this.state.model?.total ?? this.state.model?.price ?? 0;
     }
 
-    reasonFor(value) {
-        return reasonFor(value);
-    }
-
-    /**
-     * Répondre à une question.
-     *
-     * ⚠️ **Un appui sur une valeur éteinte n'est pas ignoré : il DIT pourquoi** (D-178).
-     * C'est le seul geste qui vaille sur les deux mondes — un clic au bureau, une tape sur
-     * un téléphone — et c'est pour cela qu'une valeur indisponible reste cliquable.
-     */
     /** Qui conduit, vu d'ici. */
     get hand() {
         return handState(this.state.model, this.holder);
@@ -1409,7 +1398,6 @@ export class ConfiguratorPage extends Component {
 
     get takeHandLabel() { return _t("Take over"); }
     get backToProductLabel() { return _t("Back to product"); }
-    get backLabel() { return _t("Back"); }
     /**
      * Prendre la main — et le dire à ceux qui regardent.
      *
@@ -1447,22 +1435,12 @@ export class ConfiguratorPage extends Component {
     }
 
     /**
-     * Répondre par une LISTE DÉROULANTE.
+     * Répondre à une question.
      *
-     * ⓘ Le geste rejoint `onPick` — une seule porte pour toutes les formes. Ce qui
-     * change d'une forme à l'autre est ce que l'œil reçoit, jamais ce qui part au
-     * serveur.
-     *
-     * ⚠️ `ev.target.value` est une CHAÎNE : la comparer telle quelle aux
-     * identifiants numériques ne trouverait jamais rien, et la question resterait
-     * muette sans qu'aucune erreur ne le dise.
+     * ⚠️ **Un appui sur une valeur éteinte n'est pas ignoré : il DIT pourquoi** (D-178).
+     * C'est le seul geste qui vaille sur les deux mondes — un clic au bureau, une tape sur
+     * un téléphone — et c'est pour cela qu'une valeur indisponible reste cliquable.
      */
-    onSelect(question, ev) {
-        const chosenId = Number(ev.target.value);
-        const value = question.values.find((v) => v.id === chosenId);
-        if (value) this.onPick(question.id, value);
-    }
-
     async onPick(questionId, value) {
         // ⚠️ Le refus est LOCAL avant d'être serveur : le serveur refuse aussi
         // (c'est lui qui fait foi), mais laisser partir l'appel ferait clignoter

@@ -80,7 +80,7 @@ class TestPlacements(TransactionCase):
         question = self._placements()["c%s" % self.link_poignee.id]["questions"][0]
         self.assertEqual(sorted(question), ["answerLayout", "answerSize", "categories",
                                             "customValue", "displayType", "free", "id", "multi",
-                                            "name", "required", "swatchMark", "values"])
+                                            "name", "swatchMark", "values"])
         self.assertEqual(sorted(question["values"][0]),
                          ["available", "categoryKeys", "chosen", "color", "id", "image", "name",
                           "raw"])

@@ -116,43 +116,6 @@ class ConfiguratorAdd(BaseCommon):
         with self.assertRaises(UserError):
             self.filled.configurator_rename_step(self.step.id, "Hijacked")
 
-    # ─ DÉPLACER ─────────────────────────────────────────────────────────────
-
-    def test_09_moving_the_band_moves_the_MARKER_not_a_line(self):
-        """⚠️ L'étape n'a pas de rang à elle : son rang est celui de la ligne qui
-        l'ouvre (D-202)."""
-        step_id = self.filled.configurator_add_step()
-        self.filled.configurator_move_step(step_id, self._line(self.attribute).id)
-        self.assertEqual(self._line(self.attribute).config_step_id.id, step_id)
-        self.assertFalse(self._line(self.second).config_step_id)
-        genres = [r["kind"] for r in self.filled.get_configurator_tree()]
-        self.assertEqual(genres, ["step", "attribute", "attribute"])
-
-    def test_10_a_line_that_already_opens_ANOTHER_step_refuses_the_drop(self):
-        """⚠️ Une ligne n'ouvre qu'UNE étape : accepter écraserait l'autre."""
-        self._line(self.attribute).config_step_id = self.step
-        step_id = self.filled.configurator_add_step()
-        with self.assertRaises(UserError):
-            self.filled.configurator_move_step(
-                step_id, self._line(self.attribute).id
-            )
-
-    def test_11_a_line_of_ANOTHER_product_is_refused(self):
-        """⚠️ La seconde barrière, celle qui ne dépend pas de l'interface (D-080)
-        — un import ou un script ne passe pas par l'écran."""
-        autre = self.env["product.template"].create({
-            "name": "Other product", "config_ok": True,
-            "attribute_line_ids": [(0, 0, {
-                "attribute_id": self.attribute.id,
-                "value_ids": [(6, 0, self.value.ids)],
-            })],
-        })
-        step_id = self.filled.configurator_add_step()
-        with self.assertRaises(UserError):
-            self.filled.configurator_move_step(
-                step_id, autre.attribute_line_ids.id
-            )
-
     def test_12_the_gestures_are_usable_by_a_MANAGER_not_only_by_admin(self):
         """⚠️ Ces coutures s'exécutent SOUS un utilisateur réel — c'est tout leur
         objet. L'assistant retiré portait sa propre règle d'accès ([[L-169]]) ;
@@ -173,10 +136,6 @@ class ConfiguratorAdd(BaseCommon):
         produit = self.filled.with_user(gestionnaire)
         step_id = produit.configurator_add_step()
         produit.configurator_rename_step(step_id, "Dimensions")
-        produit.configurator_move_step(
-            step_id,
-            produit.attribute_line_ids.sorted()[0].id,
-        )
         self.assertEqual(
-            produit.attribute_line_ids.sorted()[0].config_step_id.id, step_id
+            self.env["product.config.step"].browse(step_id).name, "Dimensions"
         )

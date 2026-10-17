@@ -92,7 +92,6 @@
                               rootPieceId="rootPieceId"
                               rootNodeId="rootNodeId"
                               onSelectSketch="() => {}"
-                              onSelectPiece="(id) => this.onSelectPiece(id)"
                               displayMode="'realistic'"
                               ambience="ambience"
                               showPlanes="false"

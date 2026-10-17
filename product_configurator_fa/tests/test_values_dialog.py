@@ -65,28 +65,3 @@ class ValuesDialog(BaseCommon):
             **action["context"]
         ).search(action["domain"])
         self.assertIn(ptav, trouvees)
-
-    def test_04_a_SHORT_list_still_shows_its_tags(self):
-        """Le cas courant ne change pas : trois valeurs se lisent très bien."""
-        self.assertFalse(self.line.too_many_values)
-
-    def test_05_but_a_LONG_one_gives_up_on_them(self):
-        """⚠️ Le cas réel : plus de 200 valeurs, illisibles en étiquettes.
-
-        ⓘ Le seuil n'est pas éprouvé en créant deux cents valeurs — ce serait
-        long et fragile ; c'est la RÈGLE qui est éprouvée, à la frontière.
-        """
-        seuil = self.line.VALUES_SHOWN_AS_TAGS
-        for compte, attendu in ((seuil, False), (seuil + 1, True)):
-            self.line.invalidate_recordset()
-            self.env.cr.execute(
-                "UPDATE product_template_attribute_line SET value_count = %s "
-                "WHERE id = %s",
-                (compte, self.line.id),
-            )
-            self.line.invalidate_recordset()
-            self.assertEqual(
-                self.line.too_many_values, attendu,
-                f"à {compte} valeurs, les pastilles devraient "
-                f"{'disparaître' if attendu else 'rester'}",
-            )

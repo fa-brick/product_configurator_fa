@@ -34,13 +34,7 @@
                      « Configuration → Attributs », un gestionnaire ne verrait rien, pas
                      même de quoi désarchiver.
                      ⓘ Les pages ci-dessous portent déjà leur groupe : le droit suffit. -->
-                <field
-                    name="image"
-                    widget="image"
-                    class="oe_avatar oe_left"
-                >
-                    <field name="image" widget="image" class="oe_avatar oe_left" />
-                </field>
+                <field name="image" widget="image" class="oe_avatar oe_left" />
                 <!-- ══ LE NOM DEVIENT LE TITRE (D-216) ═════════════════════════════
                      ⓘ Il ouvre la page, comme le nom d'un produit : c'est ce qu'on lit en
                      arrivant, et ce dont tout le reste parle. -->

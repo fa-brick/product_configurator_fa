@@ -9,13 +9,11 @@ moteur dans Node pour LA configuration de la ligne.
 ⚠️ Confirmé, le devis lit le GEL de sa ligne et ne recalcule plus : un modèle 3D retouché après la commande changerait le plan de ce qui est vendu (D-468).
 """
 import json
-import logging
 
 from markupsafe import Markup
 
 from odoo import fields, models
 
-_logger = logging.getLogger(__name__)
 
 #: Le nom de la pièce jointe qui porte le gel d'une ligne.
 FROZEN_NAME = "drawing_pages.json"

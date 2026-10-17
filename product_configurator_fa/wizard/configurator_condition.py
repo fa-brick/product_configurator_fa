@@ -143,33 +143,12 @@ class ProductConfiguratorCondition(models.TransientModel):
     )
     # ⚠️ PAS obligatoire : la cible peut être un emplacement d'assemblage de `product_editor`,
     # hors de portée de ce module (D-267, D-075).
-    # ⓘ La CIBLE se choisit par deux crochets qu'un module-pont surcharge : `_seed_domain`
-    # et `_apply_condition` (D-267).
+    # ⓘ La CIBLE se choisit par un crochet qu'un module-pont surcharge : `_apply_condition`
+    # (D-267).
     domain_id = fields.Many2one(
         comodel_name="product.config.domain", readonly=True
     )
-    subject = fields.Char(
-        compute="_compute_subject",
-        string="Applies to",
-        help="What this condition governs.",
-    )
     condition_domain = fields.Char(string="Condition", default="[]")
-
-    @api.depends("domain_id")
-    def _compute_subject(self):
-        for assistant in self:
-            assistant.subject = assistant._subject_label()
-
-    def _subject_label(self):
-        """Ce que la condition GOUVERNE, en une ligne. Crochet : un pont peut viser
-        autre chose qu'un `product.config.domain`."""
-        self.ensure_one()
-        return self.domain_id.display_name
-
-    def _seed_domain(self):
-        """La condition ACTUELLE, sous la forme que l'éditeur sait lire. Crochet."""
-        self.ensure_one()
-        return self.domain_id.to_odoo_domain() if self.domain_id else []
 
     def _apply_condition(self, domain):
         """Où la condition ATTERRIT. Crochet : le stockage dépend de la cible."""

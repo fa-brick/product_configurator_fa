@@ -858,12 +858,6 @@ class ProductAttributeLine(models.Model):
 
     sequence = fields.Integer(default=10)
 
-    # ⓘ Le résumé de la condition, remonté sur la ligne — un widget posé sur un
-    # Many2one ne reçoit que l'identifiant et le nom de sa cible (B2, D-203).
-    visibility_domain_summary = fields.Char(
-        related="visibility_domain_id.condition_summary", readonly=True
-    )
-
     # ─ LES VALEURS S'OUVRENT DANS UN DIALOGUE — B5, QE, D-206 ───────────────
     #
     # ⓘ **C'est le geste que le cœur d'Odoo emploie déjà** pour le même problème :
@@ -874,21 +868,6 @@ class ProductAttributeLine(models.Model):
     # ⚠️ **Un DIALOGUE et non une action pleine page**, à l'inverse du cœur : la
     # pleine page perd le contexte de l'arbre, qui est justement ce que l'onglet
     # apporte. On revient de la liste des valeurs là où on l'a ouverte.
-
-    #: Au-delà, les pastilles cessent d'être affichées (D-206).
-    #: ⓘ Une seule constante : le jour où le seuil se révèle trop haut, c'est ici.
-    VALUES_SHOWN_AS_TAGS = 200
-
-    too_many_values = fields.Boolean(
-        compute="_compute_too_many_values",
-        help="True when the values are too many to be listed as tags; the row "
-             "then offers a dialog instead.",
-    )
-
-    @api.depends("value_count")
-    def _compute_too_many_values(self):
-        for line in self:
-            line.too_many_values = line.value_count > self.VALUES_SHOWN_AS_TAGS
 
     def _configurator_camera_name(self):
         """Le nom de la vue 3D de cette ligne — vide si l'éditeur n'est pas là.
@@ -1429,31 +1408,13 @@ class ProductAttributeLine(models.Model):
                     )
                 )
 
-    def resolve_numeric_value(self, number):
-        """Rend la valeur d'attribut de ce nombre, et l'ATTACHE à cette ligne.
-
-        L'attachement n'est pas un extra : une valeur absente de la ligne n'a
-        pas de `product.template.attribute.value`, et une variante ne peut
-        porter que des ptav. Sans lui, la largeur serait rangée au catalogue
-        global et n'entrerait dans l'identité d'aucune variante — le stock
-        resterait aveugle, c'est-à-dire exactement le défaut que D-081 corrige.
-
-        ⚠️ `sudo()` : celui qui configure n'a pas le droit d'écrire sur le
-        produit, et il ne doit pas l'avoir. C'est le même geste que la création
-        de la variante, elle aussi en `sudo()` chez OCA.
-        """
-        self.ensure_one()
-        value = self.attribute_id.resolve_numeric_value(number)
-        if value not in self.value_ids:
-            self.sudo().write({"value_ids": [(4, value.id)]})
-        return value
-
     def resolve_custom_value(self, raw):
         """Rend la valeur d'une saisie — nombre ou texte — et l'ATTACHE à cette ligne.
 
-        Même geste que `resolve_numeric_value`, étendu au texte (D-353) : sans
-        l'attachement, la valeur n'aurait pas de ptav et aucune variante ne la
-        porterait.
+        ⚠️ Sans l'attachement, la valeur n'aurait pas de ptav : aucune variante ne la
+        porterait, et le stock resterait aveugle (D-081, D-353).
+        ⚠️ `sudo()` : celui qui configure n'a pas le droit d'écrire sur le produit, et
+        il ne doit pas l'avoir.
         """
         self.ensure_one()
         value = self.attribute_id.resolve_custom_value(raw)

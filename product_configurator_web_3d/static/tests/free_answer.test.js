@@ -38,7 +38,7 @@ describe("la forme du champ arrive jusqu'à la page", () => {
         const closed = { ...WIDTH, id: 1, free: null };
         const [width, other] = model(WIDTH, closed).questions;
         expect(width.free).toEqual({ numeric: true, unit: "mm", min: 100, max: 600,
-                                     step: null, maxLength: null, regexp: null });
+                                     maxLength: null });
         expect(other.free).toBeNull();
     });
 

@@ -17,18 +17,6 @@
         </field>
     </record>
 
-    <record id="config_step_tree_view" model="ir.ui.view">
-        <field name="name">product.configurator.config.step.tree</field>
-        <field name="model">product.config.step</field>
-        <field name="arch" type="xml">
-            <form string="Configuration Step">
-                <list name="name">
-                    <field name="name" />
-                </list>
-            </form>
-        </field>
-    </record>
-
     <!-- Configuration Restrictions -->
     <record id="product_config_domain_form_view" model="ir.ui.view">
         <field name="name">product.configurator.domain.form</field>

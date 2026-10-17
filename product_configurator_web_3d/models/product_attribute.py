@@ -38,19 +38,6 @@ class ProductAttributeLine(models.Model):
         "the camera does not move.",
     )
 
-    def _resolve_view_camera(self, step_line=None):
-        """La vue à montrer : celle de l'attribut, sinon celle de l'étape, sinon RIEN.
-
-        ⚠️ « Rien » ne veut pas dire « la vue par défaut » : la caméra **ne bouge
-        pas**, le client garde son cadrage (D-163, précédent D-125).
-        """
-        self.ensure_one()
-        if self.view_camera_id:
-            return self.view_camera_id
-        if step_line:
-            return step_line.view_camera_id
-        return self.env["product.model3d.camera"]
-
 
 class ProductAttribute(models.Model):
     """Le type « matière » — l'attribut dont les valeurs désignent une FICHE.

@@ -164,7 +164,7 @@ class ConditionOnProducts(BaseCommon):
     def test_07_la_pastille_nomme_les_PRODUITS_pas_les_valeurs(self):
         """C'est ce que son auteur a écrit qu'on lui relit."""
         regle = self._regle_produit(self.chene)
-        self.assertIn(self.chene.display_name, regle.condition_summary)
+        self.assertIn(self.chene.display_name, " ".join(regle._facet_labels()))
 
     def test_08_changer_d_attribut_VIDE_la_feuille(self):
         """Sinon la ligne garde les désignations de l'attribut précédent —

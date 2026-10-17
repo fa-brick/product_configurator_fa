@@ -8,6 +8,11 @@ LECTURE, jamais un stockage — la condition reste faite d'enregistrements (D-08
 from odoo.addons.base.tests.common import BaseCommon
 
 
+def _summary(domain):
+    """Les pastilles d'une condition, lues bout à bout."""
+    return " \u2022 ".join(domain._facet_labels())
+
+
 class ConditionFacets(BaseCommon):
     @classmethod
     def setUpClass(cls):
@@ -37,17 +42,17 @@ class ConditionFacets(BaseCommon):
 
     def test_01_no_rule_no_facet(self):
         """⚠️ Le cas le plus fréquent — la plupart des lignes ne portent rien."""
-        self.assertFalse(self.domain.condition_summary)
+        self.assertFalse(_summary(self.domain))
 
     def test_02_one_rule_reads_as_ONE_facet(self):
         self._line(self.colour, self.red + self.blue)
-        self.assertEqual(self.domain.condition_summary, "Colour F = Red / Blue")
+        self.assertEqual(_summary(self.domain), "Colour F = Red / Blue")
 
     def test_03_OR_lives_INSIDE_a_facet(self):
         """Plusieurs valeurs dans une pastille : c'est le OU de la barre de recherche."""
         self._line(self.colour, self.red + self.blue)
-        self.assertIn("Red / Blue", self.domain.condition_summary)
-        self.assertNotIn(" or ", self.domain.condition_summary)
+        self.assertIn("Red / Blue", _summary(self.domain))
+        self.assertNotIn(" or ", _summary(self.domain))
 
     def test_04_the_operator_governs_the_junction_with_the_NEXT_line(self):
         """⚠️ Contre-intuitif : facile à écrire à l'envers.
@@ -61,7 +66,7 @@ class ConditionFacets(BaseCommon):
         self._line(self.colour, self.red, operator="or", sequence=10)
         self._line(self.size, self.large, operator="and", sequence=20)
         self.assertEqual(
-            self.domain.condition_summary,
+            _summary(self.domain),
             "Colour F = Red • or Size F = Large",
         )
 
@@ -70,20 +75,20 @@ class ConditionFacets(BaseCommon):
         self._line(self.colour, self.red, operator="and", sequence=10)
         self._line(self.size, self.large, operator="and", sequence=20)
         self.assertEqual(
-            self.domain.condition_summary,
+            _summary(self.domain),
             "Colour F = Red • and Size F = Large",
         )
 
     def test_06_a_negative_rule_reads_as_NOT(self):
         self._line(self.colour, self.red, condition="not in")
-        self.assertEqual(self.domain.condition_summary, "Colour F ≠ Red")
+        self.assertEqual(_summary(self.domain), "Colour F ≠ Red")
 
     def test_07_the_summary_FOLLOWS_the_rules(self):
         """C'est un calcul, pas une photo : changer une règle change le résumé."""
         line = self._line(self.colour, self.red)
-        self.assertEqual(self.domain.condition_summary, "Colour F = Red")
+        self.assertEqual(_summary(self.domain), "Colour F = Red")
         line.value_ids = self.blue
-        self.assertEqual(self.domain.condition_summary, "Colour F = Blue")
+        self.assertEqual(_summary(self.domain), "Colour F = Blue")
 
 
 class FacetsAreStructured(BaseCommon):

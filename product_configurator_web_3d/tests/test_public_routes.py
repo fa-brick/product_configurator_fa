@@ -144,7 +144,8 @@ class TestPublicRoutes(HttpCase):
         self._call("/configurator/set_value", token=self.session.access_token,
                    attribute_id=self.attribute.id, value_id=self.noir.id)
         self.assertEqual(self.env["product.config.session"].search_count([]), avant)
-        self.assertFalse(self.session.child_ids)
+        self.assertFalse(self.env["product.config.session"].search(
+            [("parent_id", "=", self.session.id)]))
 
     def test_le_jeton_ne_RESSORT_pas_de_la_réponse(self):
         """Une page publique ne doit rien laisser filtrer qui permette d'énumérer."""

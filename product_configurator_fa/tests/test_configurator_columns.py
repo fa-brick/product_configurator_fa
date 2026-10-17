@@ -32,9 +32,9 @@ class ConfiguratorColumns(BaseCommon):
         configurateur.
         """
         du_configurateur = {
-            "visibility_domain_id", "visibility_domain_summary",
+            "visibility_domain_id",
             "config_step_id", "config_step_owner_id",
-            "view_camera_id", "action_open_values", "too_many_values",
+            "view_camera_id", "action_open_values",
         }
         intrus = du_configurateur & self._core_columns()
         self.assertEqual(

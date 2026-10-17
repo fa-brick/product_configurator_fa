@@ -24,7 +24,6 @@
     "data": [
         "security/configurator_security.xml",
         "security/ir.model.access.csv",
-        "views/res_config_settings_view.xml",
         "data/menu_configurable_product.xml",
         "data/product_attribute.xml",
         "data/ir_sequence_data.xml",
@@ -41,12 +40,8 @@
         "web.assets_backend": [
             "/product_configurator_fa/static/src/scss/form_widget.scss",
             "/product_configurator_fa/static/src/js/form_widgets.esm.js",
-            "/product_configurator_fa/static/src/js/boolean_button_widget.esm.js",
-            "/product_configurator_fa/static/src/js/boolean_button_widget.xml",
             "/product_configurator_fa/static/src/js/kanban_widgets.esm.js",
             "/product_configurator_fa/static/src/js/list_widgest.esm.js",
-            "/product_configurator_fa/static/src/js/condition_facets.esm.js",
-            "/product_configurator_fa/static/src/js/condition_facets.xml",
             "/product_configurator_fa/static/src/js/configurator_tree.esm.js",
             "/product_configurator_fa/static/src/js/configurator_tree.xml",
         ]

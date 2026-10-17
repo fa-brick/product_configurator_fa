@@ -400,36 +400,6 @@ class ProductTemplate(models.Model):
         etape.name = nom
         return True
 
-    def configurator_move_step(self, step_id, line_id):
-        """Déplace le bandeau : l'étape s'ouvre désormais SUR cette ligne.
-
-        ⚠️ **DÉPLACER UN BANDEAU N'EST PAS DÉPLACER UNE LIGNE.** L'étape n'a pas
-        de rang à elle (D-202) : son rang est celui de la ligne qui l'ouvre. On
-        efface donc le marqueur là où il était, et on le pose ici — après quoi
-        tout ce qui suit lui appartient, jusqu'à l'étape suivante.
-        """
-        self.ensure_one()
-        etape = self.env["product.config.step"].browse(step_id)
-        cible = self.env["product.template.attribute.line"].browse(line_id)
-        if cible not in self.attribute_line_ids:
-            raise UserError(
-                self.env._("This attribute line does not belong to this product.")
-            )
-        # ⚠️ Une ligne n'ouvre qu'UNE étape. Déposer un bandeau sur une ligne qui
-        # en porte déjà un écraserait l'autre étape sans le dire.
-        if cible.config_step_id and cible.config_step_id != etape:
-            raise UserError(
-                self.env._(
-                    "“%(other)s” already opens on this attribute. Move it first.",
-                    other=cible.config_step_id.name,
-                )
-            )
-        ancienne = self.attribute_line_ids.filtered(
-            lambda ligne: ligne.config_step_id == etape
-        )
-        (ancienne - cible).config_step_id = False
-        cible.config_step_id = etape
-        return True
 
     def configurator_reorder(self, line_ids, step_line_ids=None):
         """Réordonne les lignes d'attribut — l'ordre PORTE l'appartenance.

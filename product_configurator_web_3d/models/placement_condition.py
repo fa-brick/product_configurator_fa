@@ -231,15 +231,6 @@ class ProductConfiguratorCondition(models.TransientModel):
             [("id", "in", self.product_tmpl_id.attribute_line_ids.attribute_id.ids)])
         return {domaine._attribute_field_name(a) for a in attributs if a.is_numeric()}
 
-    def _subject_label(self):
-        return self.component_id.child_id.display_name \
-            if self.component_id else super()._subject_label()
-
-    def _seed_domain(self):
-        if not self.component_id:
-            return super()._seed_domain()
-        return clauses_to_domain((self.component_id.visibility or {}).get("presence"))
-
     def _apply_condition(self, domain):
         if not self.component_id:
             return super()._apply_condition(domain)

@@ -15,7 +15,6 @@
         "data/menu_product.xml",
         "views/sale_view.xml",
     ],
-    "demo": ["demo/res_partner_demo.xml"],
     "installable": True,
     "auto_install": True,
     "development_status": "Beta",

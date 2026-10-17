@@ -1,7 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""LES ÉTAPES sur la page du configurateur — D-385 (Gerry, 2026-09-30).
+"""LES ÉTAPES sur la page du configurateur — D-385.
 
-« Les étapes conditionnent ce qui est vu dans la sidebar » : le serveur range chaque
+Les étapes conditionnent ce que montre la colonne : le serveur range chaque
 question dans son étape, ne sert que les étapes VISIBLES, et dit ce qui MANQUE — avec le
 même évaluateur que la confirmation, pour que la page ne grise jamais ce qu'il accepterait.
 """
@@ -79,7 +79,7 @@ class StepsOnThePage(BaseCommon):
         )
 
     def test_02_a_line_BEFORE_the_first_step_joins_the_first_step(self):
-        """Arbitré par Gerry le 2026-09-30 : pas d'étape implicite « Général »."""
+        """D-385 : pas d'étape implicite « Général »."""
         steps, step_of, _hidden = self._session()._web_step_layout()
         self.assertEqual(step_of[self.lines[self.color].id], steps[0]["id"])
 

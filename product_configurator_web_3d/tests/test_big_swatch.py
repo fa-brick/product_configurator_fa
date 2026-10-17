@@ -1,4 +1,4 @@
-"""La GRANDE PASTILLE — un type d'affichage de plus (demande de Gerry, 2026-09-29)."""
+"""La GRANDE PASTILLE — un type d'affichage de plus."""
 from odoo import Command
 from odoo.tests import TransactionCase, tagged
 
@@ -10,7 +10,7 @@ class TestBigSwatch(TransactionCase):
         attribute = self.env["product.attribute"].create(
             {"name": "Finition bois", "display_type": "swatch"})
         self.assertEqual(attribute.display_type, "swatch")
-        # ⓘ La marque du choix : la coche par défaut (le modèle de Gerry).
+        # ⓘ La marque du choix : la coche par défaut (celle du modèle fourni).
         self.assertEqual(attribute.swatch_mark, "check")
 
     def test_la_boutique_le_rend_comme_une_couleur(self):
@@ -25,7 +25,7 @@ class TestBigSwatch(TransactionCase):
 
 @tagged("post_install", "-at_install")
 class TestAnswerSize(TransactionCase):
-    """LA TAILLE d'une carte ou d'une grande pastille — D-382 (Gerry, 2026-09-30)."""
+    """LA TAILLE d'une carte ou d'une grande pastille — D-382."""
 
     def test_moyenne_par_defaut_l_affichage_d_avant(self):
         attribute = self.env["product.attribute"].create(
@@ -51,7 +51,7 @@ class TestAnswerSize(TransactionCase):
 
 @tagged("post_install", "-at_install")
 class TestAnswerLayout(TransactionCase):
-    """LA DISPOSITION des réponses — D-382 (Gerry, 2026-09-30)."""
+    """LA DISPOSITION des réponses — D-382."""
 
     def _attribute(self, display_type, layout):
         vals = {"name": "Q", "display_type": display_type, "answer_layout": layout}

@@ -4,8 +4,8 @@
  *
  * ⚠️ **Le défaut ne se voit qu'à l'INSTANT.** Après une permutation, les zones de la nouvelle
  * pièce arrivaient avec la réponse du serveur, et les poses une à cinq secondes plus tard :
- * le viewer redessinait l'ANCIENNE pièce sans ses zones, au neutre violet (Gerry,
- * 2026-09-29). L'état final, lui, était juste : un test d'état final ne l'aurait pas vu.
+ * le viewer redessinait l'ANCIENNE pièce sans ses zones, au neutre violet. L'état
+ * final, lui, était juste : un test d'état final ne l'aurait pas vu.
  * On rend donc la lecture des fichiers pilotable (une promesse résolue à la main) et on
  * relève ce que la page montre PENDANT.
  *
@@ -69,8 +69,8 @@ function page() {
 
 /**
  * Un RENDU : OWL lit les props du gabarit sur un contexte qui hérite du composant — neuf à
- * chaque rendu, et ici sur deux étages comme sur la page réelle (mesuré le 2026-09-29,
- * [[L-384]]). Un mémo écrit sur `this` y meurt avec le contexte.
+ * chaque rendu, et ici sur deux étages comme sur la page réelle (mesuré, [[L-384]]).
+ * Un mémo écrit sur `this` y meurt avec le contexte.
  */
 const render = (p) => Object.create(Object.create(p));
 
@@ -159,7 +159,7 @@ describe("une permutation — la scène ne change qu'une fois construite", () =>
 
 describe("ce que le viewer compare par IDENTITÉ ne change pas sans raison (L-449)", () => {
     // Le viewer reconstruit TOUTE la scène quand `sketchItems`, `pieces` ou les zones
-    // changent de référence. Mesuré le 2026-09-29 : cinq reconstructions par permutation,
+    // changent de référence. Mesuré : cinq reconstructions par permutation,
     // une seule utile — le passage de `loading`, puis l'écho du bus, refaisaient tout.
 
     test("⚠️ deux RENDUS sans changement rendent la MÊME projection — chacun sur son contexte", async () => {

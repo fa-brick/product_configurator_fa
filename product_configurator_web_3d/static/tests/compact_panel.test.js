@@ -1,7 +1,7 @@
 /**
- * LE PANNEAU DE CHOIX SUR TÉLÉPHONE — D-389 (Gerry, 2026-10-01, capture Roomle) : « pour
- * permettre de voir les modifications de sélection, la liste ne remonte pas jusqu'en haut. Un
- * clic dans le viewer 3D la retire. » Q4 : la tape FERME SEULEMENT ; Q5 : pas sur ordinateur.
+ * LE PANNEAU DE CHOIX SUR TÉLÉPHONE — D-389 : il ne remonte pas jusqu'en haut, pour laisser
+ * voir l'effet d'un choix ; une tape dans le viewer 3D le retire.
+ * Q4 : la tape FERME SEULEMENT ; Q5 : pas sur ordinateur.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -95,7 +95,7 @@ describe("la liste ne remonte pas jusqu'en haut", () => {
     });
 });
 
-describe("l'en-tête du panneau : la flèche, puis le nom, sur une ligne (Gerry, 2026-10-01)", () => {
+describe("l'en-tête du panneau : la flèche, puis le nom, sur une ligne (D-389)", () => {
     test("la flèche est le retour, DANS le titre ; « Retour » ne vit plus que dans son nom", () => {
         const panel = AXML.slice(AXML.indexOf('<t t-name="product_configurator_web_3d.AnswerPanel">'));
         const head = panel.slice(panel.indexOf('<header class="o_cfg3d_panel_head">'), panel.indexOf("</header>"));

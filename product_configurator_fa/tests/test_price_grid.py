@@ -181,9 +181,8 @@ class PriceGrid(BaseCommon):
         """⚠️ Le contraire de ce que ce test affirmait — et le contraire était FAUX.
 
         Il vérifiait un bandeau annonçant *« ce produit ne peut pas être
-        chiffré tant qu'aucune grille n'est posée »*. Constat de Gerry
-        (2026-08-28) : *« on peut configurer un produit sans grille de prix »*.
-        Le code lui donne raison — `_get_config_grid_price` rend `None`, et
+        chiffré tant qu'aucune grille n'est posée »* (D-215). Le code dit
+        l'inverse — `_get_config_grid_price` rend `None`, et
         l'appelant retombe sur le `list_price` du modèle.
 
         ⓘ Ce test tient désormais le comportement RÉEL, pour qu'on ne remette
@@ -329,8 +328,7 @@ class PriceGrid(BaseCommon):
         self.assertEqual(variant._price_compute("list_price")[variant.id], 480)
 
     def test_17_the_rate_shows_in_the_value_label(self):
-        """« Le prix au mètre carré doit paraître dans la valeur de l'attribut »
-        (Gerry, 2026-08-23).
+        """Le prix au mètre carré paraît dans la valeur de l'attribut (D-162).
 
         ⚠️ Et il ne s'affiche PAS comme un forfait : sans le « /m² », « +25 » se
         lirait comme vingt-cinq euros, et le client d'une porte de 5 m² en
@@ -344,7 +342,7 @@ class PriceGrid(BaseCommon):
         self.assertTrue(shown.startswith("RAL 8003"))
 
     def test_17bis_with_the_surface_the_label_shows_the_AMOUNT(self):
-        """Le client voit ce que ÇA lui coûte, sans multiplier (arbitrage Gerry).
+        """Le client voit ce que ÇA lui coûte, sans multiplier (D-162).
 
         2,3 m × 2,1 m = 4,83 m² à 25 €/m² → 120,75.
         """

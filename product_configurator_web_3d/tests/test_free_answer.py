@@ -96,7 +96,7 @@ class TestFreeAnswer(FreeAnswerCommon, TransactionCase):
         self.assertIsNone(self._question(self.session.web_state(), self.colour)["free"])
 
     def test_la_valeur_CUSTOM_d_OCA_n_est_plus_une_reponse(self):
-        """Relevé le 2026-09-25 : un bouton « Custom » sur chaque question de la Caisse,
+        """⚠️ Sinon un bouton « Custom » paraît sur chaque question (cas réel : la Caisse),
         valeur d'un AUTRE attribut, qu'on ne pouvait que refuser."""
         custom = self.session.get_custom_value_id()
         for question in self.session.web_state()["attributes"]:
@@ -110,7 +110,7 @@ class TestFreeAnswer(FreeAnswerCommon, TransactionCase):
         self.assertEqual(self.session.custom_value_ids.value, "480.5")
         self.assertEqual(
             self.Value.search_count([("attribute_id", "=", self.width.id)]), before,
-            "la valeur ne naît qu'à la confirmation (Gerry, 2026-09-25)")
+            "la valeur ne naît qu'à la confirmation")
         question = self._question(state, self.width)
         self.assertEqual(question["customValue"], "480.5")
         self.assertFalse([v for v in question["values"] if v["chosen"]],

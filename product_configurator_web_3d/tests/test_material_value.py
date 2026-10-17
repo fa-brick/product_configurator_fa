@@ -194,8 +194,8 @@ class MaterialValue(BaseCommon):
 
     def test_11_le_type_CARTE_est_offert_par_CE_module(self):
         """⚠️ Il a d'abord été posé dans `product_attribute_advanced`, dont la
-        notice écarte pourtant le dessin. Arbitré le 2026-09-06 : les formes
-        d'affichage vivent avec le gabarit qui les rend."""
+        notice écarte pourtant le dessin. Les formes d'affichage vivent avec le
+        gabarit qui les rend (D-258)."""
         formes = dict(self.env["product.attribute"]._fields["display_type"].selection)
         self.assertIn("card", formes)
 

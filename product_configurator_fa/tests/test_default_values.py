@@ -1,6 +1,6 @@
 """Des valeurs PAR DÉFAUT incompatibles n'empêchent pas d'ouvrir une configuration.
 
-Constat de Gerry (2026-09-29, JeNo) : « Configurer » tombait en erreur — le défaut de
+Cas réel (JeNo, L-433) : « Configurer » tombait en erreur — le défaut de
 « Bumper Avant » (Ciné) n'est offert qu'avec une Cam plate Ciné, et la Cam plate par défaut est
 Classic. Et le relais de l'erreur levait lui-même une `AttributeError` (`exc.name`).
 """

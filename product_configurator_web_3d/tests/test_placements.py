@@ -168,8 +168,8 @@ class TestPlacements(TransactionCase):
         self.assertFalse(self.session.child_variants)
 
     # ── LA VUE CAMÉRA porte sa CIBLE (D-116) ───────────────────────────────
-    # Gerry (2026-09-23) : « lorsque l'on quitte [l'isolation], il faut revenir à la vue
-    # caméra en cours qui donnera la target » — donc la vue servie doit la porter.
+    # ⚠️ Quitter l'isolation revient à la vue caméra en cours, qui donne la cible :
+    # la vue servie doit donc la porter (D-333).
     def _camera(self, **vals):
         return self.env["product.model3d.camera"].create({
             "name": "Vue", "model3d_id": self.porte.id, "is_thumbnail": True, **vals})

@@ -1,4 +1,4 @@
-"""LES CATÉGORIES DES RÉPONSES — les pastilles du panneau de choix (D-382, Gerry 2026-09-30).
+"""LES CATÉGORIES DES RÉPONSES — les pastilles du panneau de choix (D-382).
 
 Une réponse qui désigne une MATIÈRE se range sous la catégorie de celle-ci (un arbre depuis
 D-382). Ce qui est éprouvé : la FEUILLE seule se nomme, le parent ne vient qu'entre deux

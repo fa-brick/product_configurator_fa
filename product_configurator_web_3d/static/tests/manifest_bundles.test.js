@@ -1,8 +1,8 @@
 /**
  * manifest_bundles.test.js — Tout fichier JS de `static/src` est-il DÉCLARÉ ?
  *
- * ⚠️ **Le défaut que cette garde empêche a eu lieu, et il était invisible d'ici.** Le
- * 2026-09-14, `page/baked_parts.js` a été ajouté sans être déclaré dans le manifeste. Rien
+ * ⚠️ **Le défaut que cette garde empêche a eu lieu, et il était invisible d'ici** ([[L-261]]).
+ * `page/baked_parts.js` a été ajouté sans être déclaré dans le manifeste. Rien
  * ne l'a signalé : la suite Jest résout ses imports par le disque, pas par un bundle, et
  * elle est restée verte. Ce n'est qu'en ouvrant l'éditeur — un AUTRE module, dans un AUTRE
  * dépôt — qu'on a vu la console dire *« The following modules are needed by other modules

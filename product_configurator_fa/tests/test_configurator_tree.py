@@ -1,4 +1,4 @@
-"""L'arbre du configurateur — la maquette de Gerry (D-210).
+"""L'arbre du configurateur — la maquette de D-210.
 
 ⚠️ Trois natures de lignes dans une seule liste : l'ÉTAPE en bandeau, l'ATTRIBUT,
 et ses VALEURS indentées. Une liste Odoo ne sait ni s'imbriquer ni mêler deux
@@ -234,10 +234,9 @@ class ConfiguratorTree(BaseCommon):
         })
 
     def test_13a_the_tree_can_move_the_step_MARKER_with_the_order(self):
-        """⚠️ L'arbre garde le bandeau où il s'affiche — constat de Gerry.
+        """⚠️ L'arbre garde le bandeau où il s'affiche (L-466).
 
-        *« je n'arrive pas à déplacer Bottom Plate au-dessus de Impressions 3D »* :
-        la ligne qui ouvrait l'étape emportait son bandeau partout. Déposée
+        La ligne qui ouvrait l'étape emportait son bandeau partout. Déposée
         au-dessus de lui, elle quitte l'étape, que la ligne suivante ouvre
         désormais — ordre et marqueur écrits dans le même appel.
         """
@@ -281,8 +280,7 @@ class ConfiguratorTree(BaseCommon):
     def test_14_the_line_SETTINGS_have_a_door_at_last(self):
         """⚠️ Ils n'étaient joignables NULLE PART depuis la fiche produit — D-217.
 
-        Constat de Gerry : *« je ne vois pas comment modifier price_mode dans la
-        fiche produit »*. Vérifié : le bouton « Configurer » du cœur ouvre les
+        Le bouton « Configurer » du cœur ouvre les
         VALEURS (`action_open_attribute_values`), pas la ligne. Or c'est la ligne
         qui porte le mode de prix, le rôle de dimension, les bornes et la vue 3D
         — et c'est **elle** qui est lue à l'exécution, pas la semence de
@@ -308,13 +306,13 @@ class ConfiguratorTree(BaseCommon):
             [(self.env.ref("product.product_template_attribute_line_form").id, "form")],
         )
 
-    # ─ RÉORDONNER LES VALEURS D'UN ATTRIBUT — 2026-08-29 ────────────────────
+    # ─ RÉORDONNER LES VALEURS D'UN ATTRIBUT ────────────────────────────────
     #
     # ⚠️ **CET ORDRE EST GLOBAL, ET C'EST ASSUMÉ.** Le rang d'une valeur vit
     # dans `product.attribute.value.sequence`, qui appartient à l'ATTRIBUT et
-    # non au produit. Arbitré par Gerry : c'est le seul ordre qui existe, et en
-    # inventer un par produit obligerait tout ce qui affiche des valeurs à le
-    # relire (assistant, arbre, éditeur 3D).
+    # non au produit. C'est le seul ordre qui existe ; en inventer un par produit
+    # obligerait tout ce qui affiche des valeurs à le relire (assistant, arbre,
+    # éditeur 3D).
 
     def test_16_reordering_VALUES_rewrites_the_order_the_tree_shows(self):
         ligne = self.template.attribute_line_ids.filtered(
@@ -330,8 +328,8 @@ class ConfiguratorTree(BaseCommon):
         """⚠️ Le prix de la simplicité : un seul ordre, partagé.
 
         Déplacer une valeur depuis un produit la déplace partout où l'attribut
-        sert. C'est ce que Gerry a choisi le 2026-08-29 ; le test existe pour que
-        personne ne « corrige » ce comportement en le prenant pour un bug.
+        sert. ⚠️ Ce comportement est VOULU : ne pas le « corriger » en le prenant
+        pour un bug.
         """
         autre = self.env["product.template"].create({
             "name": "Second panel", "config_ok": True,

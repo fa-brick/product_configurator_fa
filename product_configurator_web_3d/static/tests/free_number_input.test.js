@@ -1,5 +1,5 @@
 /**
- * free_number_input.test.js — La saisie libre d'un NOMBRE n'a pas de liste (Gerry, 2026-10-05).
+ * free_number_input.test.js — La saisie libre d'un NOMBRE n'a pas de liste (L-504).
  *
  * La question autorise l'ajout : ses valeurs existantes ne sont qu'une partie des réponses
  * possibles, et la déroulante d'`AutoComplete` se posait sur les onglets du téléphone pendant

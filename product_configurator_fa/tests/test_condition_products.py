@@ -6,8 +6,8 @@ from odoo.addons.base.tests.common import BaseCommon
 class ConditionOnProducts(BaseCommon):
     """C4 — une condition qui désigne des PRODUITS (D-201).
 
-    L'arbitrage de Gerry : *« les conditions portent sur les valeurs d'attribut
-    ET sur les produits. »* Les deux formes coexistent ; celle-ci ne remplace
+    Les conditions portent sur les valeurs d'attribut ET sur les produits.
+    Les deux formes coexistent ; celle-ci ne remplace
     rien.
 
     ⚠️ **Ce que la forme « produit » rend possible, et que l'autre ne permet

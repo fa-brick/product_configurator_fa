@@ -1,6 +1,6 @@
 """Les valeurs s'ouvrent dans un DIALOGUE — B5, QE, D-206.
 
-⚠️ *« Une ligne qui au clic ouvre la liste des valeurs »*, *« dans un dialogue »*.
+⚠️ Au clic, une ligne ouvre la liste de ses valeurs dans un dialogue.
 Un dialogue et non une action pleine page, à l'inverse du cœur : la pleine page
 perd le contexte de l'arbre, qui est justement ce que l'onglet apporte.
 """
@@ -71,7 +71,7 @@ class ValuesDialog(BaseCommon):
         self.assertFalse(self.line.too_many_values)
 
     def test_05_but_a_LONG_one_gives_up_on_them(self):
-        """⚠️ C'est le problème que Gerry a nommé : « plus de 200 valeurs ».
+        """⚠️ Le cas réel : plus de 200 valeurs, illisibles en étiquettes.
 
         ⓘ Le seuil n'est pas éprouvé en créant deux cents valeurs — ce serait
         long et fragile ; c'est la RÈGLE qui est éprouvée, à la frontière.

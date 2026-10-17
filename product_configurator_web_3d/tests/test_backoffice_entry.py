@@ -1,5 +1,5 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""La CLÉ À MOLETTE de la fiche produit — arbitrage Gerry, 2026-09-05.
+"""La CLÉ À MOLETTE de la fiche produit — elle ouvre notre configurateur (D-259).
 
 Le bouton existait déjà et ouvrait l'assistant OCA. Ce qui est éprouvé ici est
 donc un CHANGEMENT de destination, et la propriété qui va avec : un commercial
@@ -29,9 +29,8 @@ class TestBackofficeEntry(TransactionCase):
         })
 
     def test_la_cle_a_molette_ouvre_le_configurateur_EN_DIALOGUE(self):
-        """⚠️ Amendé le 2026-09-07 : c'était un onglet, et un onglet fait perdre
-        de vue ce qu'on faisait — *« une nouvelle page s'ouvre au lieu d'un
-        dialogue comme pour une ligne de devis »* (Gerry). Une action CLIENTE en
+        """⚠️ Un dialogue, comme pour une ligne de devis, pas un onglet : un onglet fait
+        perdre de vue ce qu'on faisait (D-262). Une action CLIENTE en
         `target: "new"` : Odoo l'enveloppe lui-même."""
         action = self.tmpl.configure_product()
         self.assertEqual(action["type"], "ir.actions.client")
@@ -39,8 +38,7 @@ class TestBackofficeEntry(TransactionCase):
         self.assertEqual(action["target"], "new")
 
     def test_le_dialogue_n_a_PAS_de_pied(self):
-        """*« le Ok et donc le footer est inutile car la croix est présente »*
-        (Gerry, 2026-09-07 — D-263).
+        """⚠️ Ni « Ok » ni pied : la croix suffit (D-263).
 
         Odoo garnit d'office le pied d'une action cliente en dialogue d'un
         bouton « Ok » qui ne fait que fermer, comme la croix. Dans un

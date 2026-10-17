@@ -184,7 +184,7 @@ class TestPublicRoutes(HttpCase):
 
 @tagged("post_install", "-at_install")
 class TestDisplayShapes(HttpCase):
-    """La FORME d'une question, et la règle qu'elle change — 2026-09-06.
+    """La FORME d'une question, et la règle qu'elle change (D-258).
 
     Cinq formes viennent d'Odoo, la sixième — la carte — a été ajoutée pour les
     réponses qui désignent. Une seule change la règle du serveur : la question
@@ -270,10 +270,10 @@ class TestDisplayShapes(HttpCase):
 
 @tagged("post_install", "-at_install")
 class TestNumericValueOnThePage(HttpCase):
-    """Ce que le CLIENT lit d'un nombre — D-160, demandé le 2026-09-07.
+    """Ce que le CLIENT lit d'un nombre — D-160.
 
     La valeur rangée est le nombre nu ; partout où elle se LIT, elle porte son
-    unité. Le back-office le faisait depuis ce matin, la page non : la même
+    unité. Le back-office le faisait, la page non : la même
     largeur se lisait « 2400 mm » d'un côté et « 2400 » de l'autre.
     """
 
@@ -325,7 +325,7 @@ class TestNumericValueOnThePage(HttpCase):
 class TestTheScopeCarriesNumbers(HttpCase):
     """La portée envoyée à la page porte des NOMBRES, pas des identifiants.
 
-    ⚠️ Relevé de Gerry le 2026-09-07, mesuré : `scope = {'__attribute_144': 292.0}`
+    ⚠️ Mesuré (D-262) : `scope = {'__attribute_144': 292.0}`
     — 292 étant l'`id` de la valeur « 2 ». La plaque se construisait donc à
     292 mm d'épaisseur. Le danger était pourtant ANNONCÉ ailleurs : *« les
     options portent leur libellé, jamais leur identifiant »*.
@@ -380,7 +380,7 @@ class TestTheScopeCarriesNumbers(HttpCase):
 
 @tagged("post_install", "-at_install")
 class TestTheWaitingPhoto(HttpCase):
-    """La photo d'attente, pour un visiteur qui n'a AUCUN droit — 2026-09-07.
+    """La photo d'attente, pour un visiteur qui n'a AUCUN droit.
 
     ⚠️ `/web/image` vérifie la lecture de l'enregistrement : un produit
     configurable n'étant pas forcément publié, l'attente montrait le pictogramme

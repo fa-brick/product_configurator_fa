@@ -1,8 +1,7 @@
-"""Poser une étape depuis l'arbre — 2026-08-29, en remplacement de D-212.
+"""Poser une étape depuis l'arbre — remplace le dialogue de D-212.
 
-⚠️ **LE DIALOGUE A DISPARU, PAS LA CONTRAINTE.** Gerry : *« quand on ajoute une
-étape, le comportement doit être identique à ajouter une section : une ligne se
-crée, on la nomme, puis on la déplace à sa position »*. C'est le geste des lignes
+⚠️ **LE DIALOGUE A DISPARU, PAS LA CONTRAINTE.** Une étape s'ajoute comme une
+section : une ligne se crée, on la nomme, puis on la déplace. C'est le geste des lignes
 de commande — on ne choisit plus À L'AVANCE une chose qu'on saura mieux en la
 voyant.
 

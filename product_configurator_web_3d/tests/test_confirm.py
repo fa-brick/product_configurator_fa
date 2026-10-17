@@ -1,5 +1,5 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""TERMINER une configuration — la boucle qui manquait (2026-09-05).
+"""TERMINER une configuration — la boucle qui manquait.
 
 La page savait poser des questions et montrer un prix ; elle ne savait pas
 conclure. Ce qui est éprouvé ici est surtout ce qui doit être REFUSÉ : une

@@ -1,6 +1,6 @@
 """Toute action rendue à un COMPOSANT doit être autosuffisante — L-165.
 
-⚠️ Trouvé à l'écran par Gerry, pas par les tests : *« Cannot read properties of
+⚠️ Trouvé à l'écran, pas par les tests : *« Cannot read properties of
 undefined (reading 'map') »*. Une action déclenchée par un BOUTON passe par
 `/web/dataset/call_button`, où le serveur la complète — `clean_action` déduit
 `views` de `view_mode`. Rendue à un composant par un simple appel ORM, elle n'est

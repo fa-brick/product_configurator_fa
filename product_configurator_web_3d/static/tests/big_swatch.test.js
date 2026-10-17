@@ -1,5 +1,5 @@
 /**
- * La GRANDE PASTILLE (demande de Gerry, 2026-09-29) : un disque illustré, son nom dessous, et
+ * La GRANDE PASTILLE : un disque illustré, son nom dessous, et
  * un choix qui SE VOIT — coche, anneau, nom en gras. Lue dans les sources, comme les autres
  * gardes de gabarit de ce dossier : Jest n'a ni bundle ni OWL.
  */
@@ -40,7 +40,7 @@ describe("la grande pastille", () => {
         expect(SCSS).toMatch(/\.o_cfg3d_bigswatches\s*\{[^}]*padding:/);
     });
 
-    test("⚠️ la coche OU l'anneau, jamais les deux (Gerry) — la marque vient de l'attribut", () => {
+    test("⚠️ la coche OU l'anneau, jamais les deux — la marque vient de l'attribut", () => {
         // ⓘ La TAILLE (D-382) s'ajoute derrière la marque, dans le même attribut.
         expect(bloc).toContain("t-att-class=\"'o_cfg3d_bigswatches--' + question.swatchMark + ");
         // L'anneau n'existe que sous `--ring` : aucune autre règle ne le pose sur la pastille choisie.

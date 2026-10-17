@@ -1,10 +1,9 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""Le devis ouvre le MÊME configurateur que le web — D-259, arbitré 2026-09-06.
+"""Le devis ouvre le MÊME configurateur que le web — D-259.
 
-Gerry : *« la mécanique est d'ajouter un produit en ligne et si ce produit est
-configurable on ouvre le configurateur »*, en dialogue, sans quitter le devis.
-Le but tenu ici est le SIEN : ne rien dupliquer, pour que ce qu'on change côté
-client se voie au back-office le jour même.
+ⓘ On ajoute un produit en ligne ; s'il est configurable, le configurateur s'ouvre en
+dialogue, sans quitter le devis.
+⚠️ Ne rien dupliquer : ce qu'on change côté client doit se voir au back-office (D-259).
 
 ⚠️ Ce qui se joue au serveur est éprouvé ici ; ce qui se joue à l'écran — le
 dialogue, la scène, les formes — ne se prouve qu'en capture ([[L-215]]).
@@ -101,9 +100,7 @@ class TestDialogEntry(TransactionCase):
         )["arch"])
 
     def test_le_bouton_du_WIZARD_a_ete_SUPPRIME(self):
-        """Arbitré par Gerry : *« le bouton actuel de OCA ainsi que la
-        fonctionnalité derrière devient obsolète »*, puis le 2026-09-19 : *« pour
-        moi le wizard est mort, on peut le supprimer. »*
+        """Le bouton d'OCA et l'assistant derrière lui sont supprimés (D-259).
 
         ⚠️ Il était d'abord MASQUÉ, le temps qu'il vive encore dans un module
         amont. Ce module est le nôtre : le bouton et sa méthode sont partis

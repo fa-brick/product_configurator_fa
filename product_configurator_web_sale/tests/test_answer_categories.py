@@ -1,6 +1,6 @@
 """Les réponses qui désignent un PRODUIT se rangent sous ses catégories E-COMMERCE — D-382.
 
-Arbitrage de Gerry (2026-09-30) : la catégorie e-commerce, traduisible, plutôt que la
+ⓘ D-382 : la catégorie e-commerce, traduisible, plutôt que la
 catégorie de produit, interne. Ce qui est éprouvé : l'ENFANT FINAL seul, et la clé préfixée.
 """
 from odoo import Command

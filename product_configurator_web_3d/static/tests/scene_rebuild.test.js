@@ -4,7 +4,7 @@
  *
  * ⚠️ **Une graine absente ne lève pas, ne se voit pas, et ne se mesure qu'au
  * chronomètre.** `build()` reparti sans rien refait l'arbre ENTIER — booléens compris —
- * pour une seule pose neuve. Mesuré le 2026-09-22 sur le JeNo, au travers du serveur
+ * pour une seule pose neuve. Mesuré sur le JeNo, au travers du serveur
  * d'essai : **2 742 ms sans graine, 1 616 ms avec**, les douze autres pièces annoncées
  * « semée » à 0 ms. L'écran, lui, est identique dans les deux cas : rien ne dit qu'on paie.
  *
@@ -56,7 +56,7 @@ describe("la scène se construit par la SESSION du moteur (D-329)", () => {
     });
 
     test("⚠️ les fichiers IMPORTÉS aussi — sans eux, une pièce de fichier est un volume vide", () => {
-        // La page ne les lisait pas du tout : les inserts du JeNo y manquaient (2026-09-24).
+        // La page ne les lisait pas du tout : les inserts du JeNo y manquaient ([[L-357]]).
         const corps = buildScene();
         expect(corps.indexOf("await this._loadImported(buildable, imported)"))
             .toBeLessThan(corps.indexOf("this._session.build("));

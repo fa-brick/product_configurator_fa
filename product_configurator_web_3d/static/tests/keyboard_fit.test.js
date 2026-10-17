@@ -1,5 +1,5 @@
 /**
- * LA PAGE CALÉE AU-DESSUS DU CLAVIER — D-389 (capture de Gerry, 2026-10-02) : sur téléphone,
+ * LA PAGE CALÉE AU-DESSUS DU CLAVIER — D-389 : sur téléphone,
  * le clavier numérique faisait glisser la page vers le haut, et la 3D sortait de l'écran.
  * La page se pose désormais sur la partie VISIBLE (`visualViewport`) pendant une saisie.
  */

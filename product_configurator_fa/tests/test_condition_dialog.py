@@ -1,8 +1,7 @@
 """Écrire une condition dans le dialogue de la barre de recherche.
 
-Demande de Gerry (2026-08-29) : *« quand on clique sur add a condition je
-voulais retrouver la même fenêtre que pour les filtres de la barre de
-recherche »*.
+ⓘ « Add a condition » ouvre la même fenêtre que les filtres de la barre de
+recherche (D-224).
 
 ⚠️ **CES COUTURES VISENT LES DEUX APPELS QUE LE CLIENT FAIT VRAIMENT** —
 `fields_get` sur le modèle-sujet, et `search_count` pendant la frappe. C'est
@@ -177,7 +176,7 @@ class ConditionDialog(BaseCommon):
 
         ⚠️ **Et le `flush_all` n'est pas décoratif** : une contrainte SQL se lève
         au vidage, pas à l'écriture. Sans lui, ce test passait alors que
-        l'enregistrement échouait chez Gerry ([[L-161]]).
+        l'enregistrement échouait à l'écran ([[L-161]]).
         """
         assistant = self._assistant()
         assistant.condition_domain = str(
@@ -224,7 +223,7 @@ class ConditionDialog(BaseCommon):
 
         écrit `['&', A, B]` dès qu'une condition porte deux règles ; le `&`
         explicite était rejeté avec « Only OR and implicit AND are supported ».
-        Constaté à l'écran par Gerry.
+        Constaté à l'écran.
 
         ⓘ Le `&` n'ajoute rien : une suite de feuilles juxtaposées est déjà un ET.
         """

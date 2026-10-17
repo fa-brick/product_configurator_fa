@@ -66,7 +66,7 @@ class TestSaleSeparatelyPage(TransactionCase):
         # de l'utilisateur (`web_separate_lines`), donc par celle de la BASE où tourne le
         # test : sur fabk18, la liste « Par défaut » portait une règle globale « prix fixe
         # 0 » (4 août → 30 septembre 2026), et trois tests tombaient à 0 au lieu de 10 et
-        # 12 sans que le code soit en cause (2026-09-30). Le test fixe la sienne.
+        # 12 sans que le code soit en cause. Le test fixe la sienne.
         cls.pricelist = cls.env["product.pricelist"].create({"name": "Sans règle"})
         cls.env.user.partner_id.specific_property_product_pricelist = cls.pricelist
 

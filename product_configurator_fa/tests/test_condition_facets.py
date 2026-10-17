@@ -1,7 +1,7 @@
 """Une condition se lit comme une barre de recherche — B2, D-203.
 
-⚠️ *« ET entre les pastilles, OU à l'intérieur d'une pastille. »* La sémantique
-demandée par Gerry tombe juste sur le stockage existant ; ce résumé n'est qu'une
+⚠️ ET entre les pastilles, OU à l'intérieur d'une pastille. Cette sémantique
+tombe juste sur le stockage existant ; ce résumé n'est qu'une
 LECTURE, jamais un stockage — la condition reste faite d'enregistrements (D-080).
 """
 
@@ -50,7 +50,7 @@ class ConditionFacets(BaseCommon):
         self.assertNotIn(" or ", self.domain.condition_summary)
 
     def test_04_the_operator_governs_the_junction_with_the_NEXT_line(self):
-        """⚠️ Contre-intuitif, et je l'avais écrit à l'envers.
+        """⚠️ Contre-intuitif : facile à écrire à l'envers.
 
         `to_odoo_domain` émet le `|` AVANT la ligne qui le porte, en notation
         préfixe : A en `or` donne `['|', A, B, C]`, soit **(A OU B) ET C**. Le
@@ -87,10 +87,8 @@ class ConditionFacets(BaseCommon):
 
 
 class FacetsAreStructured(BaseCommon):
-    """⚠️ **La pastille est STRUCTURÉE, pas une phrase** — constat de Gerry à
-
-    l'écran : *« l'affichage de la condition ne reprend pas les étiquettes et la
-    mécanique de celles du champ de recherche »*. Une facette du cœur a un
+    """⚠️ **La pastille est STRUCTURÉE, pas une phrase** — comme les facettes du
+    champ de recherche (D-225). Une facette du cœur a un
     segment d'entête, des valeurs séparées par un mot, et sa propre croix. Un
     unique texte ne peut pas rendre ça — il se lisait comme une ligne de tableau.
     """

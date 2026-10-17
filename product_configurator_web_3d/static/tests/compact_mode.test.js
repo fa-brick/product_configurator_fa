@@ -1,5 +1,5 @@
 /**
- * LE MODE COMPACT — D-389 (Gerry, 2026-10-01) : sur téléphone, la page rend autre chose
+ * LE MODE COMPACT — D-389 : sur téléphone, la page rend autre chose
  * (onglets, barre en haut, tape qui ferme le panneau). Le SCSS dispose la page, le JS décide
  * de ce qu'il rend : ils doivent lire le MÊME seuil.
  */

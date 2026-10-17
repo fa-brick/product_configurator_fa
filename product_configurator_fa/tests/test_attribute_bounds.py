@@ -6,7 +6,7 @@ from odoo.addons.base.tests.common import BaseCommon
 class AttributeBounds(BaseCommon):
     """Les bornes d'un attribut numérique — lot 1 (D-076, D-077, D-089).
 
-    Le scénario est celui de Gerry : une largeur bornée à 5 000, que le montage
+    Le scénario réel : une largeur bornée à 5 000, que le montage
     arrière ramène à 4 000.
     """
 

@@ -1,7 +1,7 @@
 """Une ligne de DEVIS se corrige ; une COMMANDE, non — D-371. Et ses pièces à part suivent (D-368).
 
-Gerry : « quand on est à l'état de devis, rien n'est joué ; c'est uniquement lors du passage
-en commande que le variant est concret ». Et : supprimer la ligne d'une pièce vendue à part
+⚠️ À l'état de devis rien n'est joué : la variante ne devient concrète qu'à la commande
+(D-371). Et supprimer la ligne d'une pièce vendue à part
 la désélectionne à la réouverture du configurateur.
 """
 from odoo import Command

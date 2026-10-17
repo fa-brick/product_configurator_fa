@@ -4,7 +4,7 @@ from odoo.addons.base.tests.common import BaseCommon
 class NumericValueDisplay(BaseCommon):
     """La valeur d'un attribut numérique est le NOMBRE ; l'affichage porte l'unité.
 
-    Arbitrage de Gerry le 2026-08-22. OCA tenait déjà la règle à UN endroit — le
+    ⓘ D-160. OCA tenait déjà la règle à UN endroit — le
     libellé d'une valeur de session — et la perdait partout ailleurs.
     """
 
@@ -148,7 +148,7 @@ class NumericValueDisplay(BaseCommon):
         self.assertIn("50 mm", message)
         self.assertIn("1250 mm", message)
 
-    # ── LA VALEUR DE CATALOGUE, DANS LA LISTE — demande de Gerry, 2026-09-07 ──
+    # ── LA VALEUR DE CATALOGUE, DANS LA LISTE ────────────────────────────────
     #
     # La règle tenait pour les valeurs SAISIES ; les valeurs rangées (D-081),
     # elles, se lisaient comme des nombres nus dans la liste de l'attribut.

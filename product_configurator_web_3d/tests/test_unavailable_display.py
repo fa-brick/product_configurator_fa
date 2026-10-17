@@ -1,7 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 """Griser ou masquer une valeur indisponible — D-168, écrit par D-368.
 
-Le cas de Gerry : le bumper avant du JeNo dépend de la Cam plate. En Classic, le
+Le cas réel : le bumper avant du JeNo dépend de la Cam plate. En Classic, le
 bumper Ciné ne s'offre pas ; masqué, le client ne le voit pas du tout.
 
 ⚠️ Ce qui est éprouvé est ce que la PAGE reçoit (`web_state`) : c'est là que le

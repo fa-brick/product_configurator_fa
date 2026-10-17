@@ -1,6 +1,6 @@
 /**
- * LES PASTILLES DE CATÉGORIES du panneau de choix — D-382, lot 4b (Gerry : « des pastilles
- * horizontales sous la recherche qui filtrent », « autre et tout »).
+ * LES PASTILLES DE CATÉGORIES du panneau de choix — D-382, lot 4b : des pastilles
+ * horizontales sous la recherche, qui filtrent, avec « Tout » et « Autres ».
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

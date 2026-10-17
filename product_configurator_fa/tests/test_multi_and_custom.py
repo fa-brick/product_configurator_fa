@@ -1,7 +1,7 @@
 """Un attribut peut être MULTIPLE **et** autoriser l'ajout — D-220.
 
-⚠️ Question de Gerry : *« si l'attribut autorise l'ajout, il ne peut pas être
-multi ? »*. **Aucune contrainte de modèle ne l'interdisait** : deux `readonly`
+⚠️ Un attribut qui autorise l'ajout peut être multiple (D-220).
+**Aucune contrainte de modèle ne l'interdisait** : deux `readonly`
 croisés dans la vue, hérités du fork OCA, sans raison consignée.
 
 ⓘ Et l'assistant prévoit explicitement la combinaison — `if field_type ==

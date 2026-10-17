@@ -70,10 +70,8 @@ class ProductFilter(BaseCommon):
         """⚠️ **CE TEST DISAIT L'INVERSE, et c'est un changement de RÈGLE.**
 
         QJ posait : *« la valeur choisie est matérialisée »* — donc rien tant
-        que rien n'est choisi, et ce test le tenait. Gerry a demandé ensuite
-        d'*« afficher les enregistrements du filtre dans les valeurs
-        d'attribut »* : la liste doit montrer ce que le filtre propose, sans
-        attendre qu'un client passe.
+        que rien n'est choisi, et ce test le tenait. Désormais la liste montre
+        ce que le filtre propose, sans attendre qu'un client passe (D-222).
 
         ⚠️ **Ce que la nouvelle règle coûte** : le catalogue porte désormais une
         valeur par produit proposé, retenue ou non. ⓘ `configurator_generated`
@@ -120,10 +118,9 @@ class ProductFilter(BaseCommon):
         self.assertEqual(self.attribute.product_filter_count, 0)
 
     def test_10_le_compteur_ouvre_les_VALEURS_dans_un_dialogue(self):
-        """⚠️ **Des VALEURS, plus des produits** — demande de Gerry : *« le clic
+        """⚠️ **Des VALEURS, plus des produits** (D-227).
 
-        renvoie sur valeurs d'attribut, rempli avec les résultats »*. C'est ce
-        que l'attribut porte réellement ; le produit n'était qu'une étape.
+        C'est ce que l'attribut porte réellement ; le produit n'était qu'une étape.
 
         ⓘ Un dialogue, comme pour les valeurs (D-206) : on revient là où on l'a
         ouvert. Et depuis D-222 elles existent déjà — poser le filtre les
@@ -141,8 +138,7 @@ class ProductFilter(BaseCommon):
         self.assertEqual(trouvees.attribute_id, self.attribute)
         # ⚠️ Ni créer ni supprimer : cette liste est le RÉSULTAT d'un filtre. Une
         # valeur ajoutée à la main n'en ferait pas partie, et une valeur retirée
-        # reviendrait au prochain enregistrement (D-228). Constat de Gerry :
-        # « la fenêtre montre un bouton nouveau qui n'a pas de sens ».
+        # reviendrait au prochain enregistrement (D-228). D'où aucun bouton « Nouveau ».
         self.assertFalse(action["context"]["create"])
         self.assertFalse(action["context"]["delete"])
 

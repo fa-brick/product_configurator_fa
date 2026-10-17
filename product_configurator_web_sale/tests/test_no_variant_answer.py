@@ -73,7 +73,7 @@ class NoVariantAnswerInCart(WebsiteSaleCommon):
         self.assertNotIn("Mat", line.name.replace("Brillant", ""))
 
     def test_02_la_ligne_garde_l_article_configure(self):
-        """W-99 / D-393 (option A) — le défaut constaté le 2026-10-01 est CORRIGÉ : la réponse
+        """W-99 / D-393 (option A) — le défaut constaté est CORRIGÉ : la réponse
         « sans variante » ne fait plus partie de l'article, le panier n'a donc plus d'article
         à recomposer. Ce test remplace le test de caractérisation `test_02_DEFAUT_CONNU_…`."""
         session, variant = self._configure(self.cine, self.gloss)

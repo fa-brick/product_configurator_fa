@@ -44,9 +44,8 @@ class TestSaleOrderLine(BaseCommon):
     def _configure_product(self, sale_order, product_template, template_values):
         """Poser sur le devis une ligne CONFIGURÉE, avec sa session.
 
-        ⚠️ **Ce passage ne passe plus par l'assistant OCA** : il est mort le
-        2026-09-19 (*« pour moi le wizard est mort, on peut le supprimer »*), et
-        `action_config_start` avec lui.
+        ⚠️ **Ce passage ne passe plus par l'assistant OCA** : il est supprimé (D-259),
+        et `action_config_start` avec lui.
 
         ⓘ Ce que ce banc mesure n'a jamais été l'assistant : c'est que **le prix
         de la ligne suit celui de sa session**. L'assistant n'était que le moyen

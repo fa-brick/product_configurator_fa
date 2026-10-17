@@ -1,8 +1,8 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""Les trois réglages d'une LIGNE, visibles là où l'on travaille — 2026-09-07.
+"""Les trois réglages d'une LIGNE, visibles là où l'on travaille.
 
-Gerry : *« dans la fiche produit, dans la partie attribut, je vois que l'on ne
-peut pas modifier en ligne Required, Multi et Allow add — est-ce normal ? »*
+ⓘ Required, Multi et Allow add se modifient en ligne dans la partie attribut de la
+fiche produit.
 
 ⚠️ **Les colonnes existaient**, mais conditionnées au contexte du menu
 « Produits configurables » (`default_config_ok`). Sur la fiche produit
@@ -11,7 +11,7 @@ invisibles, alors que ces trois drapeaux sont **lus à l'exécution** :
 `answer_field` lit `custom` pour choisir entre une liste et une saisie, et la
 page du configurateur lit `multi` pour accumuler les réponses.
 
-ⓘ C'est le même défaut que `default_val` avait déjà payé (2026-09-02), et pour
+ⓘ C'est le même défaut que `default_val` avait déjà payé, et pour
 la même raison : une pièce peut porter un modèle 3D **sans** être configurable.
 """
 from lxml import etree
@@ -54,7 +54,7 @@ class LineFlagColumns(TransactionCase):
         for nom in ("required", "multi", "custom"):
             self.assertIn(nom, colonnes)
 
-    def test_le_libelle_d_ajout_reste_celui_que_Gerry_a_choisi(self):
+    def test_add_label_is_allow_add(self):
         """« Custom » ne disait rien ; le drapeau autorise l'AJOUT d'une valeur."""
         self.assertEqual(self._colonnes()["custom"].get("string"), "Allow add")
 
@@ -69,10 +69,10 @@ class LineFlagColumns(TransactionCase):
 
 @tagged("post_install", "-at_install")
 class KanbanConfigureIcon(TransactionCase):
-    """L'icône « configurer » d'une vignette de produit — Gerry, 2026-09-07.
+    """L'icône « configurer » d'une vignette de produit.
 
-    *« Dans la card du kanban, remplace la clé par l'icône du crayon et ajoute
-    une marge à droite avant l'étoile. »*
+    ⓘ Dans la carte du kanban : le crayon, pas la clé, et une marge à droite
+    avant l'étoile.
 
     ⓘ Le crayon est celui qu'Odoo emploie déjà pour ce geste — le bouton de la
     cellule produit d'une ligne de devis en porte un. Deux dessins pour un même

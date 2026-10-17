@@ -1,8 +1,7 @@
 /**
- * LES ONGLETS DU MODE COMPACT — D-389 (Gerry, 2026-10-01) : « l'ensemble des attributs de
- * l'étape sélectionnable par un scroll horizontal. La sélection de question le centre en
- * largeur pour montrer qu'il y a des questions à gauche et à droite. Une fois la question
- * sélectionnée on affiche son champ en dessous. »
+ * LES ONGLETS DU MODE COMPACT — D-389 : les questions de l'étape défilent à l'horizontale.
+ * La question choisie est centrée, pour montrer qu'il y en a à gauche et à droite, et son
+ * champ s'affiche dessous.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -159,7 +158,7 @@ describe("le gabarit : les onglets en mode compact, la colonne d'avant sinon", (
     });
 
     test("la boîte du champ prend la hauteur de SON CONTENU, bornée — pas de blanc dessous", () => {
-        // ⓘ D'abord fixe (172 px) : une ligne résumé y laissait 100 px vides (Gerry, 2026-10-01).
+        // ⓘ D'abord fixe (172 px) : une ligne résumé y laissait 100 px vides (D-389).
         const field = SCSS.slice(SCSS.indexOf(".o_cfg3d_field {"), SCSS.indexOf("}", SCSS.indexOf(".o_cfg3d_field {")));
         expect(field).not.toMatch(/(^|\s)height:/);
         expect(field).toMatch(/max-height: 40vh;\s*max-height: 40dvh;\s*overflow-y: auto;/);

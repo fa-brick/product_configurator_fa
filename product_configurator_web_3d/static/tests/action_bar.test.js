@@ -1,7 +1,6 @@
 /**
- * LA BARRE D'ACTION — D-389 (Gerry, 2026-10-01) : « le footer affiche le prix [et] le bouton
- * d'ajout au panier avec qu'une icône, sur une seule ligne » ; le panier pour TOUS les hôtes,
- * avec l'icône qu'utilise Odoo.
+ * LA BARRE D'ACTION — D-389 : le prix et le panier en icône seule, sur une seule ligne ;
+ * le panier pour TOUS les hôtes, avec l'icône qu'utilise Odoo.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -42,7 +41,7 @@ describe("la barre d'action", () => {
         expect(bar).not.toMatch(/\bnot\b/);
     });
 
-    test("ⓘ pas de bouton de sauvegarde pour l'instant (Gerry, 2026-10-01)", () => {
+    test("ⓘ pas de bouton de sauvegarde pour l'instant (D-389)", () => {
         expect((bar.match(/<button/g) || []).length).toBe(1);
     });
 

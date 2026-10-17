@@ -6,7 +6,7 @@ from odoo.addons.base.tests.common import BaseCommon
 class VisibilityConditions(BaseCommon):
     """Les conditions de visibilité — lot 4 (D-080, D-086, D-087, D-097).
 
-    Le cas de Gerry : le montage arrière fait apparaître un renfort, et la
+    Le cas réel : le montage arrière fait apparaître un renfort, et la
     largeur — un attribut NUMÉRIQUE, donc sans valeurs à écarter — doit pouvoir
     disparaître elle aussi.
     """
@@ -223,8 +223,7 @@ class VisibilityConditions(BaseCommon):
         self.assertNotIn(f"__attribute_{self.attr_mounting.id}", fields)
 
     def test_12_a_numeric_attribute_is_offered_as_a_NUMBER(self):
-        """⚠️ **AMENDÉ le 2026-09-07** (Gerry : *« il faut tenir compte des opérateurs
-        supérieur inférieur et égalité »*).
+        """⚠️ **AMENDÉ** : les comparaisons à un nombre comptent (D-267).
 
         Ce test fixait l'inverse, et sa raison a expiré : une dimension était décrite en
         `many2one` parce que le stockage ne savait garder que `in`/`not in` — « largeur >

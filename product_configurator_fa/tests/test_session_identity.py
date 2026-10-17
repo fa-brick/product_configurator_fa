@@ -104,7 +104,7 @@ class SessionIdentity(BaseCommon):
         self.env["product.config.session"].search(domain)
 
     def test_06_taking_over_does_NOT_fork_any_more(self):
-        """⚠️ D-253 REMPLACE D-092. Arbitrage de Gerry, 2026-09-05 : un interne
+        """⚠️ D-253 REMPLACE D-092 : un interne
         voit et modifie **en direct** la configuration d'un collègue sur le même
         devis. Reprendre ne duplique plus — donc rien ne diverge, et il n'y a
         plus deux versions dont l'une se périme en silence."""

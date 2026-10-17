@@ -1,4 +1,4 @@
-"""Une question VENDUE À PART — D-368 (option B de Gerry).
+"""Une question VENDUE À PART — D-368 (option B).
 
 Le cas : le bumper avant d'un drone, en option. Sa réponse ne fait ni le prix, ni la
 variante, ni donc la nomenclature du drone : le bumper aura sa propre ligne de devis.
@@ -72,7 +72,7 @@ class SaleSeparately(BaseCommon):
             line.sale_separately = True
 
     def test_une_question_OBLIGATOIRE_ne_se_vend_pas_a_part(self):
-        """D-371 (Gerry) : une option se retire — une question obligatoire, non.
+        """D-371 : une option se retire — une question obligatoire, non.
 
         ⓘ La ligne est vendue à part dès la création (W-99 / D-393) : c'est la rendre
         OBLIGATOIRE qui est refusé."""

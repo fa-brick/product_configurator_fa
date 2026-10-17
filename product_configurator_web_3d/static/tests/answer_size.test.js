@@ -1,6 +1,6 @@
 /**
- * LA TAILLE d'une carte ou d'une grande pastille — D-382 (Gerry, 2026-09-30 : « plutôt modifier
- * la taille que le nombre en largeur »). Gardes de gabarit lues dans les sources, comme leurs
+ * LA TAILLE d'une carte ou d'une grande pastille — D-382 : on règle la taille, pas le nombre
+ * en largeur. Gardes de gabarit lues dans les sources, comme leurs
  * voisines : Jest n'a ni bundle ni OWL. Les commentaires sont retirés avant de chercher
  * ([[L-352]]) — la prose de ces fichiers cite les classes qu'elle explique.
  */
@@ -73,8 +73,8 @@ describe("la feuille de style dessine chaque taille", () => {
 
     test("⚠️ chaque taille donne un nombre DIFFÉRENT — 4, 3, 2 — AVEC ou SANS barre de défilement", () => {
         // 72 px rendait trois cartes, comme la moyenne ; puis la moyenne à 96 px n'en rendait
-        // que DEUX avec la barre de défilement de Chrome sous Linux — comme la grande (relevé
-        // de Gerry, 2026-09-30). Les TROIS tailles, aux DEUX largeurs, pour les DEUX formes.
+        // que DEUX avec la barre de défilement de Chrome sous Linux — comme la grande
+        // (L-452). Les TROIS tailles, aux DEUX largeurs, pour les DEUX formes.
         // Colonne de 340 px : 308 px utiles, 293 avec une barre classique ; la grille des
         // pastilles retire encore sa marge intérieure (8 px).
         const fit = (width, size) => Math.floor((width + 8) / (size + 8));

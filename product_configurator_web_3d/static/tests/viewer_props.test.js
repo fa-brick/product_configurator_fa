@@ -4,9 +4,9 @@
  *
  * ⚠️ **Une prop absente ne lève pas.** Le viewer se rabat sur ce qu'il sait faire
  * seul — refaire une extrusion depuis son dessin — et rend une pièce PLAUSIBLE et
- * fausse : sans ses trous, sans ses chanfreins, sans ses matières. Relevé de Gerry
- * le 2026-09-07, sur la plaque du JeNo ; aucun test ne pouvait le voir, et la
- * console restait muette ([[L-188]]).
+ * fausse : sans ses trous, sans ses chanfreins, sans ses matières. Cas réel : la
+ * plaque du JeNo ; aucun test ne pouvait le voir, et la console restait muette
+ * ([[L-188]]).
  *
  * ⓘ On éprouve donc le GABARIT : ces quatre props sont le contrat entre la page et
  * le viewer, et leur oubli est silencieux par construction.
@@ -27,7 +27,7 @@ function viewerTag() {
 /**
  * ⚠️ **La CAMÉRA se demande avant le premier rendu.** Posée après la construction,
  * elle arrivait 2,5 s trop tard : le viewer avait déjà cadré la scène tout seul, et
- * l'on voyait la pièce à deux endroits (sonde du 2026-09-07 — cadrage automatique à
+ * l'on voyait la pièce à deux endroits (sonde — cadrage automatique à
  * 2 405 ms, vue par défaut à 4 899 ms ; après correction : 2 437 et 2 440 ms).
  *
  * ⓘ On éprouve le CHEMIN, pas le chronomètre : la demande doit partir de
@@ -64,8 +64,8 @@ describe("la vue par défaut de la page", () => {
     });
 
     test("quitter l'isolation RAMÈNE la vue caméra en cours — celle du produit, avec sa cible", () => {
-        // Gerry (2026-09-23) : le double clic vise la pièce ; en quittant, la vue en cours
-        // rend sa cible. La vue vient du serveur AVEC `target` ; sans vue, la matière.
+        // ⓘ Le double clic vise la pièce ; en quittant, la vue en cours rend sa cible (D-333).
+        // La vue vient du serveur AVEC `target` ; sans vue, la matière.
         const select = bodyAfter("_select(nodeId, isolated, { broadcast = true } = {}) {");
         expect(select).toContain("if (isolated && nodeId) this._frameOn(nodeId);");
         expect(select).toContain("else if (before.isolated) this._returnToView();");
@@ -88,7 +88,7 @@ describe("la page publique et son viewer", () => {
     });
 
     test("elle passe les CORPS CUITS — sinon un quart de tour sur chaque pièce servie", () => {
-        // ⚠️ Cette prop MANQUAIT (relevé du 2026-09-22), et personne ne l'avait vu parce
+        // ⚠️ Cette prop MANQUAIT ([[L-357]]), et personne ne l'avait vu parce
         // que la cuisson n'atteignait pas la page (`toViewModel` la laissait tomber).
         // Sans elle, un corps cuit repasse par le groupe de son esquisse et reçoit la
         // matrice du plan une seconde fois (mesuré sur le bras, dans l'éditeur).
@@ -96,7 +96,7 @@ describe("la page publique et son viewer", () => {
     });
 
     test("⚠️ elle passe les PASSES FINALES — sept gravures manquaient, sans une erreur", () => {
-        // Relevé du 2026-09-22 sur le JeNo : sept `engrave` visibles et complètes dans la
+        // Cas réel du JeNo : sept `engrave` visibles et complètes dans la
         // définition, aucune à l'écran — le gabarit ne passait aucune de ces trois props.
         // Cette garde avait été écrite « pour cette famille exacte » et ne les vérifiait
         // pas. Le moteur les publie avec l'arbre (D-330) ; la page les passe.
@@ -116,14 +116,14 @@ describe("la page publique et son viewer", () => {
     });
 
     test("⚠️ le survol ne NOMME rien — le contour orange du viewer suffit, comme dans l'éditeur", () => {
-        // Arbitrage Gerry (2026-09-23) : pas de cartouche avec le nom de la pièce. Le viewer
+        // ⓘ Pas de cartouche avec le nom de la pièce (D-333). Le viewer
         // contoure en orange ce qu'un clic pourrait désigner, et rien d'autre.
         expect(viewerTag()).not.toContain("onHoverPiece");
         expect(TEMPLATE.replace(/<!--[\s\S]*?-->/g, "")).not.toContain("o_cfg3d_hover");
     });
 
     test("⚠️ une pièce sélectionnée : la FLÈCHE de retour puis son nom en en-tête — ni fil d'Ariane, ni bouton en bas", () => {
-        // Maquette de Gerry (2026-09-23) : l'en-tête montre la navigation, les questions
+        // ⓘ La maquette de D-333 : l'en-tête montre la navigation, les questions
         // de la pièce viennent dessous.
         const body = TEMPLATE.replace(/<!--[\s\S]*?-->/g, "");
         const head = body.slice(body.indexOf('o_cfg3d_title--piece'), body.indexOf('t-else="" class="o_cfg3d_title"'));
@@ -170,8 +170,8 @@ describe("la page publique et son viewer", () => {
     test("⚠️ elle REFERME la boucle de sélection — l'aller ET le retour", () => {
         // `onSelectPiece` est l'aller (souris ET doigt) ; `selectedNodeIds` est le retour,
         // et la seule chose qui allume le contour de SÉLECTION. Sans le retour, seul le
-        // SURVOL peignait — donc jamais au doigt, qui ne survole pas (relevé de Gerry,
-        // 2026-09-22 : « actif sur desktop, pas sur mobile »). Depuis D-333 le retour passe
+        // SURVOL peignait — donc jamais au doigt, qui ne survole pas : actif sur ordinateur,
+        // jamais sur téléphone. Depuis D-333 le retour passe
         // par la prop de PIÈCES, plus par celle des esquisses.
         expect(tag).toContain('onSelectPiece.bind="onSelectPiece"');
         expect(tag).toContain('selectedNodeIds="selectedNodeIds"');
@@ -181,8 +181,8 @@ describe("la page publique et son viewer", () => {
     test("⚠️ l'identité désignée voyage TELLE QUELLE, sans normalisation", () => {
         // Le viewer rend le `nodeId` de la POSE cliquée. L'analyser ici allumerait TOUTES
         // les poses d'un modèle au lieu de celle qu'on a touchée — défaut mesuré dans
-        // l'éditeur le 2026-09-13. Une seule définition de `onSelectPiece`, aussi : deux
-        // méthodes du même nom, et c'est la dernière qui gagne en silence (2026-09-23).
+        // l'éditeur. Une seule définition de `onSelectPiece`, aussi : deux
+        // méthodes du même nom, et c'est la dernière qui gagne en silence ([[L-361]]).
         const SRC = readFileSync(
             join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
         expect(SRC.match(/^    onSelectPiece\(/gm)).toHaveLength(1);
@@ -221,7 +221,7 @@ describe("la carte d'une réponse, quand elle n'a pas de vignette", () => {
     test("le CADRE ne se dessine que s'il y a une image", () => {
         // ⚠️ Un cadre vide se lit comme un chargement en panne. Une valeur qui ne
         // désigne rien n'a pas d'image : la carte se réduit à son libellé
-        // (relevé de Gerry, 2026-09-07).
+        // (cas réel).
         expect(TEMPLATE_PAGE).toContain('<span t-if="value.image" class="o_cfg3d_card_shot">');
     });
 
@@ -278,9 +278,8 @@ describe("l'AMBIANCE du produit atteint le viewer", () => {
     });
 
     test("⚠️ les réglages COÛTEUX passent tels quels — c'est un arbitrage", () => {
-        // « Les rendre disponibles sur mobile si c'est ce que veut celui qui a édité la
-        // scène » (Gerry, 2026-09-18). Ce test existe pour qu'une session ultérieure ne
-        // rajoute pas un filtre ici en croyant bien faire : l'éditeur AVERTIT à la place.
+        // ⚠️ Disponibles sur téléphone si celui qui a édité la scène les a posés : ne pas
+        // ajouter de filtre ici en croyant bien faire — l'éditeur AVERTIT à la place.
         const bloc = PAYLOAD.slice(PAYLOAD.indexOf("def _web_ambience"),
                                    PAYLOAD.indexOf("def _web_scene_models"));
         for (const clef of ["groundReflection", "ground_reflection",
@@ -315,7 +314,7 @@ describe("LA SORTIE de la page — la croix, et pour ses DEUX hôtes", () => {
     test("c'est la PAGE qui dessine la croix, pas son hôte", () => {
         // ⚠️ Tant qu'elle vivait dans l'overlay de la boutique, elle manquait partout où
         // l'on arrive par NAVIGATION — la grille, un courriel, un clic donné avant la fin
-        // de la préparation. Mesuré le 2026-09-22 : zéro croix dans `/configurator/<jeton>`.
+        // de la préparation. Mesuré : zéro croix dans `/configurator/<jeton>`.
         expect(XML).toContain('class="o_cfg3d_close"');
         expect(XML).toContain('t-if="canClose"');
     });

@@ -6,10 +6,9 @@ from odoo.addons.base.tests.common import BaseCommon
 class FreeTextValues(BaseCommon):
     """Une saisie TEXTE devient une valeur, comme un nombre — D-353.
 
-    Arbitrages de Gerry (2026-09-25) : *« comme pour le nombre, le texte ajoute une
-    valeur à l'attribut »* ; *« avant d'ajouter la valeur, il faut comparer avec les
-    valeurs existantes pour les réutiliser »* ; et garder la simple saisie pour des
-    prénoms — ce que fait un attribut `no_variant`.
+    ⚠️ Comme pour le nombre, le texte ajoute une valeur à l'attribut.
+    ⚠️ Avant d'ajouter, il compare aux valeurs existantes pour les réutiliser.
+    ⓘ La simple saisie (des prénoms) reste possible : c'est un attribut `no_variant`.
     """
 
     @classmethod

@@ -1,7 +1,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 """La fiche boutique d'un produit configurable ne repose pas ses QUESTIONS — W-69.
 
-Arbitrage de Gerry (2026-10-01) : aucun sélecteur ; dans le tableau d'informations, seuls
+D-392 : aucun sélecteur ; dans le tableau d'informations, seuls
 les attributs « sans variante » à valeur unique (une information, pas un choix) ; le bouton
 « Comparer » reste.
 """
@@ -22,7 +22,7 @@ def _shows(html, text):
 
     ⚠️ Pas une simple recherche : Odoo dépose la table des exclusions de TOUTES les valeurs,
     en JSON, sur une `<ul>` vide que le panier lit (`data-attribute_exclusions`). Le nom d'une
-    valeur y figure même quand aucun sélecteur n'est rendu (relevé le 2026-10-01).
+    valeur y figure même quand aucun sélecteur n'est rendu (relevé à l'écran).
     """
     return re.search(r">\s*" + re.escape(text) + r"\s*<", html) is not None
 
@@ -73,7 +73,7 @@ class SingleValueTable(TransactionCase):
 class ShopPageAttributes(HttpCase):
     """Ce que la fiche SERVIE montre — le rendu, pas seulement la méthode.
 
-    ⚠️ **Deux produits configurables, et c'est un constat du 2026-10-01.** Un produit qui
+    ⚠️ **Deux produits configurables, et c'est un constat.** Un produit qui
     porte un attribut « sans variante » ne rend PAS le formulaire de sa fiche (ni prix, ni
     sélecteurs) une fois configuré : le chemin d'OCA met cette réponse DANS la variante, et
     Odoo, qui cherche la variante SANS elle, juge la combinaison impossible — la même cause

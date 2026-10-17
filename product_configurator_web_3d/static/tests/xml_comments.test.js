@@ -1,5 +1,5 @@
 /**
- * LES COMMENTAIRES XML DU FORK NE CONTIENNENT PAS `--` — [[L-242]], récidive du 2026-10-01.
+ * LES COMMENTAIRES XML DU FORK NE CONTIENNENT PAS `--` — [[L-242]], récidive dans le fork.
  *
  * La norme XML interdit deux tirets accolés dans un commentaire. Odoo refuse alors le fichier
  * de gabarits ENTIER : la page du configurateur ne se montait plus (« Missing template:

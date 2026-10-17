@@ -126,8 +126,8 @@ describe("Le point de dépôt se lit sur le VOISIN, pas sur un index", () => {
 });
 
 describe("Le dépôt s'affiche AVANT que le serveur l'ait confirmé", () => {
-    // ⚠️ Constat de Gerry : « quand je relâche, la ligne retourne à son ancienne
-    // position puis revient à la nouvelle ». Le cœur ne déplace rien dans le DOM
+    // ⚠️ Sans anticipation, la ligne relâchée revient à son ancienne place, puis à la
+    // nouvelle. Le cœur ne déplace rien dans le DOM
     // au dépôt : sans anticipation, l'écran montre l'ordre d'avant pendant tout
     // l'aller-retour serveur — enregistrement du formulaire compris.
     const ARBRE_ETAPE = [
@@ -259,9 +259,8 @@ describe("Le point de dépôt se calcule sur la liste PLATE, pas sur les voisins
 });
 
 describe("Le nom d'une question s'affiche UNE fois (D-368)", () => {
-    // ⚠️ Récidive de L-145 : le badge « Vendue à part », posé entre le `<a t-if>` du nom et
-    // son `<t t-else>`, lui volait son « sinon » — chaque nom s'affichait deux fois (constat
-    // de Gerry, 2026-09-29). Le `t-else` doit suivre IMMÉDIATEMENT le lien.
+    // ⚠️ Un badge posé entre le `<a t-if>` du nom et son `<t t-else>` lui vole son « sinon » :
+    // chaque nom s'affiche deux fois. Le `t-else` suit IMMÉDIATEMENT le lien (L-145).
     test("le t-else du nom suit directement le lien de la question", () => {
         const xml = readFileSync(join(__dirname, "..", "src", "js", "configurator_tree.xml"), "utf8");
         const start = xml.indexOf(`<a t-if="row.kind === 'attribute'"`);
@@ -273,9 +272,8 @@ describe("Le nom d'une question s'affiche UNE fois (D-368)", () => {
 
 
 describe("Un bandeau reste où il s'affiche ; seul l'attribut bouge", () => {
-    // ⚠️ Constat de Gerry sur le JeNo 5" : « je n'arrive pas à déplacer Bottom
-    // Plate au-dessus de Impressions 3D ». Bottom Plate portait le marqueur de
-    // l'étape : le bandeau le suivait, et le dépôt ne changeait rien.
+    // ⚠️ La ligne qui porte le marqueur d'une étape emmène son bandeau : la déposer
+    // au-dessus du bandeau ne changeait rien (L-466 — cas réel du JeNo 5").
     const JENO = [
         {kind: "attribute", lineId: 3, transient: false}, // Middle plate
         {kind: "step", lineId: 4, stepId: 7, transient: false}, // Impressions 3D
@@ -335,9 +333,8 @@ describe("Un bandeau reste où il s'affiche ; seul l'attribut bouge", () => {
 });
 
 describe("Un bandeau se dépose ENTRE les attributs — et s'ouvre sur celui qui le suit", () => {
-    // ⚠️ Constat de Gerry : « je ne peux pas déplacer ma nouvelle étape créée au début
-    // de la liste ». Le fantôme d'un bandeau ne passait qu'entre bandeaux, et le dépôt
-    // visait une ligne qui ouvrait déjà une étape : refus du serveur.
+    // ⚠️ Un fantôme de bandeau limité aux bandeaux ne se pose pas en tête, et son dépôt
+    // visait une ligne qui ouvrait déjà une étape : refus du serveur (L-469).
     const JENO = [
         {kind: "attribute", lineId: 1, transient: false}, // Cam plate
         {kind: "attribute", lineId: 2, transient: false}, // TopPlate
@@ -380,7 +377,7 @@ describe("Un bandeau se dépose ENTRE les attributs — et s'ouvre sur celui qui
     });
 
     test("⚠️ AUCUN `elements` à virgule — le cœur y colle la poignée, et la virgule la détache", () => {
-        // Gerry : « je ne peux pas sélectionner la vue d'une étape ». `elements + " " + handle`
+        // ⚠️ Sinon la vue d'une étape ne se choisit plus (L-473). `elements + " " + handle`
         // (`draggable_hook_builder.js`) : « .a, .b .poignée » vaut « .a » OU « .b .poignée » —
         // tout le bandeau démarrait un glisser, et son `preventDefault` bloquait la liste.
         const source = readFileSync(
@@ -400,7 +397,7 @@ describe("Un bandeau se dépose ENTRE les attributs — et s'ouvre sur celui qui
 });
 
 describe("La vue 3D se CHOISIT dans l'arbre — une liste déroulante (D-386)", () => {
-    // Gerry : « on voit une colonne 3D view mais pas de liste déroulante pour choisir ».
+    // ⚠️ Sans elle, la colonne « Vue 3D » s'affiche sans rien pour choisir (D-386).
     const XML = readFileSync(
         join(__dirname, "..", "src", "js", "configurator_tree.xml"), "utf8");
 

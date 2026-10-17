@@ -3,8 +3,8 @@
  * remote_change.test.js — le bus porte un SIGNAL, la page relit l'état ([[L-451]]).
  *
  * ⚠️ Le bus portait tout `web_state()` — environ 500 Ko sur le JeNo — à chaque clic, et
- * l'écho revenait à l'AUTEUR qui venait de recevoir le même état en réponse (mesuré le
- * 2026-09-29 : un second `web_state()` par clic côté serveur, une ligne d'environ 500 Ko
+ * l'écho revenait à l'AUTEUR qui venait de recevoir le même état en réponse (mesuré :
+ * un second `web_state()` par clic côté serveur, une ligne d'environ 500 Ko
  * dans `bus_bus`). Il ne porte plus que `{author}`.
  */
 jest.mock("@product_editor/engine/builder/to_buildable", () => new Proxy({}, {

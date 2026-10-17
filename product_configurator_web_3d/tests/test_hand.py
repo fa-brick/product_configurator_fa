@@ -91,8 +91,8 @@ class TestHand(HttpCase):
     # ── RENDRE, DE GRÉ OU PAR OUBLI ──────────────────────────────────────
 
     def test_PRENDRE_LA_MAIN_reussit_toujours(self):
-        """⚠️ Ce n'est pas un verrou qu'on force : Gerry a tranché que l'interne
-        agit sur la configuration du client (D-253). Refuser ici rendrait cette
+        """⚠️ Ce n'est pas un verrou qu'on force : l'interne agit sur la
+        configuration du client (D-253). Refuser ici rendrait cette
         décision inapplicable dès que le client aurait touché un bouton."""
         self._pick("onglet-A", self.noir)
         state = self._call(

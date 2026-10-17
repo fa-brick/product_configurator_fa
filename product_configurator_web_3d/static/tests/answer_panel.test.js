@@ -123,7 +123,7 @@ describe("le panneau — ce que la page en garde, et quand il se ferme", () => {
         expect(getter).not.toMatch(/this\.[a-zA-Z_.]+ = /);
     });
 
-    test("il reste ouvert après une réponse — seul « Retour » le ferme (Gerry)", () => {
+    test("il reste ouvert après une réponse — seul « Retour » le ferme (D-382)", () => {
         for (const name of ["onAnswer", "onPick"]) {
             expect(method(name)).not.toContain("panel");
         }

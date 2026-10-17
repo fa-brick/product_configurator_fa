@@ -2,7 +2,7 @@
 /**
  * shop_entry.test.js — Ce que la BOUTIQUE montre d'un produit configurable.
  *
- * ⚠️ **Trois défauts relevés le 2026-09-22 par Gerry, et aucun n'était visible d'un test.**
+ * ⚠️ **Trois défauts relevés à l'écran, et aucun n'était visible d'un test.**
  * Les deux premiers sont des ABSENCES à obtenir (une question qui ne doit plus être posée,
  * une croix qui ne doit plus être dessinée ici) et le troisième une PROMESSE à tenir (un
  * prix qui s'annonce comme un plancher). Ce fichier lit les gabarits — c'est là que ces

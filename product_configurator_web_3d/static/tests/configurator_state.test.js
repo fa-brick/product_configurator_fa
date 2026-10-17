@@ -1,9 +1,8 @@
 /**
  * configurator_state.test.js — La logique de la page publique (lot 6).
  *
- * ⚠️ **Ce fichier est aussi la preuve que le harnais existe.** Le blocage n° 4 du lot 6
- * disait : *« le fork n'a aucun harnais de test JS »*. Il en a un, et la page naît sous
- * tests plutôt que l'inverse.
+ * ⓘ **Ce fichier est aussi la preuve que le harnais JS du fork existe** (D-191) : la page
+ * naît sous tests plutôt que l'inverse.
  */
 import { toViewModel, answerFor, reasonFor, sameDefinition, confirmError, handState, handMessage,
          placementOf, selectableNodeIds, familyOf, answerForPlacement }
@@ -76,13 +75,13 @@ describe("la SORTIE de la page — l'URL du produit", () => {
 describe("⚠️ la CUISSON et l'AMBIANCE traversent la mise en forme", () => {
     // Le serveur les émettait, la page les lisait, et `toViewModel` — une liste blanche —
     // les laissait tomber : le chemin des GLB cuits n'avait JAMAIS tourné sur la page
-    // publique, et l'ambiance n'atteignait pas le viewer ([[L-212]]). Relevé le 2026-09-22.
+    // publique, et l'ambiance n'atteignait pas le viewer ([[L-212]], [[L-357]]).
     test("les pièces cuites arrivent telles quelles", () => {
         const baked = { c12: { attachmentId: 77, faces: { f3d_7: [] } } };
         expect(toViewModel({ ...PAYLOAD, baked }).baked).toEqual(baked);
     });
 
-    test("⚠️ les fichiers IMPORTÉS aussi, avec leur URL à jeton (2026-09-24)", () => {
+    test("⚠️ les fichiers IMPORTÉS aussi, avec leur URL à jeton", () => {
         // La page ne lisait aucun fichier importé : les inserts du JeNo y manquaient. Même
         // maillon que la cuisson, même piège si la recopie l'oublie ([[L-357]]).
         const imported = { 6984: "/web/content/6984?access_token=abc" };

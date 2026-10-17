@@ -1,8 +1,8 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 """La VUE 3D choisie dans l'arbre du configurateur — D-386.
 
-Gerry (2026-09-30) : *« on voit une colonne 3D view mais pas de liste déroulante pour
-choisir »*. Le cœur ne connaît pas les caméras (D-075) : il demande les choix au pont et
+⚠️ Sans pont, la colonne « Vue 3D » n'a rien à proposer : le cœur ne connaît pas les
+caméras (D-075). Il demande les choix au pont et
 lui délègue l'écriture — pour un attribut comme pour une étape.
 """
 from odoo import Command

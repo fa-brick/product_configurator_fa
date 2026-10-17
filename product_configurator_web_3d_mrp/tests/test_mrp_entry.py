@@ -1,11 +1,9 @@
 # Copyright 2026 fa-brick
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""L'ordre de fabrication ouvre le MÊME configurateur que le devis — 2026-09-19.
+"""L'ordre de fabrication ouvre le MÊME configurateur que le devis.
 
-Gerry : *« lorsque l'on clique sur nouveau et que l'on sélectionne un produit
-configuré, que cela déclenche le configurateur comme lors d'un devis — cela
-évite la présence inutile de ce bouton »*, et : *« pour moi le wizard est
-mort. »*
+ⓘ « Nouveau », puis un produit configurable : le configurateur s'ouvre comme sur un
+devis, sans bouton dédié. Le wizard est supprimé (D-259).
 
 ⚠️ Ce qui se joue à l'ÉCRAN — la liste déroulante augmentée, le dialogue, la
 scène — ne se prouve qu'en capture ([[L-215]]). Ce banc tient ce qui se prouve
@@ -23,7 +21,7 @@ class TestMrpEntry(TransactionCase):
     # ── LE WIZARD EST MORT ───────────────────────────────────────────────
 
     def test_le_modele_du_wizard_n_existe_PLUS(self):
-        """⚠️ Arbitré : *« pour moi le wizard est mort, on peut le supprimer. »*
+        """⚠️ Le wizard est supprimé (D-259).
 
         Le modèle était celui de l'assistant OCA, ouvert par un bouton injecté
         dans toutes les listes du back-office. Le configurateur 3D le remplace.

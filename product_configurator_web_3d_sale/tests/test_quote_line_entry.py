@@ -1,5 +1,5 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""Configurer et REPRENDRE depuis une ligne de devis — arbitrage Gerry, 2026-09-05.
+"""Configurer et REPRENDRE depuis une ligne de devis.
 
 Deux cas qui ne se ressemblent pas, et un piège de prix entre les deux : lier
 une session à une ligne fait recalculer le prix de cette ligne
@@ -54,7 +54,7 @@ class TestQuoteLineEntry(TransactionCase):
     def test_une_ligne_qui_a_deja_sa_session_la_ROUVRE(self):
         line = self._line(session=self.session_source)
         action = line.reconfigure_product()
-        # ⓘ Un DIALOGUE depuis le 2026-09-07 : le commercial ne quitte pas son
+        # ⓘ Un DIALOGUE : le commercial ne quitte pas son
         # devis. Le jeton reste la seule identité (D-091).
         self.assertEqual(action["type"], "ir.actions.client")
         self.assertEqual(

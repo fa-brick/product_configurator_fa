@@ -1,7 +1,7 @@
 """Le FILTRE alimente l'assistant, et ce qu'il propose est MATÉRIALISÉ — C3, D-221.
 
-⚠️ Arbitrage de Gerry : *« on va partir sur 1, le filtre qui alimente
-l'assistant »*. La liste de la ligne cesse alors d'être un catalogue à tenir pour
+⚠️ Le filtre alimente l'assistant (D-221). La liste de la ligne cesse alors
+d'être un catalogue à tenir pour
 devenir la **trace** de ce qui a été choisi (QJ) — et c'est ce qui rend la notion
 tenable : la valeur retenue est une `product.attribute.value` ordinaire, donc
 prix, archivage, exclusions et historique continuent de fonctionner.
@@ -129,7 +129,7 @@ class DynamicMaterialisation(BaseCommon):
 
     # ── ce qui se matérialise TOUT SEUL (D-222) ─────────────────────────────
     def test_08_posing_the_filter_fills_the_ATTRIBUTE_values(self):
-        """⚠️ Demande de Gerry : voir les enregistrements du filtre dans la liste.
+        """⚠️ Les enregistrements du filtre se voient dans la liste (D-222).
 
         Sans cela, les valeurs n'apparaissaient qu'à la première ouverture de
         l'assistant : la page d'attribut montrait une liste vide alors que le
@@ -192,10 +192,9 @@ class DynamicMaterialisation(BaseCommon):
 
 
 class RetractionDuFiltre(BaseCommon):
-    """⚠️ **Ce qu'un filtre PRÉCÉDENT a proposé s'en va** — constat de Gerry :
+    """⚠️ **Ce qu'un filtre PRÉCÉDENT a proposé s'en va** (D-228).
 
-    *« j'ai un résultat, et plusieurs produits dans la liste »*. La
-    matérialisation (D-222) était idempotente mais ne se **rétractait** jamais :
+    La matérialisation (D-222) était idempotente mais ne se **rétractait** jamais :
     chaque essai laissait ses valeurs derrière lui, et la liste finissait par
     contredire le compteur qui l'annonçait.
     """

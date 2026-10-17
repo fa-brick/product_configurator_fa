@@ -2,8 +2,8 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 """COMPARER une réponse à un NOMBRE — `épaisseur > 4`.
 
-Demande de Gerry (2026-09-07) : *« il faut tenir compte des opérateurs supérieur
-inférieur et égalité pour le configurateur l'éditeur »*.
+ⓘ Supérieur, inférieur et égalité valent dans le configurateur comme dans l'éditeur
+(D-267).
 
 ⚠️ **UNE COMPARAISON N'EST PAS UNE APPARTENANCE.** Les conditions d'OCA testent des
 valeurs CHOISIES : `montage in [ressort avant, ressort arrière]`. Une question numérique

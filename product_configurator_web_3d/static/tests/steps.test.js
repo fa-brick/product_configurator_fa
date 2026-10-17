@@ -1,6 +1,6 @@
 /**
- * LES ÉTAPES de la page — D-385 (Gerry, 2026-09-30) : « les étapes conditionnent ce qui est
- * vu dans la sidebar », en pastilles en haut du viewer ; l'étape suivante reste GRISÉE tant
+ * LES ÉTAPES de la page — D-385 : les étapes conditionnent ce que montre la colonne,
+ * en pastilles en haut du viewer ; l'étape suivante reste GRISÉE tant
  * qu'une question obligatoire manque ; un clic sur une pastille grisée dit ce qui manque et
  * y mène.
  */
@@ -168,8 +168,7 @@ describe("la vue d'une question : la sienne, sinon celle de son étape (D-163, D
     });
 
     test("⚠️ après une RÉPONSE, la vue part une fois la scène reconstruite ET peinte — pas au clic", () => {
-        // Gerry : « la caméra se déclenche quand on a cliqué sur une valeur, il y a donc une
-        // coupure dans l'animation à chaque fois ».
+        // ⚠️ Partie au clic, la caméra coupe l'animation de la reconstruction à chaque réponse.
         const JS = readFileSync(join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
         const pick = JS.slice(JS.indexOf("    async onPick("), JS.indexOf("     * Terminer"));
         expect(pick).not.toMatch(/this\._showQuestionView\(/);

@@ -31,7 +31,7 @@ describe("la disposition effective — le miroir de `_web_answer_layout`", () =>
         }
     });
 
-    test("le résumé : aussi les boutons et la liste (Gerry), jamais la couleur ni les cases", () => {
+    test("le résumé : aussi les boutons et la liste, jamais la couleur ni les cases", () => {
         for (const form of ["card", "swatch", "radio", "pills", "select"]) {
             expect(of(form, "summary")).toBe("summary");
         }

@@ -2,7 +2,7 @@
 
 Une règle, trois cas, et le troisième est le plus important : quand rien n'est
 déclaré, la caméra **ne bouge pas**. Le client garde le cadrage qu'il s'est
-donné (arbitrage Gerry, précédent D-125).
+donné (D-163, précédent D-125).
 """
 
 from odoo.addons.base.tests.common import BaseCommon

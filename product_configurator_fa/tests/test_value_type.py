@@ -6,10 +6,10 @@ from odoo.tests import Form
 
 
 class ValueType(BaseCommon):
-    """Le TYPE d'un attribut — ce que ses valeurs DÉSIGNENT (A2, 2026-08-28).
+    """Le TYPE d'un attribut — ce que ses valeurs DÉSIGNENT (A2).
 
-    ⚠️ Trois notions vivaient empilées dans deux champs mal découpés, et c'est ce
-    qui faisait dire à Gerry que *« le type des attributs n'est pas explicite »*.
+    ⚠️ Trois notions vivaient empilées dans deux champs mal découpés : le type
+    n'était pas explicite.
     Elles sont désormais séparées, et ce fichier grave leur INDÉPENDANCE :
 
       · le TYPE          — ce que la valeur désigne (`value_type`) ;
@@ -71,10 +71,8 @@ class ValueType(BaseCommon):
     def test_05_knowing_materials_costs_NO_dependency(self):
         """⚠️ « matière » ne doit rien coûter à un configurateur sans éditeur 3D.
 
-        ⓘ **La garantie a changé de forme le 2026-09-02, pas de fond.** « Matière »
-        était ajouté par le module PONT, pour que le configurateur seul continue de
-        fonctionner sans lui. Il est désormais dans la liste de base de
-        `product_attribute_advanced` — parce que c'est l'ÉDITEUR qui en a besoin, et
+        ⓘ « Matière » est dans la liste de base de `product_attribute_advanced`, pas
+        dans le PONT — parce que c'est l'ÉDITEUR qui en a besoin, et
         qu'il ne peut pas dépendre d'un pont AGPL-3 (D-075).
 
         La modularité est préservée, et mieux qu'avant : le module qui le porte ne
@@ -98,8 +96,7 @@ class ValueType(BaseCommon):
     def test_06_a_format_makes_no_sense_on_a_product(self):
         """⚠️ Trois notions INDÉPENDANTES ne veulent pas dire aucune contrainte.
 
-        Constat de Gerry : *« on peut choisir value type : product et format
-        integer, ça n'a pas de sens »*. Un format dit comment LIRE un libellé ;
+        Un format dit comment LIRE un libellé (D-194) ;
         quand la valeur désigne un produit, l'objet EST la réponse.
         """
         from odoo.exceptions import ValidationError
@@ -159,13 +156,11 @@ class ValueType(BaseCommon):
         `char` plus haut, `date` n'a jamais désigné une caractéristique de
         produit, `color` fait double emploi avec le type « matière »).
 
-        ⚠️ `binary` a été retiré puis RÉTABLI le même jour : je l'avais écarté
-        d'un « une pièce jointe n'est pas une valeur », et c'était faux — le
-        client joint un fichier comme valeur personnalisée, et sept tests du
-        module l'exercent de bout en bout.
+        ⚠️ `binary` RESTE : le client joint un fichier comme valeur personnalisée,
+        et sept tests du module l'exercent de bout en bout (D-199).
 
-        ⓘ `range` — « Plages » — est AJOUTÉ le 2026-10-02 à la demande de Gerry (W-102 /
-        D-395) : des millimètres entiers notés comme l'impression de pages (`3-34, 45, 54`).
+        ⓘ `range` — « Plages » (W-102 / D-395) : des millimètres entiers notés comme
+        l'impression de pages (`3-34, 45, 54`).
         Ce n'est pas un widget : c'est une LECTURE de plus, avec sa forme canonique.
         """
         offerts = dict(self.Attribute._fields["custom_type"].selection)
@@ -313,18 +308,14 @@ class ValueType(BaseCommon):
     def test_18_exactly_ONE_amount_shows_in_every_case(self):
         """⚠️ Ce n'est pas une question de place — c'est une question de FACTURE.
 
-        Trois constats de Gerry se rejoignent ici :
+        Trois règles se rejoignent ici :
 
-          · *« default_extra_price ne peut pas être visible en même temps que
-            default_extra_price_sqm »* — le module dit lui-même pourquoi : « Odoo
-            somme `price_extra` partout, et y ranger 25 €/m² le ferait facturer
-            25 € » ;
-          · *« s'il est possible de modifier et que seul un produit de la liste a
-            son prix modifié, ça peut être trompeur et fausser les prix »* — d'où
-            le prix du produit, en lecture, à la place du montant saisissable ;
-          · *« pour un produit, seule la ligne de plus-value unitaire remplacée
-            par le prix du produit est visible ; c'est uniquement la matière qui
-            peut appliquer un prix au mètre carré ou unitaire »*.
+          · ⚠️ `default_extra_price` et `default_extra_price_sqm` jamais visibles
+            ensemble : Odoo somme `price_extra` partout, et y ranger 25 €/m² le
+            ferait facturer 25 € (D-197) ;
+          · ⚠️ pour un produit, son prix en lecture à la place du montant
+            saisissable — sinon un prix modifié dans la liste fausse les prix (D-199) ;
+          · ⓘ seule la matière applique un prix au mètre carré ou unitaire (D-199).
 
         ⓘ Les trois se résument en un invariant : quels que soient le type de
         valeur et le mode de prix, **un montant et un seul** est à l'écran. La
@@ -384,7 +375,7 @@ class ValueType(BaseCommon):
     def test_20_picking_a_product_FILLS_the_name(self):
         """⚠️ `name` est REQUIS, et rien ne le recopiait.
 
-        Attente de Gerry : « lors du clic, toute la ligne est pré-remplie ». La
+        Au clic, toute la ligne se pré-remplit (D-198). La
         miniature suivait seule (elle est `related`) ; le nom, non — il fallait
         retaper à la main ce qu'on venait de désigner, sous peine de ne pas
         pouvoir enregistrer.
@@ -464,7 +455,7 @@ class ValueType(BaseCommon):
 
     # ── changer de type PURGE ce que les valeurs désignaient (D-219) ────────
     def test_25_switching_AWAY_from_product_clears_the_products(self):
-        """⚠️ Constat de Gerry : la purge ne se faisait pas.
+        """⚠️ La purge ne se faisait pas (D-219).
 
         Basculer un attribut de « produit » à « matière » gardait les
         `product_id` sur ses valeurs, et la garde de D-196 refusait alors

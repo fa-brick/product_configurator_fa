@@ -1,8 +1,7 @@
 """Ce que chaque onglet montre — B3, D-209, D-210.
 
-⚠️ *« L'onglet attribut et variant ne devait pas changer. »* Correction de Gerry
-(2026-08-28) : j'avais lu Q2 — *« un seul ordre, partagé »* — comme *« les mêmes
-colonnes »*. Partager l'ORDRE n'est pas partager l'AFFICHAGE.
+⚠️ L'onglet « Attributs & Variantes » ne change pas : partager l'ORDRE n'est pas
+partager l'AFFICHAGE (D-209).
 """
 
 import re
@@ -68,8 +67,7 @@ class ConfiguratorColumns(BaseCommon):
     def test_03_the_columns_say_what_they_DO(self):
         """⚠️ « Custom » ne disait rien, et « Default Val » était tronqué.
 
-        Constat de Gerry : *« Custom n'a plus d'intérêt, c'est allow add »*. Le
-        drapeau autorise le client à AJOUTER une valeur — et cette saisie crée
+        Le drapeau autorise le client à AJOUTER une valeur — et cette saisie crée
         une vraie valeur d'attribut (D-081), elle ne reste pas éphémère.
         """
         liste = self._core_list()
@@ -98,9 +96,9 @@ class ConfiguratorColumns(BaseCommon):
 
 
 class AttributePageLayout(BaseCommon):
-    """L'agencement de la page d'attribut — maquette de Gerry (D-216).
+    """L'agencement de la page d'attribut — la maquette de D-216.
 
-    ⚠️ *« Insère toutes les informations dans informations générales. »* La page
+    ⚠️ Toutes les informations vont dans « Informations générales ». La page
     cesse d'être une pile de blocs de même rang : le titre et les trois drapeaux
     en tête, tout le reste dans un onglet.
     """

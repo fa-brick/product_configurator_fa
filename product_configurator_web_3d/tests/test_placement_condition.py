@@ -2,9 +2,8 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 """La condition d'un EMPLACEMENT, écrite dans le dialogue du configurateur — D-267.
 
-Demande de Gerry (2026-09-07) : *« à l'instar des conditions dans configurator, il
-serait également possible dans cette dialogue de définir les conditions de visibilité de
-l'emplacement »* — et *« on reprend le même à l'identique ainsi que ses contraintes »*.
+ⓘ Le dialogue des conditions du configurateur, repris à l'identique avec ses contraintes,
+pose aussi la visibilité d'un emplacement (D-267).
 
 Ce qui est éprouvé ici est la JONCTION : deux grammaires qui partagent leur vocabulaire,
 et ce que la traduction refuse plutôt que de le perdre.
@@ -74,7 +73,7 @@ class TestPlacementCondition(TransactionCase):
 
     def test_le_OU_entre_deux_questions_devient_un_GROUPE(self):
         """⚠️ La grammaire est celle de la barre de recherche — ET entre les groupes, OU
-        à l'intérieur (arbitrage Gerry, 2026-09-07) : la même des deux côtés, pour qu'on
+        à l'intérieur (D-267) : la même des deux côtés, pour qu'on
         n'ait pas à changer de façon de penser en changeant d'écran."""
         domaine = ["|", (self.champ, "in", [1]), (self.champ, "in", [2])]
         groupes = self.env["product.config.domain"]._parse_condition_groups(domaine)
@@ -114,7 +113,7 @@ class TestPlacementCondition(TransactionCase):
                                       "values": [self.valeurs[0].id]})
 
     def test_une_COMPARAISON_sur_une_question_numerique_est_gardee(self):
-        """Demande de Gerry, 2026-09-07 : les comparaisons valent des deux côtés. ⓘ Ce
+        """Les comparaisons valent des deux côtés (D-267). ⓘ Ce
         qui distingue `= 7` (« la valeur 7 ») de `= 7` (« sept millimètres ») n'est pas
         l'opérateur, c'est la QUESTION."""
         clause = self._lire([(self.nombre, ">", 4)], numeriques={self.nombre})[0]

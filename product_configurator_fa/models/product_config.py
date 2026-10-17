@@ -2404,17 +2404,6 @@ class ProductConfigSessionCustomValue(models.Model):
                     )
                 )
 
-    # @api.constrains('cfg_session_id.value_ids')
-    # def custom_only(self):
-    #     """Verify that the attribute_id is not present in vals as well"""
-    #     import ipdb;ipdb.set_trace()
-    #     if self.cfg_session_id.value_ids.filtered(
-    #             lambda x: x.attribute_id == self.attribute_id):
-    #         raise ValidationError(
-    #             _("Configuration cannot have a selected option and a custom "
-    #               "value with the same attribute")
-    #         )
-
     @api.constrains("attachment_ids", "value")
     def check_custom_type(self):
         for custom_val in self:

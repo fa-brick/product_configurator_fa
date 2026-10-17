@@ -320,22 +320,6 @@ class ProductConfig(ProductConfiguratorTestCases):
             "Error: If Not Equal variant name\
             Method: search_variant()",
         )
-        # FIXME: broken when running `attributeLine1.custom = True`
-        #   """
-        #   psycopg2.errors.UniqueViolation:
-        #   duplicate key value violates unique constraint
-        #   "product_product_combination_unique"
-        #   DETAIL:  Key (product_tmpl_id, combination_indices)=(81, 459,461)
-        #       already exists.
-        # attributeLine1.custom = True
-        # self.env["product.config.session.custom.value"].create(
-        #     {
-        #         "cfg_session_id": config_session_1.id,
-        #         "attribute_id": self.attribute_1.id,
-        #         "value": "Coke",
-        #     }
-        # )
-        # config_session_1.create_get_variant()
 
     def test_10_check_value_ids(self):
         with self.assertRaises(ValidationError):
@@ -359,71 +343,6 @@ class ProductConfig(ProductConfiguratorTestCases):
                     "value": "1234",
                 }
             )
-
-    # FIXME: broken at the first create as
-    #   """
-    #   psycopg2.errors.NotNullViolation
-    #     null value in column "attribute_line_id" of
-    #     relation "product_template_attribute_value"
-    #     violates not-null constraint
-    #   DETAIL:  Failing row contains ...
-    # def test_12_get_cfg_weight(self):
-    #     self.env["product.template.attribute.value"].create(
-    #         {
-    #             "product_tmpl_id": self.config_product.id,
-    #             "product_attribute_value_id": self.value_red.id,
-    #             "weight_extra": 20.0,
-    #         }
-    #     )
-    #     self.config_product.weight = 20
-    #     weightVal = self.config_session.get_cfg_weight()
-    #     self.assertEqual(
-    #         weightVal,
-    #         40.0,
-    #         "Error: If Value are not equal\
-    #         Method: get_cfg_weight()",
-    #     )
-    #     # check for config weight
-    #     self.assertEqual(
-    #         self.config_session.weight,
-    #         40.0,
-    #         "Error: If config weight are not equal\
-    #         Method: _compute_cfg_weight()",
-    #     )
-
-        # FIXME: broken validation at `product_config.create_get_variant`
-        #   """
-        #   odoo.exceptions.ValidationError: Required attribute 'Flavour' is empty
-        # product_config_wizard.action_next_step()
-
-    # FIXME: broken at the first create as
-    #   """
-    #   psycopg2.errors.NotNullViolation
-    #     null value in column "attribute_line_id" of
-    #     relation "product_template_attribute_value"
-    #     violates not-null constraint
-    #   DETAIL:  Failing row contains ...
-    # def test_14_get_cfg_price(self):
-    #     self.env["product.template.attribute.value"].create(
-    #         {
-    #             "product_tmpl_id": self.config_product.id,
-    #             "product_attribute_value_id": self.value_red.id,
-    #             "weight_extra": 20.0,
-    #             "price_extra": 20.0,
-    #         }
-    #     )
-    #     price = self.config_product.list_price
-    #     price += self.value_220i.product_id.lst_price
-    #     price += self.value_model_sport_line.product_id.lst_price
-    #     price += self.value_transmission.product_id.lst_price
-    #     price += self.value_options_2.product_id.lst_price
-    #     price_extra_val = self.session_id.get_cfg_price()
-    #     self.assertEqual(
-    #         price_extra_val,
-    #         price + 20,
-    #         "Error: If not equal price extra\
-    #         Method: get_cfg_price()",
-    #     )
 
     def test_17_custom_value_validate_configuration(self):
         self.custom_vals = self.productConfigSession.get_custom_value_id()
@@ -537,21 +456,6 @@ class ProductConfig(ProductConfiguratorTestCases):
                 "domain_id": self.productConfigDomainId.id,
             }
         )
-        # FIXME: broken as
-        #   """
-        #   psycopg2.errors.NotNullViolation:
-        #   null value in column "domain_id"
-        #   of relation "product_config_line"
-        #   violates not-null constraint
-        #   DETAIL:  Failing row contains ...
-        # with self.assertRaises(ValidationError):
-        #     config_line.onchange_attribute()
-
-        # self.assertFalse(
-        #     config_line.value_ids,
-        #     "Error: If value_ids True\
-        #     Method: onchange_attribute()",
-        # )
 
     def test_19_eval(self):
         self.attr_color.custom_type = "binary"

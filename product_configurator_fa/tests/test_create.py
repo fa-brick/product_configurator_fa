@@ -97,18 +97,3 @@ class ConfigurationCreate(BaseCommon):
             0,
             "Create should not have any variants",
         )
-
-        # FIXME: broken as
-        # """
-        # AttributeError: 'product.product' object
-        # has no attribute 'attribute_value_ids'.
-        # Did you mean: 'attribute_line_ids'?
-        # """
-        # new_variant = self.config_product.product_variant_ids.filtered(
-        #     lambda variant: variant.attribute_value_ids == value_ids
-        # )
-        # self.assertNotEqual(
-        #     new_variant.id,
-        #     False,
-        #     "Variant not generated at the end of the configuration process",
-        # )

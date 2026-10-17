@@ -138,28 +138,6 @@ class ProductAttributes(BaseCommon):
                 }
             )
 
-    # FIXME: broken on call `onchange_attribute` method as
-    # """
-    # odoo.exceptions.ValidationError:
-    # The attribute Fuel must have at least one value for the product 2 Series.
-    #
-    # def test_06_onchange_attribute(self):
-    #     self.ProductAttributeLineFuel.onchange_attribute()
-    #     self.assertFalse(
-    #         self.ProductAttributeLineFuel.value_ids, "value_ids is not False"
-    #     )
-    #     self.assertTrue(
-    #         self.ProductAttributeLineFuel.required, "required not exsits value"
-    #     )
-    #     self.ProductAttributeLineFuel.multi = True
-    #     self.assertTrue(
-    #         self.ProductAttributeLineFuel.multi, "multi not exsits value"
-    #     )
-    #     self.ProductAttributeLineFuel.custom = True
-    #     self.assertTrue(
-    #         self.ProductAttributeLineFuel.custom, "custom not exsits value"
-    #     )
-
     def test_07_check_default_values(self):
         with self.assertRaises(ValidationError):
             self.ProductAttributeLineFuel.default_val = self.value_218i.id

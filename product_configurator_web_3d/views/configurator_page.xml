@@ -9,7 +9,7 @@
          `website`, et n'a pas à en dépendre. Le gabarit du module `web` charge déjà
          `web.assets_frontend` — donc le viewer 3D — et accepte `no_header` / `no_footer`.
          Y ajouter `website` amènerait ses menus, son éditeur et sa mise en page pour une
-         page qui n'en veut aucun (arbitrage Gerry, 2026-08-26 : « une page nue »).
+         page qui n'en veut aucun.
 
          ⓘ Le composant est monté par le service de composants publics d'Odoo 18 : il
          cherche les `<owl-component name="…">` de la page. Le JETON entre ici, par un
@@ -20,12 +20,10 @@
             <t t-set="no_footer" t-value="True"/>
             <t t-set="html_data" t-value="{'style': 'height: 100%;'}"/>
             <div id="wrap">
-                <!-- ⚠️ **L'ATTENTE COMMENCE AVANT OWL, et c'est le seul moyen de la
-                     voir.** Le composant ne peint qu'après son `onWillStart`, donc
-                     après l'aller-retour qui rapporte l'état — plus d'une seconde sur
-                     un assemblage. Jusque-là la page était BLANCHE : l'attente qu'on
-                     avait écrite arrivait trop tard pour servir (Gerry, 2026-09-06).
-                     Ce tourniquet-ci est du HTML pur, présent dès le premier octet.
+                <!-- ⚠️ **L'ATTENTE COMMENCE AVANT OWL** : le composant ne peint qu'après son
+                     `onWillStart` (plus d'une seconde sur un assemblage), et la page resterait
+                     BLANCHE jusque-là. Ce tourniquet-ci est du HTML pur, présent dès le
+                     premier octet.
 
                      ⓘ Il n'est pas caché par du JS : le composant se monte PAR-DESSUS,
                      avec un fond opaque. Rien à synchroniser, donc rien qui puisse

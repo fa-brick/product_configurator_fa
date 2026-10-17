@@ -28,17 +28,12 @@
             </field>
 
             <xpath expr="//form//group[@name='main_fields']" position="before">
-                <!-- ⚠️ PLUS DE `flag_config_ok` ICI, NI PLUS BAS (A1, 2026-08-28).
-                     On peut cacher par DROIT ou par CHEMIN. Le droit est une propriété du
-                     LECTEUR ; le chemin n'est qu'un accident de navigation — et c'est ce que
-                     ce drapeau faisait : posé par le menu du configurateur et par la ligne
-                     d'un produit configurable, absent du menu standard « Configuration →
-                     Attributs ». Le MÊME enregistrement montrait donc des informations
-                     différentes selon la porte empruntée, et un gestionnaire arrivé par la
-                     porte standard ne voyait rien — pas même de quoi désarchiver.
-                     Les pages ci-dessous portent déjà leur groupe : le droit suffit.
-                     Constat de Gerry : « on est obligé d'aller dans configurateur pour voir
-                     les informations supplémentaires des attributs ». -->
+                <!-- ⚠️ PAS DE `flag_config_ok` ICI, NI PLUS BAS : cacher par CHEMIN (menu du
+                     configurateur, ligne d'un produit configurable) montrerait le MÊME
+                     enregistrement différemment selon la porte empruntée — par
+                     « Configuration → Attributs », un gestionnaire ne verrait rien, pas
+                     même de quoi désarchiver.
+                     ⓘ Les pages ci-dessous portent déjà leur groupe : le droit suffit. -->
                 <field
                     name="image"
                     widget="image"
@@ -46,21 +41,17 @@
                 >
                     <field name="image" widget="image" class="oe_avatar oe_left" />
                 </field>
-                <!-- ══ LE NOM DEVIENT LE TITRE — maquette de Gerry ═════════════════
-                     ⓘ Il était un champ parmi d'autres dans le premier groupe. Sur sa
-                     maquette il ouvre la page, comme le nom d'un produit : c'est ce
-                     qu'on lit en arrivant, et ce dont tout le reste parle. -->
+                <!-- ══ LE NOM DEVIENT LE TITRE (D-216) ═════════════════════════════
+                     ⓘ Il ouvre la page, comme le nom d'un produit : c'est ce qu'on lit en
+                     arrivant, et ce dont tout le reste parle. -->
                 <div class="oe_title">
                     <label for="name" string="Attribute" class="oe_edit_only" />
                     <h1><field name="name" placeholder="e.g. Colour" /></h1>
                 </div>
             </xpath>
 
-            <!-- ⚠️ `create_variant` N'EST PLUS CACHÉ DERRIÈRE LE MODE DÉVELOPPEUR.
-                 Constat de Gerry (2026-08-28) : « je ne vois pas dans l'attribut la
-                 gestion des variants ». Le `groups="base.group_no_one"` est arrivé avec
-                 le renommage en masse du fork OCA, sans raison consignée — et il
-                 contredit une règle que le fork a écrite depuis.
+            <!-- ⚠️ `create_variant` N'EST PAS CACHÉ DERRIÈRE LE MODE DÉVELOPPEUR : il décide
+                 si une saisie du client devient une valeur PERSISTÉE (voir ci-dessous).
 
                  ⓘ CE CHAMP N'EST PAS DÉCORATIF. `_resolves_to_values()` s'appuie sur lui :
                  *« un nombre saisi sur cet attribut se range-t-il en valeur d'attribut ?
@@ -68,39 +59,30 @@
                  déjà. En `no_variant`, la valeur ne peut pas entrer dans l'identité d'une
                  variante […] et c'est tout l'objet de D-081 : le stock ne sait distinguer
                  deux portes que par leurs valeurs d'attribut. »* Il décide donc si une
-                 saisie du client devient une valeur PERSISTÉE — un comportement majeur,
-                 réglable jusqu'ici seulement en mode développeur.
+                 saisie du client devient une valeur PERSISTÉE.
 
-                 Mesuré sur `fabk18` : 7 attributs en `always`, 3 en `no_variant`. Le
-                 réglage VARIE déjà, sans que personne puisse le voir.
+                 ⓘ Mesuré sur `fabk18` : 7 attributs en `always`, 3 en `no_variant` — le
+                 réglage VARIE d'un attribut à l'autre.
 
                  Il reste à sa place d'origine, auprès du type d'affichage : c'est une
                  propriété du cœur, et le cœur la protège déjà d'un changement tardif
                  (`readonly` dès qu'un produit emploie l'attribut). -->
             <!-- ─ A3 : DANS LE CORPS DE LA FICHE, PAS DANS UN ONGLET ────────────
-                 Arbitrage de Gerry (2026-08-28) : *« je ne veux pas de l'onglet
-                 configurator, je voudrais que les éléments viennent à la suite avant
-                 les valeurs. »*
-
-                 ⓘ Et c'est plus juste : ces réglages décrivent l'attribut LUI-MÊME,
-                 au même titre que son nom et son type d'affichage. Un onglet les
-                 rangeait à côté des VALEURS, qui sont autre chose — et il fallait un
-                 clic pour savoir ce qu'un attribut est.
+                 ⓘ Ces réglages décrivent l'attribut LUI-MÊME, au même titre que son nom
+                 et son type d'affichage : un onglet les rangerait à côté des VALEURS, et
+                 il faudrait un clic pour savoir ce qu'un attribut est.
 
                  « Du commun au spécifique » : Description · Ce qu'une valeur est ·
                  Défauts pour une nouvelle ligne — puis les valeurs, dans leur onglet.
 
-                 ⚠️ LE GROUPE DE DROITS DESCEND SUR CHAQUE BLOC. Il vivait sur la page ;
-                 la page partie, l'oublier aurait montré ces réglages à tout le monde —
-                 un élargissement de droits par déménagement. -->
-            <!-- ══ LES DÉFAUTS REMONTENT SOUS LE TITRE — maquette de Gerry ═════
+                 ⚠️ LE GROUPE DE DROITS DESCEND SUR CHAQUE BLOC : sans page pour le porter,
+                 l'oublier montrerait ces réglages à tout le monde. -->
+            <!-- ══ LES DÉFAUTS REMONTENT SOUS LE TITRE (D-216) ═════════════════
                  Ils ne décident de rien par eux-mêmes (A4) : c'est la ligne, sur le
                  produit, qui est lue à la configuration. Mais ce sont les trois
                  réglages qu'on veut voir d'un coup d'œil en ouvrant un attribut. -->
-            <!-- ⚠️ LE NOM NE S'AFFICHE QU'UNE FOIS. Il est devenu le TITRE de la
-                 page ; le champ du cœur, resté dans son groupe, le répétait juste
-                 en dessous — « Marque » deux fois, à deux endroits de la même page.
-                 Constat de Gerry.
+            <!-- ⚠️ LE NOM NE S'AFFICHE QU'UNE FOIS (D-216) : il est le TITRE de la page,
+                 et le champ du cœur, resté dans son groupe, le répéterait juste dessous.
 
                  ⓘ On MASQUE au lieu de supprimer : `name` est requis, et d'autres
                  modules visent ce nœud. Le retirer casserait leurs `xpath` ; le
@@ -112,42 +94,24 @@
                 <attribute name="invisible">1</attribute>
             </xpath>
 
-            <!-- ⓘ `active`, puis le filtre e-commerce, puis « recherchable » :
-                 l'ordre demandé par Gerry. `search_ok` quitte « ce qu'une valeur
-                 est » — il ne dit pas ce qu'une valeur EST, il dit si l'attribut
-                 entre dans la recherche d'une variante identique. -->
-            <!-- ⚠️ LA COLONNE DE DROITE, autant qu'un module qui NE DÉPEND PAS de
-                 `website_sale` peut le faire. Gerry demande « actif, eCommerce,
-                 recherchable » empilés à droite. Les deux qui nous appartiennent y
-                 vont ; le **filtre e-commerce** vit dans `ecommerce_main_fields`, un
-                 groupe de `website_sale` — l'y rejoindre demanderait de viser ce
-                 groupe, et l'xpath échouerait partout où ce module n'est pas installé
-                 (vérifié : il ne l'est pas sur la base de démo).
-
-                 ⓘ Le rangement strict des trois demanderait donc une dépendance à
-                 `website_sale` — toute la pile site web sur chaque base du
-                 configurateur. Signalé à Gerry plutôt que décidé seul.
+            <!-- ⚠️ LA COLONNE DE DROITE (`active`, « recherchable »), sans le filtre
+                 e-commerce : il vit dans `ecommerce_main_fields`, un groupe de
+                 `website_sale`, et l'xpath échouerait partout où ce module manque (D-216).
 
                  ⓘ `search_ok` quitte « ce qu'une valeur est » : il ne dit pas ce
                  qu'une valeur EST, il dit si l'attribut entre dans la recherche
                  d'une variante identique. -->
-            <!-- ══ LE MODE DE PRIX REJOINT L'IDENTITÉ — demande de Gerry ══════════
-                 ⚠️ **ET IL RESTE UNE SEMENCE, malgré ce que sa place suggère.**
-                 Gerry le déplace en le disant *« uniquement dans l'attribut »* ;
-                 mesuré, il existe sur QUATRE modèles, et ce qui est lu à l'exécution
-                 est `attribute_line_id.price_mode` — **la ligne** —, en trois
-                 endroits du code. Comme `required`, `multi` et `val_custom`, il est
-                 recopié sur la ligne à sa création et n'est plus consulté ensuite.
-
-                 ⓘ Le sortir du bloc « Defaults » et lui retirer le préfixe lui ôte
-                 les deux signaux qui le disaient. C'est le choix de Gerry, consigné
-                 avec la mesure ; le `help` du champ, lui, reste exact. -->
+            <!-- ══ LE MODE DE PRIX REJOINT L'IDENTITÉ (D-216) ══════════════════════
+                 ⚠️ **ET IL RESTE UNE SEMENCE, malgré ce que sa place suggère** : ce qui
+                 est lu à l'exécution est `attribute_line_id.price_mode` — **la ligne** —,
+                 recopié à sa création comme `required`, `multi` et `val_custom` (D-216).
+                 Le `help` du champ, lui, reste exact. -->
             <xpath expr="//group[@name='sale_main_fields']/field[@name='create_variant']" position="after">
                 <field name="price_mode" string="Extra price mode" />
                 <!-- ⓘ D-168 : un VRAI réglage, pas une semence — les lignes vides
                      en héritent. Sa place est donc ici, hors du bloc « Defaults ». -->
-                <!-- ⓘ En RADIO côte à côte, comme « Filtre eCommerce » (demande de Gerry,
-                     2026-09-29) : deux choix se lisent d'un coup d'œil. -->
+                <!-- ⓘ En RADIO côte à côte, comme « Filtre eCommerce » : deux choix se
+                     lisent d'un coup d'œil. -->
                 <field name="unavailable_display" widget="radio"
                        options="{'horizontal': True}" />
             </xpath>
@@ -164,7 +128,7 @@
                     string="Defaults for a new product line"
                     groups="product_configurator_fa.group_product_configurator_fa_manager"
                 >
-                    <!-- ⚠️ EN CASES ALIGNÉES, comme la maquette : trois drapeaux
+                    <!-- ⚠️ EN CASES ALIGNÉES (D-216) : trois drapeaux
                          courts se lisent d'un coup d'œil, là où deux colonnes de
                          formulaire les faisaient ressembler à des réglages de fond.
                          ⓘ Et leurs libellés perdent le préfixe « Default: » — le
@@ -175,11 +139,8 @@
                             <field name="required" string="Required" />
                             <label for="required" string="Required" />
                         </span>
-                        <!-- ⚠️ PLUS DE VERROU CROISÉ entre « Multi » et « Allow add ».
-                             Question de Gerry : *« si l'attribut autorise l'ajout, il ne
-                             peut pas être multi ? »*. Vérifié : **aucune contrainte de
-                             modèle ne l'interdisait** — deux `readonly` croisés dans la
-                             vue, hérités du fork OCA, sans raison consignée.
+                        <!-- ⚠️ PAS DE VERROU CROISÉ entre « Multi » et « Allow add » (D-220) :
+                             aucune contrainte de modèle ne l'interdit.
 
                              ⓘ Et l'assistant prévoit EXPLICITEMENT la combinaison :
                              `if field_type == "many2many": field_val = [(6, False,
@@ -188,8 +149,8 @@
                              un cas que le moteur sait traiter — la famille du taux au
                              m² (D-162), « complet et inatteignable ».
 
-                             ⓘ `force_save` part avec lui : il n'existait que parce
-                             qu'un champ en lecture seule n'est pas enregistré. -->
+                             ⓘ Pas de `force_save` : il ne servait qu'à enregistrer un
+                             champ en lecture seule. -->
                         <span class="d-inline-flex align-items-center gap-1">
                             <field name="multi" />
                             <label for="multi" string="Multi" />
@@ -202,10 +163,9 @@
                 </group>
             </xpath>
 
-            <!-- ══ TOUT LE RESTE ENTRE DANS « INFORMATIONS GÉNÉRALES » ═════════
-                 Instruction de Gerry : *« insère toutes les informations dans
-                 informations générales »*. La page cesse d'être une pile de blocs
-                 de même rang — identité et nature d'un côté, valeurs de l'autre.
+            <!-- ══ TOUT LE RESTE ENTRE DANS « INFORMATIONS GÉNÉRALES » (D-216) ═════
+                 ⓘ La page cesse d'être une pile de blocs de même rang — identité et
+                 nature d'un côté, valeurs de l'autre.
 
                  ⚠️ LE GROUPE DE DROITS DESCEND SUR CHAQUE BLOC, et non sur la page :
                  un droit posé sur l'onglet cacherait l'onglet entier, alors que
@@ -215,13 +175,9 @@
                  attribut EST avant d'énumérer ce qu'il propose. -->
             <xpath expr="//page[@name='attribute_values']" position="before">
                 <page string="General information" name="general_information">
-                    <!-- ⚠️ ON DÉPLACE LE GROUPE DU CŒUR, ON NE LE RECOPIE PAS.
-                         Premier essai : le cacher et réécrire ses champs ici. Le
-                         résultat était juste à l'écran et FAUX en profondeur —
-                         `website_sale` ajoute son filtre e-commerce **dans** ce
-                         groupe (`ecommerce_main_fields`), et la copie l'a fait
-                         disparaître. Constat de Gerry : *« tu as oublié le filtre
-                         e-commerce »*.
+                    <!-- ⚠️ ON DÉPLACE LE GROUPE DU CŒUR, ON NE LE RECOPIE PAS (D-216) :
+                         `website_sale` ajoute son filtre e-commerce **dans** ce groupe
+                         (`ecommerce_main_fields`), et une copie le ferait disparaître.
 
                          ⓘ `position="move"` relocalise le nœud existant : tout ce
                          que d'autres modules y ont greffé suit, aujourd'hui comme
@@ -229,21 +185,18 @@
                          il ne dépend pas — il ne pourrait de toute façon pas nommer
                          son champ ([[L-167]]). -->
                 <!-- ══ CE QU'UNE VALEUR EST — deux colonnes, D-218 ═══════════════
-                     Demande de Gerry : à gauche le type, le format et l'unité, plus
-                     une coche « valeurs dynamiques » quand la valeur désigne un
-                     produit ; à droite le filtre — et seulement si la coche est mise.
+                     ⓘ À gauche le type, le format et l'unité, plus une coche « valeurs
+                     dynamiques » quand la valeur désigne un produit ; à droite le filtre
+                     — et seulement si la coche est mise.
 
-                     ⚠️ `custom_type` a QUITTÉ la page « Custom Values », où il était
-                     masqué tant que la saisie libre n'était pas cochée : une épaisseur
-                     énumérée 10 / 15 / 18 n'avait AUCUN format déclaré, alors que la
-                     grille de prix et le moteur de géométrie lisent ces valeurs comme
-                     des nombres. -->
-                <!-- ⚠️ UN SÉPARATEUR, ET NON UN TITRE DE GROUPE. Constat de Gerry :
-                     *« arrête le sous-lignage à moitié pour que Dynamic values soit à
-                     la même hauteur »*. Un `<group string="…">` imbriqué souligne sa
-                     PROPRE colonne — d'où un trait à mi-page, et un décalage : le
-                     titre du groupe de droite descendait d'une ligne par rapport à la
-                     première du groupe de gauche.
+                     ⚠️ `custom_type` n'est PAS masqué derrière la saisie libre : une
+                     épaisseur énumérée 10 / 15 / 18 n'aurait AUCUN format déclaré, alors
+                     que la grille de prix et le moteur de géométrie lisent ces valeurs
+                     comme des nombres. -->
+                <!-- ⚠️ UN SÉPARATEUR, ET NON UN TITRE DE GROUPE : un `<group string="…">`
+                     imbriqué souligne sa PROPRE colonne — d'où un trait à mi-page, et le
+                     titre du groupe de droite décalé d'une ligne sous la première du
+                     groupe de gauche.
 
                      ⓘ Le séparateur, lui, traverse les deux colonnes ; les deux
                      sous-groupes commencent alors à la même hauteur. -->
@@ -255,8 +208,7 @@
                     <!-- ⚠️ **LES TROIS CHAMPS NE SONT PLUS DÉCLARÉS ICI.** Ils sont
                          définis et posés par `product_attribute_advanced`, dont ce
                          module dépend ; les redéclarer en ferait DEUX contrôles pour
-                         une seule décision — le doublon relevé par Gerry le
-                         2026-09-02. Ils arrivent dans ce groupe par un
+                         une seule décision. Ils arrivent dans ce groupe par un
                          `position="move"` écrit PLUS HAUT, au premier niveau de
                          l'arch : voir la note qui l'accompagne. La mise en page, elle,
                          ne change pas d'un pixel. -->
@@ -292,11 +244,9 @@
                         <!-- ⚠️ CE QUE LE FILTRE DONNE, AVANT DE S'EN SERVIR (D-208) :
                              un domaine est une promesse tant qu'on ne l'a pas appliqué,
                              et sans retour il se vérifie devant le client. -->
-                        <!-- ⚠️ **LE COMPTEUR EST LE POINT D'ENTRÉE**, demande de
-                             Gerry : le clic mène aux VALEURS issues du filtre. Le
-                             bouton séparé « voir les produits » disparaît — le
-                             produit n'était qu'une étape, l'attribut porte des
-                             valeurs.
+                        <!-- ⚠️ **LE COMPTEUR EST LE POINT D'ENTRÉE** (D-227) : le clic mène
+                             aux VALEURS issues du filtre — l'attribut porte des valeurs,
+                             le produit n'est qu'une étape.
 
                              ⓘ Celui du widget de domaine est masqué (feuille de
                              style) : il ouvrait des produits, et deux compteurs
@@ -307,14 +257,10 @@
                              en BLOC, et le compteur tombait sur trois lignes
                              (« → / 1 / proposed value(s) »).
 
-                             ⚠️ **UNE LOUPE, PAS UNE FLÈCHE.** Constat de Gerry :
-                             *« l'action du bouton obligatoire pour mettre à jour
-                             la liste n'est pas compréhensible »*. Elle ne l'était
-                             pas parce qu'elle n'existe pas : la liste se met à
-                             jour à l'ENREGISTREMENT, comme tout le reste d'Odoo
-                             (mesuré — `web_save` renvoie déjà les valeurs
-                             fraîches). Ce bouton ne fait que MONTRER. La flèche
-                             se lisait « appliquer » ; la loupe dit « voir ». -->
+                             ⚠️ **UNE LOUPE, PAS UNE FLÈCHE** : la liste se met à jour à
+                             l'ENREGISTREMENT (`web_save` renvoie déjà les valeurs
+                             fraîches) ; ce bouton ne fait que MONTRER, et une flèche se
+                             lirait « appliquer ». -->
                         <button
                             name="action_open_proposed_values"
                             type="object"
@@ -343,9 +289,8 @@
 
                 <!-- ─ DÉFAUTS : ce dont héritera la ligne d'un NOUVEAU produit ──
                      ⚠️ Ces quatre-là ne décident de rien par eux-mêmes : c'est la ligne,
-                     sur le produit, qui est lue à la configuration. Le titre du bloc le
-                     dit, faute de quoi la page ferait croire à des réglages actifs — ce
-                     qu'elle a fait jusqu'ici. -->
+                     sur le produit, qui est lue à la configuration. Sans le titre du
+                     bloc, la page ferait croire à des réglages actifs. -->
                 </page>
             </xpath>
 
@@ -372,21 +317,14 @@
             <!-- ⚠️ LE DÉPLACEMENT EST UNE SPEC À PART, et ce n'est pas un détail de
                  style : `position="move"` n'est traité que pour un ENFANT DIRECT de
                  la spec qui le contient (`template_inheritance.py`). Niché dans la
-                 page créée juste au-dessus, il était petit-enfant — et Odoo l'a
-                 ignoré en silence, sans erreur ni avertissement. Le groupe restait
-                 en tête de page, et rien ne le disait.
+                 page créée juste au-dessus, il serait petit-enfant — et Odoo
+                 l'ignorerait en silence, sans erreur ni avertissement ([[L-167]]).
 
                  ⓘ Il vient donc APRÈS l'ajout de la page : les specs d'une même vue
                  s'appliquent dans l'ordre du document, donc la page existe. -->
-            <!-- ⚠️ L'ANCRE DU DÉPLACEMENT A SUIVI LA MISE EN PAGE. Elle visait le
-                 bloc « Description », qui est passé TOUT EN BAS sur demande de
-                 Gerry : l'identité aurait donc atterri en fin de page, sous la
-                 description. Elle vise maintenant le bloc de nature, qui ouvre
-                 l'onglet. -->
-            <!-- ⚠️ L'ANCRE VISE LE SÉPARATEUR, pas le groupe qui le suit. Elle a
-                 déjà dû suivre la mise en page une fois (le bloc « Description »
-                 est passé en bas) ; ici, viser le groupe plaçait l'identité APRÈS
-                 le titre « Value types », qui se retrouvait en tête d'onglet. -->
+            <!-- ⚠️ L'ANCRE VISE LE SÉPARATEUR « Value types », qui ouvre l'onglet : viser
+                 le groupe qui le suit placerait l'identité APRÈS ce titre, et viser
+                 « Description » (tout en bas) la mettrait en fin de page. -->
             <xpath expr="//separator[@name='value_types']" position="before">
                 <xpath expr="//group[@name='main_fields']" position="move" />
             </xpath>
@@ -529,11 +467,9 @@
         groups="product.group_product_variant"
     />
 
-    <!-- ⚠️ LE TAUX AU m² N'ÉTAIT SAISISSABLE NULLE PART. Le champ existait, ses
-         tests passaient — et aucun écran ne le portait : la fonctionnalité était
-         complète et inatteignable (D-162). Deux vues le réparent : le catalogue
-         (la valeur d'attribut, qui porte le défaut) et le produit (la valeur du
-         template, qui peut le surcharger). -->
+    <!-- ⚠️ SANS CES VUES, LE TAUX AU m² NE SERAIT SAISISSABLE NULLE PART : complet et
+         inatteignable (D-162). Deux vues le portent : le catalogue (la valeur d'attribut,
+         qui porte le défaut) et le produit (la valeur du template, qui peut le surcharger). -->
     <record id="product_attribute_view_form_sqm" model="ir.ui.view">
         <field name="name">product.attribute.form.sqm</field>
         <!-- ⚠️ Le modèle est celui de la vue PARENTE (`product.attribute`), pas
@@ -542,9 +478,7 @@
         <field name="model">product.attribute</field>
         <field name="inherit_id" ref="product.product_attribute_view_form" />
         <field name="arch" type="xml">
-            <!-- ⚠️ UN SEUL MONTANT, ET EN FIN DE LIGNE. Constat de Gerry :
-                 « default_extra_price ne peut pas être visible en même temps que
-                 default_extra_price_sqm, c'est l'un ou l'autre en fin de ligne ».
+            <!-- ⚠️ UN SEUL MONTANT, ET EN FIN DE LIGNE (D-197).
 
                  ⚠️ Et ce n'est PAS cosmétique. Le module le dit lui-même à propos du
                  taux : « Odoo somme `price_extra` partout, et y ranger 25 €/m² le
@@ -559,8 +493,7 @@
             <xpath expr="//field[@name='value_ids']/list/field[@name='default_extra_price']" position="attributes">
                 <!-- ⚠️ Le montant saisissable s'efface pour un attribut de type produit :
                      il n'est JAMAIS appliqué à ces valeurs — le prix du produit l'est —,
-                     et un nombre modifiable qui ne sert à rien est exactement ce que
-                     Gerry veut éviter : « ça peut être trompeur et fausser les prix »
+                     et un nombre modifiable qui ne sert à rien fausserait les prix
                      (D-199). Le prix du produit prend sa place, en lecture. -->
                 <attribute name="column_invisible">parent.price_mode == 'per_sqm' or parent.value_type == 'product'</attribute>
             </xpath>
@@ -576,15 +509,9 @@
                     column_invisible="parent.value_type != 'product'"
                     readonly="1"
                 />
-                <!-- ⚠️ LE TAUX AU m² NE CONCERNE PAS UN PRODUIT. Arbitrage de Gerry
-                     (2026-08-28) : « pour un produit, seule la ligne de plus-value
-                     unitaire remplacée par le prix du produit est visible ; c'est
-                     uniquement la matière qui peut appliquer un prix au mètre carré
-                     ou unitaire suivant le choix de l'attribut ».
-
-                     ⓘ Cela ferme la question laissée ouverte : un attribut de type
-                     produit sur une ligne au m² montrait DEUX montants. Il n'en montre
-                     plus qu'un — celui du produit, le seul qui vaille. -->
+                <!-- ⚠️ LE TAUX AU m² NE CONCERNE PAS UN PRODUIT (D-199) : seule la matière
+                     applique un prix au m² ; un attribut de type produit sur une ligne au
+                     m² montrerait sinon DEUX montants, dont un seul vaut. -->
                 <field
                     name="default_extra_price_sqm"
                     column_invisible="parent.price_mode != 'per_sqm' or parent.value_type == 'product'"
@@ -594,9 +521,7 @@
     </record>
 
     <!-- ══ CE QUE `value_type` GOUVERNE DANS LA LISTE DES VALEURS (D-196) ══════
-         Constat de Gerry : « l'affichage des champs de liste des valeurs d'attribut
-         est influencé par le type d'affichage, mais il est influencé aussi par Value
-         type ». Deux axes commandaient cette liste, et un seul était câblé.
+         ⓘ Deux axes commandent cette liste : `display_type` et `value_type`.
 
          ⚠️ LES DEUX AXES RESTENT INDÉPENDANTS DANS LEUR CHOIX. `display_type` dit
          comment on CHOISIT (pastilles, liste déroulante, cases) ; `value_type` dit ce
@@ -610,8 +535,8 @@
         <field name="arch" type="xml">
             <!-- La liste lit `parent.value_type` : il doit être dans la vue parente,
                  et il y est (groupe « What a value is »).
-                 ⓘ Le PRODUIT AVANT la valeur (demande de Gerry, 2026-09-29) : c'est
-                 lui qu'on choisit, le nom de la valeur ne fait que le nommer. -->
+                 ⓘ Le PRODUIT AVANT la valeur : c'est lui qu'on choisit, le nom de la
+                 valeur ne fait que le nommer. -->
             <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="before">
                 <field
                     name="product_id"
@@ -620,9 +545,8 @@
                 />
             </xpath>
 
-            <!-- ⚠️ « Texte libre » QUITTE LA COLONNE. Constat de Gerry : « il y a déjà
-                 Default: customer may add a value, donc texte libre n'a pas d'intérêt
-                 en colonne ».
+            <!-- ⚠️ « Texte libre » N'EST PAS EN COLONNE (D-196) : « Default: customer may
+                 add a value » le dit déjà.
 
                  ⓘ Ce que la mesure a montré, et qu'il faut savoir : les deux drapeaux
                  ne servent PAS le même configurateur. `val_custom` (attribut) est celui
@@ -668,9 +592,8 @@
                  de supplément », alors qu'il y en a un — et un champ modifiable
                  aurait invité à le remplir, ce qu'Odoo aurait facturé en plus.
 
-                 ⓘ La colonne « On removal » (D-205) n'est plus affichée, à la
-                 demande de Gerry (2026-10-02) : le champ reste, l'avertissement au
-                 retrait d'une valeur aussi. -->
+                 ⓘ La colonne « On removal » n'est pas affichée (D-205) : le champ
+                 reste, l'avertissement au retrait d'une valeur aussi. -->
             <xpath expr="//field[@name='price_extra']" position="attributes">
                 <!-- ⚠️ Une valeur qui désigne un PRODUIT est facturée au prix de ce
                      produit : son `price_extra` est ignoré par le calcul. Le montrer

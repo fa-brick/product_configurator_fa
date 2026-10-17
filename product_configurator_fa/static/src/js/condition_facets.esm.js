@@ -1,9 +1,8 @@
 /**
  * Une condition se lit comme une BARRE DE RECHERCHE — B2, D-203.
  *
- * Constat de Gerry : « regarde comment fonctionnent les pastilles avec la barre
- * de recherche, je voudrais le même fonctionnement ». Sa sémantique tombe juste
- * sur le stockage existant : ET entre les pastilles, OU à l'intérieur d'une.
+ * ⓘ La sémantique des pastilles tombe juste sur le stockage existant : ET entre les
+ * pastilles, OU à l'intérieur d'une (D-203).
  *
  * ⚠️ **CE WIDGET NE MODIFIE RIEN — il LIT.** L'édition reste le formulaire de
  * condition, qui manipule des ENREGISTREMENTS (D-080). Reconstruire la condition

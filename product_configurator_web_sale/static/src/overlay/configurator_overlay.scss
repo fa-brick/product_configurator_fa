@@ -24,6 +24,5 @@ body.o_cfg3d_locked {
     }
 }
 
-/* ⓘ `.o_cfg3d_overlay_close` a été RETIRÉE le 2026-09-22 : la croix appartient désormais à
-   la page (`.o_cfg3d_close`, `configurator_page.scss`), qui la dessine pour ses deux hôtes.
-   Elle n'est pas oubliée ici — elle n'a plus de bouton à habiller. */
+/* ⓘ Pas de croix à habiller ici : la page la dessine pour ses deux hôtes
+   (`.o_cfg3d_close`, `configurator_page.scss`). */

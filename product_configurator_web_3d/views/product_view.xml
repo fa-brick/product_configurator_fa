@@ -37,10 +37,9 @@
          là où la caméra est connue (D-075). -->
 
     <!-- ══ L'ONGLET « VIGNETTE PRODUIT » REÇOIT LES IMAGES DE CONFIGURATION (D-399) ══
-         Gerry, 2026-10-05 : *« crée un onglet dédié 'vignette produit'. Dedans migre
-         images de configuration »*. L'onglet naît dans `product_editor`, qui ne connaît
-         pas `config_ok` ; les images naissent dans `product_configurator_fa`, qui ne
-         connaît pas l'éditeur. Seul ce pont voit les deux : c'est lui qui déplace.
+         ⚠️ L'onglet naît dans `product_editor`, qui ne connaît pas `config_ok` ; les
+         images naissent dans `product_configurator_fa`, qui ne connaît pas l'éditeur.
+         Seul ce pont voit les deux : c'est lui qui déplace.
 
          ⓘ `position="move"` emporte aussi les deux champs INVISIBLES de l'onglet
          d'origine : le domaine des lignes de valeurs les lit par `parent.`, et l'onglet

@@ -3,9 +3,8 @@
 <odoo>
 
     <!-- ══ LE NOM DE VARIANTE, À DROITE DE « SÉLECTION DES VARIANTES DE VENTE » (D-399) ══
-         Gerry, 2026-10-05 : le Nom de variante en bas d'« Attributs & Variantes », à
-         droite du choix entre configurateur et grille. Le groupe `product_mode` vient de
-         `sale_product_matrix` : seul un pont qui en dépend peut l'atteindre.
+         ⚠️ Le groupe `product_mode` vient de `sale_product_matrix` : hors d'un pont qui
+         en dépend, ce xpath ne trouve rien (D-399).
 
          ⚠️ PRIORITÉ 110 : le groupe déplacé naît dans la vue
          `product_configurator_fa.product_template_variant_name_bottom`, de priorité 100.

@@ -1,10 +1,7 @@
 /** @odoo-module **/
 /**
- * Choisir un produit CONFIGURABLE sur un ordre de fabrication ouvre notre configurateur.
- *
- * Arbitrage de Gerry, 2026-09-19 : *« lorsque l'on clique sur nouveau et que l'on
- * sélectionne un produit configuré, que cela déclenche le configurateur comme lors d'un
- * devis — cela évite la présence inutile de ce bouton. »*
+ * Choisir un produit CONFIGURABLE sur un ordre de fabrication ouvre notre configurateur,
+ * comme sur une ligne de devis (D-259).
  *
  * ─ LE FAIT qui commande tout le reste ───────────────────────────────────────
  *
@@ -17,7 +14,7 @@
  * sélectionner — précisément pour les produits que ce lot doit servir. C'est la même
  * raison qui fait qu'une ligne de devis porte le MODÈLE et non la variante.
  *
- * ─ La réponse retenue (arbitrage Gerry) ─────────────────────────────────────
+ * ─ La réponse retenue ───────────────────────────────────────────────────────
  *
  * ⓘ **Un seul champ à l'écran**, celui d'Odoo, dont la liste déroulante propose EN PLUS
  * les modèles configurables. En choisir un n'écrit rien : cela ouvre le configurateur, et

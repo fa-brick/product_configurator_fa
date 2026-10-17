@@ -23,28 +23,9 @@
         </field>
     </record>
 
-    <!-- ══ CE QUE LE CONFIGURATEUR 3D REND OBSOLÈTE ═══════════════════════════
-         Arbitré par Gerry le 2026-09-06 : *« le bouton actuel de OCA ainsi que
-         la fonctionnalité derrière devient obsolète »*.
-
-         ⓘ **Masqués, pas supprimés.** Ces boutons appartiennent à un module
-         amont ; les retirer de son arbre ferait diverger notre copie et
-         compliquerait chaque montée de version. `invisible="1"` les retire de
-         l'écran et se défait d'une ligne.
-
-         ⚠️ **Rien n'est perdu, tout est déplacé** :
-         - « Configure Product » (un par devis) faisait choisir un produit puis
-           posait les questions dans un formulaire fabriqué à la volée, qui ignore
-           `display_type`. C'est désormais la LIGNE qui ouvre le configurateur,
-           comme Odoo le fait pour ses propres produits à attributs.
-         - la roue dentée (une par ligne) ouvrait notre page dans un ONGLET. Odoo
-           a déjà son affordance pour rouvrir : le crayon dans la cellule du
-           produit, qui appelle le même point d'entrée — en dialogue, sans
-           quitter le devis. -->
-    <!-- ⓘ **LA VUE « obsolete » A DISPARU** (2026-09-19). Elle ne servait qu'à MASQUER
-         les deux boutons de l'assistant OCA, le temps qu'ils vivent encore dans un module
-         amont. Ce module est le nôtre : les boutons et leurs méthodes sont partis
-         ensemble, et il ne reste rien à cacher. -->
+    <!-- ⓘ Les boutons de l'assistant OCA (« Configure Product », roue dentée) n'existent
+         plus : la LIGNE ouvre le configurateur, et le crayon de la cellule du produit le
+         rouvre en dialogue, sans quitter le devis (D-259). -->
 
 
 </odoo>

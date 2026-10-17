@@ -5,10 +5,8 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form" />
         <field name="arch" type="xml">
-            <!-- ⓘ **LE BOUTON « Configure Product » A DISPARU** avec la méthode qu'il
-                 appelait (arbitrage Gerry, 2026-09-19 : *« pour moi le wizard est
-                 mort »*). Le configurateur 3D s'ouvre au CHOIX du produit sur la ligne,
-                 ce qui ne demande plus de bouton au-dessus du tableau. -->
+            <!-- ⓘ Pas de bouton « Configure Product » : le configurateur 3D s'ouvre au
+                 CHOIX du produit sur la ligne, et l'assistant OCA est obsolète (D-259). -->
             <xpath
                 expr="//field[@name='order_line']/form//field[@name='product_id']"
                 position="after"

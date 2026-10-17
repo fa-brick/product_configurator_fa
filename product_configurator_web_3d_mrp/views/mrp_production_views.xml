@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!--
-        CHOISIR UN PRODUIT CONFIGURABLE OUVRE LE CONFIGURATEUR — arbitrage Gerry,
-        2026-09-19 : *« lorsque l'on sélectionne un produit configuré, que cela déclenche
-        le configurateur comme lors d'un devis. »*
+        CHOISIR UN PRODUIT CONFIGURABLE OUVRE LE CONFIGURATEUR, comme sur un devis (D-259).
 
         ⚠️ **Un WIDGET posé sur ce seul champ, et non un correctif global.** Le bouton
         « Configure » que ce lot retire faisait l'inverse : il s'injectait dans les

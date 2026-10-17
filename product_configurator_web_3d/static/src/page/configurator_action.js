@@ -2,10 +2,8 @@
 /**
  * Le configurateur 3D en DIALOGUE, au back-office — D-262.
  *
- * ⚠️ **Une action `act_url` ouvre un ONGLET**, et un onglet fait perdre de vue ce
- * qu'on était en train de faire : le devis, la fiche produit. Gerry l'a relevé le
- * 2026-09-07 : *« une nouvelle page s'ouvre au lieu d'un dialogue comme pour une
- * ligne de devis »*.
+ * ⚠️ **Une action `act_url` ouvre un ONGLET**, qui fait perdre de vue le devis ou la
+ * fiche produit en cours (D-262).
  *
  * ⓘ **Une action CLIENTE en `target: "new"`** : Odoo l'enveloppe lui-même dans un
  * dialogue, sans qu'on ait à en écrire un. Ce composant ne dessine donc rien —

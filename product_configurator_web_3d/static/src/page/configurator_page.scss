@@ -13,8 +13,8 @@ $o-cfg3d-compact-max: 900px;
        téléphone, `100vh` est la hauteur de l'écran BARRES MASQUÉES : 60 à 120 px de plus
        que ce qu'on voit. Et comme le corps est verrouillé pendant que le configurateur est
        ouvert (`o_cfg3d_locked`), rien ne permet de défiler jusqu'en bas — le prix et le
-       bouton tombaient donc SOUS la barre du navigateur, hors d'atteinte (relevé de Gerry,
-       2026-09-22 ; mesuré en 412 × 915 : pied à 818 → 915, soit les 97 derniers pixels).
+       bouton tomberaient SOUS la barre du navigateur, hors d'atteinte (mesuré en 412 × 915 :
+       pied à 818 → 915, soit les 97 derniers pixels).
 
        ⓘ Les DEUX lignes sont nécessaires, dans cet ordre : la première est le repli des
        navigateurs qui ignorent `dvh` — ils gardent le comportement d'avant —, la seconde
@@ -40,7 +40,7 @@ $o-cfg3d-compact-max: 900px;
 
 /* ⓘ **LA PAGE CALÉE AU-DESSUS DU CLAVIER** du téléphone (`_watchKeyboard`, D-389). Le clavier
    ne réduit que la partie VISIBLE de l'écran et fait glisser la page vers le haut : la 3D, la
-   barre du prix et le panier en sortaient (capture de Gerry, 2026-10-02). La page se pose sur
+   barre du prix et le panier en sortiraient ([[L-488]]). La page se pose sur
    ce qui reste visible — `fixed` par rapport à la fenêtre, à la place et à la taille que
    `visualViewport` donne — ; la colonne garde sa hauteur, la 3D prend le reste et le viewer
    suit sa nouvelle taille (son `ResizeObserver`). Jamais dans un dialogue (voir le JS). */
@@ -53,8 +53,8 @@ $o-cfg3d-compact-max: 900px;
 
     /* La 3D descend sous son plancher habituel : c'est elle qui cède la place au clavier. */
     .o_cfg3d_viewer { min-height: 0; }
-    /* ⓘ Le nom du produit (ou de la pièce) cède sa ligne à la 3D pendant la saisie (Gerry,
-       2026-10-02) : l'onglet ouvert dit déjà ce qu'on remplit. */
+    /* ⓘ Le nom du produit (ou de la pièce) cède sa ligne à la 3D pendant la saisie (D-389) :
+       l'onglet ouvert dit déjà ce qu'on remplit. */
     .o_cfg3d_title { display: none; }
 }
 
@@ -77,18 +77,18 @@ $o-cfg3d-compact-max: 900px;
     flex-direction: column;
     /* ⚠️ `min-height: 0` — sans lui, un enfant flexible REFUSE de rétrécir sous sa
        hauteur de contenu, le panneau déborde et la barre de défilement s'installe
-       sur toute la page au lieu du seul corps. C'est le défaut que Gerry a vu. */
+       sur toute la page au lieu du seul corps. */
     min-height: 0;
     /* ⚠️ **ET `min-width: 0`, pour la même raison, en largeur** (D-382). Un élément flexible
        garde au moins la largeur de son contenu ; une rangée qui DÉFILE a pour contenu toute
-       sa longueur — quinze teintes, 4 611 px. La colonne passait de 340 à 1 080 px, et les
-       cartes à 302 px de côté (mesuré sur la page, 2026-09-30). */
+       sa longueur — quinze teintes, 4 611 px. La colonne passerait de 340 à 1 080 px, et les
+       cartes à 302 px de côté (mesuré sur la page). */
     min-width: 0;
     /* ⓘ Le PANNEAU DE CHOIX (D-382) se pose par-dessus la colonne : elle le borne.
        ⚠️ **ET ELLE LE ROGNE** (`overflow: hidden`) : pendant qu'il glisse, il dépasse à droite
-       de la page, et le focus posé sur sa recherche faisait défiler TOUTE la page de ~210 px
-       pour la montrer — la colonne à x = 730, ses cartes coupées sous le panneau (mesuré,
-       2026-09-30). Le panneau mobile est `fixed` : ce rognage ne le touche pas. */
+       de la page, et le focus posé sur sa recherche ferait défiler TOUTE la page de ~210 px
+       pour la montrer — la colonne à x = 730, ses cartes coupées sous le panneau (mesuré).
+       Le panneau mobile est `fixed` : ce rognage ne le touche pas. */
     position: relative;
     overflow: hidden;
     border-left: 1px solid rgba(0, 0, 0, 0.08);
@@ -127,7 +127,7 @@ $o-cfg3d-compact-max: 900px;
 }
 
 /* ── LES ONGLETS DU MODE COMPACT (D-389) ────────────────────────────────────
-   Les questions de l'étape en une rangée qui défile, comme la page d'IKEA (Gerry, 2026-10-01) :
+   Les questions de l'étape en une rangée qui défile, comme la page d'IKEA :
    le nom, souligné à la couleur du thème quand l'onglet est ouvert. Elle déborde les marges du
    corps pour aller d'un bord à l'autre de l'écran.
    ⓘ Positionnée : c'est depuis elle que la page lit l'`offsetLeft` de l'onglet à centrer. */
@@ -173,19 +173,16 @@ $o-cfg3d-compact-max: 900px;
     background: #e8590c;
 }
 
-/* ⓘ La boîte du champ : la hauteur de SON CONTENU, bornée (Gerry, 2026-10-01 : « un espace vide
-   persiste en partie basse — le but est de minimiser l'encombrement »). Elle était d'abord fixe
-   (172 px) pour que la 3D ne change pas de taille d'un onglet à l'autre ; une ligne résumé y
-   laissait 100 px de blanc. La 3D suit donc désormais le champ ouvert : le viewer garde sa cible
-   au centre, seule l'échelle varie un peu.
+/* ⓘ La boîte du champ : la hauteur de SON CONTENU, bornée (D-389) — fixe, une ligne résumé y
+   laisserait 100 px de blanc. La 3D suit donc le champ ouvert : le viewer garde sa cible au
+   centre, seule l'échelle varie un peu.
    ⚠️ La borne en `vh` d'abord, en `dvh` ensuite : le repli des navigateurs qui ignorent `dvh`. */
 .o_cfg3d_field {
     max-height: 40vh;
     max-height: 40dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
-    /* ⓘ 5 px de plus en bas qu'en haut : le champ respire au-dessus du bord de l'écran (Gerry,
-       2026-10-01 : « pour se sentir moins serré »). */
+    /* ⓘ 5 px de plus en bas qu'en haut : le champ respire au-dessus du bord de l'écran. */
     padding: 12px 0 17px;
 
     .o_cfg3d_question { margin-bottom: 0; }
@@ -244,8 +241,8 @@ $o-cfg3d-compact-max: 900px;
     border-radius: 50%;
 }
 
-/* ⓘ LA BARRE D'ACTION (D-389) — UNE ligne : le prix à gauche, le geste à droite (Gerry,
-   2026-10-01). Elle vit au pied de la colonne ; le mode compact la pose en haut du viewer. */
+/* ⓘ LA BARRE D'ACTION (D-389) — UNE ligne : le prix à gauche, le geste à droite. Elle vit
+   au pied de la colonne ; le mode compact la pose en haut du viewer. */
 .o_cfg3d_actionbar {
     display: flex;
     align-items: center;
@@ -295,8 +292,8 @@ $o-cfg3d-compact-max: 900px;
     align-items: center;
     justify-content: center;
     /* ⚠️ **OPAQUE, ET NON `inherit`.** Le parent (`.o_cfg3d_viewer`) n'a pas de fond :
-       `inherit` valait donc « transparent », et la 3D se voyait À TRAVERS la photo —
-       la même pièce à deux endroits, en même temps (relevé de Gerry, 2026-09-07). Un
+       `inherit` vaudrait donc « transparent », et la 3D se verrait À TRAVERS la photo —
+       la même pièce à deux endroits, en même temps. Un
        fond hérité d'un parent qui n'en a pas est une absence qui se déguise en
        valeur. */
     background: #fff;
@@ -331,10 +328,10 @@ $o-cfg3d-compact-max: 900px;
    sa silhouette avant de lire son nom. */
 .o_cfg3d_cards {
     display: grid;
-    /* ⚠️ **88 px, pas 96** (D-382, relevé de Gerry le 2026-09-30 : « je ne vois pas de
-       différence »). Une barre de défilement CLASSIQUE (Chrome sous Linux, Windows) prend
-       ~15 px à la colonne : 293 px utiles au lieu de 308. À 96 px, la moyenne n'y logeait que
-       DEUX cartes — exactement la grande. 88 px en loge trois, avec ou sans barre. */
+    /* ⚠️ **88 px, pas 96** (D-382). Une barre de défilement CLASSIQUE (Chrome sous Linux,
+       Windows) prend ~15 px à la colonne : 293 px utiles au lieu de 308. À 96 px, la moyenne
+       n'y logerait que DEUX cartes — exactement la grande. 88 px en loge trois, avec ou sans
+       barre. */
     grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
     gap: 8px;
 
@@ -342,7 +339,7 @@ $o-cfg3d-compact-max: 900px;
        nombre par ligne en découle. `medium` est la règle ci-dessus, inchangée.
        ⚠️ **64 px, pas 72.** La colonne offre 308 px ; quatre cartes de 72 px et leurs trois
        écarts en demandent 312 : la petite taille rendait TROIS cartes de 97 px, exactement
-       la moyenne (mesuré sur la page, 2026-09-30). 64 px en loge quatre, barre de
+       la moyenne (mesuré sur la page, [[L-452]]). 64 px en loge quatre, barre de
        défilement comprise (293 px). */
     &--small { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
     &--large { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
@@ -684,7 +681,7 @@ $o-cfg3d-compact-max: 900px;
     &:hover { opacity: 1; }
 }
 
-/* La flèche et le nom de la question sur une ligne (Gerry, 2026-10-01). */
+/* La flèche et le nom de la question sur une ligne (D-389). */
 .o_cfg3d_panel_title {
     display: flex;
     align-items: center;
@@ -782,7 +779,7 @@ $o-cfg3d-compact-max: 900px;
 }
 
 /* LES ÉTAPES (D-385) — les pastilles du panneau, posées en haut du viewer et centrées sur
-   sa largeur (demande de Gerry, 2026-09-30). */
+   sa largeur. */
 .o_cfg3d_steps {
     position: absolute;
     top: 12px;
@@ -797,8 +794,8 @@ $o-cfg3d-compact-max: 900px;
     padding: 0 56px;
 
     /* ⓘ SUR TÉLÉPHONE (D-389), la barre d'action et la croix occupent le haut : les étapes
-       passent SOUS elles, toujours dans le viewer (Gerry, 2026-10-01), et n'ont plus de croix à
-       éviter sur leur ligne. */
+       passent SOUS elles, toujours dans le viewer, et n'ont plus de croix à éviter sur leur
+       ligne. */
     @media (max-width: $o-cfg3d-compact-max) {
         top: calc(68px + env(safe-area-inset-top, 0px));
         padding: 0 12px;
@@ -834,8 +831,8 @@ $o-cfg3d-compact-max: 900px;
 
 /* ⚠️ **LE TOAST NE DOIT PAS COUVRIR LA QUESTION QU'IL DÉSIGNE** (D-385). Le cœur pose ses
    notifications en haut à droite de la FENÊTRE — ici, sur la colonne des questions : le
-   toast « répondez d'abord à Type de TopPlate » masquait justement Type de TopPlate
-   (capture du 2026-09-30). On les décale sur le viewer, sous les pastilles d'étape.
+   toast « répondez d'abord à Type de TopPlate » masquerait justement Type de TopPlate.
+   On les décale sur le viewer, sous les pastilles d'étape.
    ⓘ Page pleine seulement : dans le dialogue du back-office, la colonne n'est pas collée
    au bord de la fenêtre, et la place du cœur ne recouvre rien. Sous 900 px, la colonne
    passe sous le viewer : la place du cœur est déjà sur la 3D. */
@@ -924,10 +921,9 @@ $o-cfg3d-compact-max: 900px;
 
     img { width: 100%; height: 100%; object-fit: cover; }
 
-    /* ⚠️ **UNE OMBRE, PAS UN `outline`** (constat de Gerry, 2026-09-29 : « la bordure de
-       sélection ne s'applique pas »). La pastille qu'on vient de cliquer garde le FOCUS, et
-       le reboot de Bootstrap efface l'outline de tout élément focalisé à la souris
-       (`:focus:not(:focus-visible) { outline: 0 }`) — la classe était là, l'anneau non. */
+    /* ⚠️ **UNE OMBRE, PAS UN `outline`** ([[L-435]]) : la pastille qu'on vient de cliquer
+       garde le FOCUS, et le reboot de Bootstrap efface l'outline de tout élément focalisé à
+       la souris (`:focus:not(:focus-visible) { outline: 0 }`). */
     &--chosen { box-shadow: 0 0 0 2px #fff, 0 0 0 4px $o-brand-primary; }
     &--muted { opacity: 0.4; }
 }
@@ -1002,15 +998,10 @@ $o-cfg3d-compact-max: 900px;
 }
 
 /* ── LA SORTIE ──────────────────────────────────────────────────────────────
-   ⚠️ **ELLE APPARTIENT À LA PAGE, ET NON À L'OVERLAY DE LA BOUTIQUE.** Tant qu'elle
-   vivait là-haut, elle manquait partout où l'on arrive par NAVIGATION : la vignette de
-   la grille (un vrai lien, qui navigue toujours), un lien reçu par courriel, ou un clic
-   donné avant que la préparation ait abouti. Mesuré le 2026-09-22 —
-   `/configurator/<jeton>` ne contenait aucune croix, et le visiteur n'avait aucune sortie
-   (relevé de Gerry : « visible sur mobile, pas sur desktop » — ce n'était pas l'écran qui
-   changeait, c'était le CHEMIN D'ENTRÉE).
-
-   ⓘ Mêmes coordonnées que celle qu'elle remplace : rien ne bouge à l'écran.
+   ⚠️ **ELLE APPARTIENT À LA PAGE, ET NON À L'OVERLAY DE LA BOUTIQUE** : posée là-haut, elle
+   manquerait partout où l'on arrive par NAVIGATION — la vignette de la grille, un lien reçu
+   par courriel, un clic donné avant que la préparation ait abouti —, et le visiteur
+   n'aurait aucune sortie.
    ⚠️ `z-index: 3` — la photo d'attente est à 2 (`.o_cfg3d_loading`) et la recouvrirait. */
 .o_cfg3d_close {
     position: absolute;
@@ -1042,11 +1033,11 @@ $o-cfg3d-compact-max: 900px;
 
 /* ── LA BARRE D'ACTION EN HAUT DU VIEWER (D-389, téléphone) ─────────────────
    Le prix et le panier, sur un fond blanc arrondi : lisibles sur n'importe quelle scène. Elle
-   laisse sa droite à la croix (Gerry, 2026-10-01).
+   laisse sa droite à la croix.
    ⚠️ `z-index: 3`, comme la croix : la photo d'attente est à 2 et la couvrirait. */
 .o_cfg3d_topbar {
     position: absolute;
-    /* ⓘ 44 px de haut, à la hauteur de la croix et sur la même ligne (Gerry, 2026-10-01) :
+    /* ⓘ 44 px de haut, à la hauteur de la croix et sur la même ligne :
        4 px autour d'un bouton de 36. */
     top: calc(14px + env(safe-area-inset-top, 0px));
     left: 10px;
@@ -1074,8 +1065,8 @@ $o-cfg3d-compact-max: 900px;
 
 .o_cfg3d_piece { margin-bottom: 16px; }
 
-/* L'en-tête d'une pièce sélectionnée : la flèche de retour, puis son nom (maquette de
-   Gerry, 2026-09-23). La flèche est un bouton nu, de la couleur du texte. */
+/* L'en-tête d'une pièce sélectionnée : la flèche de retour, puis son nom (D-333). La flèche
+   est un bouton nu, de la couleur du texte. */
 .o_cfg3d_title--piece {
     display: flex;
     align-items: center;

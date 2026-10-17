@@ -2,19 +2,17 @@
 /**
  * LA PHOTO D'UNE VARIANTE NÉE D'UNE CONFIGURATION — D-399, lot 5 (voie A).
  *
- * Gerry, 2026-10-05 : *« A pour l'ajout au panier puis B quand c'est possible »*, *« pour tout
- * devis / commande dont le variant n'est pas créé »*. Quand la confirmation CRÉE la variante,
- * le serveur joint à son état la prise de vue à rejouer (`state.photo` : la vue de l'appareil
- * photo, le décor, le cadre commun des variantes ; les surfaces d'ombre viennent de l'ambiance,
- * D-475). La page la rejoue
- * avec SON viewer, hors de l'orbite où le client l'a laissé, et envoie l'image.
+ * Quand la confirmation CRÉE la variante, le serveur joint à son état la prise de vue à
+ * rejouer (`state.photo` : la vue de l'appareil photo, le décor, le cadre commun des
+ * variantes ; les surfaces d'ombre viennent de l'ambiance, D-475). La page la rejoue avec
+ * SON viewer, hors de l'orbite où le client l'a laissé, et envoie l'image.
  *
  * ⚠️ **Une image perdue n'empêche jamais un achat.** Tout tient dans un budget (4 s) ; au-delà,
  * on part au panier sans elle — l'éditeur la fera (voie B), le compteur et l'activité le
  * rappelleront.
  *
- * ⓘ Un fichier à lui (règle de Gerry : code neuf, fichier neuf) ; la page n'y délègue que
- * par une ligne dans `onConfirm`, et le retour du viewer.
+ * ⓘ Un fichier à lui : la page n'y délègue que par une ligne dans `onConfirm`, et le retour
+ * du viewer.
  */
 
 export const PHOTO_BUDGET_MS = 4000;

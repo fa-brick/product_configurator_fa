@@ -43,9 +43,9 @@ export const KEYBOARD_MIN_HEIGHT = 120;
  *
  * ⚠️ **Le clavier ne redimensionne PAS la page** : Chrome sur Android (par défaut) comme Safari
  * réduisent la seule partie VISIBLE (`visualViewport`) et font glisser la page pour montrer le
- * champ. La page fait la hauteur de l'écran : la 3D, la barre du prix et le panier sortaient
- * par le haut (capture de Gerry, 2026-10-02). On la pose donc sur ce qui reste visible — la
- * colonne garde sa hauteur, la 3D prend le reste.
+ * champ. La page fait la hauteur de l'écran : la 3D, la barre du prix et le panier sortiraient
+ * par le haut (D-389). On la pose donc sur ce qui reste visible — la colonne garde sa
+ * hauteur, la 3D prend le reste.
  *
  * Seulement en mode compact, sur une page PLEINE (pas dans un dialogue, qui a son cadre),
  * pendant une SAISIE, sans zoom au pincement — qui réduit lui aussi la partie visible.
@@ -119,8 +119,8 @@ export function rowEdges(scrollLeft, viewWidth, scrollWidth) {
 }
 
 /**
- * Le `scrollLeft` qui CENTRE un onglet dans sa rangée — D-389 : *« la sélection de question le
- * centre en largeur pour montrer qu'il y a des questions à gauche et à droite »* (Gerry).
+ * Le `scrollLeft` qui CENTRE un onglet dans sa rangée (D-389) : centré, il montre qu'il y a
+ * des questions à gauche et à droite.
  * ⓘ Borné aux deux bouts : le premier et le dernier onglet ne se centrent pas, ils touchent le
  * bord — une rangée ne défile pas au-delà de son contenu.
  */
@@ -158,7 +158,7 @@ export function activeQuestionId(questions, wanted) {
  * La disposition d'une question À L'ÉCRAN — D-389 (Q3).
  *
  * ⓘ En mode compact, une grille de cartes ou de grandes pastilles devient une RANGÉE QUI
- * DÉFILE, avec la liste complète (Gerry, 2026-10-01) : une grille de plusieurs lignes ne tient
+ * DÉFILE, avec la liste complète : une grille de plusieurs lignes ne tient
  * pas dans la boîte du champ, et sa hauteur ferait sauter la 3D d'un onglet à l'autre. `line`
  * aussi, puisque la rangée montre déjà tout. `summary` reste un résumé : il est choisi exprès
  * pour les longues listes.
@@ -246,8 +246,7 @@ export function pickedAnswer(question) {
 export const OTHER_CATEGORY = "__other__";
 
 /**
- * Les pastilles de catégories d'un panneau — D-382 (Gerry : « des pastilles horizontales
- * sous la recherche qui filtrent », « autre et tout »).
+ * Les pastilles de catégories d'un panneau, sous la recherche, qui filtrent (D-382).
  *
  * « Tout » d'abord (clé `null`), les catégories dans l'ordre servi, « Autres » en dernier
  * s'il reste des réponses sans catégorie. ⓘ **Aucune pastille sous deux groupes** : une
@@ -264,7 +263,7 @@ export function panelChips(question, allLabel, otherLabel) {
     ];
 }
 
-/** Les réponses d'une pastille — filtre EXACT, sans les sous-catégories (Gerry). */
+/** Les réponses d'une pastille — filtre EXACT, sans les sous-catégories (D-382). */
 export function filterByCategory(values, key) {
     if (!key) return values;
     if (key === OTHER_CATEGORY) return values.filter((value) => !(value.categoryKeys || []).length);
@@ -277,9 +276,9 @@ export function filterByCategory(values, key) {
 // question dans la sienne (`stepId`) et ne sert que les étapes VISIBLES. La page n'a donc
 // rien à déduire de l'ordre : elle filtre, et grise.
 //
-// Arbitrage de Gerry (2026-09-30) : les étapes s'affichent en pastilles en haut du
-// viewer ; l'étape suivante reste GRISÉE tant qu'une question obligatoire manque ; un
-// clic sur une pastille grisée DIT ce qui manque et y MÈNE.
+// ⓘ Les étapes s'affichent en pastilles en haut du viewer ; l'étape suivante reste GRISÉE
+// tant qu'une question obligatoire manque ; un clic sur une pastille grisée DIT ce qui
+// manque et y MÈNE (D-385).
 
 /** Une étape telle que la page la rend — sa vue, ou `null` : la caméra ne bouge pas. */
 function toStep(raw) {
@@ -366,7 +365,7 @@ function toQuestion(line) {
         values: (line.values || []).map(toValue),
         // ⓘ **LA SAISIE LIBRE** (D-353) : la forme du champ, ou `null` quand la question
         // se répond par sa liste. C'est ELLE qui décide du champ, avant `displayType` —
-        // aucune forme d'affichage nouvelle (lot C abandonné le 2026-09-08).
+        // aucune forme d'affichage nouvelle (D-353).
         free: line.free ? toFreeField(line.free) : null,
         // Ce que le client a TAPÉ, tel que le serveur l'a rangé — `null` s'il a choisi.
         customValue: line.customValue ?? null,
@@ -520,9 +519,9 @@ export function placementOf(model, pieces, nodeId) {
  * La FAMILLE d'une pose : toutes les poses du même placement — l'original, ses copies de
  * répétition et de miroir, et les copies de ses copies (D-375).
  *
- * Arbitrage de Gerry (2026-09-29) : *« la sélection d'une occurrence sélectionne les autres
- * ainsi que l'original »*. Elles partagent leurs réponses (D-332, D-175 fermé) : allumer
- * la seule pose touchée laisserait croire qu'une couleur choisie ne vaut que pour elle.
+ * ⚠️ Toucher une occurrence sélectionne les autres ET l'original : elles partagent leurs
+ * réponses (D-332, D-175 fermé), et allumer la seule pose touchée laisserait croire qu'une
+ * couleur choisie ne vaut que pour elle (D-375).
  *
  * ⓘ Deux LIENS vers la même pièce ne sont pas une famille : chacun a ses réponses.
  *
@@ -541,7 +540,7 @@ export function familyOf(pieces, nodeId) {
     return [nodeId, ...others];
 }
 
-/** Les poses SÉLECTIONNABLES — celles qui ont un placement réglable (arbitrage Gerry). */
+/** Les poses SÉLECTIONNABLES — celles qui ont un placement réglable (D-333). */
 export function selectableNodeIds(model, pieces) {
     return new Set((pieces || []).filter((p) => placementOf(model, pieces, p.key)).map((p) => p.key));
 }
@@ -623,7 +622,7 @@ export function toViewModel(payload, previous = null) {
     // n'a pas de clé `definition`, `sameDefinition(undefined, undefined)` rend
     // VRAI, donc on lisait `previous.definition` sur `null`. En production la clé
     // est toujours là, ce qui rendait le défaut invisible ; un appel sans elle le
-    // fait tomber (trouvé par les tests, 2026-09-06).
+    // fait tomber.
     const definition = previous && sameDefinition(previous.definition, payload.definition)
         ? previous.definition
         : payload.definition || null;
@@ -653,7 +652,7 @@ export function toViewModel(payload, previous = null) {
         // jamais par une absence — sans quoi un état ancien et un état libre
         // seraient indistinguables.
         hand: payload.hand || { holder: null, label: null },
-        // L'attente a un visage (2026-09-06) : la photo du produit tient la place
+        // L'attente a un visage : la photo du produit tient la place
         // de la 3D, et la VUE d'où elle a été prise sert à s'y poser exactement.
         image: payload.image || null,
         camera: payload.camera || null,
@@ -670,14 +669,9 @@ export function toViewModel(payload, previous = null) {
         // vaut `null` sur une base sans site : la croix ne se dessine alors pas, plutôt que
         // de mener nulle part.
         productUrl: payload.productUrl || null,
-        // ⚠️ **LA CUISSON ET L'AMBIANCE TRAVERSENT — et elles ne le faisaient PAS.** Le
-        // serveur les émettait (`web_state`), la page les lisait (`model.baked`,
-        // `model.ambience`), et cette fonction — une LISTE BLANCHE — les laissait tomber
-        // ([[L-212]] : une transformation qui recopie champ par champ perd tout ce qu'on
-        // ajoute en amont). Le chemin des GLB cuits n'avait donc JAMAIS tourné sur la page
-        // publique, et l'ambiance du produit n'atteignait pas le viewer — sans une erreur,
-        // et sous des gardes vertes qui lisaient le TEXTE de la page, jamais la donnée.
-        // Relevé le 2026-09-22 sur le JeNo : `baked: null`, `ambience: non`.
+        // ⚠️ **LA CUISSON ET L'AMBIANCE DOIVENT TRAVERSER** : cette fonction est une LISTE
+        // BLANCHE, et un champ servi qu'elle ne recopie pas n'atteint jamais le viewer,
+        // sans une erreur ([[L-212]], [[L-357]]).
         baked: payload.baked || null,
         // ⚠️ Même maillon, même piège : un champ servi que cette recopie oublie n'atteint
         // jamais la page ([[L-357]]). Les fichiers importés, et leur URL à jeton.
@@ -818,10 +812,9 @@ export function reasonFor(value) {
  * Le lecteur des pièces CUITES — un fichier se lit et se décode UNE fois pour la vie de la
  * page ([[L-449]]).
  *
- * ⚠️ **La page relisait tout, à chaque reconstruction.** « Tête bombée de vis.glb » sert
- * quinze poses du JeNo : il était téléchargé et décodé quinze fois à CHAQUE permutation
- * (1,7 à 4,9 s par clic, mesuré le 2026-09-29), pour un fichier qui n'avait pas changé.
- * L'éditeur tient ce cache depuis sa cuisson (`_readBakedFile`) ; la page ne l'avait pas.
+ * ⚠️ **Sans ce cache, la page relit tout à chaque reconstruction** : « Tête bombée de vis.glb »,
+ * qui sert quinze poses du JeNo, serait téléchargé et décodé quinze fois à CHAQUE permutation
+ * (mesuré : 1,7 à 4,9 s par clic). L'éditeur tient le même cache (`_readBakedFile`).
  *
  * ⓘ **La clé est l'URL servie ET la table des faces.** L'URL porte le jeton de la pièce
  * jointe, qui ne change pas ; une nouvelle cuisson est une nouvelle pièce jointe, donc une

@@ -1,5 +1,5 @@
 /**
- * L'ARBRE DU CONFIGURATEUR — la maquette de Gerry (D-210).
+ * L'ARBRE DU CONFIGURATEUR (D-210).
  *
  * Trois natures de lignes dans une seule liste : l'ÉTAPE en bandeau, l'ATTRIBUT,
  * et ses VALEURS indentées portant chacune leur condition.
@@ -97,14 +97,14 @@ export function flattenTree(rows, expanded) {
 /**
  * L'arbre découpé en BLOCS — un par attribut.
  *
- * ⚠️ **LE FANTÔME D'UNE VALEUR DOIT ÊTRE BORNÉ, ET SEUL UN CONTENEUR BORNE.**
- * Demande de Gerry : *« borner le fantôme pour qu'il représente l'emplacement du
- * relâcher »*. Le cœur sait le faire — `groups` + `connectGroups: false` fait de
- * l'élément de groupe le CONTENEUR de la rangée tirée, et `updateElementPosition`
- * l'y enferme (`draggable_hook_builder.js`). Mais il lui faut un élément PARENT
- * par groupe, et un tableau n'admet qu'un seul genre de conteneur de rangées :
- * le `<tbody>`. D'où ce découpage — la tête du bloc (bandeau d'étape éventuel et
- * rangée d'attribut) dans un `<tbody>`, ses valeurs dans un autre.
+ * ⚠️ **LE FANTÔME D'UNE VALEUR DOIT ÊTRE BORNÉ, ET SEUL UN CONTENEUR BORNE** : il
+ * représente l'emplacement du relâcher. Le cœur sait le faire — `groups` +
+ * `connectGroups: false` fait de l'élément de groupe le CONTENEUR de la rangée
+ * tirée, et `updateElementPosition` l'y enferme (`draggable_hook_builder.js`).
+ * Mais il lui faut un élément PARENT par groupe, et un tableau n'admet qu'un seul
+ * genre de conteneur de rangées : le `<tbody>`. D'où ce découpage — la tête du bloc
+ * (bandeau d'étape éventuel et rangée d'attribut) dans un `<tbody>`, ses valeurs dans
+ * un autre.
  *
  * ⓘ Le bandeau précède TOUJOURS l'attribut qu'il ouvre (D-202) : ils font une
  * seule tête. Fonction PURE.
@@ -143,14 +143,9 @@ export function groupRows(flat) {
  * L'arbre après le dépôt d'un ATTRIBUT : l'ordre des lignes, et la ligne que
  * chaque bandeau ouvre désormais.
  *
- * ⚠️ **UN BANDEAU RESTE OÙ IL S'AFFICHE ; SEUL L'ATTRIBUT BOUGE.** Constat de
- * Gerry sur le JeNo 5" : *« je n'arrive pas à déplacer Bottom Plate au-dessus
- * de Impressions 3D »*. Bottom Plate PORTAIT le marqueur de l'étape (D-202) :
- * le bandeau, déduit de lui, le suivait partout. Déposé juste au-dessus de son
- * propre bandeau, l'attribut ne changeait pas de rang, et rien ne bougeait —
- * le fantôme montrait un dépôt que le résultat démentait. L'inverse aussi :
- * glisser l'attribut suivant ENTRE le bandeau et Bottom Plate le rendait
- * au-dessus du bandeau, hors de l'étape où le fantôme l'avait posé.
+ * ⚠️ **UN BANDEAU RESTE OÙ IL S'AFFICHE ; SEUL L'ATTRIBUT BOUGE** : déduit du marqueur
+ * que porte sa ligne (D-202), un bandeau qui la suivrait rendrait le dépôt au-dessus
+ * de lui sans effet, sans erreur (L-466).
  *
  * On lit donc l'écran tel que le fantôme le montre : chaque bandeau s'ouvre sur
  * le premier attribut qui le suit. Le marqueur passe d'une ligne à l'autre ; il
@@ -180,12 +175,10 @@ export function dropLayout(rows, at, movedLineId) {
  * L'arbre après le dépôt d'un BANDEAU — la même lecture que pour un attribut.
  *
  * ⚠️ **LE BANDEAU SE POSE OÙ LE FANTÔME L'A MONTRÉ, ET CHAQUE BANDEAU S'OUVRE SUR
- * LE PREMIER ATTRIBUT QUI LE SUIT.** Constat de Gerry : *« je ne peux pas déplacer
- * ma nouvelle étape créée au début de la liste »*. L'ancien calcul ne regardait
- * que la ligne sous le point de dépôt : déposé contre un autre bandeau, il visait
- * une ligne qui ouvrait DÉJÀ une étape, et le serveur refusait. Lu ainsi, poser
- * « New Step » en tête l'ouvre sur la première ligne, et la ligne qu'il ouvrait
- * rejoint l'étape d'au-dessus.
+ * LE PREMIER ATTRIBUT QUI LE SUIT** (L-469) : lire la seule ligne sous le point de
+ * dépôt viserait, contre un autre bandeau, une ligne qui ouvre DÉJÀ une étape, et le
+ * serveur refuserait. Lu ainsi, poser « New Step » en tête l'ouvre sur la première
+ * ligne, et la ligne qu'il ouvrait rejoint l'étape d'au-dessus.
  *
  * ⓘ `null` : une étape en sortirait VIDE — déposée sous la dernière ligne, ou
  * collée contre un autre bandeau. Une étape qui n'ouvre rien n'existe pas : on
@@ -246,9 +239,8 @@ export function restepRows(rows, steps) {
 /**
  * L'arbre tel qu'il sera, AVANT que le serveur l'ait confirmé.
  *
- * ⚠️ **SANS ANTICIPATION, LE DÉPÔT CLIGNOTE.** Constaté à l'écran par Gerry :
- * *« quand je relâche, la ligne retourne à son ancienne position puis revient à
- * la nouvelle »*. Le cœur ne déplace RIEN dans le DOM au dépôt
+ * ⚠️ **SANS ANTICIPATION, LE DÉPÔT CLIGNOTE** : la ligne retournerait à son ancienne
+ * position avant de revenir à la nouvelle. Le cœur ne déplace RIEN dans le DOM au dépôt
  * (`applyChangeOnDrop` est faux par défaut) : la ligne reprend sa place, et n'en
  * bouge qu'une fois l'aller-retour serveur terminé — enregistrement du
  * formulaire compris. On rend donc le résultat tout de suite, et la relecture
@@ -380,7 +372,7 @@ export class ConfiguratorTree extends Component {
         // Le cœur ne déplace le fantôme qu'au survol des `elements`
         // (`sortable.js`, `onElementPointerEnter`) : limités aux bandeaux, un
         // bandeau seul ne bougeait JAMAIS, et deux ne faisaient qu'échanger leurs
-        // places — c'est ce que Gerry a vu. Les attributs sont donc des éléments
+        // places (L-469). Les attributs sont donc des éléments
         // de ce glisser aussi ; seule la POIGNÉE d'étape le démarre, et un
         // attribut n'en porte pas.
         //
@@ -389,7 +381,7 @@ export class ConfiguratorTree extends Component {
         // `".o_config_step, .o_config_attribute"` devenait « `.o_config_step`
         // OU `.o_config_attribute .o_config_step_handle` » — tout le bandeau
         // démarrait un glisser, et son `preventDefault` empêchait la liste
-        // déroulante de la vue 3D de s'ouvrir (Gerry, 2026-09-30).
+        // déroulante de la vue 3D de s'ouvrir.
         useSortable({
             ref: this.rootRef,
             elements: ".o_config_row",
@@ -449,13 +441,9 @@ export class ConfiguratorTree extends Component {
      * Écrire côté SERVEUR, puis remettre le FORMULAIRE d'accord avec lui.
      *
      * ⚠️ **L'ARBRE ÉCRIT EN BASE, LE FORMULAIRE LIT SON CACHE — et les deux
-     * divergeaient.** Constat de Gerry : *« l'ordre des attributs doit être
-     * identique entre l'onglet attribut et l'onglet configurator »*. Déplacer un
-     * attribut ici écrivait la séquence en base sans que le formulaire en sache
-     * rien : « Attributs & Variantes » gardait l'ordre d'avant jusqu'au prochain
-     * rechargement de la fiche. Et dans l'autre sens, déplacer là-bas ne
-     * touchait que le cache : l'arbre, qui relit le SERVEUR, montrait l'ordre
-     * d'avant.
+     * divergeaient.** Sans relecture, « Attributs & Variantes » garde l'ordre d'avant
+     * un déplacement fait ici ; sans sauvegarde, l'arbre (qui relit le SERVEUR) ignore
+     * un déplacement fait là-bas.
      *
      * ⚠️ **SAUVER D'ABORD, ET PAS SEULEMENT RECHARGER.** Recharger jetterait les
      * modifications en cours du formulaire — y compris un déplacement fait dans
@@ -484,7 +472,7 @@ export class ConfiguratorTree extends Component {
             // après un enregistrement refusé pour DÉFAIRE l'anticipation.
             // ⚠️ DANS le `finally` : un refus du serveur LÈVE, et la relecture
             // placée après était sautée — l'arbre gardait l'état anticipé, deux
-            // bandeaux empilés que la base n'avait jamais eus (capture de Gerry).
+            // bandeaux empilés que la base n'avait jamais eus (L-469).
             await this.load();
         }
     }
@@ -562,7 +550,7 @@ export class ConfiguratorTree extends Component {
      * `table-layout: auto` : ses colonnes se mesurent sur leur contenu, et la
      * rangée emportée — passée en `position: fixed` — n'en fait plus partie. Ce
      * sont donc TOUTES les lignes restantes qui glissent latéralement, pas
-     * seulement celle qu'on tire. C'est ce que Gerry a vu sur le JeNo 5".
+     * seulement celle qu'on tire (L-174).
      *
      * ⚠️ **AU POINTERDOWN, ET PAS PLUS TARD.** Le cœur pose `position: fixed`
      * AVANT d'appeler `onDragStart` (`draggable_hook_builder.js`) : mesurer
@@ -691,12 +679,10 @@ export class ConfiguratorTree extends Component {
     }
 
     /**
-     * ⚠️ **CET ORDRE APPARTIENT À L'ATTRIBUT, PAS AU PRODUIT** — arbitré par
-     * Gerry le 2026-08-29. Une valeur est un `product.attribute.value` et son
-     * rang vit dans sa `sequence` : la déplacer ici la déplace sur tous les
-     * produits qui emploient cet attribut. C'est le seul ordre qui existe — en
-     * inventer un par produit obligerait tout ce qui affiche des valeurs à le
-     * relire.
+     * ⚠️ **CET ORDRE APPARTIENT À L'ATTRIBUT, PAS AU PRODUIT** : le rang d'une valeur vit
+     * dans la `sequence` de son `product.attribute.value`, donc la déplacer ici la déplace
+     * sur tous les produits qui emploient cet attribut.
+     * ⚠️ Un ordre par produit obligerait tout ce qui affiche des valeurs à le relire.
      */
     async onDropValue(element, previous) {
         const lineId = Number(element.dataset.lineId);
@@ -744,7 +730,7 @@ export class ConfiguratorTree extends Component {
     /**
      * ⚠️ L'ARBRE VIDE DOIT DIRE QUOI FAIRE. Une liste sans ligne et sans point
      * d'entrée n'est pas « vide » : elle est cassée, du point de vue de qui la
-     * regarde. Constaté à l'écran par Gerry sur un produit sans attribut.
+     * regarde (D-212).
      */
     get isEmpty() {
         return !(this.state.rows || []).length;

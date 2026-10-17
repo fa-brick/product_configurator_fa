@@ -17,9 +17,8 @@
                         <th class="o_config_tree_actions"/>
                     </tr>
                 </thead>
-                <!-- ⚠️ **UN `<tbody>` PAR BLOC, ET C'EST LE FANTÔME QUI L'EXIGE.**
-                     Demande de Gerry : *« borner le fantôme pour qu'il représente
-                     l'emplacement du relâcher »*. Le cœur sait le faire — `groups` +
+                <!-- ⚠️ **UN `<tbody>` PAR BLOC, ET C'EST LE FANTÔME QUI L'EXIGE** : il est
+                     borné à l'emplacement du relâcher. Le cœur sait le faire — `groups` +
                      `connectGroups: false` fait du groupe le CONTENEUR de la rangée
                      tirée —, mais il lui faut un élément PARENT par groupe. Un
                      tableau n'admet qu'un seul genre de conteneur de rangées, d'où
@@ -62,10 +61,8 @@
                     <!-- ⚠️ **LE MARQUAGE DU CŒUR, À LA LETTRE** — `list_renderer.xml`,
                          le pied de toute liste `one2many` : une cellule vide sous la
                          colonne des poignées, puis `o_field_x2many_list_row_add` et de
-                         simples `<a>`. Demandé par Gerry : *« l'esthétisme des boutons
-                         doit être identique à Ajouter un produit / Ajouter une
-                         section »*. Un `btn btn-link` n'en avait ni la graisse ni le
-                         retrait.
+                         simples `<a>`, comme « Ajouter un produit / une section ».
+                         ⚠️ Un `btn btn-link` n'en a ni la graisse ni le retrait.
 
                          ⓘ « Ajouter un attribut » a disparu : il faisait doublon avec
                          l'onglet « Attributs & Variantes », qui porte la même liste et
@@ -98,11 +95,9 @@
                       title="Move this step — everything below it belongs to it"/>
             </td>
             <td colspan="2">
-                <!-- ⚠️ **LE NOM SE SAISIT ICI, PAS DANS UN DIALOGUE.**
-                     Gerry : le geste doit être celui d'« Ajouter une
-                     section » — une ligne se crée, on la nomme, on la
-                     déplace. Un dialogue à chaque étape faisait trois
-                     gestes là où le cœur en demande un. -->
+                <!-- ⚠️ **LE NOM SE SAISIT ICI, PAS DANS UN DIALOGUE** : le geste est
+                     celui d'« Ajouter une section » (une ligne se crée, on la nomme,
+                     on la déplace) ; un dialogue en ferait trois. -->
                 <input t-if="state.editingStep === row.id"
                        type="text"
                        class="o_input fw-bold"
@@ -139,10 +134,9 @@
         </tr>
     </t>
 
-    <!-- ⓘ LA VUE 3D d'un attribut ou d'une étape — D-386 (Gerry : « on voit une colonne 3D
-         view mais pas de liste déroulante pour choisir »). La liste vient du PONT 3D
+    <!-- ⓘ LA VUE 3D d'un attribut ou d'une étape (D-386). La liste vient du PONT 3D
          (`configurator_camera_choices`) : sans lui, ou sans vue sur le produit, on
-         affiche le nom comme avant. L'option vide : « la caméra ne bouge pas » (D-163). -->
+         affiche le nom seul. L'option vide : « la caméra ne bouge pas » (D-163). -->
     <t t-name="product_configurator_fa.ConfiguratorTree.Camera">
         <select t-if="state.cameras.length" class="o_input o_config_camera"
                 t-att-title="row.camera or ''"
@@ -206,7 +200,7 @@
                     <!-- ⓘ D-368 — une question VENDUE À PART se voit dans l'arbre : sa
                          réponse ne fait pas le prix de ce produit, elle ajoute une ligne.
                          ⚠️ APRÈS le `t-else` : posé entre le `t-if` et lui, il lui volait son
-                         « sinon », et chaque nom s'affichait deux fois (constat de Gerry). -->
+                         « sinon », et chaque nom s'affichait deux fois (L-145). -->
                     <span t-if="row.kind === 'attribute' and row.sale_separately"
                           class="badge text-bg-light ms-1">Sold separately</span>
                 </span>
@@ -219,10 +213,9 @@
                 <span t-if="!(row.facets or []).length" class="text-muted fst-italic">
                     Add a condition
                 </span>
-<!-- ⚠️ **LA PASTILLE EST CELLE DE LA BARRE DE RECHERCHE**, demandée
-     par Gerry : mêmes classes, même découpe — un segment d'entête
-     coloré, les valeurs, la croix. Un simple `badge` se lisait comme
-     du texte nu (constaté à l'écran).
+<!-- ⚠️ **LA PASTILLE EST CELLE DE LA BARRE DE RECHERCHE** (D-225) : mêmes classes,
+     même découpe — un segment d'entête coloré, les valeurs, la croix. Un simple
+     `badge` se lit comme du texte nu.
 
      ⓘ `o_searchview_facet` porte l'animation d'apparition et la
      largeur maximale d'une valeur ; sa feuille de style du cœur

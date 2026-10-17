@@ -25,9 +25,8 @@
                 <field name="answer_layout" widget="radio"
                        invisible="display_type not in ('card', 'swatch', 'radio', 'pills', 'select')"/>
             </xpath>
-            <!-- ⓘ Ordre voulu par Gerry (2026-09-29) : MATIÈRE, valeur, aperçu. La
-                 matière est ce qu'on choisit ; le nom de la valeur la nomme, et la
-                 miniature la confirme. -->
+            <!-- ⓘ Ordre MATIÈRE, valeur, aperçu : la matière est ce qu'on choisit, le nom
+                 de la valeur la nomme, la miniature la confirme. -->
             <xpath expr="//field[@name='value_ids']/list/field[@name='name']" position="before">
                 <field
                     name="material_id"
@@ -76,7 +75,7 @@
     <!-- ══ LA VIGNETTE D'UNE VALEUR EN CARTE ══════════════════════════════════
          ⓘ Ces vues sont ICI, et non dans `product_attribute_advanced`, pour la
          même raison que le type lui-même : elles ne servent qu'à la forme que
-         ce module dessine (D-258, arbitré le 2026-09-06).
+         ce module dessine (D-258).
          Odoo ne montre le champ `image` d'une valeur QUE pour le type
          « couleur » — c'est le seul de ses cinq types qui affiche une image.
          Une carte en affiche une aussi : sans cette levée, l'attribut réglé en

@@ -5,10 +5,8 @@
     .o_cfg3d_page { height: 70vh; }
 }
 
-// ⚠️ **LE CORPS DU DIALOGUE N'A PAS À AJOUTER SA MARGE.** Odoo pose
-// `padding: var(--modal-padding)` sur `.modal-body` — juste pour un formulaire,
-// inutile pour une scène 3D qui occupe tout : le cadre gris se voyait autour de
-// la pièce (relevé de Gerry, 2026-09-07). La page porte déjà ses propres marges.
+// ⚠️ Le `padding: var(--modal-padding)` d'Odoo sur `.modal-body` dessine un cadre gris
+// autour de la scène ; la page porte déjà ses propres marges (D-262).
 .modal-body:has(> .o_cfg3d_action) {
     padding: 0;
 }

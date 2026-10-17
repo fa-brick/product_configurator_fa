@@ -5,8 +5,7 @@
     .o_cfg3d_page { height: 70vh; }
 }
 
-// Même règle que pour l'action cliente : le corps d'un dialogue n'ajoute pas sa
-// marge autour d'une scène qui occupe tout (2026-09-07).
+// ⚠️ La marge du `.modal-body` encadrerait une scène qui occupe tout (D-262).
 .o_cfg3d_dialog .modal-body {
     padding: 0;
 }

@@ -3,7 +3,7 @@ import { _t } from "@web/core/l10n/translation";
 /**
  * configurator_page.js — La page publique du configurateur (lot 6, D-090).
  *
- * **Le viewer à gauche, les questions à droite** (arbitrage Gerry, 2026-08-26). Page NUE :
+ * **Le viewer à gauche, les questions à droite.** Page NUE :
  * ni menus ni éditeur de site — `web.frontend_layout` suffit, et le module ne dépend donc
  * pas de `website`.
  *
@@ -26,7 +26,7 @@ import { rpc } from "@web/core/network/rpc";
 import { session } from "@web/session";
 import { localization } from "@web/core/l10n/localization";
 // ⓘ **LA SAISIE LIBRE** (D-353) : `AutoComplete` pour le texte, avec ses suggestions ; le
-// nombre a un champ nu, sans liste (Gerry, 2026-10-05 — [[L-504]]).
+// nombre a un champ nu, sans liste ([[L-504]]).
 import { AutoComplete } from "@web/core/autocomplete/autocomplete";
 import { PartViewer3D } from "@product_editor/components/part_viewer_3d/part_viewer_3d";
 import { projectSketchItems } from "@product_editor/engine/builder/project_items";
@@ -114,10 +114,9 @@ export class ConfiguratorPage extends Component {
         // ce que l'écran montre. Absent, la page cherche sa sortie dans l'état.
         onClose: { type: Function, optional: true },
         // ⚠️ **L'HÔTE QUI A DÉJÀ UN CADRE LE DIT ICI.** Le dialogue du back-office porte la
-        // croix d'Odoo — son pied a même été retiré pour cela (*« le Ok est inutile car la
-        // croix est présente »*, Gerry, 2026-09-07). Sans ce démenti, la page en dessinerait
-        // une SECONDE par-dessus, et celle-ci ferait quitter le back-office pour la
-        // boutique. ⓘ Le défaut par défaut est de DESSINER : la page sans hôte — celle du
+        // croix d'Odoo (D-263) : sans ce démenti, la page en dessinerait une SECONDE
+        // par-dessus, qui ferait quitter le back-office pour la boutique.
+        // ⓘ Le défaut par défaut est de DESSINER : la page sans hôte — celle du
         // lien reçu — est justement celle qui n'a personne pour la fermer.
         closable: { type: Boolean, optional: true },
         // ⓘ **L'HÔTE QUI MONTRE LE PRODUIT DANS SA PROPRE SCÈNE** — la baie d'un environnement
@@ -158,16 +157,15 @@ export class ConfiguratorPage extends Component {
             // Les ENFANTS de l'assemblage, et le compteur qui dit au viewer que
             // les poses ont changé (il ne relit pas une Map par référence).
             pieces: [], sceneSerial: 0,
-            // ⚠️ **LES PASSES FINALES — gravures et perforations — MANQUAIENT ICI**, et sept
-            // gravures du JeNo étaient invisibles sur cette page, sans une erreur (relevé
-            // du 2026-09-22). Le moteur les publie désormais avec l'arbre (D-330) ; la
-            // page ne fait que les passer au viewer.
+            // ⚠️ **LES PASSES FINALES — gravures et perforations** : sans elles, les gravures
+            // sont invisibles sur cette page, sans une erreur. Le moteur les publie avec
+            // l'arbre (D-330) ; la page ne fait que les passer au viewer.
             postBuild: { byNode: {}, byPiece: {}, perforations: {} },
             // ── LA SÉLECTION (D-333) ──────────────────────────────────────────
             // Une seule pose à la fois ; `isolated` quand un double clic l'a ouverte
             // seule. Le SURVOL, lui, ne passe pas par la page : le viewer contoure en
             // orange ce qu'un clic pourrait désigner, comme dans l'éditeur, et ne nomme
-            // rien (arbitrage Gerry, 2026-09-23).
+            // rien (D-333).
             selection: { nodeId: null, isolated: false },
             // ── LES ÉTAPES (D-385) ────────────────────────────────────────────
             // L'étape CHOISIE, par son identifiant — relue contre celles que l'état sert
@@ -215,8 +213,8 @@ export class ConfiguratorPage extends Component {
         this.notification = useService("notification");
         // ⚠️ **LA SESSION DE CONSTRUCTION (D-329)** — possédée par la page, donc par un
         // objet à durée de vie connue : c'est elle qui tient la graine de partage (ce qui
-        // évite de reconstruire DOUZE pièces pour en changer une — mesuré le 2026-09-22
-        // sur le JeNo : 2 742 ms sans graine, 1 616 ms avec), et qui décide seule de
+        // évite de reconstruire DOUZE pièces pour en changer une — mesuré sur le JeNo :
+        // 2 742 ms sans graine, 1 616 ms avec), et qui décide seule de
         // charger la lib CSG. La page ne rejoue plus aucun de ces réglages.
         this._session = createBuildSession({ getThree, getCSG });
         this._bakedReader = createBakedReader((url, faces) => this._readBakedFile(url, faces), {
@@ -233,10 +231,8 @@ export class ConfiguratorPage extends Component {
             : `h-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         // ⚠️ **`onWillStart` NE CONSTRUIT PAS LA SCÈNE, et c'est tout l'objet de
         // l'attente.** OWL ne peint RIEN tant que ce crochet n'est pas résolu :
-        // y attendre le moteur — une à deux secondes sur un assemblage — laissait
-        // la page blanche, puis la faisait apparaître finie. Ni photo, ni
-        // tourniquet : l'attente qu'on avait écrite ne s'est jamais vue
-        // (constat de Gerry, 2026-09-06).
+        // y attendre le moteur — une à deux secondes sur un assemblage — laisserait
+        // la page blanche, sans photo ni tourniquet, puis la ferait apparaître finie.
         //
         // ⓘ On ne prend donc ici que l'ÉTAT — un aller-retour court, et il porte
         // l'image. Le premier rendu montre la photo ; le moteur travaille après.
@@ -249,8 +245,7 @@ export class ConfiguratorPage extends Component {
             // ⚠️ **LA VUE PAR DÉFAUT SE DEMANDE ICI**, avant même le premier rendu :
             // le viewer reçoit alors la pose dans ses props d'origine et se pose
             // dessus sans jamais cadrer par lui-même. Demandée après la construction,
-            // elle arrivait 2,5 s trop tard et l'on voyait la pièce à deux endroits
-            // (sonde du 2026-09-07).
+            // elle arriverait 2,5 s trop tard et l'on verrait la pièce à deux endroits.
             //
             // ⚠️ Ce chemin ne passe PAS par `_applyModel` — le premier chargement pose
             // l'état lui-même. Poser la demande dans le seul `_applyModel` revenait à
@@ -518,9 +513,8 @@ export class ConfiguratorPage extends Component {
      * cherche — par le MÊME code que l'éditeur (`imported_geometries.js`).
      *
      * ⚠️ **La page ne les lisait pas du tout** : sans `importedGeometries`, la session rend
-     * un volume vide pour chaque pièce de fichier — les inserts du JeNo manquaient à tout
-     * client, sans une erreur (Gerry, 2026-09-24). Les URL portent leur jeton : un
-     * visiteur anonyme n'a pas d'autre droit sur la pièce jointe ([[L-599]]).
+     * un volume vide pour chaque pièce de fichier, sans une erreur (D-487). Les URL portent
+     * leur jeton : un visiteur anonyme n'a pas d'autre droit sur la pièce jointe ([[L-599]]).
      *
      * ⓘ Un fichier est lu UNE fois pour la vie de la page — une serrure de douze pièces,
      * c'est un téléchargement — et un échec n'est pas mémorisé : il se retente au tour
@@ -652,12 +646,11 @@ export class ConfiguratorPage extends Component {
             // ⚠️ **LES VOLUMES DU MOTEUR** — percés, chanfreinés, fusionnés. Le viewer
             // sait refaire une extrusion depuis son dessin, mais pas ceux-là : ils
             // n'existent que dans l'arbre résolu. Sans cette table, la plaque
-            // s'affichait sans ses trous ni ses chanfreins, et rien ne le disait
-            // (Gerry, 2026-09-07).
+            // s'afficherait sans ses trous ni ses chanfreins, et rien ne le dirait (D-262).
             this._solids = solids;
             // ⚠️ **LES CORPS CUITS, À PART** : une géométrie cuite est déjà dans le repère
             // de la pièce ; montée par la route des esquisses, elle recevrait la matrice
-            // du plan une seconde fois — un quart de tour (mesuré sur le bras, 2026-09-19).
+            // du plan une seconde fois — un quart de tour (mesuré sur le bras).
             this._bakedSolids = bakedSolids;
             // ⚠️ LES POSES ET LEURS MATIÈRES DANS LE MÊME RENDU ([[L-449]]).
             this._publishScene(ticket);
@@ -731,10 +724,10 @@ export class ConfiguratorPage extends Component {
      * l'éditeur a appris à ne plus faire à l'ouverture.
      */
     _settleCamera() {
-        // ⚠️ **AVANT LA CONSTRUCTION, ET UNE SEULE FOIS.** Posée après, la vue arrivait
-        // 2,5 secondes trop tard : le viewer avait déjà cadré la scène tout seul, et
-        // l'on voyait la pièce dans deux positions successives (sonde du 2026-09-07 :
-        // cadrage automatique à 2 405 ms, vue par défaut à 4 899 ms). Demandée avant
+        // ⚠️ **AVANT LA CONSTRUCTION, ET UNE SEULE FOIS.** Posée après, la vue arriverait
+        // 2,5 secondes trop tard : le viewer aurait déjà cadré la scène tout seul, et
+        // l'on verrait la pièce dans deux positions successives (mesuré : cadrage
+        // automatique à 2 405 ms, vue par défaut à 4 899 ms). Demandée avant
         // que la scène existe, elle est mise en attente par le viewer et servie au
         // premier instant où il peut — donc jamais après coup.
         const view = this.state.model?.camera;
@@ -777,10 +770,9 @@ export class ConfiguratorPage extends Component {
     /**
      * Les corps CUITS, par pièce — ce que le viewer monte SANS passer par les esquisses.
      *
-     * ⚠️ Cette prop MANQUAIT à la page (relevé du 2026-09-22) : la cuisson n'y arrivant
-     * pas (`toViewModel` la laissait tomber), personne ne l'avait vu. Sans elle, un corps
-     * cuit repasse par le groupe de son esquisse et reçoit la matrice du plan une seconde
-     * fois — le quart de tour mesuré sur le bras du JeNo dans l'éditeur.
+     * ⚠️ Sans cette prop, un corps cuit repasse par le groupe de son esquisse et reçoit la
+     * matrice du plan une seconde fois — le quart de tour mesuré sur le bras du JeNo dans
+     * l'éditeur ([[L-357]]).
      */
     getResolvedBakedSolids() {
         return this._bakedSolids || new Map();
@@ -851,18 +843,16 @@ export class ConfiguratorPage extends Component {
      * Un clic dans la 3D — ou dans le vide, qui désélectionne (`null`).
      *
      * ⚠️ **La boucle se REFERME par `selectedNodeIds`** : le viewer n'allume le contour de
-     * sélection que par ses props, et sans le retour seul le SURVOL peignait — donc jamais
-     * au doigt, qui ne survole pas (relevé de Gerry, 2026-09-22 : « actif sur desktop, pas
-     * sur mobile »). Cette boucle remplace celle du 2026-09-22 (`state.selectedNodeId` →
-     * `selectedSketchId`), qui allumait tout ce qu'on touchait sans rien en faire.
+     * sélection que par ses props, et sans le retour seul le SURVOL peindrait — donc jamais
+     * au doigt, qui ne survole pas.
      *
      * ⚠️ **L'identité voyage TELLE QUELLE** : le viewer rend le `nodeId` de la POSE cliquée,
      * et l'analyser ici allumerait toutes les poses d'un modèle au lieu de celle qu'on a
-     * touchée (mesuré dans l'éditeur le 2026-09-13).
+     * touchée (mesuré dans l'éditeur).
      */
     onSelectPiece(nodeId) {
-        // ⓘ D-389 — SUR TÉLÉPHONE, PANNEAU OUVERT, UNE TAPE DANS LA 3D LE FERME, ET C'EST TOUT
-        // (Gerry, 2026-10-01 : « fermer seulement ») : un geste, un effet ; la tape suivante
+        // ⓘ D-389 — SUR TÉLÉPHONE, PANNEAU OUVERT, UNE TAPE DANS LA 3D LE FERME, ET C'EST
+        // TOUT : un geste, un effet ; la tape suivante
         // désigne. Ce n'est pas `_select` qui s'en charge : une tape dans le vide sans
         // sélection n'y change rien, donc ne fermerait rien. ⓘ Une orbite au doigt n'est
         // pas une tape — le viewer ne publie rien pour elle.
@@ -880,7 +870,7 @@ export class ConfiguratorPage extends Component {
 
     /**
      * La flèche de l'en-tête : plus de sélection, plus d'isolation — retour à la racine.
-     * ⓘ C'est le SEUL retour : le bouton « voir tout » a été retiré (Gerry, 2026-09-23).
+     * ⓘ C'est le SEUL retour : pas de bouton « voir tout » (D-333).
      */
     onClearSelection() {
         this._select(null, false);
@@ -924,9 +914,8 @@ export class ConfiguratorPage extends Component {
 
     /**
      * Quitter l'isolation : revenir à la VUE CAMÉRA EN COURS — celle du produit, qui
-     * porte sa cible. Gerry (2026-09-23) : « lors du double clic la target est la pièce,
-     * lorsque l'on quitte, il faut revenir à la vue caméra en cours qui donnera la
-     * target ». Sans vue enregistrée, la pose du moment vise de nouveau toute la matière.
+     * porte sa cible (D-333). Sans vue enregistrée, la pose du moment vise de nouveau toute
+     * la matière.
      */
     _returnToView() {
         const view = this.state.model?.camera;
@@ -971,8 +960,8 @@ export class ConfiguratorPage extends Component {
     /**
      * Mesurer ce que la page pose EN HAUT du viewer — D-389.
      *
-     * Constat de Gerry (2026-10-01) : la barre prix / panier et les pastilles d'étape cachent le
-     * haut de la 3D, que le cadrage comptait comme visible. Le viewer cadre désormais sous une
+     * ⚠️ La barre prix / panier et les pastilles d'étape cachent le haut de la 3D, que le
+     * cadrage compterait comme visible. Le viewer cadre donc sous une
      * zone réservée (`viewInsetTop`) ; la page la MESURE plutôt que de la supposer — un
      * produit sans étape, une pièce sélectionnée (pastilles masquées), l'encoche du téléphone
      * la font varier.
@@ -1014,11 +1003,11 @@ export class ConfiguratorPage extends Component {
      * Ouvrir un onglet, c'est TRAVAILLER sa question : sa vue 3D s'applique, comme à
      * l'ouverture de son panneau (D-387). ⓘ Une question de pièce n'a ni étape ni vue.
      *
-     * ⚠️ **APRÈS LE RENDU DU NOUVEL ONGLET**, pas au clic (Gerry, 2026-10-01 : de TopPlate à
-     * Bras, le drone n'était pas cadré à la largeur). Le champ change, la colonne change de
-     * hauteur, donc le canevas aussi : posée au clic, la vue était calculée pour le format
-     * d'AVANT (412 × 683 au lieu de 752). Le viewer reprend aussi une vue en vigueur à tout
-     * redimensionnement (product_editor) ; attendre ici évite le double mouvement.
+     * ⚠️ **APRÈS LE RENDU DU NOUVEL ONGLET**, pas au clic (D-389) : le champ change, la
+     * colonne change de hauteur, donc le canevas aussi — posée au clic, la vue serait
+     * calculée pour le format d'AVANT (mesuré : 412 × 683 au lieu de 752). Le viewer
+     * reprend aussi une vue en vigueur à tout redimensionnement (product_editor) ;
+     * attendre ici évite le double mouvement.
      */
     onTab(question) {
         this.state.question = question.id;
@@ -1069,7 +1058,7 @@ export class ConfiguratorPage extends Component {
     }
 
     /**
-     * « Retour » — choix simple compris, il ne se ferme pas tout seul (Gerry, 2026-09-30).
+     * « Retour » — choix simple compris, il ne se ferme pas tout seul (D-382).
      * ⓘ Sur téléphone, la poignée et une tape dans la 3D le ferment aussi (D-389).
      */
     closePanel() {
@@ -1212,9 +1201,9 @@ export class ConfiguratorPage extends Component {
     /**
      * Les items que le viewer consomme — projetés de la DÉFINITION.
      *
-     * ⚠️ La projection est celle de l'éditeur, **partagée** depuis le 2026-08-26 : en
-     * écrire une seconde ici aurait donné deux lectures d'une même donnée, dont une seule
-     * serait corrigée le jour où la forme d'un nœud change.
+     * ⚠️ La projection est celle de l'éditeur, **partagée** : en écrire une seconde ici
+     * donnerait deux lectures d'une même donnée, dont une seule serait corrigée le jour où
+     * la forme d'un nœud change.
      */
     get sketchItems() {
         // ⚠️ **MÉMOÏSÉ, et c'est ce qui coûtait une reconstruction par RENDU** ([[L-449]]).
@@ -1256,7 +1245,7 @@ export class ConfiguratorPage extends Component {
 
     /**
      * Les pastilles du haut du viewer. ⓘ Aucune quand une PIÈCE est sélectionnée : la
-     * colonne montre alors ses questions à elle, qui n'ont pas d'étape (arbitrage Gerry).
+     * colonne montre alors ses questions à elle, qui n'ont pas d'étape.
      */
     get stepChips() {
         if (this.selectedPlacement) return [];
@@ -1299,7 +1288,7 @@ export class ConfiguratorPage extends Component {
     /**
      * La vue d'une question qu'on vient de RÉPONDRE — une fois la nouvelle scène peinte.
      *
-     * ⚠️ **PARTIE AU CLIC, L'ANIMATION ÉTAIT COUPÉE** (Gerry, 2026-09-30) : la réponse du
+     * ⚠️ **PARTIE AU CLIC, L'ANIMATION SERAIT COUPÉE** : la réponse du
      * serveur arrive pendant les 500 ms du trajet, et la reconstruction qui suit
      * (`_buildScene`, synchrone, puis les maillages du viewer au rendu suivant) bloque le
      * fil — l'image gèle, puis saute à l'arrivée. On attend donc que `_applyModel` ait
@@ -1337,7 +1326,7 @@ export class ConfiguratorPage extends Component {
 
     /**
      * Dire ce qui manque, et y MENER : le toast nomme les questions, la colonne passe à
-     * l'étape de la première et la fait venir sous les yeux (demande de Gerry, D-385).
+     * l'étape de la première et la fait venir sous les yeux (D-385).
      *
      * ⓘ La sélection d'une pièce tombe d'abord : ses questions à elle recouvrent celles
      * du produit, et la question à montrer ne serait pas dans la colonne.
@@ -1387,7 +1376,7 @@ export class ConfiguratorPage extends Component {
     /** Le prix, tel qu'il se lit — une somme, pas un détail (D-176). */
     get price() {
         // ⓘ Le TOTAL (D-368) : le produit plus ses pièces vendues à part — le détail se
-        // lit au panier et au devis (Gerry, 2026-09-28).
+        // lit au panier et au devis.
         // ⓘ Son LIBELLÉ d'abord : devise, taxes selon le site (W-100) ; le nombre nu d'un serveur ancien.
         return this.state.model?.totalLabel ?? this.state.model?.total ?? this.state.model?.price ?? 0;
     }

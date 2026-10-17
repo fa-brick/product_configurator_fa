@@ -6,7 +6,7 @@
          renommé : il change de DESTINATION — la configuration, pas le panier.
 
          ⚠️ **LE BOUTON EST HORS DU FORMULAIRE, ET C'EST OBLIGATOIRE.** Mesuré à
-         l'exécution le 2026-09-05 : un produit configurable n'a AUCUNE variante
+         l'exécution : un produit configurable n'a AUCUNE variante
          (le fork ne les crée qu'à la confirmation d'une configuration), donc
          `_is_add_to_cart_possible()` est FAUX, donc le `<form>` d'Odoo — prix,
          sélecteurs, bouton — ne se rend pas du tout, et la page affiche à sa
@@ -53,12 +53,9 @@
     </template>
 
     <!-- ══ LES QUESTIONS ET LE « À PARTIR DE » : UNE VUE À PART ════════════════
-         ⚠️ **Une vue NEUVE, et c'est ce qui les fait servir** (W-69, Gerry 2026-10-01).
-         Ces deux règles vivaient dans `product_configure_button`. Or l'éditeur de site
-         en fait une COPIE propre au site, qu'il FIGE (`arch_updated`) : relevé le
-         2026-09-25 puis le 2026-10-01, cette copie ne portait que les règles 1, 2 et 5 —
-         sur fabk18 (2565, puis 2849, recréée et refigée) comme sur le serveur d'essai
-         (2565). La fiche du JeNo posait donc encore ses questions ([[L-356]]).
+         ⚠️ **Une vue NEUVE, et c'est ce qui les fait servir** (D-392) : l'éditeur de site
+         fait de `product_configure_button` une COPIE propre au site, qu'il FIGE
+         (`arch_updated`), et une règle ajoutée là n'est jamais servie ([[L-356]]).
 
          Une vue enfant NEUVE échappe à cela : à l'installation, `website` en crée une
          copie fraîche sous chaque copie de site du parent (`_create_all_specific_views`),
@@ -66,17 +63,10 @@
          tiendrait que jusqu'à la prochaine retouche de la fiche dans l'éditeur. -->
     <template id="product_configure_questions_hidden" inherit_id="website_sale.product"
               name="Configurable product: no attribute selectors, price from">
-        <!-- 3. ⚠️ **ET LES QUESTIONS S'EFFACENT AVEC LUI** (arbitrage Gerry, 2026-09-22).
-             Le pari d'origine était qu'un produit configurable n'a pas de variante, donc
-             pas de sélecteur : il tombe dès qu'une configuration en a créé une. Mesuré le
-             2026-09-22 sur le serveur d'essai — la fiche du JeNo affichait « Type de
-             TopPlate » et « Type de MiddlePlate », c'est-à-dire les QUESTIONS DU
-             CONFIGURATEUR, posées une seconde fois.
-
-             Trois défauts en un, et le dernier est le pire : la même question a deux
-             mémoires ; le choix n'est suivi d'aucun bouton, puisqu'on vient de le retirer ;
-             et la forme « carte » y est dégradée en pastilles par notre propre repli
-             ci-dessous. Le configurateur est le seul endroit où l'on répond.
+        <!-- 3. ⚠️ **ET LES QUESTIONS S'EFFACENT AVEC LUI** (D-392) : dès qu'une configuration
+             a créé une variante, la fiche reposerait les QUESTIONS DU CONFIGURATEUR.
+             ⚠️ La même question aurait deux mémoires, et son choix n'est suivi d'aucun bouton.
+             ⚠️ La forme « carte » y serait dégradée en pastilles par le repli ci-dessous.
 
              ⓘ Le PRIX reste — voir le point 4. C'est la seule chose que la fiche ait
              encore à dire d'un produit qu'on n'a pas configuré. -->
@@ -95,7 +85,7 @@
              quand des réponses portent un `price_extra` : le vrai plancher demande alors de
              chercher la combinaison admissible la moins chère, ce que personne ne sait
              faire ici — une exclusion peut rendre invalide le « moins cher de chaque
-             question ». ⓘ Lot à part, à trancher avec Gerry.
+             question ». ⓘ Lot à part, non tranché.
 
              ⓘ Rien quand le prix est nul : « À partir de 0 € » est pire que le silence. -->
         <xpath expr="//t[@t-call='website_sale.product_price']" position="before">
@@ -131,7 +121,7 @@
                position="attributes">
             <attribute name="t-elif">attribute.display_type in ('pills', 'card')</attribute>
         </xpath>
-        <!-- ⓘ La GRANDE PASTILLE (D-368 suite, 2026-09-29) : sa parente est la « Couleur ». -->
+        <!-- ⓘ La GRANDE PASTILLE (`swatch`) : sa parente est la « Couleur ». -->
         <xpath expr="//t[@t-elif=&quot;attribute.display_type == 'color'&quot;]"
                position="attributes">
             <attribute name="t-elif">attribute.display_type in ('color', 'swatch')</attribute>

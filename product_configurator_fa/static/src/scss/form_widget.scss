@@ -50,8 +50,7 @@
     // Avec un minimum par colonne, le tableau déborde et l'enveloppe défile,
     // comme la liste des attributs (`column_width_hook.js`).
     //
-    // ⓘ Rapport arbitré par Gerry (2026-10-05) : la vue 3D réduite de moitié
-    // (14 → 7 rem), les conditions à 1,5 × l'ancienne vue 3D (21 rem).
+    // ⓘ Rapport des colonnes : vue 3D à 7 rem, conditions à 21 rem.
     .o_config_tree_name {
         min-width: 10rem;
     }
@@ -88,8 +87,8 @@
             opacity: 1;
         }
     }
-    // Le CHEVRON se tient comme la POIGNÉE, juste à sa gauche — demande de Gerry
-    // (2026-09-02). Les deux sont des affordances discrètes posées devant un libellé :
+    // Le CHEVRON se tient comme la POIGNÉE, juste à sa gauche. Les deux sont des
+    // affordances discrètes posées devant un libellé :
     // elles ne portent aucune information, elles invitent à un geste. En couleur de
     // lien, le chevron tirait l'œil plus fort que le nom qu'il précède.
     //
@@ -126,10 +125,8 @@
 // (`freezeCellWidths`), car le CSS ne connaît pas la mise en page du tableau.
 //
 // ⚠️ **ET C'EST TOUT** — la règle du cœur pour ses listes se réduit exactement à
-// cela (`.o_data_row.o_dragged`). J'y avais ajouté une ombre portée et un fond :
-// Gerry les a écartés, *« que l'esthétisme et le comportement soient comme fait
-// par le core »*. Le fond vient d'ailleurs, et de la bonne façon — voir
-// `--table-bg` ci-dessous.
+// cela (`.o_data_row.o_dragged`) : ni ombre portée ni fond de plus, le rendu doit
+// rester celui du cœur. Le fond vient de `--table-bg`, ci-dessous.
 .o_config_tree tr.o_dragged {
     display: flex;
     align-items: center;
@@ -186,8 +183,7 @@
 // ⚠️ Le cœur étire une liste jusqu'au bord de la feuille
 // (`form_controller.scss`, « Full width on first x2many ») — mais sa règle ne
 // vise que `.o_field_x2many_list .o_list_renderer`, et l'arbre n'en est pas
-// une. Constat de Gerry (2026-10-05) : *« contrairement aux lignes de devis,
-// les lignes de configuration ne vont pas jusqu'au bord »*.
+// une : l'arbre s'arrêterait à la marge, contrairement aux lignes de devis (L-505).
 //
 // ⓘ On reprend les TROIS retouches du cœur, et ses variables : la marge
 // négative, le retrait de la première et de la dernière cellule (la poignée
@@ -220,7 +216,7 @@
 // ⚠️ Odoo pose `mt-4 mb-3` sur TOUT titre de groupe (`makeSeparator`,
 // `view_compiler.js`) — soit une marge haute d'environ 24 px. Dans une colonne
 // de droite, ce titre descend donc d'autant sous la première ligne de la colonne
-// de gauche, qui n'en a pas. Constaté par Gerry, flèche à l'appui.
+// de gauche, qui n'en a pas.
 //
 // ⓘ La spécificité suffit à battre l'utilitaire Bootstrap : pas de `!important`,
 // qui rendrait la règle impossible à corriger depuis un autre module.
@@ -232,21 +228,16 @@
 // le modèle-sujet d'une condition ne porte pas de données — ses champs
 // décrivent des attributs, pas des lignes à compter. Affiché, il annoncerait
 // « 0 enregistrement » sous chaque condition, ce qui se lit comme une panne.
-// ⚠️ **`!important`, ET IL N'EST PAS OPTIONNEL** — relevé à l'écran le 2026-09-07 : le
-// compteur s'affichait malgré cette règle, qui existait depuis le début. Le panneau porte
-// la classe utilitaire `d-flex` de Bootstrap, déclarée `display: flex !important` : une
-// règle ordinaire, si spécifique soit-elle, ne peut pas la battre. On ne se bat pas contre
-// une déclaration `!important` autrement qu'avec une autre.
+// ⚠️ **`!important`, ET IL N'EST PAS OPTIONNEL** (D-267) : le panneau porte `d-flex`,
+// déclaré `display: flex !important` par Bootstrap, qu'aucune règle ordinaire ne bat.
 .o_config_condition .o_field_domain_panel {
     display: none !important;
 }
 
 // ══ LE FILTRE DES VALEURS DYNAMIQUES TIENT DANS UNE COLONNE ═════════════════
 //
-// ⚠️ Constat de Gerry à l'écran : *« élargir pour voir tout le texte »*. Le
-// cœur donne à l'opérateur deux douzièmes de la rangée (`col-md-2`) — largement
-// assez pleine page, illisible dans une colonne : « n'est pas dans » y était
-// coupé.
+// ⚠️ Le cœur donne à l'opérateur deux douzièmes de la rangée (`col-md-2`) : assez
+// pleine page, illisible dans une colonne — « n'est pas dans » y serait coupé (D-227).
 //
 // ⓘ On rend donc la rangée SOUPLE plutôt que de lui imposer d'autres largeurs
 // fixes : chaque partie prend ce qu'il lui faut et passe à la ligne quand la

@@ -2,11 +2,9 @@
 /**
  * configurator_overlay.js — Le configurateur PRÉPARÉ pendant qu'on lit la fiche.
  *
- * ⚠️ **Le clic ne peut être instantané que si l'on NE NAVIGUE PAS.** Mesuré le
- * 2026-09-06 : le bundle du moteur est déjà en cache sur la fiche produit (c'est le
- * même fichier, 2 965 Kio), l'état ne coûte que 93 ms — mais la CONSTRUCTION de la
- * scène coûte une à deux secondes de calcul, et **aucun calcul ne survit à un
- * changement de page**. Préparer d'avance n'a donc de sens qu'en restant sur place.
+ * ⚠️ **Le clic ne peut être instantané que si l'on NE NAVIGUE PAS** : la construction de
+ * la scène coûte 1 à 2 s de calcul (l'état, 93 ms ; le bundle de 2 965 Kio est déjà en
+ * cache), et aucun calcul ne survit à un changement de page.
  *
  * ─ Ce que ce composant fait ─────────────────────────────────────────────────
  *
@@ -14,8 +12,7 @@
  *    et monte la page du configurateur, **invisible**, qui construit sa scène.
  * ⓶ Au clic sur « Configurer », il la découvre — il n'y a plus rien à attendre.
  * ⓷ Et il pousse l'URL `/configurator/<jeton>` dans l'historique : la page reste
- *    PARTAGEABLE et REPRENABLE (arbitrage Gerry, 2026-09-06). Le retour arrière la
- *    referme.
+ *    PARTAGEABLE et REPRENABLE. Le retour arrière la referme.
  *
  * ⚠️ **Le lien reste un vrai lien.** S'il est cliqué avant que la préparation
  * n'aboutisse — ou si le JavaScript échoue —, il navigue comme avant. La promesse se
@@ -55,7 +52,7 @@ export class ConfiguratorOverlay extends Component {
     }
 
     /**
-     * Préparer QUAND LA FICHE EST AFFICHÉE, et pas avant (arbitrage Gerry).
+     * Préparer QUAND LA FICHE EST AFFICHÉE, et pas avant.
      *
      * ⚠️ `requestIdleCallback` et non un `setTimeout` : la préparation ne doit pas
      * disputer le fil à ce que le visiteur est en train de lire — images, prix,
@@ -106,10 +103,9 @@ export class ConfiguratorOverlay extends Component {
     /**
      * Verrouiller la page DESSOUS pendant que le configurateur est ouvert.
      *
-     * ⚠️ **Un recouvrement qui masque à l'œil ne masque pas à la molette.** La fiche
-     * produit continuait de défiler derrière, et sa barre restait visible à droite
-     * (constat de Gerry, 2026-09-06). `position: fixed` couvre la vue ; il ne retire
-     * pas le document du chemin des événements de défilement.
+     * ⚠️ **Un recouvrement qui masque à l'œil ne masque pas à la molette** : sans verrou,
+     * la fiche défile derrière et sa barre reste visible — `position: fixed` couvre la
+     * vue sans retirer le document du chemin des événements de défilement.
      *
      * ⓘ Une CLASSE sur le corps plutôt qu'un style écrit à la main : elle se retire
      * d'un seul geste, et la feuille de style reste le seul endroit qui décide.

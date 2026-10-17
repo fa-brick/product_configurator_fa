@@ -13,8 +13,8 @@
  * dialogue (D-259) et ne traversent jamais ce composant.
  *
  * ⓘ **Pourquoi ici, et sans module-pont** : `sale` est déjà dans les dépendances
- * de ce module (`product_configurator_web_3d` → `product_editor` → `sale`,
- * vérifié le 2026-09-06). Le module qui AJOUTE la valeur est donc celui qui peut
+ * de ce module (`product_configurator_web_3d` → `product_editor` → `sale`).
+ * Le module qui AJOUTE la valeur est donc celui qui peut
  * — et doit — garder debout ce qui s'y ramifie.
  *
  * ⚠️ La carte retombe sur les PASTILLES, comme sur les pages du site

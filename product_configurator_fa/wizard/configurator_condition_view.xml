@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
-    <!-- ÉCRIRE UNE CONDITION DANS LE DIALOGUE DE LA BARRE DE RECHERCHE
-         Demande de Gerry (2026-08-29) : « je voulais retrouver la même fenêtre
-         que pour les filtres de la barre de recherche ». C'est l'éditeur de
-         domaine du cœur, posé sur un modèle-sujet dont les champs sont les
-         attributs configurables (voir configurator_condition.py). -->
+    <!-- ÉCRIRE UNE CONDITION DANS LE DIALOGUE DE LA BARRE DE RECHERCHE (D-224)
+         ⓘ C'est l'éditeur de domaine du cœur, posé sur un modèle-sujet dont les champs
+         sont les attributs configurables (voir configurator_condition.py). -->
     <record id="product_configurator_condition_form_view" model="ir.ui.view">
         <field name="name">product.configurator.condition.form</field>
         <field name="model">product.configurator.condition</field>

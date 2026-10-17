@@ -1422,9 +1422,8 @@ class ProductConfigSession(models.Model):
         préparant D-385). Les SAISIES aussi (`custom_vals`) : sans elles, une
         condition numérique n'était jamais vraie.
 
-        ⓘ On ne s'appuie PAS sur `check_and_open_incomplete_step` : elle ne
-        regarde que les ÉTAPES (`get_open_step_lines`), donc un produit qui n'en
-        déclare aucune passerait sans contrôle.
+        ⓘ Le contrôle ne passe PAS par les seules ÉTAPES (`get_open_step_lines`) : un
+        produit qui n'en déclare aucune passerait sans contrôle.
         """
         self.ensure_one()
         chosen = self.value_ids

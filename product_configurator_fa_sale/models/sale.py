@@ -17,9 +17,6 @@ class SaleOrderLine(models.Model):
         related="config_session_id.custom_value_ids",
         string="Configurator Custom Values",
     )
-    config_ok = fields.Boolean(
-        related="product_id.config_ok", string="Configurable", readonly=True
-    )
     config_session_id = fields.Many2one(
         comodel_name="product.config.session", string="Config Session"
     )

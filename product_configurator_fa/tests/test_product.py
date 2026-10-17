@@ -83,7 +83,7 @@ class TestProduct(ProductConfiguratorTestCases):
         )
 
     def _get_product_id(self):
-        self._configure_product_nxt_step()
+        self._configure_product()
         return self.config_product.product_variant_ids
 
     def test_00__compute_template_attr_vals(self):
@@ -139,24 +139,12 @@ class TestProduct(ProductConfiguratorTestCases):
         )
 
     def test_04_unlink(self):
-        product_config_wizard = self.ProductConfWizard.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-            }
+        session = self.env["product.config.session"].create_get_session(
+            self.product_tmpl_id.id, force_create=True
         )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_fuel.id}": self.value_gasoline.id,
-                f"__attribute_{self.attr_engine.id}": self.value_218i.id,
-                f"__attribute_{self.attr_color.id}": self.value_red.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        config_session_id = self.env["product.config.session"].search(
-            [("product_tmpl_id", "=", self.product_tmpl_id.id)]
-        )
-        config_session_id.unlink()
+        session.value_ids = self.value_gasoline + self.value_218i + self.value_red
+        session.create_get_variant()
+        session.unlink()
         varientId = self.product_tmpl_id.product_variant_ids
         boolValue = varientId.unlink()
         self.assertTrue(
@@ -170,108 +158,6 @@ class TestProduct(ProductConfiguratorTestCases):
         self.attributelineengine.default_val = self.value_218d.id
         with self.assertRaises(ValidationError):
             self.config_product._check_default_values()
-
-    def test_06_configure_product(self):
-        # configure product
-        self.product_tmpl_id.configure_product()
-        self.ProductConfWizard.action_next_step()
-        product_config_wizard = self.ProductConfWizard.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_fuel.id}": self.value_gasoline.id,
-                f"__attribute_{self.attr_engine.id}": self.value_218i.id,
-                f"__attribute_{self.attr_color.id}": self.value_red.id,
-            }
-        )
-        wizard_action = product_config_wizard.action_next_step()
-        varient_id = wizard_action.get("res_id")
-        self.assertEqual(
-            varient_id,
-            self.product_tmpl_id.product_variant_ids.id,
-            "Error: If get diffrent varient Id\
-            Method: action_next_step()",
-        )
-        product_config_wizard.action_previous_step()
-        self.assertEqual(
-            product_config_wizard.state,
-            "select",
-            "Error: If get diffrent State\
-            Method: action_previous_step()",
-        )
-        # ⚠️ L'étape est un SÉPARATEUR (D-202) : on ne coche plus ses attributs,
-        # on marque la ligne qui l'OUVRE, et ce qui suit lui appartient. Poser le
-        # marqueur déclare l'étape sur le produit — d'où la recherche ensuite.
-        self.attributeLine1.write({"sequence": 10, "config_step_id": self.config_step_engine.id})
-        self.attributeLine2.write({"sequence": 20})
-        self.attributeLine3.write({"sequence": 30, "config_step_id": self.config_step_body.id})
-        self.configStepLine1 = self.productConfigStepLine.search([
-            ("product_tmpl_id", "=", self.product_tmpl_id.id),
-            ("config_step_id", "=", self.config_step_engine.id),
-        ])
-        self.configStepLine2 = self.productConfigStepLine.search([
-            ("product_tmpl_id", "=", self.product_tmpl_id.id),
-            ("config_step_id", "=", self.config_step_body.id),
-        ])
-
-        # configure product
-        self.product_tmpl_id.configure_product()
-        product_config_wizard = self.ProductConfWizard.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_fuel.id}": self.value_gasoline.id,
-                f"__attribute_{self.attr_engine.id}": self.value_218i.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_color.id}": self.value_red.id,
-            }
-        )
-        product_config_wizard.action_previous_step()
-        self.assertEqual(
-            product_config_wizard.state,
-            str(self.configStepLine1.id),
-            "Error: If diffrent previous state and config state\
-            Method: action_previous_step()",
-        )
-        product_config_wizard.action_next_step()
-        self.assertEqual(
-            product_config_wizard.config_session_id.config_step,
-            product_config_wizard.state,
-            "Error: If diffrent state and config_step\
-            Method: action_previous_step()",
-        )
-        product_config_wizard.action_next_step()
-
-    def test_07_get_mako_tmpl_name(self):
-        # check for product_product
-        product_product = self._get_product_id()
-        mako_tmpl_vals = product_product._get_mako_tmpl_name()
-        self.assertEqual(
-            mako_tmpl_vals,
-            product_product.display_name,
-            "Error: If get display_name are different\
-            Method: _get_mako_tmpl_name()",
-        )
-        self.config_product.write({"mako_tmpl_name": "Test Configuration Product"})
-        mako_tmpl_vals = product_product._get_mako_tmpl_name()
-        self.assertEqual(
-            self.config_product.mako_tmpl_name,
-            mako_tmpl_vals,
-            "Error: If Mako Template are not exists or different\
-            Method: _get_mako_tmpl_name()",
-        )
 
     def test_08_compute_product_weight(self):
         product_product = self._get_product_id()
@@ -311,61 +197,6 @@ class TestProduct(ProductConfiguratorTestCases):
             "2 Series",
             "Error: If different product config_name\
             Method: _compute_config_name()",
-        )
-
-    def test_10_reconfigure_product(self):
-        self.product_tmpl_id.configure_product()
-        product_config_wizard = self.ProductConfWizard.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_fuel.id}": self.value_gasoline.id,
-                f"__attribute_{self.attr_engine.id}": self.value_218i.id,
-                f"__attribute_{self.attr_color.id}": self.value_red.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        # reconfigure product
-        product_product = self.product_tmpl_id.product_variant_ids
-        product_product.reconfigure_product()
-        product_config_wizard = self.ProductConfWizard.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_fuel.id}": self.value_gasoline.id,
-                f"__attribute_{self.attr_engine.id}": self.value_218d.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_color.id}": self.value_silver.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        value_ids = self.value_gasoline + self.value_218d + self.value_silver
-        # val_ids = self.value_gasoline + self.value_218i + self.value_red
-        # pta_val_ids = self.env["product.template.attribute.value"].search(
-        #     [
-        #         ("product_tmpl_id", "=", self.product_tmpl_id.id),
-        #         ("product_attribute_value_id", "in", value_ids.ids),
-        #     ]
-        # )
-        new_variant = self.product_tmpl_id.product_variant_ids.filtered(
-            lambda variant: variant.product_template_attribute_value_ids == value_ids
-        )
-        self.assertFalse(
-            new_variant.id,
-            "Error: if variant id not exists\
-            Method: reconfigure_product()",
         )
 
     def test_11_compute_product_weight_extra(self):
@@ -599,21 +430,11 @@ class TestProduct(ProductConfiguratorTestCases):
             )
 
     def test_16_check_duplicate_product(self):
-        self.product_tmpl_id.configure_product()
-        product_config_wizard = self.ProductConfWizard.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-            }
+        session = self.env["product.config.session"].create_get_session(
+            self.product_tmpl_id.id, force_create=True
         )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_fuel.id}": self.value_gasoline.id,
-                f"__attribute_{self.attr_engine.id}": self.value_218i.id,
-                f"__attribute_{self.attr_color.id}": self.value_red.id,
-            }
-        )
-        product_config_wizard.action_next_step()
+        session.value_ids = self.value_gasoline + self.value_218i + self.value_red
+        session.create_get_variant()
         val_ids = self.value_gasoline + self.value_218i + self.value_red
         pta_val_ids = self.env["product.template.attribute.value"].search(
             [

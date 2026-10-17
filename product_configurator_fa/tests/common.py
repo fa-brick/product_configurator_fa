@@ -5,7 +5,6 @@ class ProductConfiguratorTestCases(BaseCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.ProductConfWizard = cls.env["product.configurator"]
         cls.config_product = cls.env.ref("product_configurator_fa.bmw_2_series")
         cls.product_category = cls.env.ref("product.product_category_5")
         # attributes
@@ -58,59 +57,21 @@ class ProductConfiguratorTestCases(BaseCommon):
         )
 
     @classmethod
-    def _configure_product_nxt_step(cls):
-        product_config_wizard = cls.ProductConfWizard.create(
-            {
-                "product_tmpl_id": cls.config_product.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{cls.attr_fuel.id}": cls.value_gasoline.id,
-                f"__attribute_{cls.attr_engine.id}": cls.value_218i.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{cls.attr_color.id}": cls.value_red.id,
-                f"__attribute_{cls.attr_rims.id}": cls.value_rims_378.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{cls.attr_model_line.id}": cls.value_sport_line.id,
-            }
-        )
-        product_config_wizard.action_previous_step()
-        product_config_wizard.action_previous_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{cls.attr_engine.id}": cls.value_220i.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.action_next_step()
-        vals = {
-            f"__attribute_{cls.attr_model_line.id}": cls.value_model_sport_line.id,
-        }
-        product_config_wizard.write(vals)
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{cls.attr_tapistry.id}": cls.value_tapistry.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{cls.attr_transmission.id}": cls.value_transmission.id,
-                f"__attribute_{cls.attr_options.id}": [
-                    [6, 0, [cls.value_options_2.id]]
-                ],
-            }
-        )
+    def _configure_product(cls):
+        """Configurer la BMW de démonstration par sa SESSION, le chemin de la page 3D.
 
-        return product_config_wizard.action_next_step()
+        ⓘ Les réponses sont celles où arrivait l'ancien parcours de l'assistant OCA, retiré
+        (D-497).
+        ⚠️ Sans `force_create` : la session brouillon déjà ouverte par le test est celle
+        qu'on configure, comme le faisait l'assistant.
+        """
+        session = cls.env["product.config.session"].create_get_session(
+            cls.config_product.id
+        )
+        session.value_ids = (
+            cls.value_gasoline + cls.value_220i + cls.value_red + cls.value_rims_378
+            + cls.value_model_sport_line + cls.value_tapistry + cls.value_transmission
+            + cls.value_options_2
+        )
+        session.action_confirm()
+        return session

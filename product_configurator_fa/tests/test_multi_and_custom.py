@@ -45,25 +45,6 @@ class MultiAndCustom(BaseCommon):
         self.assertTrue(self.line.multi)
         self.assertTrue(self.line.custom)
 
-    def test_02_the_wizard_offers_a_MANY2MANY_for_such_a_line(self):
-        """⚠️ C'est le type du champ qui décide du reste.
-
-        `multi` rend le champ many2many ; c'est cette branche que le code de la
-        saisie libre prévoit — et qui n'aurait aucun sens si les deux drapeaux
-        s'excluaient.
-        """
-        # ⚠️ L'assistant n'injecte ses champs dynamiques QUE s'il se trouve
-        # lui-même dans le contexte (`_find_wizard_context` lit `wizard_id`).
-        # Sans cela, `fields_get` rend les champs ordinaires et la garde échoue
-        # sur son propre montage, pas sur le code.
-        wizard = self.env["product.configurator"].create(
-            {"product_tmpl_id": self.template.id}
-        )
-        champs = wizard.with_context(wizard_id=wizard.id).fields_get()
-        nom = f"{wizard._prefixes['field_prefix']}{self.attribute.id}"
-        self.assertIn(nom, champs, "l'attribut n'est pas offert par l'assistant")
-        self.assertEqual(champs[nom]["type"], "many2many")
-
     def test_03_and_the_CUSTOM_option_is_among_the_offered_values(self):
         """⚠️ Le cas ouvert doit être ATTEIGNABLE, pas seulement permis.
 

@@ -1,6 +1,6 @@
 {
     "name": "Product Configurator (fa-brick)",
-    "version": "18.0.1.26.0",
+    "version": "18.0.1.27.0",
     "category": "Generic Modules/Base",
     "summary": "Base for product configuration interface modules",
     # Dérivé de OCA/product-configurator (AGPL-3) : l'attribution d'origine est
@@ -8,11 +8,6 @@
     "author": "Pledra, Odoo Community Association (OCA), fa-brick",
     "license": "AGPL-3",
     "website": "https://github.com/fa-brick/product_configurator_fa",
-    "external_dependencies": {
-        "python": [
-            "mako",
-        ]
-    },
     # ⚠️ `product_attribute_advanced` porte ce qu'un attribut EST — `value_type`,
     # `custom_type`, l'unité —, et l'éditeur 3D en dépend aussi. C'est le seul endroit
     # où les deux modules peuvent se rejoindre : l'éditeur est en LGPL-3 et ne peut pas
@@ -34,7 +29,6 @@
         "views/product_attribute_view.xml",
         "views/product_config_view.xml",
         "views/product_price_grid_view.xml",
-        "wizard/product_configurator_fa_view.xml",
     ],
     "assets": {
         "web.assets_backend": [

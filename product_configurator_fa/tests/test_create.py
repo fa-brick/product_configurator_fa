@@ -5,7 +5,6 @@ class ConfigurationCreate(BaseCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.ProductConfWizard = cls.env["product.configurator"]
         cls.config_product = cls.env.ref("product_configurator_fa.bmw_2_series")
         cls.product_category = cls.env.ref("product.product_category_5")
 
@@ -99,75 +98,6 @@ class ConfigurationCreate(BaseCommon):
             "Create should not have any variants",
         )
 
-    def test_02_previous_step_incompatible_changes(self):
-        """Test changes in previous steps which would makes
-        values in next configuration steps invalid"""
-
-        product_config_wizard = self.ProductConfWizard.create(
-            {
-                "product_tmpl_id": self.config_product.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_fuel.id}": self.value_gasoline.id,
-                f"__attribute_{self.attr_engine.id}": self.value_218i.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_color.id}": self.value_red.id,
-                f"__attribute_{self.attr_rims.id}": self.value_rims_378.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_model_line.id}": self.value_sport_line.id,
-            }
-        )
-        product_config_wizard.action_previous_step()
-        product_config_wizard.action_previous_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_engine.id}": self.value_220i.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.action_next_step()
-        vals = {
-            f"__attribute_{self.attr_model_line.id}": self.value_model_sport_line.id,
-        }
-        product_config_wizard.write(vals)
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_tapistry.id}": self.value_tapistry.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attr_transmission.id}": self.value_transmission.id,
-                f"__attribute_{self.attr_options.id}": [
-                    [6, 0, [self.value_options_1.id, self.value_options_2.id]]
-                ],
-            }
-        )
-        product_config_wizard.action_next_step()
-        value_ids = (  # noqa
-            self.value_gasoline
-            + self.value_220i
-            + self.value_red
-            + self.value_rims_378
-            + self.value_model_sport_line
-            + self.value_tapistry
-            + self.value_transmission
-            + self.value_options_1
-            + self.value_options_2
-        )
         # FIXME: broken as
         # """
         # AttributeError: 'product.product' object

@@ -122,24 +122,6 @@
                     width="90px"
                 />
                 <field
-                    name="required_condition"
-                    column_invisible="not context.get('default_config_ok', False)"
-                    optional="hide"
-                    groups="base.group_no_one"
-                />
-                <field
-                    name="readonly_condition"
-                    column_invisible="not context.get('default_config_ok', False)"
-                    optional="hide"
-                    groups="base.group_no_one"
-                />
-                <field
-                    name="invisible_condition"
-                    column_invisible="not context.get('default_config_ok', False)"
-                    optional="hide"
-                    groups="base.group_no_one"
-                />
-                <field
                     name="multi"
                     width="90px"
                 />
@@ -255,40 +237,6 @@
         </field>
     </record>
 
-    <record id="product_template_variant_name_bottom" model="ir.ui.view">
-        <field name="name">product.template.variant.name.bottom</field>
-        <field name="model">product.template</field>
-        <field name="inherit_id" ref="product.product_template_only_form_view" />
-        <field name="priority">100</field>
-        <field name="arch" type="xml">
-            <!-- ══ LE NOM DE VARIANTE, AU BAS D'« ATTRIBUTS & VARIANTES » (D-399) ═══════
-                 ⓘ Il nomme les variantes : il se règle là où on les voit.
-                 L'onglet « Réglages du configurateur » ne garde que les Images de
-                 configuration, que le pont 3D déplace à son tour dans l'onglet
-                 « Vignette produit ».
-                 ⓘ SOUS le bloc « Sélection des variantes de vente », pas à sa droite : ce
-                 bloc vient de `sale_product_matrix`, dont ce module ne dépend pas, et un
-                 xpath vers lui empêcherait l'installation là où il manque.
-                 ⚠️ Une vue À PART, de priorité 100 : appliquée après celle de
-                 `sale_product_matrix` (priorité 16), elle range le groupe EN DESSOUS ;
-                 dans la vue principale, il passait au-dessus (mesuré sur une copie). -->
-            <xpath expr="//notebook/page[@name='variants']" position="inside">
-                <group
-                    name="configurator_variant_name"
-                    invisible="not config_ok"
-                    groups="product_configurator_fa.group_product_configurator_fa_manager"
-                >
-                    <!-- ⓘ NOMMÉ pour le pont `product_configurator_fa_sale_matrix`, qui le
-                         range À DROITE de « Sélection des variantes de vente » quand la
-                         grille est installée. -->
-                    <group string="Variant Name" name="configurator_variant_name_field">
-                        <field name="mako_tmpl_name" nolabel="1" colspan="2" />
-                    </group>
-                </group>
-            </xpath>
-        </field>
-    </record>
-
     <record id="product_template_search_view" model="ir.ui.view">
         <field name="name">product.configurator.product.template.search.view</field>
         <field name="model">product.template</field>
@@ -366,10 +314,6 @@
                     string="Reconfigure Product"
                     invisible="not config_ok"
                 />
-            </xpath>
-            <xpath expr="//div[@name='options']" position="inside">
-                <field name="config_preset_ok" invisible="not config_ok" />
-                <label for="config_preset_ok" invisible="not config_ok" />
             </xpath>
         </field>
     </record>

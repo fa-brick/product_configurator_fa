@@ -107,26 +107,6 @@ class DynamicMaterialisation(BaseCommon):
         ligne = gabarit.attribute_line_ids
         self.assertEqual(ligne._configurator_value_ids(), ligne.value_ids)
 
-    def test_07_the_WIZARD_offers_them(self):
-        """⚠️ Le modèle ne suffit pas : c'est l'assistant qui devait changer.
-
-        La garde ouvre l'assistant et lit le domaine du champ dynamique — sans
-        quoi on aurait éprouvé une méthode que personne n'appelle.
-        """
-        wizard = self.env["product.configurator"].create(
-            {"product_tmpl_id": self.template.id}
-        )
-        domaines = wizard.with_context(wizard_id=wizard.id).get_onchange_domains(
-            cfg_val_ids=[], product_tmpl_id=self.template
-        )
-        nom = f"{wizard._prefixes['field_prefix']}{self.attribute.id}"
-        self.assertIn(nom, domaines)
-        # ⓘ La forme rendue est un domaine nu : `[("id", "in", [...])]`.
-        proposes = domaines[nom][0][2]
-        materialisees = self.attribute._materialise_proposed_values()
-        for valeur in materialisees:
-            self.assertIn(valeur.id, proposes)
-
     # ── ce qui se matérialise TOUT SEUL (D-222) ─────────────────────────────
     def test_08_posing_the_filter_fills_the_ATTRIBUTE_values(self):
         """⚠️ Les enregistrements du filtre se voient dans la liste (D-222).

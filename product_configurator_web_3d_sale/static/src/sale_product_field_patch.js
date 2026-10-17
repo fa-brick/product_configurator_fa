@@ -28,7 +28,7 @@ patch(SaleOrderLineProductField.prototype, {
      * des attributs dynamiques, ou au moins deux valeurs quelque part. Un produit
      * configurable dont chaque question n'a qu'UNE réponse aujourd'hui n'en a
      * donc aucun, et le commercial n'aurait aucun moyen de rouvrir sa
-     * configuration. Notre `config_ok` suffit à le décider.
+     * configuration. Le `config_ok` du modèle suffit à le décider.
      */
     get isConfigurableTemplate() {
         return super.isConfigurableTemplate || !!this.props.record.data.product_tmpl_config_ok;
@@ -37,7 +37,7 @@ patch(SaleOrderLineProductField.prototype, {
     /**
      * ⚠️ `product_tmpl_config_ok` suit le MODÈLE, pas la variante : pour un
      * produit configurable, la variante n'existe pas encore au moment du choix,
-     * et le `config_ok` de la ligne vaudrait `false` juste quand il compte.
+     * et un drapeau lu sur la variante vaudrait `false` juste quand il compte.
      */
     async _openProductConfigurator(edit = false) {
         const line = this.props.record.data;

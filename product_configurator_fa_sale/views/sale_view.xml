@@ -11,14 +11,12 @@
                 expr="//field[@name='order_line']/form//field[@name='product_id']"
                 position="after"
             >
-                <field column_invisible="1" name="config_ok" />
                 <field name="config_session_id" />
             </xpath>
             <xpath
                 expr="//field[@name='order_line']/list//field[@name='product_template_id']"
                 position="after"
             >
-                <field column_invisible="1" name="config_ok" />
                 <!-- ⚠️ **LA ROUE DENTÉE A QUITTÉ CETTE VUE**, et pas seulement parce
                      qu'elle était masquée. `reconfigure_product` ne vit plus ici : sa
                      seule implémentation est celle de `product_configurator_web_3d_sale`,

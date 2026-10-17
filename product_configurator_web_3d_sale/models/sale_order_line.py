@@ -85,10 +85,8 @@ class SaleOrderLine(models.Model):
 
     # ── CE QUE LE CLIENT DOIT SAVOIR AVANT DE CHOISIR — D-259 ────────────────
     #
-    # ⚠️ `config_ok` existe déjà sur la ligne, mais il suit `product_id` : pour un
-    # produit configurable, la VARIANTE n'existe pas encore au moment du choix, et
-    # ce champ vaut donc `False` exactement quand on aurait besoin de lui.
-    # Celui-ci suit le MODÈLE, qui est ce que le commercial vient de choisir.
+    # ⚠️ Le drapeau suit le MODÈLE, jamais `product_id` : pour un produit configurable,
+    # la VARIANTE n'existe pas encore au moment du choix (D-259).
     #
     # ⓘ Un `related` plutôt qu'un aller-retour de plus : le widget lit la donnée
     # déjà chargée avec la ligne, sans appeler le serveur pour chaque produit.

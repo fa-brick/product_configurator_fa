@@ -8,12 +8,6 @@ from odoo.exceptions import ValidationError
 class MrpProduction(models.Model):
     _inherit = "mrp.production"
 
-    config_ok = fields.Boolean(
-        related="product_id.config_ok",
-        store=True,
-        string="Configurable",
-        readonly=True,
-    )
     config_session_id = fields.Many2one(
         comodel_name="product.config.session", string="Config Session"
     )

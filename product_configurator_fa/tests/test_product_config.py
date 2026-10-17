@@ -1,4 +1,4 @@
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import ValidationError
 
 from ..tests.common import ProductConfiguratorTestCases
 
@@ -11,7 +11,6 @@ class ProductConfig(ProductConfiguratorTestCases):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.productConfWizard = cls.env["product.configurator"]
         cls.productTemplate = cls.env["product.template"]
         cls.productAttribute = cls.env["product.attribute"]
         cls.productAttributeVals = cls.env["product.attribute.value"]
@@ -104,7 +103,7 @@ class ProductConfig(ProductConfiguratorTestCases):
         )
 
         # configure product
-        cls._configure_product_nxt_step()
+        cls._configure_product()
         cls.config_session = cls.productConfigSession.search(
             [("product_tmpl_id", "=", cls.config_product.id)]
         )
@@ -247,36 +246,6 @@ class ProductConfig(ProductConfiguratorTestCases):
             Method: _get_custom_vals_dict()",
         )
 
-    def test_06_compute_config_step_name(self):
-        self.config_session._compute_config_step_name()
-        self.assertTrue(
-            self.config_session.config_step_name,
-            "Error: If not config step name\
-            Method: _compute_config_step_name()",
-        )
-        self.config_session._compute_config_step_name()
-        self.assertEqual(
-            self.config_session.config_step_name,
-            "Extras",
-            "Error: If not equal config_step_name and config_step\
-            Method: _compute_config_step_name()",
-        )
-        session = self.productConfigSession.create(
-            {
-                "product_tmpl_id": self.config_product.id,
-                "value_ids": [
-                    (6, 0, [self.value_gasoline.id, self.value_transmission.id])
-                ],
-                "user_id": self.env.user.id,
-            }
-        )
-        session._compute_config_step_name()
-        self.assertFalse(
-            session.config_step_name,
-            "Error: If config_step_name not False\
-            Method: _compute_config_step_name()",
-        )
-
     def test_07_search_variant(self):
         with self.assertRaises(ValidationError):
             self.env["product.config.session"].search_variant()
@@ -340,24 +309,10 @@ class ProductConfig(ProductConfiguratorTestCases):
                 "attribute_line_ids": [(6, 0, [attributeLine1.id, attributeLine2.id])],
             }
         )
-        self.product_tmpl_id.configure_product()
-        self.productConfWizard.action_next_step()
-        product_config_wizard = self.productConfWizard.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-            }
+        config_session_1 = self.productConfigSession.create_get_session(
+            self.product_tmpl_id.id, force_create=True
         )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attribute_1.id}": self.attribute_vals_1.id,
-                f"__attribute_{self.attribute_2.id}": self.attribute_vals_3.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        config_session_1 = self.productConfigSession.search(
-            [("product_tmpl_id", "=", self.product_tmpl_id.id)]
-        )
+        config_session_1.value_ids = self.attribute_vals_1 + self.attribute_vals_3
         createVarientId = config_session_1.create_get_variant()
         self.assertEqual(
             createVarientId.name,
@@ -436,54 +391,6 @@ class ProductConfig(ProductConfiguratorTestCases):
     #         Method: _compute_cfg_weight()",
     #     )
 
-    def test_13_update_session_configuration_value(self):
-        # configure new product to check for search not dublicate variant
-        self.custom_vals = self.productConfigSession.get_custom_value_id()
-        self.attributeLine1 = self.productAttributeLine.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-                "attribute_id": self.attribute_1.id,
-                "value_ids": [
-                    (6, 0, [self.attribute_vals_1.id, self.attribute_vals_2.id])
-                ],
-                "custom": True,
-                "required": True,
-            }
-        )
-        # create attribute line 2
-        self.attributeLine2 = self.productAttributeLine.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-                "attribute_id": self.attribute_2.id,
-                "value_ids": [
-                    (6, 0, [self.attribute_vals_3.id, self.attribute_vals_4.id])
-                ],
-                "custom": True,
-                "required": True,
-            }
-        )
-        self.product_tmpl_id.write(
-            {
-                "attribute_line_ids": [
-                    (6, 0, [self.attributeLine1.id, self.attributeLine2.id])
-                ],
-            }
-        )
-        self.attribute_1.custom_type = "binary"
-        self.product_tmpl_id.configure_product()
-        self.productConfWizard.action_next_step()
-        product_config_wizard = self.productConfWizard.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-            }
-        )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attribute_1.id}": self.custom_vals.id,
-                f"__custom_{self.attribute_1.id}": "Test",
-            }
-        )
         # FIXME: broken validation at `product_config.create_get_variant`
         #   """
         #   odoo.exceptions.ValidationError: Required attribute 'Flavour' is empty
@@ -518,28 +425,6 @@ class ProductConfig(ProductConfiguratorTestCases):
     #         Method: get_cfg_price()",
     #     )
 
-    def test_15_get_next_step(self):
-        self.session_id.get_next_step(state=None)
-        self.session_id.get_next_step(state="draft")
-        with self.assertRaises(UserError):
-            self.productConfigSession.get_next_step(
-                state="draft", value_ids=False, custom_value_ids=False
-            )
-
-    def test_16_get_all_step_lines(self):
-        step_line_value_1 = self.productConfigSession.get_all_step_lines()
-        self.assertFalse(
-            step_line_value_1,
-            "Error: If return True\
-            Method: get_all_step_lines()",
-        )
-        step_line_value_2 = self.session_id.get_all_step_lines()
-        self.assertTrue(
-            step_line_value_2,
-            "Error: If return True\
-            Method: get_all_step_lines()",
-        )
-
     def test_17_custom_value_validate_configuration(self):
         self.custom_vals = self.productConfigSession.get_custom_value_id()
         self.attributeLine1 = self.productAttributeLine.create(
@@ -573,24 +458,19 @@ class ProductConfig(ProductConfiguratorTestCases):
             }
         )
         self.attribute_1.custom_type = "binary"
-        self.product_tmpl_id.configure_product()
-        self.productConfWizard.action_next_step()
-        product_config_wizard = self.productConfWizard.create(
-            {
-                "product_tmpl_id": self.product_tmpl_id.id,
-            }
+        session = self.productConfigSession.create_get_session(
+            self.product_tmpl_id.id, force_create=True
         )
-        product_config_wizard.action_next_step()
-        product_config_wizard.write(
-            {
-                f"__attribute_{self.attribute_1.id}": self.custom_vals.id,
-                f"__custom_{self.attribute_1.id}": "Test",
-            }
-        )
+        # ⚠️ Une saisie libre sur une ligne qui ne l'autorise plus rend la configuration
+        # invalide.
         self.attributeLine1.custom = False
         self.attributeLine2.custom = False
         with self.assertRaises(ValidationError):
-            self.product_tmpl_id.configure_product()
+            session.validate_configuration(
+                value_ids=self.custom_vals.ids,
+                custom_vals={self.attribute_1.id: "Test"},
+                final=False,
+            )
 
     def test_18_onchange_attribute(self):
         # create domain

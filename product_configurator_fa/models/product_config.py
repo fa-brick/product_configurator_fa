@@ -1004,29 +1004,6 @@ class ProductConfigSession(models.Model):
                 custom_vals[val.attribute_id.id] = val.value
         return custom_vals
 
-    def _compute_config_step_name(self):
-        """Get the config.step.line name using the string stored in config_step
-        field of the session"""
-        cfg_step_line_obj = self.env["product.config.step.line"]
-        cfg_session_step_lines = self.mapped("config_step")
-        cfg_step_line_ids = set()
-        for step in cfg_session_step_lines:
-            try:
-                cfg_step_line_ids.add(int(step))
-            except ValueError:
-                _logger.debug("Step from session not valid")
-        cfg_step_lines = cfg_step_line_obj.browse(cfg_step_line_ids)
-        for session in self:
-            try:
-                config_step = int(session.config_step)
-                config_step_line = cfg_step_lines.filtered(
-                    lambda x, config_step=config_step: x.id == config_step
-                )
-                session.config_step_name = config_step_line.name
-            except Exception:
-                _logger.debug("Invalid session data ignored")
-            if not session.config_step_name:
-                session.config_step_name = session.config_step
 
     def flatten_attribute_value_ids(self, value_ids):
         return chain.from_iterable(
@@ -1088,10 +1065,6 @@ class ProductConfigSession(models.Model):
             )
 
     name = fields.Char(string="Configuration Session Number", readonly=True)
-    config_step = fields.Char(string="Configuration Step ID")
-    config_step_name = fields.Char(
-        compute="_compute_config_step_name", string="Configuration Step"
-    )
     product_id = fields.Many2one(
         comodel_name="product.product",
         name="Configured Variant",
@@ -1153,11 +1126,6 @@ class ProductConfigSession(models.Model):
         tracking=True,
     )
     weight = fields.Float(compute="_compute_cfg_weight", digits="Stock Weight")
-    # Product preset
-    product_preset_id = fields.Many2one(
-        comodel_name="product.product",
-        string="Preset",
-    )
 
     @api.model
     def _session_validity_days(self):
@@ -1302,92 +1270,7 @@ class ProductConfigSession(models.Model):
                     )
                 )
 
-    def update_session_configuration_value(self, vals, product_tmpl_id=None):
-        """Update value of configuration in current session
 
-        :param: vals: Dictionary of fields(of configution wizard) and values
-        :param: product_tmpl_id: record set of preoduct template
-        :return: True/False
-        """
-        self.ensure_one()
-        if not product_tmpl_id:
-            product_tmpl_id = self.product_tmpl_id
-
-        product_configurator_fa_obj = self.env["product.configurator"]
-        field_prefix = product_configurator_fa_obj._prefixes.get("field_prefix")
-        custom_field_prefix = product_configurator_fa_obj._prefixes.get(
-            "custom_field_prefix"
-        )
-
-        custom_val = self.get_custom_value_id()
-        attr_val_dict = {}
-        custom_val_dict = {}
-
-        for attr_line in product_tmpl_id.attribute_line_ids:
-            attr_id = attr_line.attribute_id.id
-            field_name = field_prefix + str(attr_id)
-            custom_field_name = custom_field_prefix + str(attr_id)
-
-            if field_name not in vals and custom_field_name not in vals:
-                continue
-
-            # Add attribute values from the client except custom attribute
-            # If a custom value is being written, but field name is not in
-            # the write dictionary, then it must be a custom value!
-            if vals.get(field_name, custom_val.id) != custom_val.id:
-                if attr_line.multi and isinstance(vals[field_name], list):
-                    field_val = self._update_field_values(vals, field_name, attr_line)
-                elif not attr_line.multi and isinstance(vals[field_name], int):
-                    field_val = vals[field_name]
-                else:
-                    raise UserError(
-                        self.env._(
-                            "An error occurred while parsing value for attribute %s",
-                            attr_line.attribute_id.name,
-                        )
-                    )
-                attr_val_dict.update({attr_id: field_val})
-                # Ensure there is no custom value stored if we have switched
-                # from custom value to selected attribute value.
-                if attr_line.custom:
-                    custom_val_dict.update({attr_id: False})
-            elif attr_line.custom:
-                val = vals.get(custom_field_name, False)
-                if attr_line.attribute_id.custom_type == "binary":
-                    # TODO: Add widget that enables multiple file uploads
-                    val = [{"name": "custom", "datas": vals[custom_field_name]}]
-                custom_val_dict.update({attr_id: val})
-                # Ensure there is no standard value stored if we have switched
-                # from selected value to custom value.
-                attr_val_dict.update({attr_id: custom_val.id})
-
-        self.update_config(attr_val_dict, custom_val_dict)
-
-    def _update_field_values(self, vals, field_name, attr_line):
-        """New method for update field values for a given attribute."""
-        final_val = None
-        if not vals[field_name]:
-            return final_val
-        # Retrieve existing values for the attribute
-        value_ids = self.value_ids.filtered(
-            lambda value, attr_line=attr_line: value.attribute_id.id
-            == attr_line.attribute_id.id
-        )
-        # Initialize `final_val` with IDs
-        final_val = value_ids.ids or []
-
-        # Process each `field_vals` operation for the current attribute
-        for field_vals in vals.get(field_name, []):
-            if field_vals and field_vals[0] == Command.SET:
-                final_val = list(set(field_vals[2] or []))
-            elif field_vals and field_vals[0] == Command.LINK:
-                if field_vals[1] not in final_val:
-                    final_val.append(field_vals[1])
-            elif field_vals and field_vals[0] in (Command.UNLINK, Command.DELETE):
-                if field_vals[1] in final_val:
-                    final_val.remove(field_vals[1])
-
-        return final_val
 
     def update_config(self, attr_val_dict=None, custom_val_dict=None):
         """Update the session object with the given value_ids and custom values.
@@ -1756,9 +1639,8 @@ class ProductConfigSession(models.Model):
     def get_config_surface(self, value_ids=None, custom_vals=None):
         """La surface en m² de la configuration courante, ou 0 — D-161.
 
-        Point d'appel PUBLIC : c'est l'interface qui en a besoin, pour poser
-        `configurator_surface` dans le contexte et faire afficher aux valeurs au
-        mètre carré leur MONTANT plutôt que leur taux (D-162).
+        Point d'appel PUBLIC : l'étiquette de prix de la page s'en sert, pour afficher
+        aux valeurs au mètre carré leur MONTANT plutôt que leur taux (D-162).
 
         Rend 0 tant que les deux cotes ne sont pas connues — et zéro veut dire
         « on ne sait pas encore », pas « c'est gratuit » : l'étiquette retombe
@@ -1892,83 +1774,9 @@ class ProductConfigSession(models.Model):
             vals.update(parent_id=parent_id)
         return vals
 
-    def get_next_step(
-        self,
-        state,
-        product_tmpl_id=False,
-        value_ids=False,
-        custom_value_ids=False,
-    ):
-        """Find and return next step if it exists. This usually
-        implies the next configuration step (if any) defined via the
-        config_step_line_ids on the product.template.
-        """
-
-        if not product_tmpl_id:
-            product_tmpl_id = self.product_tmpl_id
-        if value_ids is False:
-            value_ids = self.value_ids
-        if custom_value_ids is False:
-            custom_value_ids = self.custom_value_ids
-        if not state:
-            state = self.config_step
-
-        cfg_step_lines = product_tmpl_id.config_step_line_ids
-        if not cfg_step_lines:
-            if (value_ids or custom_value_ids) and state != "select":
-                return False
-            elif not (value_ids or custom_value_ids) and state != "select":
-                raise UserError(
-                    self.env._(
-                        "You must select at least one "
-                        "attribute in order to configure a product"
-                    )
-                )
-            else:
-                return "configure"
-
-        adjacent_steps = self.get_adjacent_steps()
-        next_step = adjacent_steps.get("next_step")
-        open_step_lines = list(map(str, self.get_open_step_lines().ids))
-
-        session_config_step = self.config_step
-        if (
-            session_config_step
-            and state != session_config_step
-            and session_config_step in open_step_lines
-        ):
-            next_step = self.config_step
-        else:
-            next_step = str(next_step.id) if next_step else None
-        if next_step:
-            pass
-        elif not (value_ids or custom_value_ids):
-            raise UserError(
-                self.env._(
-                    "You must select at least one "
-                    "attribute in order to configure a product"
-                )
-            )
-        else:
-            return False
-        return next_step
 
     # TODO: Should be renamed to get_active_step_line
 
-    @api.model
-    def get_active_step(self):
-        """Attempt to return product.config.step.line object that has the id
-        of the config session step stored as string"""
-        cfg_step_line_obj = self.env["product.config.step.line"]
-
-        try:
-            cfg_step_line_id = int(self.config_step)
-        except ValueError:
-            cfg_step_line_id = None
-
-        if cfg_step_line_id:
-            return cfg_step_line_obj.browse(cfg_step_line_id)
-        return cfg_step_line_obj
 
     @api.model
     def get_open_step_lines(self, value_ids=None):
@@ -2010,94 +1818,8 @@ class ProductConfigSession(models.Model):
 
         return open_step_lines.sorted()
 
-    @api.model
-    def get_all_step_lines(self, product_tmpl_id=None):
-        """
-        Returns a recordset of configuration step lines of product_tmpl_id
 
-        :param product_tmpl_id: record-set of product.template
-        :returns: recordset of all configuration steps
-        """
-        if not product_tmpl_id:
-            product_tmpl_id = self.product_tmpl_id
 
-        open_step_lines = product_tmpl_id.config_step_line_ids
-        return open_step_lines.sorted()
-
-    @api.model
-    def get_adjacent_steps(self, value_ids=None, active_step_line_id=None):
-        """Returns the previous and next steps given the configuration passed
-        via value_ids and the active step line passed via cfg_step_line_id."""
-
-        # If there is no open step return empty dictionary
-
-        if value_ids is None:
-            value_ids = self.value_ids.ids
-
-        if not active_step_line_id:
-            active_step_line_id = self.get_active_step().id
-
-        config_step_lines = self.product_tmpl_id.config_step_line_ids
-
-        if not config_step_lines:
-            return {}
-
-        active_cfg_step_line = config_step_lines.filtered(
-            lambda line: line.id == active_step_line_id
-        )
-
-        open_step_lines = self.get_open_step_lines(value_ids)
-
-        if not active_cfg_step_line:
-            return {"next_step": open_step_lines[0]}
-
-        nr_steps = len(open_step_lines)
-
-        adjacent_steps = {}
-
-        for i, cfg_step in enumerate(open_step_lines):
-            if cfg_step == active_cfg_step_line:
-                adjacent_steps.update(
-                    {
-                        "next_step": None
-                        if i + 1 == nr_steps
-                        else open_step_lines[i + 1],
-                        "previous_step": None if i == 0 else open_step_lines[i - 1],
-                    }
-                )
-        return adjacent_steps
-
-    def check_and_open_incomplete_step(self, value_ids=None, custom_value_ids=None):
-        """Check and open incomplete step if any
-        :param value_ids: recordset of product.attribute.value
-        """
-        if value_ids is None:
-            value_ids = self.value_ids
-        if custom_value_ids is None:
-            custom_value_ids = self.custom_value_ids
-        custom_attr_selected = custom_value_ids.mapped("attribute_id")
-        open_step_lines = self.get_open_step_lines()
-        step_to_open = False
-        for step in open_step_lines:
-            unset_attr_line = step.attribute_line_ids.filtered(
-                lambda attr_line: attr_line.required
-                and not any([value in value_ids for value in attr_line.value_ids])
-                and not (
-                    attr_line.custom and attr_line.attribute_id in custom_attr_selected
-                )
-            )
-            check_val_ids = unset_attr_line.mapped("value_ids")
-            avail_val_ids = self.values_available(
-                check_val_ids.ids,
-                value_ids.ids,
-                product_tmpl_id=self.product_tmpl_id,
-            )
-            if unset_attr_line and avail_val_ids:
-                step_to_open = step
-                break
-        if step_to_open:
-            return str(step_to_open.id)
-        return False
 
     @api.model
     def get_variant_search_domain(self, product_tmpl_id, value_ids=None):

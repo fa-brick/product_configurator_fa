@@ -32,7 +32,7 @@ Product Configurator Manufacturing
 
 |badge1| |badge2| |badge3| |badge4| |badge5|
 
-Product Configurator wizard available on Manufacturing Orders.
+Links a configuration session to its manufacturing order, and builds the bill of materials of a configured product.
 
 **Table of contents**
 

@@ -12,11 +12,11 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="product_configurator_fa_sale.sale_order_form_config"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='order_line']/list//field[@name='config_ok']"
+            <xpath expr="//field[@name='order_line']/list//field[@name='config_session_id']"
                    position="after">
                 <field name="product_tmpl_config_ok" column_invisible="1"/>
             </xpath>
-            <xpath expr="//field[@name='order_line']/form//field[@name='config_ok']"
+            <xpath expr="//field[@name='order_line']/form//field[@name='config_session_id']"
                    position="after">
                 <field name="product_tmpl_config_ok" invisible="1"/>
             </xpath>

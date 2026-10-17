@@ -1,13 +1,5 @@
-import logging
-from io import StringIO
-
-from mako.runtime import Context
-from mako.template import Template
-
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
-
-_logger = logging.getLogger(__name__)
 
 
 class ProductTemplate(models.Model):
@@ -536,11 +528,6 @@ class ProductTemplate(models.Model):
         copy=False,
     )
 
-    mako_tmpl_name = fields.Text(
-        string="Variant name",
-        help="Generate Name based on Mako Template",
-        copy=True,
-    )
 
     # We are calculating weight of variants based on weight of
     # product-template so that no need of compute and inverse on this
@@ -734,35 +721,17 @@ class ProductTemplate(models.Model):
         return res
 
     def configure_product(self):
-        """launches a product configurator wizard with a linked
-        template in order to configure new product."""
-        return self.with_context(product_tmpl_id_readonly=True).create_config_wizard(
-            click_next=False
-        )
+        """Configurer ce produit — la page vient de `product_configurator_web_3d`.
 
-    def create_config_wizard(
-        self,
-        model_name="product.configurator",
-        extra_vals=None,
-        click_next=True,
-    ):
-        """create product configuration wizard
-        - return action to launch wizard
-        - click on next step based on value of click_next"""
-        wizard_obj = self.env[model_name]
-        wizard_vals = {"product_tmpl_id": self.id}
-        if extra_vals:
-            wizard_vals.update(extra_vals)
-        wizard = wizard_obj.create(wizard_vals)
-        if click_next:
-            action = wizard.action_next_step()
-        else:
-            wizard_obj = wizard_obj.with_context(
-                wizard_model=model_name,
-                allow_preset_selection=True,
-            )
-            action = wizard_obj.get_wizard_action(wizard=wizard)
-        return action
+        ⚠️ Le NOM reste ici : les boutons des vues de ce module l'appellent, et une vue qui
+        cite une méthode absente ne s'installe plus ([[L-166]]).
+        ⓘ Sans la page 3D, il n'existe aucune interface de configuration (D-097, D-497).
+        """
+        raise UserError(self.env._(
+            "Configuring a product requires the 3D configurator page "
+            "(module product_configurator_web_3d)."
+        ))
+
 
     @api.model
     def _check_config_group_rights(self):
@@ -1215,38 +1184,7 @@ class ProductProduct(models.Model):
         self.ensure_one()
         return self.name
 
-    def _get_mako_context(self, buf):
-        """Return context needed for computing product name based
-        on mako-tamplate define on it's product template"""
-        self.ensure_one()
-        ptav_ids = self.product_template_attribute_value_ids.mapped(
-            "product_attribute_value_id"
-        )
-        return Context(
-            buf,
-            product=self,
-            attribute_values=ptav_ids,
-            steps=self.product_tmpl_id.config_step_line_ids,
-            template=self.product_tmpl_id,
-        )
 
-    def _get_mako_tmpl_name(self):
-        """Compute and return product name based on mako-tamplate
-        define on it's product template"""
-        self.ensure_one()
-        if self.mako_tmpl_name:
-            try:
-                mytemplate = Template(self.mako_tmpl_name or "")
-                buf = StringIO()
-                ctx = self._get_mako_context(buf)
-                mytemplate.render_context(ctx)
-                return buf.getvalue()
-            except Exception:
-                _logger.error(
-                    self.env._("Error while calculating mako product name: %s")
-                    % self.display_name
-                )
-        return self.display_name
 
     @api.depends("product_template_attribute_value_ids.weight_extra")
     def _compute_product_weight_extra(self):
@@ -1282,8 +1220,6 @@ class ProductProduct(models.Model):
         store=False,
     )
 
-    # product preset
-    config_preset_ok = fields.Boolean(string="Is Preset")
 
     def _compute_config_name(self):
         """Compute the name of the configurable products and use template
@@ -1295,14 +1231,8 @@ class ProductProduct(models.Model):
                 product.config_name = product.name
 
     def reconfigure_product(self):
-        """launches a product configurator wizard with a linked
-        template and variant in order to re-configure an existing product.
-        It is essentially a shortcut to pre-fill configuration
-        data of a variant"""
-        self.ensure_one()
-
-        extra_vals = {"product_id": self.id}
-        return self.product_tmpl_id.create_config_wizard(extra_vals=extra_vals)
+        """Reconfigurer cette variante — même règle que `configure_product`."""
+        return self.product_tmpl_id.configure_product()
 
     @api.model
     def check_config_user_access(self, mode):

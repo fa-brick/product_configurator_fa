@@ -173,19 +173,6 @@ class ProductAttributes(BaseCommon):
             Method: copy()",
         )
 
-    def test_09_compute_get_value_id(self):
-        attrvalline = self.env["product.attribute.value.line"].create(
-            {
-                "product_tmpl_id": self.ProductTemplate.id,
-                "value_id": self.value_gasoline.id,
-            }
-        )
-        self.assertTrue(
-            attrvalline.product_value_ids,
-            "Error: If product_value_ids not exists\
-            Method: _compute_get_value_id()",
-        )
-
     def test_10_validate_configuration(self):
         with self.assertRaises(ValidationError):
             self.env["product.attribute.value.line"].create(

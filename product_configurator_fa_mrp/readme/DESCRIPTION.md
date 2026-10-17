@@ -1,1 +1,1 @@
-Product Configurator wizard available on Manufacturing Orders.
+Links a configuration session to its manufacturing order, and builds the bill of materials of a configured product.

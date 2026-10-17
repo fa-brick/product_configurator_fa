@@ -32,7 +32,7 @@ Product Configurator Sale
 
 |badge1| |badge2| |badge3| |badge4| |badge5|
 
-Product Configurator wizard available on Sales Orders.
+Links a configuration session to its quotation line: choosing a configurable product on the line opens the 3D configurator.
 
 **Table of contents**
 

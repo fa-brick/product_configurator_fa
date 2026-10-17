@@ -768,9 +768,6 @@ class ProductAttributeLine(models.Model):
     # TODO: Order by dependencies first and then sequence so dependent fields
     # do not come before master field
 
-    @property
-    def _prefixes(self):
-        return self.env["product.configurator"]._prefixes
 
     @api.onchange("attribute_id")
     def onchange_attribute(self):
@@ -844,11 +841,6 @@ class ProductAttributeLine(models.Model):
     # ⓘ `custom` a MIGRÉ vers `product_attribute_advanced` : c'est lui qui décide,
     # dans l'éditeur 3D, entre une liste déroulante et un champ de saisie.
     required = fields.Boolean(help="Is this attribute required?")
-    required_condition = fields.Char(compute="_compute_attribute_condition", store=True)
-    invisible_condition = fields.Char(
-        compute="_compute_attribute_condition", store=True
-    )
-    readonly_condition = fields.Char(compute="_compute_attribute_condition", store=True)
     multi = fields.Boolean(
         help="Allow selection of multiple values for this attribute?",
     )
@@ -1497,95 +1489,10 @@ class ProductAttributeLine(models.Model):
                     )
                 )
 
-    @api.depends(
-        "required", "custom", "product_tmpl_id", "product_tmpl_id.config_step_line_ids"
-    )
-    def _compute_attribute_condition(self):
-        for line in self:
-            config_steps = line.product_tmpl_id.config_step_line_ids.filtered(
-                lambda x, attr_line=line: attr_line in x.attribute_line_ids
-            )
-            depends = line.get_dependencies()
-            line.required_condition = line.get_required_condition(config_steps, depends)
-            line.readonly_condition = line.get_readonly_condition(config_steps, depends)
-            line.invisible_condition = line.get_invisible_condition(config_steps)
 
-    def get_required_condition(self, config_steps, dependencies):
-        self.ensure_one()
-        required_str = ""
-        if self.required:
-            if config_steps:
-                if self.required:
-                    cfg_step_ids = [str(id) for id in config_steps.ids]
-                    required_str += f"state in {cfg_step_ids}"
-                else:
-                    required_str += "state in ['configure']"
-            for depend_field, val_ids in dependencies.items():
-                if not val_ids:
-                    continue
-                field_type = "many2many" if self.multi else "many2one"
-                if self.required and not self.custom and field_type != "many2many":
-                    if required_str:
-                        required_str += " and "
-                    required_str += f"{depend_field} in {str(list(val_ids))}"
-        return required_str
 
-    def get_invisible_condition(self, config_steps):
-        self.ensure_one()
-        if config_steps:
-            cfg_step_ids = [str(id) for id in config_steps.ids]
-            return f"state not in {cfg_step_ids}"
-        else:
-            return "state not in ['configure']"
 
-    def get_readonly_condition(self, config_steps, dependencies):
-        self.ensure_one()
-        readonly_str = ""
-        if config_steps:
-            cfg_step_ids = [str(id) for id in config_steps.ids]
-            readonly_str += f"state not in {cfg_step_ids}"
-        else:
-            readonly_str += "state not in ['configure']"
-        for depend_field, val_ids in dependencies.items():
-            if not val_ids:
-                continue
-            field_type = "many2many" if self.multi else "many2one"
-            if field_type != "many2many":
-                if readonly_str:
-                    readonly_str += " and "
-                readonly_str += f"{depend_field} not in {str(list(val_ids))}"
-        return readonly_str
 
-    def get_dependencies(self):
-        self.ensure_one()
-        field_prefix = self._prefixes.get("field_prefix")
-        config_lines = self.product_tmpl_id.config_line_ids
-        dependencies = config_lines.filtered(
-            lambda cl, attr_line=self: cl.attribute_line_id == attr_line
-        )
-        attr_depends = {}
-        if self.value_ids <= dependencies.mapped("value_ids"):
-            domain_lines = dependencies.mapped("domain_id.domain_line_ids")
-            for domain_line in domain_lines:
-                attr_id = domain_line.attribute_id.id
-                attr_field = field_prefix + str(attr_id)
-                attr_lines = self.product_tmpl_id.attribute_line_ids
-                # If the fields it depends on are not in the config step
-                # allow to update attrs for all attribute.\ otherwise
-                # required will not work with stepchange using statusbar.
-                # if config_steps and wiz.state not in cfg_step_ids:
-                #     continue
-                if attr_field not in attr_depends:
-                    attr_depends[attr_field] = set()
-                if domain_line.condition == "in":
-                    attr_depends[attr_field] |= set(domain_line.value_ids.ids)
-                elif domain_line.condition == "not in":
-                    val_ids = attr_lines.filtered(
-                        lambda line, attr_id=self: line.attribute_id.id == attr_id
-                    ).value_ids
-                    val_ids = val_ids - domain_line.value_ids
-                    attr_depends[attr_field] |= set(val_ids.ids)
-        return attr_depends
 
     @api.constrains("value_ids", "default_val")
     def _check_default_values(self):
@@ -1973,67 +1880,7 @@ class ProductAttributeValue(models.Model):
             extra_prices[attr_val_id.id] += line.price_extra
         return extra_prices
 
-    def get_attribute_value_rates_sqm(self, product_tmpl_id, pt_attr_value_ids):
-        """Les taux au m² de ces valeurs, sur ce produit — `{id de valeur: taux}`.
 
-        Ne rend que les valeurs dont la LIGNE est au mètre carré : un taux saisi
-        sur une ligne repassée au forfait ne doit pas ressurgir dans un libellé.
-
-        ⚠️ UNE requête pour tout le lot, là où le calcul des forfaits voisin en
-        fait une par valeur : `display_name` se calcule par paquets entiers dans
-        une liste, et c'est exactement là qu'une requête par ligne se paie.
-        """
-        if not product_tmpl_id or not pt_attr_value_ids:
-            return {}
-        lines = self.env["product.template.attribute.value"].search(
-            [
-                ("product_tmpl_id", "=", product_tmpl_id),
-                ("product_attribute_value_id", "in", pt_attr_value_ids.ids),
-                ("price_extra_sqm", "!=", 0),
-            ]
-        )
-        return {
-            line.product_attribute_value_id.id: line.price_extra_sqm
-            for line in lines
-            if line.attribute_line_id.price_mode == "per_sqm"
-        }
-
-    def _compute_display_name(self):
-        # useless return to make pylint happy
-        res = super()._compute_display_name()
-        if not self.env.context.get("show_price_extra"):
-            return res
-        product_template_id = self.env.context.get("active_id", False)
-        price_precision = self.env["decimal.precision"].precision_get("Product Price")
-        rates = self.get_attribute_value_rates_sqm(product_template_id, self)
-        # La surface vient de l'INTERFACE, qui seule connaît la configuration en
-        # cours : `product.config.session.get_config_surface()`. Absente, on
-        # affiche le taux — c'est le cas du back-office, où aucune cote n'est
-        # saisie, et l'assistant d'OCA ne la fournira pas (D-097 l'abandonne).
-        surface = self.env.context.get("configurator_surface") or 0.0
-        for attribute in self:
-            extra_prices = attribute.get_attribute_value_extra_prices(
-                product_tmpl_id=product_template_id, pt_attr_value_ids=attribute
-            )
-            price_extra = extra_prices.get(attribute.id)
-            rate = rates.get(attribute.id)
-            if rate and surface:
-                # La surface est connue : le client voit ce que ÇA lui coûte,
-                # sans avoir à multiplier (D-162).
-                amount = rate * surface
-                name = f"{attribute.name} ( +{amount:.{price_precision}f} )"
-                attribute.display_name = name
-            elif rate:
-                # ⚠️ Pas encore de surface — les cotes ne sont pas toutes
-                # saisies. On rend le TAUX, qui reste juste, plutôt qu'un
-                # montant calculé sur une surface qu'on ne connaît pas. Et sans
-                # le « /m² », « +25 » se lirait comme vingt-cinq euros, quand le
-                # client d'une porte de 5 m² en paiera cent vingt-cinq.
-                name = f"{attribute.name} ( +{rate:.{price_precision}f} /m² )"
-                attribute.display_name = name
-            elif price_extra:
-                name = f"{attribute.name} ( +{price_extra:.{price_precision}f} )"
-                attribute.display_name = name
 
     @api.model
     def name_search(self, name="", args=None, operator="ilike", limit=100):
@@ -2284,25 +2131,7 @@ class ProductAttributeValueLine(models.Model):
         column2="product_attribute_value_id",
         string="Values Configuration",
     )
-    product_value_ids = fields.Many2many(
-        comodel_name="product.attribute.value",
-        relation="product_attr_values_attr_values_rel",
-        column1="product_val_id",
-        column2="attr_val_id",
-        compute="_compute_get_value_id",
-        store=True,
-    )
 
-    @api.depends(
-        "product_tmpl_id",
-        "product_tmpl_id.attribute_line_ids",
-        "product_tmpl_id.attribute_line_ids.value_ids",
-    )
-    def _compute_get_value_id(self):
-        for attr_val_line in self:
-            template = attr_val_line.product_tmpl_id
-            value_list = template.attribute_line_ids.mapped("value_ids")
-            attr_val_line.product_value_ids = [(6, 0, value_list.ids)]
 
     @api.constrains("value_ids")
     def _validate_configuration(self):

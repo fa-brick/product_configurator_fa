@@ -38,13 +38,12 @@ class TestDialogEntry(TransactionCase):
     # ── CE QUE LE CLIENT DOIT SAVOIR ─────────────────────────────────────
 
     def test_le_drapeau_suit_le_MODELE_pas_la_variante(self):
-        """⚠️ Le cœur du piège : `config_ok` de la ligne suit `product_id`, et un
-        produit configurable n'a pas encore de variante quand on le choisit."""
+        """⚠️ Le cœur du piège : un produit configurable n'a pas encore de variante quand
+        on le choisit — le drapeau doit suivre le MODÈLE."""
         line = self.env["sale.order.line"].new({
             "product_template_id": self.tmpl.id,
         })
         self.assertTrue(line.product_tmpl_config_ok)
-        self.assertFalse(line.config_ok, "la variante n'existe pas encore")
 
     def test_un_produit_ORDINAIRE_ne_le_porte_pas(self):
         line = self.env["sale.order.line"].new({

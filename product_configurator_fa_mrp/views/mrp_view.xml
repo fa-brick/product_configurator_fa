@@ -5,18 +5,8 @@
         <field name="model">mrp.production</field>
         <field name="inherit_id" ref="mrp.mrp_production_form_view" />
         <field name="arch" type="xml">
-            <xpath expr="//div[hasclass('oe_title')]" position="attributes">
-                <attribute
-                    name="class"
-                >oe_title col-lg-10 col-md-9 col-sm-9 col-xs-12 pull-left</attribute>
-            </xpath>
-            <xpath expr="//div[hasclass('oe_title')]" position="after">
-                <!-- ⓘ Pas de bouton « Reconfigure » : choisir (ou rechoisir) le produit
-                     ouvre le configurateur 3D (widget `mrp_config_product`). -->
-                <div class="col-lg-2 col-md-3 col-sm-3 col-xs-12 pull-left">
-                    <field name="config_ok" invisible="1" />
-                </div>
-            </xpath>
+            <!-- ⓘ Pas de bouton « Reconfigure » : choisir (ou rechoisir) le produit
+                 ouvre le configurateur 3D (widget `mrp_config_product`). -->
             <page name="finished_products" position="after">
                 <page string="Custom Values" name="custom_values">
                     <field name="custom_value_ids" readonly="True" force_save="True">

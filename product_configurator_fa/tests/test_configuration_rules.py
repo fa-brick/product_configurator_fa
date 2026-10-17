@@ -228,103 +228,54 @@ class ConfigurationRules(TransactionCase):
         """When custom values are restricted,
         filling them correctly creates a valid configuration."""
         # Arrange
-        generic_custom_attribute_value = self.generic_custom_attribute_value
-        custom_attribute = self.custom_attribute
-        custom_value = 5
-        other_custom_attribute = self.other_custom_attribute
-        other_custom_attribute_value = self.other_custom_attribute_value
-        regular_attribute = self.regular_attribute
-        regular_attribute_value_1 = self.regular_attribute_value_1
-        product_template = self.product_template
-
-        wizard_action = product_template.configure_product()
-        wizard = self.env[wizard_action["res_model"]].browse(wizard_action["res_id"])
-        wizard.action_next_step()
-        fields_prefixes = wizard._prefixes
-        field_prefix = fields_prefixes.get("field_prefix")
-        custom_field_prefix = fields_prefixes.get("custom_field_prefix")
+        session = self.env["product.config.session"].create_get_session(
+            self.product_template.id, force_create=True
+        )
         # Regular attribute has value 1
         # so the custom attribute must have the generic custom value.
         # The other custom attribute can have any value.
-        wizard.write(
-            {
-                field_prefix + str(regular_attribute.id): regular_attribute_value_1.id,
-                field_prefix
-                + str(custom_attribute.id): generic_custom_attribute_value.id,
-                custom_field_prefix + str(custom_attribute.id): custom_value,
-                field_prefix
-                + str(other_custom_attribute.id): other_custom_attribute_value.id,
-            }
-        )
-        # pre-condition
-        self.assertEqual(wizard.state, "configure")
+        session.write({
+            "value_ids": [Command.set((
+                self.regular_attribute_value_1
+                + self.generic_custom_attribute_value
+                + self.other_custom_attribute_value
+            ).ids)],
+            "custom_value_ids": [Command.create({
+                "attribute_id": self.custom_attribute.id,
+                "value": "5",
+            })],
+        })
 
         # Act
-        wizard.action_config_done()
+        session.action_confirm()
 
         # Assert
-        config = wizard.config_session_id
-        self.assertEqual(config.state, "done")
+        self.assertEqual(session.state, "done")
 
     def test_fill_restricted_custom_value(self):
         """When custom values are restricted,
         filling them with the wrong value creates an invalid configuration."""
         # Arrange
-        generic_custom_attribute_value = self.generic_custom_attribute_value
-        custom_attribute = self.custom_attribute
-        custom_value = 5
-        other_custom_attribute = self.other_custom_attribute
-        other_custom_attribute_value = self.other_custom_attribute_value
-        regular_attribute = self.regular_attribute
-        regular_attribute_value_2 = self.regular_attribute_value_2
-        product_template = self.product_template
-
-        wizard_action = product_template.configure_product()
-        wizard = self.env[wizard_action["res_model"]].browse(wizard_action["res_id"])
-        wizard.action_next_step()
-        fields_prefixes = wizard._prefixes
-        field_prefix = fields_prefixes.get("field_prefix")
-        custom_field_prefix = fields_prefixes.get("custom_field_prefix")
-        # Regular attribute has value 2
-        # so the custom attribute cannot have the generic custom value.
-        # The other custom attribute can have any value.
-        regular_attribute_field_name = field_prefix + str(regular_attribute.id)
-        custom_attribute_field_name = field_prefix + str(custom_attribute.id)
-        other_custom_attribute_field_name = field_prefix + str(
-            other_custom_attribute.id
+        session = self.env["product.config.session"].create_get_session(
+            self.product_template.id, force_create=True
         )
-        wizard_values = {
-            regular_attribute_field_name: regular_attribute_value_2.id,
-            custom_attribute_field_name: generic_custom_attribute_value.id,
-            custom_field_prefix + str(custom_attribute.id): custom_value,
-            other_custom_attribute_field_name: other_custom_attribute_value.id,
-        }
+        lines = self.product_template.attribute_line_ids
 
-        # Act
-        onchange_result = wizard.onchange(
-            {
-                "value_ids": [
-                    Command.set([wizard_values[regular_attribute_field_name]]),
-                ],
-                **{wiz_field: False for wiz_field in wizard_values.keys()},
-            },
-            [regular_attribute_field_name],
-            {
-                regular_attribute_field_name: {"fields": "display_name"},
-                custom_attribute_field_name: {"fields": "display_name"},
-                other_custom_attribute_field_name: {"fields": "display_name"},
-            },
-        )
+        def available_on(attribute):
+            line = lines.filtered(lambda ligne: ligne.attribute_id == attribute)
+            return session.values_available(
+                check_val_ids=self.generic_custom_attribute_value.ids,
+                value_ids=self.regular_attribute_value_2.ids,
+                custom_vals={},
+                product_template_attribute_line_id=line.id,
+            )
 
-        # Assert
-        domains = onchange_result["domain"]
-        custom_attribute_domain = domains[custom_attribute_field_name]
+        # Assert : regular attribute has value 2, so the custom attribute cannot
+        # have the generic custom value ; the other custom attribute can.
         self.assertNotIn(
-            generic_custom_attribute_value,
-            self.env["product.attribute.value"].search(custom_attribute_domain),
+            self.generic_custom_attribute_value.id, available_on(self.custom_attribute)
         )
-        other_custom_attribute_domain = domains[other_custom_attribute_field_name]
         self.assertIn(
-            generic_custom_attribute_value,
-            self.env["product.attribute.value"].search(other_custom_attribute_domain),
+            self.generic_custom_attribute_value.id,
+            available_on(self.other_custom_attribute),
         )

@@ -86,16 +86,11 @@ class ProductTemplate(models.Model):
     # ─ L'ONGLET A SON PROPRE CHAMP SUR LES MÊMES LIGNES — D-209 ─────────────
     #
     # ⚠️ **UN MÊME `One2many` DÉCLARÉ DEUX FOIS DANS UN FORMULAIRE CASSE LA
-    # SAUVEGARDE.** Mesuré : l'onglet configurateur montrant `attribute_line_ids`
-    # à côté de l'onglet « Attributs & Variantes » qui le montre déjà,
-    # l'enregistrement d'un produit levait *« Values must belong to the attribute
-    # of the corresponding attribute_line »* — deux jeux de commandes pour les
-    # mêmes lignes, envoyés dans un ordre que rien ne garantit.
-    #
-    # ⓘ Un second champ, MÊME modèle et MÊME inverse : ce sont exactement les
-    # mêmes enregistrements, donc le même ordre (Q2, *« un seul ordre partagé »*),
-    # mais deux affichages indépendants. C'est ce qui permet à l'onglet
-    # « Attributs & Variantes » de ne pas changer — correction de Gerry.
+    # SAUVEGARDE** : deux jeux de commandes pour les mêmes lignes lèvent *« Values must
+    # belong to the attribute of the corresponding attribute_line »* (D-209).
+    # ⓘ Un second champ, MÊME modèle et MÊME inverse : les mêmes enregistrements, donc le
+    # même ordre (Q2), mais deux affichages — l'onglet « Attributs & Variantes » ne change
+    # pas (D-209).
     configurator_line_ids = fields.One2many(
         comodel_name="product.template.attribute.line",
         inverse_name="product_tmpl_id",
@@ -104,22 +99,6 @@ class ProductTemplate(models.Model):
              "the configurator needs: conditions, steps, 3D view.",
     )
 
-    # ─ L'ARBRE DU CONFIGURATEUR, TEL QUE L'ÉCRAN LE LIT — D-210 ─────────────
-    #
-    # Maquette de Gerry : un arbre où l'étape est un bandeau, l'attribut une
-    # ligne, et ses valeurs des lignes indentées portant chacune leur condition.
-    #
-    # ⚠️ **UNE LISTE ODOO NE SAIT NI S'IMBRIQUER NI MÊLER DEUX MODÈLES.** L'arbre
-    # tient trois natures de lignes — étape, attribut, valeur — venues de trois
-    # modèles. D'où un composant, et d'où cette méthode : le composant lit UNE
-    # structure, au lieu de recomposer côté client une jointure que le serveur
-    # fait mieux.
-    #
-    # ⚠️ **L'ÉTAPE EST UN BANDEAU RENDU, PAS UN ENREGISTREMENT DE PLUS.** Le
-    # modèle n'a pas changé (D-202) : l'étape reste un marqueur porté par la ligne
-    # qui l'ouvre. C'est l'affichage qui en tire un bandeau — ce qui est
-    # exactement ce que la forme (A) promettait, *« le bandeau pourra venir plus
-    # tard sans toucher au modèle »*.
     def _sale_separately_attribute_ids(self):
         """Les questions de ce produit VENDUES À PART — `set` d'identifiants (D-368).
 
@@ -128,6 +107,14 @@ class ProductTemplate(models.Model):
         """
         return set(self.attribute_line_ids.filtered("sale_separately").attribute_id.ids)
 
+    # ─ L'ARBRE DU CONFIGURATEUR, TEL QUE L'ÉCRAN LE LIT — D-210 ─────────────
+    #
+    # ⓘ Un arbre où l'étape est un bandeau, l'attribut une ligne, et ses valeurs des
+    # lignes indentées portant chacune leur condition.
+    # ⚠️ Une liste Odoo ne sait ni s'imbriquer ni mêler trois modèles : le composant lit
+    # UNE structure, au lieu de recomposer côté client une jointure (D-210).
+    # ⚠️ L'ÉTAPE est un bandeau RENDU, pas un enregistrement : elle reste un marqueur porté
+    # par la ligne qui l'ouvre (D-202).
     def get_configurator_tree(self):
         """L'arbre à afficher — étapes, attributs, valeurs, conditions.
 
@@ -190,10 +177,9 @@ class ProductTemplate(models.Model):
 
     # ─ LA VUE 3D, CHOISIE DANS L'ARBRE — D-386 ─────────────────────────────
     #
-    # ⚠️ Demande de Gerry (2026-09-30) : *« on voit une colonne 3D view mais pas de
-    # liste déroulante pour choisir »*. La vue ne se posait que dans le dialogue de
-    # chaque ligne, et jamais depuis un bandeau d'étape. Le cœur ne connaît pas les
-    # caméras (D-075) : il demande les choix et délègue l'écriture au pont.
+    # ⓘ Une liste déroulante par attribut ET par bandeau d'étape (D-386).
+    # ⚠️ Le cœur ne connaît pas les caméras : il demande les choix et délègue l'écriture
+    # au pont (D-163).
 
     def _configurator_camera_choices(self):
         """Les vues 3D qu'on peut choisir pour ce produit — aucune sans le pont."""
@@ -273,10 +259,8 @@ class ProductTemplate(models.Model):
         """Ouvre — et crée au besoin — la condition d'une ligne ou d'une valeur.
 
         ⚠️ **SANS CECI, RETIRER « Configuration Restrictions » PERDRAIT UNE
-        CAPACITÉ.** C'était le seul endroit d'où l'on crée une condition PAR
-        VALEUR : l'arbre les affichait sans pouvoir en poser une. Question de
-        Gerry — *« Configuration Restrictions n'a plus d'utilité ? »* — et la
-        réponse était « si, jusqu'à ce que l'arbre sache le faire ».
+        CAPACITÉ** : c'est d'ici, et d'ici seulement, que l'arbre crée une condition
+        PAR VALEUR (D-213).
 
         ⚠️ **LA CONDITION EST CRÉÉE AU CLIC**, parce qu'elle EST le lien : on ne
         peut pas ouvrir l'éditeur de quelque chose qui n'existe pas, et rattacher
@@ -309,12 +293,7 @@ class ProductTemplate(models.Model):
                     {"name": ligne.attribute_id.name}
                 )
             cible = ligne.visibility_domain_id
-        # ⚠️ **LE DIALOGUE EST CELUI DE LA BARRE DE RECHERCHE**, demandé par
-        # Gerry : *« je voulais retrouver la même fenêtre que pour les filtres de
-        # la barre de recherche »*. La liste éditable d'OCA — attribut, condition,
-        # valeurs, opérateur en colonnes — disait la même chose, mais dans un
-        # vocabulaire que personne d'autre dans Odoo n'emploie.
-        #
+        # ⓘ **LE DIALOGUE EST CELUI DE LA BARRE DE RECHERCHE** (D-224).
         # ⓘ Le stockage ne bouge pas : l'assistant traduit dans les deux sens
         # (`to_odoo_domain` / `from_odoo_domain`), et une condition reste faite
         # d'ENREGISTREMENTS (D-080).
@@ -350,18 +329,12 @@ class ProductTemplate(models.Model):
             "context": {"product_tmpl_id": self.id},
         }
 
-    # ─ POSER UNE ÉTAPE COMME ON POSE UNE SECTION — 2026-08-29 ───────────────
+    # ─ POSER UNE ÉTAPE COMME ON POSE UNE SECTION ────────────────────────────
     #
-    # ⚠️ **LE DIALOGUE A DISPARU, PAS LA CONTRAINTE.** Gerry : *« quand on ajoute
-    # une étape, le comportement doit être identique à ajouter une section : une
-    # ligne se crée, on la nomme, puis on la déplace à sa position »*. C'est le
-    # geste des lignes de commande, et il vaut mieux que l'assistant : on ne
-    # choisit plus À L'AVANCE une chose qu'on saura mieux en la voyant.
-    #
-    # ⚠️ Mais une étape reste un MARQUEUR porté par la ligne qui l'ouvre (D-202) :
-    # elle ne peut pas se poser « en bas » comme une section, puisqu'il n'y a
-    # aucune ligne sous la dernière. On la pose donc sur la DERNIÈRE LIGNE LIBRE
-    # — au plus bas qu'un marqueur puisse aller —, et le glisser fait le reste.
+    # ⓘ Le geste des lignes de commande : une ligne se crée, on la nomme, puis on la
+    # déplace à sa position.
+    # ⚠️ Une étape reste un MARQUEUR porté par la ligne qui l'ouvre (D-202) : elle ne
+    # peut pas se poser sous la dernière ligne. On la pose sur la DERNIÈRE LIGNE LIBRE.
 
     def configurator_add_step(self):
         """Crée une étape NEUVE et la pose au plus bas — elle attend son nom.
@@ -465,12 +438,12 @@ class ProductTemplate(models.Model):
         assumé ; c'est pourquoi l'arbre redessine ses bandeaux après chaque
         déplacement, au lieu d'attendre un rechargement.
 
-        ⚠️ **SANS `step_line_ids`, LE MARQUEUR SUIT SA LIGNE.** L'arbre, lui,
-        garde chaque bandeau où il s'affiche : il envoie donc aussi la ligne que
-        chaque étape ouvre désormais (paires ``[step_id, line_id]``). Constat de
-        Gerry : la ligne qui ouvrait une étape ne pouvait pas passer au-dessus de
-        son propre bandeau. Les deux s'écrivent ici ENSEMBLE, pour qu'aucun état
-        intermédiaire n'ouvre une étape sur la mauvaise ligne.
+        ⚠️ **SANS `step_line_ids`, LE MARQUEUR SUIT SA LIGNE** : la ligne qui ouvre
+        une étape ne pourrait pas passer au-dessus de son propre bandeau. L'arbre
+        envoie donc aussi la ligne que chaque étape ouvre (paires
+        ``[step_id, line_id]``).
+        ⚠️ Les deux s'écrivent ENSEMBLE : un état intermédiaire ouvrirait une étape
+        sur la mauvaise ligne.
         """
         self.ensure_one()
         lignes = self.env["product.template.attribute.line"].browse(line_ids)
@@ -527,9 +500,9 @@ class ProductTemplate(models.Model):
         appartient à l'ATTRIBUT et non au produit (`_order` du cœur :
         *attribute_id, sequence, id*). Déplacer « brut » depuis un produit le
         déplace donc partout où l'attribut sert — dans les autres produits comme
-        dans Configuration → Attributs. Arbitré par Gerry le 2026-08-29 : c'est
-        le seul ordre qui existe, et en inventer un par produit obligerait tout
-        ce qui affiche des valeurs à le relire.
+        dans Configuration → Attributs. C'est le seul ordre qui existe : en
+        inventer un par produit obligerait tout ce qui affiche des valeurs à le
+        relire.
 
         ⚠️ **ON NE RENUMÉROTE PAS QUE LES VALEURS DU PRODUIT.** Un produit ne
         porte souvent qu'une PART des valeurs de l'attribut ; leur donner
@@ -666,9 +639,8 @@ class ProductTemplate(models.Model):
 
     # ─ QB : ON PRÉVIENT, ON NE CONVERTIT NI NE REFUSE — D-200 ───────────────
     #
-    # Arbitrage de Gerry : *« lorsqu'un produit devient configurable on prévient si
-    # des exclusions sont dans le produit »*. Ni conversion automatique, ni refus de
-    # la bascule — un avertissement.
+    # ⓘ Des exclusions sur un produit qui devient configurable : un avertissement — ni
+    # conversion automatique, ni refus de la bascule (D-200).
     #
     # ⚠️ **CES EXCLUSIONS SONT DÉJÀ SANS EFFET, et c'est tout le sujet.** Le
     # configurateur ne les lit pas : aucune occurrence de `exclude_for`,
@@ -678,9 +650,8 @@ class ProductTemplate(models.Model):
     # aucun comportement : **il rend explicite un silence**. Aujourd'hui l'interface
     # laisse croire qu'un réglage agit, ce qui est pire que de ne pas l'offrir.
     #
-    # ⓘ Pourquoi un `onchange` et pas une contrainte : une contrainte ne sait que
-    # refuser, et Gerry a écarté le refus. Un avertissement se rend par
-    # `{"warning": ...}`, que seul un `onchange` peut retourner.
+    # ⓘ Un `onchange` et pas une contrainte : une contrainte ne sait que refuser (D-200),
+    # et seul un `onchange` peut retourner `{"warning": ...}`.
     #
     # ⚠️ Corollaire à connaître : `toggle_config()` — l'ancienne action, encore
     # appelable — ne déclenche AUCUN onchange. La bascule par la case à cocher
@@ -992,9 +963,6 @@ class ProductTemplate(models.Model):
 
     # ─ LA GRILLE SE RANGE AVEC LA LISTE DE PRIX — D-214 ─────────────────────
     #
-    # Question de Gerry : *« la grille de prix et la liste de prix ne devraient
-    # pas être au même endroit ? »*
-    #
     # ⓘ Elles ne décident PAS la même chose — la grille **produit** le prix d'un
     # produit dimensionné (D-083, D-093), la liste de prix **l'ajuste** pour un
     # client ou une quantité. Mais elles répondent à la même question de
@@ -1033,16 +1001,9 @@ class ProductTemplate(models.Model):
             "context": {"default_product_tmpl_id": self.id},
         }
 
-    # ⚠️ **LE BANDEAU « PAS DE GRILLE » A ÉTÉ RETIRÉ — il était FAUX.** Constat
-    # de Gerry (2026-08-28) : *« on peut configurer un produit sans grille de
-    # prix »*. Et le code le dit : `_get_config_grid_price` rend `None` sans
-    # grille, et l'appelant retombe sur le `list_price` du modèle. Le message
-    # annonçait donc un blocage qui n'existe pas — pire qu'un silence, puisqu'il
-    # décourage un usage licite.
-    #
-    # ⓘ Le champ calculé qui le portait part avec lui : un calcul que plus rien
-    # ne lit est une dépense et une promesse — celle qu'il dit encore quelque
-    # chose de vrai.
+    # ⚠️ PAS de bandeau « pas de grille » : sans grille, `_get_config_grid_price` rend
+    # `None` et l'appelant retombe sur le `list_price` du modèle — configurer sans
+    # grille est licite (D-215).
 
     def _get_price_grid(self, date=None):
         """La grille en vigueur à cette date — au plus une (D-083)."""
@@ -1391,13 +1352,9 @@ class ProductProduct(models.Model):
             config_manager
             or (config_user and mode not in ["delete"])
             or self.env.user.id in [user_root.id, user_admin.id]
-            # ⚠️ `env.su` MANQUAIT ICI, et la jumelle de cette méthode
-            # (`product.template.check_config_user_access`) l'a depuis toujours.
-            # La même règle écrite deux fois avait donc deux sens : un code qui
-            # s'exécute en `sudo` — donc qui a pris la responsabilité ailleurs —
-            # passait sur le gabarit et butait sur la variante.
-            # Mesuré le 2026-09-05 : le visiteur public ne pouvait pas TERMINER
-            # sa configuration, la naissance de la variante étant refusée.
+            # ⚠️ Sans `env.su`, un code en `sudo` passe sur le gabarit (sa jumelle
+            # `product.template.check_config_user_access` l'accepte) et bute sur la
+            # variante : le visiteur public ne peut plus TERMINER sa configuration.
             or self.env.su
         ):
             return True

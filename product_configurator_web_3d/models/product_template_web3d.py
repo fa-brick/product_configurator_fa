@@ -7,13 +7,9 @@ s'ouvre, en dialogue, sans quitter l'écran où l'on est. Le même composant que
 page publique : une seule implémentation des formes de question, du moteur et de
 la scène.
 
-⚠️ **Ce fichier vivait dans le module du DEVIS, et n'avait rien de commercial.**
-L'ordre de fabrication a exactement le même besoin (arbitrage Gerry,
-2026-09-19 : *« lorsque l'on sélectionne un produit configuré, que cela
-déclenche le configurateur comme lors d'un devis »*). Le laisser là-bas aurait
-obligé la fabrication à dépendre de la vente, ou à en faire une seconde copie —
-et deux copies de la même préparation finissent toujours par diverger
-([[L-073]]). Il appartient donc au module qui possède la PAGE.
+⚠️ Ne pas le ramener dans le module du DEVIS : l'ordre de fabrication l'appelle aussi, et
+devrait sinon dépendre de la vente.
+⚠️ Ne pas en faire une seconde copie pour la fabrication : deux copies divergeraient ([[L-073]]).
 """
 from odoo import models
 

@@ -8,9 +8,8 @@ class ProductAttributeValue(models.Model):
     `website_sale` (voir le manifeste). La catégorie e-commerce ne s'ajoute donc que là
     où la boutique est installée ; ailleurs, la réponse tombe dans « Autres ».
 
-    ⓘ **E-commerce, et non la catégorie de produit** (Gerry, 2026-09-30) : son nom se
-    traduit et se range par séquence — elle est faite pour le client. `categ_id` est
-    interne (comptabilité, stock : « Saleable », « Office Furniture »).
+    ⓘ **E-commerce, et non la catégorie de produit** (D-382) : son nom se traduit et se
+    range par séquence. `categ_id` est interne (comptabilité, stock : « Saleable »).
     """
 
     _inherit = "product.attribute.value"
@@ -18,9 +17,7 @@ class ProductAttributeValue(models.Model):
     def _web_categories(self):
         categories = super()._web_categories()
         publics = self.sudo().product_id.product_tmpl_id.public_categ_ids
-        # ⚠️ **L'ENFANT FINAL seul** (Gerry) : un produit rangé dans « Châssis » ET dans
-        # « Châssis / Plaque caméra » ne se montre que sous la seconde — la première n'en dit
-        # pas plus, et doublerait la pastille.
+        # ⚠️ L'ENFANT FINAL seul : une catégorie ET sa descendante doubleraient la pastille (D-382).
         leaves = publics.filtered(lambda category: not any(
             other != category and other.parent_path.startswith(category.parent_path)
             for other in publics))

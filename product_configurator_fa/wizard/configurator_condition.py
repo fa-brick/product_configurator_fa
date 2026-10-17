@@ -1,5 +1,5 @@
 """Écrire une condition dans le MÊME dialogue que les filtres de la barre de
-recherche — demande de Gerry (2026-08-29).
+recherche (D-224).
 
 ⚠️ **POURQUOI UN MODÈLE-SUJET, ET PAS `product.template`.** L'éditeur de domaine
 charge ses champs par le service `field` du client, qui appelle `fields_get`
@@ -77,18 +77,11 @@ class ProductConfigConditionSubject(models.TransientModel):
         domaine_obj = self.env["product.config.domain"]
         for attribut in self._condition_attributes():
             nom = domaine_obj._attribute_field_name(attribut)
-            # ⚠️ **UNE QUESTION NUMÉRIQUE SE DÉCRIT EN NOMBRE** — demande de Gerry,
-            # 2026-09-07 : *« il faut tenir compte des opérateurs supérieur inférieur
-            # et égalité pour le configurateur l'éditeur »*.
-            #
-            # Elle était décrite en `many2one` comme les autres, parce que le stockage
-            # ne savait garder que `in`/`not in` : `largeur > 4000` se serait perdu en
-            # silence. La ligne de condition porte désormais un `numeric_value`, et le
-            # champ peut dire ce qu'il est. Le contraire — l'offrir sans le stocker —
-            # est exactement ce que D-077 proscrit.
-            #
-            # ⓘ Une question numérique ne se répond pas en cochant : sa réponse est
-            # SAISIE, et l'évaluation la lit dans `custom_vals`.
+            # ⚠️ Une question NUMÉRIQUE se décrit en `float` : en `many2one`, `largeur > 4000`
+            # n'aurait pas d'opérateur à offrir (D-267).
+            # ⚠️ Ne pas offrir un opérateur que la ligne de condition ne stocke pas : la règle
+            # se perdrait en silence (D-267).
+            # ⓘ Sa réponse est SAISIE : l'évaluation la lit dans `custom_vals`.
             if attribut.is_numeric():
                 champs[nom] = {
                     "name": nom,
@@ -101,12 +94,8 @@ class ProductConfigConditionSubject(models.TransientModel):
                 }
                 continue
             champs[nom] = {
-                # ⚠️ **`name` EST INDISPENSABLE, et son absence casse tout.** Le
-                # sélecteur de champ compose le chemin retenu avec
-                # `fieldDef.name` (`model_field_selector_popover.js`), pas avec
-                # la clé du dictionnaire. Sans cette clé, choisir un attribut
-                # posait un chemin `undefined` : *« Chaîne de champs invalide »*,
-                # puis *« Domaine invalide »*. Constaté à l'écran par Gerry.
+                # ⚠️ Sans `name`, le sélecteur compose un chemin `undefined` (il lit
+                # `fieldDef.name`, pas la clé) : « Chaîne de champs invalide ».
                 "name": nom,
                 "string": attribut.name,
                 "type": "many2one",
@@ -152,13 +141,10 @@ class ProductConfiguratorCondition(models.TransientModel):
     product_tmpl_id = fields.Many2one(
         comodel_name="product.template", required=True, readonly=True
     )
-    # ⚠️ **PLUS OBLIGATOIRE depuis le 2026-09-07** — et ce n'est pas un relâchement.
-    # Ce dialogue est devenu le seul endroit où l'on écrit une condition (D-267), y
-    # compris pour un objet que ce module ne connaît pas : l'emplacement d'un
-    # assemblage 3D, qui vit dans `product_editor` (LGPL, hors de portée d'ici, D-075).
-    # La CIBLE se choisit donc par deux crochets — `_seed_domain` et `_apply_condition` —
-    # qu'un module-pont surcharge. Sans eux, il aurait fallu un second dialogue disant
-    # la même chose, et deux éditeurs de condition auraient divergé au premier ajout.
+    # ⚠️ PAS obligatoire : la cible peut être un emplacement d'assemblage de `product_editor`,
+    # hors de portée de ce module (D-267, D-075).
+    # ⓘ La CIBLE se choisit par deux crochets qu'un module-pont surcharge : `_seed_domain`
+    # et `_apply_condition` (D-267).
     domain_id = fields.Many2one(
         comodel_name="product.config.domain", readonly=True
     )

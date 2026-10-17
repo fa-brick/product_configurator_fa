@@ -46,7 +46,7 @@ class ProductConfigDomain(models.Model):
             # ⓘ `_resolved_value_ids` — et non `value_ids` — pour que la forme
             # « produit » (C4, D-201) soit évaluée par le MÊME moteur.
             # ⓘ **L'OPÉRANDE DÉPEND DE L'OPÉRATEUR** : des identifiants de valeurs
-            # pour une appartenance, un NOMBRE pour une comparaison (2026-09-07).
+            # pour une appartenance, un NOMBRE pour une comparaison (D-267).
             # `validate_domains_against_sels` lit les deux formes.
             def _operande(line):
                 if line.condition in line.NUMERIC_CONDITIONS:
@@ -208,10 +208,8 @@ class ProductConfigDomain(models.Model):
         """
         self.ensure_one()
         lines = []
-        # ⚠️ **LE ET EXPLICITE DOIT ÊTRE ACCEPTÉ.** L'éditeur écrit `['&', A, B]`
-        # dès qu'une condition porte DEUX règles — c'est le cas le plus banal, et
-        # il était refusé. Le `&` n'ajoute pourtant rien : une suite de feuilles
-        # juxtaposées est déjà un ET. Constaté à l'écran par Gerry.
+        # ⚠️ **LE ET EXPLICITE DOIT ÊTRE ACCEPTÉ** : l'éditeur écrit `['&', A, B]` dès
+        # qu'une condition porte DEUX règles ; une suite de feuilles est déjà un ET (D-226).
         #
         # ⚠️ Mais il ne se RETIRE pas non plus à l'aveugle : `['|', A, '&', B, C]`
         # dit *A OU (B ET C)*, quand `['|', A, B, C]` dit *(A OU B) ET C*. Deux
@@ -238,7 +236,7 @@ class ProductConfigDomain(models.Model):
                 # opérateur : `=` sur une question à valeurs veut dire « parmi », `=`
                 # sur une question numérique veut dire « égal à ce nombre ». Les
                 # confondre stockerait un identifiant de valeur comme un nombre — une
-                # règle silencieusement fausse (2026-09-07).
+                # règle silencieusement fausse (D-267).
                 attribut = self.env["product.attribute"].browse(
                     int(str(field_name)[len(
                         self.PRODUCT_FIELD_PREFIX if produits
@@ -307,12 +305,10 @@ class ProductConfigDomain(models.Model):
     name = fields.Char(required=True)
     # ─ LA CONDITION SE LIT COMME UNE BARRE DE RECHERCHE — B2, D-203 ─────────
     #
-    # Constat de Gerry : *« regarde comment fonctionnent les pastilles avec la
-    # barre de recherche, je voudrais le même fonctionnement »*. Sa sémantique
-    # tombe juste sur le stockage existant (Q3) : **ET entre les pastilles, OU à
-    # l'intérieur d'une pastille** — c'est exactement ce que produit
-    # `compute_domain`, où le marqueur `|` ne marque qu'une ligne et où une ligne
-    # porte plusieurs valeurs.
+    # ⓘ La sémantique des pastilles tombe juste sur le stockage existant (Q3) :
+    # **ET entre les pastilles, OU à l'intérieur d'une pastille** — c'est exactement
+    # ce que produit `compute_domain`, où le marqueur `|` ne marque qu'une ligne et
+    # où une ligne porte plusieurs valeurs.
     #
     # ⚠️ Ce champ est un RÉSUMÉ POUR L'ŒIL, pas un stockage. La condition reste
     # faite d'enregistrements (D-080) ; ceci n'en est que la lecture. Le
@@ -347,7 +343,7 @@ class ProductConfigDomain(models.Model):
         ⚠️ Un « × » sur une pastille retire **une règle**, pas la condition
         entière. Sans cet identifiant, le seul geste possible serait « tout
         effacer » — et une condition à trois règles se perdrait pour en corriger
-        une. C'est le comportement de la barre de recherche, que Gerry a demandé.
+        une. C'est le comportement de la barre de recherche (D-211).
         """
         if not self:
             return []
@@ -355,11 +351,9 @@ class ProductConfigDomain(models.Model):
         lignes = self.domain_line_ids.sorted()
         facettes = []
         for index, (ligne, label) in enumerate(zip(lignes, self._facet_labels())):
-            # ⚠️ **LA PASTILLE EST STRUCTURÉE, pas une phrase.** Gerry : *« ça ne
-            # reprend pas les étiquettes et la mécanique de celles du champ de
-            # recherche »*. Une facette du cœur a un segment d'entête, des
-            # valeurs séparées par un mot, et sa propre croix — un unique texte
-            # ne peut pas rendre ça, et se lisait comme une ligne de tableau.
+            # ⚠️ **LA PASTILLE EST STRUCTURÉE, pas une phrase** : une facette du cœur a
+            # un entête, des valeurs séparées par un mot, et sa propre croix — un
+            # unique texte ne peut pas rendre ça (D-225).
             designes = ligne.product_ids or ligne.value_ids
             facettes.append({
                 "id": ligne.id,
@@ -468,8 +462,7 @@ class ProductConfigDomainLine(models.Model):
     _order = "sequence"
     _description = "Domain Line for Config Restrictions"
 
-    #: Comparaisons à un NOMBRE — demandées par Gerry le 2026-09-07, *« pour le
-    #: configurateur l'éditeur »*. Elles portent sur la réponse SAISIE d'une question
+    #: Comparaisons à un NOMBRE (D-267). Elles portent sur la réponse SAISIE d'une question
     #: numérique (`custom_vals`), là où `in`/`not in` portent sur des valeurs choisies.
     NUMERIC_CONDITIONS = ("=", "!=", ">", ">=", "<", "<=")
 
@@ -555,9 +548,8 @@ class ProductConfigDomainLine(models.Model):
 
     # ─ LA SECONDE FORME DE FEUILLE : DÉSIGNER DES PRODUITS — C4, D-201 ──────
     #
-    # Arbitrage de Gerry : *« les conditions portent sur les valeurs d'attribut
-    # ET sur les produits. »* Les deux formes COEXISTENT — celle-ci n'en
-    # remplace aucune.
+    # ⓘ Les conditions portent sur les valeurs d'attribut ET sur les produits : les deux
+    # formes COEXISTENT, celle-ci n'en remplace aucune (D-201).
     #
     # ⚠️ **Pourquoi une seconde forme est nécessaire.** Sur un attribut à valeurs
     # dynamiques, les valeurs n'existent qu'APRÈS avoir été proposées ou
@@ -651,7 +643,7 @@ class ProductConfigDomainLine(models.Model):
         obligatoire, il est toujours présent à la création.
         """
         for line in self:
-            # ⓘ **UNE COMPARAISON NE DÉSIGNE RIEN** (2026-09-07) : elle compare la
+            # ⓘ **UNE COMPARAISON NE DÉSIGNE RIEN** (D-267) : elle compare la
             # réponse saisie à un nombre. Sa garde à elle est `_check_numeric_leaf`,
             # qui exige une question numérique et refuse justement les valeurs.
             if line.condition in self.NUMERIC_CONDITIONS:
@@ -877,10 +869,8 @@ class ProductConfigStepLine(models.Model):
         string="Configuration Step",
         required=True,
     )
-    # ⚠️ **CE CHAMP N'EST PLUS SAISI, IL EST DÉDUIT** — B1, D-202. L'étape était un
-    # contenant : on cochait ses attributs, et deux endroits devaient rester
-    # d'accord. Elle devient un séparateur — ce qui suit lui appartient jusqu'au
-    # suivant —, donc l'appartenance se lit dans l'ORDRE et nulle part ailleurs.
+    # ⚠️ **CE CHAMP EST DÉDUIT, PAS SAISI** — B1, D-202 : l'étape est un séparateur (ce
+    # qui suit lui appartient jusqu'au suivant), l'appartenance se lit dans l'ORDRE.
     #
     # ⓘ Il garde son NOM et son sens : l'assistant, le configurateur et la page
     # publique continuent de lire `cfg_step.attribute_line_ids` sans changer d'une
@@ -892,8 +882,8 @@ class ProductConfigStepLine(models.Model):
     )
     required = fields.Boolean(
         compute="_compute_required",
-        # QA, arbitré : *« une étape est obligatoire si elle contient un attribut
-        # obligatoire »*. La contrainte est DÉRIVÉE, jamais déclarée.
+        # ⓘ Une étape est obligatoire si elle contient un attribut obligatoire (D-202) :
+        # la contrainte est DÉRIVÉE, jamais déclarée.
         #
         # ⚠️ Et c'est un effet à distance : avec le séparateur, glisser une ligne
         # peut rendre une étape obligatoire, ou cesser de l'être. D'où ce champ —
@@ -1339,22 +1329,12 @@ class ProductConfigSession(models.Model):
         """
         return True
 
-    # ══ LA FOURCHE A ÉTÉ RETIRÉE — D-253 remplace D-092 ═════════════════
+    # ══ PAS DE FOURCHE — D-253 remplace D-092 ═══════════════════════════
     #
-    # `_session_for_edit` vivait ici : reprendre la session d'un autre en
-    # créait une COPIE, et l'original gardait sa version. Arbitrage de Gerry le
-    # 2026-09-05 : **on partage, on ne duplique pas**. Un interne voit et
-    # modifie en direct la configuration d'un collègue sur le même devis, comme
-    # celle d'un client connecté au portail.
-    #
-    # ⓘ Ce qui remplace la protection que la fourche apportait : l'HISTORIQUE.
-    # Chaque modification laisse sa note — `attribut : ancienne → nouvelle` —
-    # donc rien ne se perd sans laisser de trace, et on sait qui a fait quoi.
-    # Une copie muette protégeait moins que ça.
-    #
-    # ⚠️ Elle n'était appelée nulle part en production : elle attendait un
-    # branchement qui n'est jamais venu. La retirer ne change donc aucun
-    # comportement — elle retire une intention.
+    # ⚠️ Ne pas dupliquer la session reprise par un autre : on la PARTAGE — un interne
+    # modifie en direct celle d'un collègue ou d'un client du portail (D-253).
+    # ⓘ La protection est l'HISTORIQUE : chaque modification laisse sa note
+    # `attribut : ancienne → nouvelle` (D-253).
 
     @api.autovacuum
     def _gc_config_sessions(self):
@@ -1574,9 +1554,8 @@ class ProductConfigSession(models.Model):
         """Validate configuration when writing new values to session.
 
         ⚠️ **ET POSER LA TRACE** — D-253. Elle vit ICI et non dans une seconde
-        `write` : la classe en avait déjà une, et Python garde la DERNIÈRE
-        définition du corps de classe. Une surcharge ajoutée plus haut est
-        muette, sans une erreur, sans un avertissement — mesuré le 2026-09-05.
+        `write` : Python garde la DERNIÈRE définition du corps de classe, et une
+        surcharge ajoutée plus haut serait muette, sans une erreur.
 
         ⚠️ La trace est posée **après** la validation, qui peut elle-même
         retirer des valeurs devenues indisponibles : la note doit dire l'état
@@ -1637,11 +1616,8 @@ class ProductConfigSession(models.Model):
                     .ids
                 )
                 # ⚠️ **UN DÉFAUT INDISPONIBLE N'EST PAS UNE RÉPONSE — on l'écarte, on ne bloque
-                # pas** (constat de Gerry, 2026-09-29) : « Configurer » tombait en erreur
-                # parce que le défaut de « Bumper Avant » (Ciné) n'est offert qu'avec une Cam
-                # plate Ciné, et que celle par défaut est Classic. Un défaut est un réglage
-                # d'auteur ; incompatible avec les autres défauts, il ne s'applique pas, comme
-                # une réponse devenue indisponible se retire (`write`).
+                # pas** : des défauts incompatibles entre eux empêcheraient d'ouvrir toute
+                # configuration du produit (L-433).
                 default_val_ids = self._available_default_val_ids(
                     product_tmpl, default_val_ids)
                 value_ids = vals.get("value_ids")
@@ -1656,8 +1632,8 @@ class ProductConfigSession(models.Model):
                     # TODO: Remove if cond when PR with
                     # raise error on github is merged
                 except ValidationError as exc:
-                    # ⚠️ `exc.name` n'existe plus depuis Odoo 16 : le relais levait une
-                    # `AttributeError` et cachait le vrai message (mesuré le 2026-09-29).
+                    # ⚠️ `exc.name` n'existe plus depuis Odoo 16 : le relais lèverait une
+                    # `AttributeError` et cacherait le vrai message (L-433).
                     raise ValidationError(exc.args[0] if exc.args else str(exc)) from exc
                 except Exception as exc:
                     raise ValidationError(
@@ -1732,9 +1708,7 @@ class ProductConfigSession(models.Model):
         tapé, et le seul enregistrement neuf est celui qu'exige la variante.
 
         ⓘ **C'est ICI, à la confirmation, que la valeur naît** — et pas avant
-        (Gerry, 2026-09-25 : *« la valeur d'attribut devrait s'ajouter quand la
-        configuration est terminée ; en attendant elle reste stockée dans la
-        session »*). Une configuration abandonnée ne laisse rien au catalogue.
+        (D-353) : une configuration abandonnée ne laisse rien au catalogue.
         """
         self.ensure_one()
         resolved = list(value_ids or [])
@@ -1899,7 +1873,7 @@ class ProductConfigSession(models.Model):
 
         Point d'appel PUBLIC : c'est l'interface qui en a besoin, pour poser
         `configurator_surface` dans le contexte et faire afficher aux valeurs au
-        mètre carré leur MONTANT plutôt que leur taux (arbitrage Gerry).
+        mètre carré leur MONTANT plutôt que leur taux (D-162).
 
         Rend 0 tant que les deux cotes ne sont pas connues — et zéro veut dire
         « on ne sait pas encore », pas « c'est gratuit » : l'étiquette retombe
@@ -2276,7 +2250,7 @@ class ProductConfigSession(models.Model):
         for domain in reversed(domains):
             if isinstance(domain, tuple):
                 # ⚠️ **UNE COMPARAISON SE LIT SUR LA RÉPONSE SAISIE**, pas sur les
-                # valeurs choisies (2026-09-07). Une question numérique n'est pas
+                # valeurs choisies (D-267). Une question numérique n'est pas
                 # répondue en cochant : sa réponse vit dans `custom_vals`, et c'est à
                 # elle que la règle se compare.
                 #
@@ -2560,13 +2534,11 @@ class ProductConfigSession(models.Model):
     def _variant_value_ids(self, value_ids, product_tmpl_id=None):
         """Les valeurs qui entrent dans la VARIANTE — celles des questions qui CRÉENT des variantes.
 
-        ⚠️ **W-99 / D-393 (option A, Gerry 2026-10-01) : la règle du cœur d'Odoo.** Le chemin
-        hérité d'OCA faisait entrer TOUTE valeur cochée dans la variante, `no_variant` compris ;
-        le panier d'Odoo, qui l'en exclut, recomposait alors un AUTRE article, sans la réponse —
-        et la fiche boutique ne rendait plus son formulaire. Une réponse « sans variante » va
-        désormais sur la LIGNE de commande (`product_no_variant_attribute_value_ids`), jamais
-        dans l'article. Aucune donnée à reprendre : 0 variante ne portait une telle valeur, sur
-        fabk18 comme sur le serveur d'essai (relevé du 2026-10-01).
+        ⚠️ **La règle du cœur d'Odoo (W-99 / D-393, option A)** : une valeur `no_variant` dans
+        la variante ferait recomposer au panier d'Odoo un AUTRE article, sans la réponse, et
+        la fiche boutique ne rendrait plus son formulaire. Une réponse « sans variante » va
+        sur la LIGNE de commande (`product_no_variant_attribute_value_ids`), jamais dans
+        l'article.
 
         ⓘ Ce qui le rend sûr pour la fabrication : un produit configurable n'a plus le droit de
         poser une question « sans variante » qui désigne un COMPOSANT intégré

@@ -9,10 +9,8 @@ SUMMARY_FORMS = ("card", "swatch", "radio", "pills", "select")
 class ProductAttributeLine(models.Model):
     """La VUE 3D que le configurateur affiche pour cet attribut — D-163.
 
-    ⚠️ Ce champ ne peut pas vivre dans le cœur du configurateur : il pointe une
-    caméra de `product_editor`, et l'y poser forcerait le cœur AGPL-3 à dépendre
-    de l'éditeur LGPL-3 — l'inverse du sens que D-075 protège. C'est le module
-    d'interface qui les réunit, et lui seul.
+    ⚠️ Ne pas le poser dans le cœur du configurateur : il pointe une caméra de
+    `product_editor`, et le cœur en dépendrait (D-163).
     """
 
     _inherit = "product.template.attribute.line"
@@ -44,10 +42,7 @@ class ProductAttributeLine(models.Model):
         """La vue à montrer : celle de l'attribut, sinon celle de l'étape, sinon RIEN.
 
         ⚠️ « Rien » ne veut pas dire « la vue par défaut » : la caméra **ne bouge
-        pas** (arbitrage Gerry). Le client garde le cadrage qu'il s'est donné ;
-        une vue déclarée l'impose, l'absence de vue le laisse tranquille. C'est
-        le précédent de D-125 dans l'éditeur — trois travaux imposent leur vue,
-        et rendent le réglage en partant.
+        pas**, le client garde son cadrage (D-163, précédent D-125).
         """
         self.ensure_one()
         if self.view_camera_id:
@@ -60,30 +55,18 @@ class ProductAttributeLine(models.Model):
 class ProductAttribute(models.Model):
     """Le type « matière » — l'attribut dont les valeurs désignent une FICHE.
 
-    ⚠️ Il vit ICI et non dans le cœur du configurateur, pour la même raison que
-    `view_camera_id` : il pointe `product.model3d.material`, un modèle de
-    `product_editor`. ⓘ **Mais pas pour la raison que ce fichier avançait
-    jusqu'ici.** Le commentaire de `view_camera_id` invoque la licence — *« forcer
-    le cœur AGPL-3 à dépendre de l'éditeur LGPL-3, l'inverse du sens que D-075
-    protège »* — et D-075 dit précisément le contraire : *« configurateur | AGPL-3
-    | fork OCA + moteur de l'éditeur (LGPL-3, compatible) […] la LGPL-3 étant
-    compatible avec l'AGPL-3, l'architecture tient »*. Ce que D-075 interdit, c'est
-    l'ÉDITEUR dépendant du configurateur, et un configurateur AGPL s'appuyant sur
-    du propriétaire.
-
-    La vraie raison est la **MODULARITÉ** : un configurateur sans éditeur 3D doit
-    continuer de fonctionner. Ce module, lui, dépend déjà des deux.
+    ⚠️ Ne pas le poser dans le cœur du configurateur : il pointe
+    `product.model3d.material`, un modèle de `product_editor`, et un configurateur sans
+    éditeur 3D doit continuer de fonctionner.
+    ⓘ D-075 n'interdit PAS au configurateur AGPL-3 de dépendre de l'éditeur LGPL-3 : la
+    raison est la MODULARITÉ, pas la licence.
 
     ─ Pourquoi une fiche et non une couleur ──────────────────────────────────
 
-    Une matière dépend de la pièce (D-166) : « RAL 7016 » n'est pas la même fiche
-    sur une poignée d'alu et sur un panneau d'acier. La piste d'un attribut
-    désignant une COULEUR du nuancier, la zone dérivant sa fiche de *(sa matière
-    modèle × la couleur)*, a donc été explorée — et écartée par Gerry le
-    2026-08-28 : *« c'est plus que couleur ; si on choisit du bois, un métal ou une
-    finition de laquage, cela se voit dans la miniature. La miniature de la matière
-    sert à la sélection. »* Un code couleur ne montre ni le fil du bois ni le
-    brossé du métal ; seule une fiche porte une `preview_image`.
+    ⚠️ Un code couleur ne montre ni le fil du bois ni le brossé du métal ; seule une fiche
+    porte une `preview_image` (D-196).
+    ⓘ Une matière dépend de la pièce (D-166) : « RAL 7016 » n'est pas la même fiche sur une
+    poignée d'alu et sur un panneau d'acier.
 
     ⚠️ Le cas de D-166 ne disparaît pas — il se DÉPLACE. Une fiche « alu satiné »
     ne s'applique pas à un panneau d'acier, et la réponse n'est plus une table de
@@ -97,54 +80,33 @@ class ProductAttribute(models.Model):
 
     _inherit = "product.attribute"
 
-    # ⚠️ **« Matière » n'est PLUS ajouté ici**, il est dans la liste de base de
-    # `product_attribute_advanced` (2026-09-02). Ce module est le pont entre le
-    # configurateur et l'éditeur ; or c'est l'ÉDITEUR qui a besoin de cette valeur — il
-    # ne propose comme pilote de zone que les questions qui portent sur une matière — et
-    # il ne peut pas dépendre d'un pont AGPL-3 (D-075). La laisser ici la rendait donc
-    # inatteignable pour son premier usager.
+    # ⚠️ Ne pas ajouter « Matière » à `value_type` ici : l'ÉDITEUR la lit, et ne peut pas
+    # dépendre de ce pont AGPL-3 (D-075). Elle vit dans `product_attribute_advanced`.
     #
-    # ⓘ Ce qui RESTE ici est le lien réel : la valeur qui pointe une fiche matière. Une
+    # ⓘ Ici vit le lien réel : la valeur qui pointe une fiche matière. Une
     # valeur de sélection ne nomme aucun modèle et n'entraîne aucune dépendance ; un
     # `Many2one` vers `product.model3d.material`, si.
 
-    # ── LES FORMES D'AFFICHAGE SONT À CE MODULE — D-258, arbitré 2026-09-06 ──
+    # ── LES FORMES D'AFFICHAGE SONT À CE MODULE (D-258) ──
     #
-    # Odoo en propose cinq — radio, pastilles, liste, couleur, cases — et aucune ne
-    # montre une IMAGE. Or une réponse qui désigne un produit ou une matière se
-    # reconnaît à sa forme avant de se lire : la CARTE est un carré à coins
-    # arrondis portant la vignette, le libellé dessous.
-    #
-    # ⓘ **Pourquoi ici et pas dans `product_attribute_advanced`**, où elle avait
-    # d'abord été posée. Ce module-là dit ce qu'une question EST — ce qu'une
-    # valeur désigne, comment elle se lit, dans quelle unité — et sa notice
-    # écarte explicitement le dessin : *« il ne porte aucun WIDGET »*. Une forme
-    # d'affichage est du dessin, et c'est ce module-ci qui dessine. Les formes à
-    # venir s'ajoutent donc ICI, à côté du gabarit qui les rend.
-    #
-    # ⓘ Ajoutée au champ du CŒUR plutôt que doublée par un réglage à nous : deux
-    # façons de dire « comment cette question s'affiche » finiraient par se
-    # contredire, faute que ce dépôt a déjà payée (`nature` contre `value_type`,
-    # 2026-09-02).
-    #
-    # ⚠️ **ODOO NE SAIT PAS LA RENDRE.** `website_sale.variants` branche en
-    # `t-if`/`t-elif` sur ses cinq chaînes, sans `t-else` : une carte disparaît de
-    # SES pages, sans erreur (rattrapé par `variants_card_fallback` côté
-    # boutique). Et son dialogue de vente est pire : il VALIDE `display_type`
-    # contre une liste fermée puis choisit son gabarit par un `switch` sans
-    # `default`. ⏳ Non traité — il y faut un module-pont dépendant de `sale`.
-    # ⓘ **LA GRANDE PASTILLE** (demande de Gerry, 2026-09-29) : un disque illustré de la
-    # matière ou de la teinte, son nom dessous — la « Couleur » d'Odoo en plus grand et
-    # nommée, parce que 32 px ne montrent pas un bois. Mêmes deux rustines que la carte :
-    # la boutique la rend en « Couleur » (`variants_card_fallback`), le dialogue de vente
-    # l'accepte (`sale_card_tolerance.js`).
+    # ⓘ La CARTE : un carré à coins arrondis portant la vignette, le libellé dessous.
+    # ⓘ La GRANDE PASTILLE : un disque illustré de la matière ou de la teinte, son nom
+    # dessous — 32 px ne montrent pas un bois.
+    # ⚠️ Les formes à venir s'ajoutent ICI : `product_attribute_advanced` ne porte aucun
+    # widget (D-258).
+    # ⚠️ Ajoutées au champ du CŒUR : un second réglage « comment cette question
+    # s'affiche » finirait par contredire le premier.
+    # ⚠️ `website_sale.variants` n'a pas de `t-else` : sans `variants_card_fallback`, une
+    # forme d'ici disparaît de la boutique, sans erreur (D-258).
+    # ⚠️ Le dialogue de vente VALIDE `display_type` contre une liste fermée : sans
+    # `sale_card_tolerance.js`, il tombe sur une forme d'ici (D-258).
     display_type = fields.Selection(
         selection_add=[("card", "Card"), ("swatch", "Large swatch")],
         ondelete={"card": "set default", "swatch": "set default"},
     )
-    # ⓘ **LA MARQUE DU CHOIX d'une grande pastille** — l'anneau OU la coche, jamais les deux
-    # (Gerry, 2026-09-29 : « les deux ne vont pas ensemble »). Sur l'ATTRIBUT (option A) :
-    # la coche pour des bois, l'anneau pour une texture dont elle cacherait le détail.
+    # ⓘ LA MARQUE DU CHOIX d'une grande pastille : l'anneau OU la coche, jamais les deux.
+    # ⓘ Sur l'ATTRIBUT : la coche pour des bois, l'anneau pour une texture dont elle
+    # cacherait le détail.
     swatch_mark = fields.Selection(
         selection=[("check", "Checkmark"), ("ring", "Ring")],
         default="check",
@@ -153,10 +115,10 @@ class ProductAttribute(models.Model):
         help="How a large swatch shows that it is chosen: a checkmark in its centre, or a "
         "ring around it. The name below turns bold in both cases.",
     )
-    # ⓘ **LA TAILLE d'une carte ou d'une grande pastille** — D-382 (Gerry, 2026-09-30 :
-    # « plutôt modifier la taille que le nombre en largeur »). Le nombre par ligne en
-    # découle, selon la place. `medium` est l'affichage d'avant ce champ : un attribut
-    # existant ne bouge pas d'un pixel.
+    # ⓘ LA TAILLE d'une carte ou d'une grande pastille ; le nombre par ligne en découle,
+    # selon la place (D-382).
+    # ⚠️ `medium` par défaut : c'est l'affichage d'avant ce champ, un attribut existant ne
+    # bouge pas d'un pixel (D-382).
     answer_size = fields.Selection(
         selection=[("small", "Small"), ("medium", "Medium"), ("large", "Large")],
         default="medium",
@@ -167,7 +129,7 @@ class ProductAttribute(models.Model):
     )
     # ⓘ **LA DISPOSITION des réponses** — D-382. `inline` est l'affichage d'avant : toutes les
     # réponses, dans la forme de la question. `scroll` et `line` ne valent que pour les
-    # formes à image ; `summary` aussi pour les boutons et la liste (Gerry, 2026-09-30).
+    # formes à image ; `summary` aussi pour les boutons et la liste.
     # ⚠️ **Pas de contrainte** sur le couple forme / disposition : elle interdirait de
     # changer la forme d'un attribut déjà réglé. Une combinaison sans effet retombe sur
     # `inline` au moment de servir (`_web_answer_layout`).
@@ -209,19 +171,11 @@ class ProductAttributeValue(models.Model):
     libellé du `Selection` ci-dessus : aucune colonne de la valeur ne pointait une
     fiche matière. Ce champ est le chaînon qui manquait.
 
-    **Pourquoi la MATIÈRE et non la teinte du nuancier.** Les deux modèles
-    existent — `product.model3d.color` porte un hexa et un code RAL,
-    `product.model3d.material` porte un rendu PBR. Arbitrage de Gerry
-    (2026-08-28) : *« il pointe la miniature pbr »*, ce qui prolonge ce qu'il
-    avait dit du nuancier — *« c'est plus que couleur : si on choisit du bois, un
-    métal ou une finition de laquage, cela se voit dans la miniature »*. Une
-    essence de chêne n'a pas de code hexadécimal.
+    ⚠️ La MATIÈRE et non la teinte du nuancier (`product.model3d.color`) : une essence de
+    chêne n'a pas de code hexadécimal (D-196).
 
-    ⚠️ **Et la miniature n'est pas RECOPIÉE.** `material_preview` est un champ
-    `related` en lecture seule : l'image reste celle du catalogue, régénérée à
-    chaque enregistrement de la matière. La copier ici la ferait diverger à la
-    première retouche, et le catalogue cesserait d'être la source. Arbitré :
-    *« celle de la matière en lecture seule »*.
+    ⚠️ **La miniature n'est pas RECOPIÉE** : `material_preview` est un `related` en lecture
+    seule ; une copie divergerait à la première retouche de la matière (D-196).
 
     ⓘ Le droit de lecture existe déjà : `product.model3d.material` est lisible par
     `base.group_user`, donc par tout utilisateur interne qui ouvre un attribut.
@@ -303,8 +257,7 @@ class ProductAttributeValue(models.Model):
         """Le crochet du cœur, complété : la matière s'efface aussi — D-219.
 
         ⓘ Chaque module efface ce qu'il a posé. Le cœur ne peut pas nommer
-        `material_id` : il pointe une fiche de l'éditeur, et le nommer ferait
-        dépendre l'AGPL-3 de celui-ci (D-075).
+        `material_id` : il pointe une fiche de l'éditeur, dont le cœur ne dépend pas.
         """
         super()._purge_designation(value_type)
         if value_type != "material":

@@ -77,8 +77,8 @@ class ProductEnvironment(models.Model):
     def editor_save(self, plan, wall_height=None, wall_thickness=None, start_view=False, template_id=None):
         """Enregistrer le plan — dans une COPIE propre au devis quand d'autres devis le lisent (8.5c, O-2).
 
-        ⓘ *« Pousser les murs crée une copie, les autres devis ne sont pas impactés »* (Gerry) : le montage
-        du devis en cours suit le plan modifié, celui des autres devis garde le plan qu'il lisait.
+        ⓘ Le montage du devis en cours suit le plan modifié ; celui des autres devis garde le
+        plan qu'il lisait (D-428).
         """
         self.ensure_one()
         order = self._open_order()

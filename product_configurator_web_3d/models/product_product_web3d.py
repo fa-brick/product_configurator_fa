@@ -1,16 +1,13 @@
 # Copyright 2026 fa-brick
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-"""Reconfigurer une VARIANTE ouvre la page 3D — 2026-09-19.
+"""Reconfigurer une VARIANTE ouvre la page 3D.
 
 La fiche d'une variante configurable porte deux entrées vers la
 reconfiguration : un bouton d'en-tête et la flèche circulaire de la ligne de
-variantes. Toutes deux appelaient l'assistant OCA.
+variantes. Toutes deux mènent ici, et non à l'assistant OCA.
 
-⚠️ **Le wizard est mort** (arbitrage Gerry, 2026-09-19). Ces deux boutons ne
-changent ni de place ni d'icône — seulement de destination, exactement comme la
-clé à molette de la fiche produit l'a fait avant eux. C'est la règle qu'on
-s'est donnée : on ne retire pas un geste que les gens connaissent, on le fait
-aboutir au bon endroit.
+⚠️ Ne pas retirer ni déplacer ces deux boutons : seule leur DESTINATION change, comme la clé à
+molette de la fiche produit.
 """
 from odoo import models
 

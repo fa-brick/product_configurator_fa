@@ -9,10 +9,10 @@ explicite.
 
 ─ Ce que la main n'est PAS ─────────────────────────────────────────────────
 
-⚠️ **Ce n'est pas un verrou de sécurité.** N'importe qui peut la prendre, et
-c'est voulu : Gerry a tranché que l'interne agit sur la configuration du client
-(D-253). Ce qui protège une session reste son JETON. La main empêche les
-gestes qui se marchent dessus, pas les gestes qu'on n'a pas le droit de faire.
+⚠️ **Ce n'est pas un verrou de sécurité.** N'importe qui peut la prendre : l'interne
+agit sur la configuration du client (D-253). Ce qui protège une session reste son JETON.
+La main empêche les gestes qui se marchent dessus, pas les gestes qu'on n'a pas le droit
+de faire.
 
 ⓵ Elle se prend **implicitement** au premier geste, si personne ne l'a.
 ⓶ Elle se reprend **explicitement**, toujours, par un bouton — et l'autre le voit.

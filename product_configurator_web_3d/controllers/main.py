@@ -10,9 +10,9 @@ montage « depuis le site » n'avait aucune porte d'entrée. Les voici.
 
 ─ Le JETON est l'identité, et rien d'autre ──────────────────────────────────
 
-D-091 : *« lors d'une configuration web, le visiteur a un code qui lui permet de
-revenir sur sa configuration »*. Sur ces routes, il n'y a **pas d'utilisateur à
-contrôler** — l'appelant est l'utilisateur *public*. Ce qui protège est le jeton :
+Le visiteur web reçoit un JETON qui lui permet de revenir sur sa configuration
+(D-091). Sur ces routes, il n'y a **pas d'utilisateur à contrôler** — l'appelant
+est l'utilisateur *public*. Ce qui protège est le jeton :
 32 octets aléatoires, jamais le numéro de session, qui est une **séquence
 énumérable** (`CS0001`).
 
@@ -47,12 +47,11 @@ class ProductConfiguratorWeb3D(http.Controller):
         traversent.
         """
         session = request.env["product.config.session"].sudo()._find_by_access_token(token)
-        # ⚠️ **DANS LA LANGUE DU VISITEUR** (D-353). Ces routes JSON ne sont pas des routes
-        # de site : elles tournent dans la langue de l'utilisateur PUBLIC (en_US), alors que
-        # la page, elle, s'affiche dans celle du site. Un refus de saisie — « 'abc' n'est
-        # pas un nombre » — tombait donc en anglais sous une page française (mesuré le
-        # 2026-09-25). La page pose `frontend_lang` ; on le lit, s'il désigne une langue
-        # ACTIVE — sans quoi un cookie forgé choisirait n'importe quoi.
+        # ⚠️ Sans `frontend_lang`, ces routes JSON (pas « website ») parlent la langue de
+        # l'utilisateur PUBLIC : un refus de saisie tombe en anglais sous une page française
+        # (D-353, L-395).
+        # ⚠️ Ne lire `frontend_lang` que s'il désigne une langue ACTIVE : un cookie forgé
+        # choisirait n'importe quoi.
         lang = request.cookies.get("frontend_lang")
         if session and lang and lang in dict(request.env["res.lang"].get_installed()):
             session = session.with_context(lang=lang)
@@ -75,7 +74,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         sitemap=False,
     )
     def page(self, token, **kwargs):
-        """La page NUE — viewer à gauche, questions à droite (Gerry, 2026-08-26).
+        """La page NUE — viewer à gauche, questions à droite.
 
         ⚠️ **Le jeton n'est pas vérifié ici, et c'est délibéré.** La page se rend, le
         composant appelle `/configurator/state`, et c'est cette réponse qui dit si le
@@ -87,11 +86,8 @@ class ProductConfiguratorWeb3D(http.Controller):
         un moteur qui suivrait un lien partagé enregistrerait le jeton d'un client.
 
         ⚠️ **`website=True` — SANS LUI, CETTE PAGE REND UN 500** dès que le module
-        `website` est installé. Il étend `web.frontend_layout` d'un noeud qui lit
-        `website` dans le contexte de rendu, et seul ce drapeau l'y met :
-        `KeyError: 'website'`, mesuré le 2026-09-05. La page marchait donc
-        uniquement sur une base sans site — c'est-à-dire partout où on l'avait
-        essayée.
+        `website` est installé : il étend `web.frontend_layout` d'un noeud qui lit
+        `website` dans le contexte de rendu (`KeyError: 'website'`).
 
         ⓘ Le drapeau ne CHANGE RIEN sans le module `website` : personne ne lit
         cette clé de routage, et la page reste NUE dans les deux cas — c'est le
@@ -123,12 +119,10 @@ class ProductConfiguratorWeb3D(http.Controller):
     def product_image(self, token, **kwargs):
         """LA PHOTO qui tient la place de la 3D pendant qu'elle se construit.
 
-        ⚠️ **Pourquoi pas `/web/image/product.template/<id>`.** Ce contrôleur
-        vérifie le droit de LECTURE, et un produit configurable n'est pas
-        forcément publié : le visiteur recevait le pictogramme d'Odoo, et
-        l'attente montrait un appareil photo barré au lieu de la pièce qu'il
-        vient voir (2026-09-07). Même mur, même franchissement que les vignettes
-        de valeurs : `sudo`, pour une image que la page montre de toute façon.
+        ⚠️ **Pas `/web/image/product.template/<id>`** : il vérifie le droit de
+        LECTURE, et un produit configurable non publié rendrait au visiteur le
+        pictogramme d'Odoo au lieu de la pièce. D'où `sudo`, comme pour les
+        vignettes de valeurs, pour une image que la page montre de toute façon.
 
         ⚠️ **Le JETON est l'autorisation**, et c'est ce qui rend la route sûre :
         il désigne UNE configuration, donc un produit et un seul. Une route par
@@ -155,13 +149,10 @@ class ProductConfiguratorWeb3D(http.Controller):
     def value_image(self, value_id, **kwargs):
         """La VIGNETTE d'une réponse — produit, matière, ou son image propre.
 
-        ⚠️ **Pourquoi une route à nous plutôt que `/web/image`.** Ce contrôleur
-        vérifie le droit de lecture sur l'enregistrement, et une réponse désigne
-        souvent un COMPOSANT non publié — une top plate, un bras : le visiteur
-        recevrait un 403 par vignette. C'est le même mur que celui qui rendait
-        toute la boutique inaccessible (correctif du 2026-09-06), et on le
-        franchit ici au même titre : en `sudo`, pour une image de catalogue que
-        le configurateur montre de toute façon.
+        ⚠️ **Pas `/web/image`** : il vérifie le droit de lecture sur
+        l'enregistrement, et une réponse désigne souvent un COMPOSANT non publié
+        — le visiteur recevrait un 403 par vignette. D'où `sudo`, pour une image
+        de catalogue que le configurateur montre de toute façon.
 
         ⓘ Ce qui sort est une IMAGE, jamais un enregistrement : ni prix, ni nom
         de produit, ni disponibilité. Un identifiant énumérable ne donne donc que
@@ -216,11 +207,9 @@ class ProductConfiguratorWeb3D(http.Controller):
     def take_hand(self, token=None, holder=None, **kwargs):
         """Prendre la main — et cela RÉUSSIT toujours.
 
-        ⚠️ Ce n'est pas un verrou qu'on force : c'est une coordination qu'on
-        annonce. Gerry a tranché que l'interne agit sur la configuration du
-        client (D-253) ; refuser ici rendrait cette décision inapplicable dès
-        que le client aurait touché un bouton. Ce qui compte est que l'autre le
-        VOIE — d'où la diffusion qui suit.
+        ⚠️ Ne jamais refuser ici : l'interne doit pouvoir agir sur la configuration
+        du client même après que celui-ci a touché un bouton (D-253).
+        ⓘ Ce qui compte est que l'autre le VOIE — d'où la diffusion qui suit.
         """
         session = self._session(token, holder)
         if not session:
@@ -310,11 +299,9 @@ class ProductConfiguratorWeb3D(http.Controller):
                   link_id=None, custom_value=None, **kwargs):
         """Répondre à une question, et recevoir l'état qui en découle.
 
-        ⚠️ **AUCUNE FOURCHE, NULLE PART** — et depuis D-253, plus nulle part
-        ailleurs non plus. La duplication d'une session reprise par un autre a été
-        RETIRÉE du cœur (arbitrage Gerry, 2026-09-05) : on partage, et chaque
-        modification laisse sa note. Ce qui n'était vrai que de cette route est
-        devenu la règle du dépôt. **Le porteur du jeton EST le propriétaire.**
+        ⚠️ **AUCUNE FOURCHE** : la session reprise par un autre n'est pas dupliquée,
+        on la partage et chaque modification laisse sa note (D-253).
+        **Le porteur du jeton EST le propriétaire** (D-190).
 
         ⚠️ Une session **confirmée** ne se modifie plus : elle a donné sa variante,
         et la changer sous une commande déjà passée serait pire qu'un refus.
@@ -346,11 +333,9 @@ class ProductConfiguratorWeb3D(http.Controller):
         # vérifie ; une question fixée par l'auteur est refusée comme une valeur inconnue.
         if link_id:
             return session.web_set_child_value(int(link_id), value)
-        # ⚠️ **UNE QUESTION MULTIPLE S'AJOUTE, LES AUTRES REMPLACENT.** C'est la
-        # seule forme d'affichage dont la règle serveur diffère : une case cochée
-        # s'ajoute aux précédentes, et re-cliquer la décoche. Jusqu'ici, `multi`
-        # était SERVI à la page et ignoré ici — on ne pouvait donc pas en retenir
-        # deux, et rien ne le disait (constat de Gerry, 2026-09-06).
+        # ⚠️ **UNE QUESTION MULTIPLE S'AJOUTE, LES AUTRES REMPLACENT** : une case cochée
+        # s'ajoute aux précédentes, et re-cliquer la décoche ; ignorer `multi` ici n'en
+        # retiendrait qu'une, sans rien dire (D-258).
         line = session.product_tmpl_id.attribute_line_ids.filtered(
             lambda l, a=value.attribute_id: l.attribute_id == a
         )[:1]

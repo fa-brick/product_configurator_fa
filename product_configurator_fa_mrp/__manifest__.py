@@ -17,15 +17,10 @@
         "security/configurator_security.xml",
         "security/ir.model.access.csv",
     ],
-    # ⓘ **PLUS AUCUN ASSET, et c'est le cœur de ce lot.** Le bouton « Configure » qui
-    # vivait ici s'injectait dans les gabarits GÉNÉRIQUES de toutes les listes, kanbans
-    # et formulaires du back-office, se cachait en CSS, puis se rallumait en JS quand le
-    # modèle était le bon. Mesuré le 2026-09-18 : un clic partait **deux fois**, le
-    # gabarit et le mixin ayant chacun branché le leur sur le même bouton.
-    #
-    # Il est remplacé par `product_configurator_web_3d_mrp`, qui pose un WIDGET sur le
-    # seul champ produit — cadré par construction (arbitrage Gerry, 2026-09-19 :
-    # *« cela évite la présence inutile de ce bouton »*).
+    # ⚠️ AUCUN ASSET : un bouton « Configure » injecté dans les gabarits GÉNÉRIQUES du
+    # back-office partait DEUX fois au clic (gabarit et mixin branchés sur le même bouton).
+    # ⓘ Le configurateur s'ouvre par le WIDGET de `product_configurator_web_3d_mrp`, posé sur
+    # le seul champ produit.
     "demo": ["demo/product_template.xml"],
     "installable": True,
     "auto_install": False,

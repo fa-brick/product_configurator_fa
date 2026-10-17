@@ -18,21 +18,15 @@
         # ══ LE MÊME CONFIGURATEUR, DANS LE DEVIS — D-259 ═══════════════════════
         #
         # ⓘ **Rien du viewer n'est listé ici** : `product_editor` met déjà ses 65
-        # fichiers dans `web.assets_backend` (vérifié le 2026-09-06 en comparant
-        # les deux listes du manifeste de l'éditeur). Le back-office porte donc
-        # la scène 3D depuis toujours — c'est le FRONT qui avait dû la recevoir.
+        # fichiers dans `web.assets_backend` (D-259).
         #
         # ⚠️ L'ordre reste significatif ([[L-001]]) : l'état, puis la page qu'il
         # nourrit, puis le dialogue qui la monte, puis le correctif qui l'ouvre.
-        # ⓘ **La PAGE n'est plus listée ici** (2026-09-07) : elle est déclarée par
-        # `product_configurator_web_3d`, qui la possède et l'ouvre lui-même en
-        # dialogue depuis une fiche produit (D-262). La lister deux fois la
-        # chargerait deux fois.
+        # ⚠️ Ne pas lister la PAGE ici : `product_configurator_web_3d` la déclare déjà,
+        # et la lister deux fois la chargerait deux fois (D-262).
         "web.assets_backend": [
-            # ⓘ **LE DIALOGUE N'EST PLUS ICI.** Il n'avait rien de commercial — il monte
-            # la page du configurateur et rend ce qu'elle produit — et l'ordre de
-            # fabrication en a le même besoin. Il appartient donc à
-            # `product_configurator_web_3d`, qui possède déjà la page, et qui le déclare.
+            # ⓘ Le DIALOGUE est déclaré par `product_configurator_web_3d` : l'ordre de
+            # fabrication en a le même besoin que le devis.
             "product_configurator_web_3d_sale/static/src/sale_product_field_patch.js",
         ],
     },

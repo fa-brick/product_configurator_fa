@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """L'image d'une variante née d'une configuration — D-399, lot 5 (voie A).
 
-Gerry, 2026-10-05 : *« A pour l'ajout au panier puis B quand c'est possible »*, puis *« pour
-tout devis / commande dont le variant n'est pas créé »*. Quand une confirmation sur la page 3D
-CRÉE la variante, le navigateur du client la photographie — sous la vue de l'appareil photo,
-avec le décor, les surfaces d'ombre et le cadre commun de la pièce — et l'image part ici.
+Quand une confirmation sur la page 3D CRÉE la variante (panier comme devis), le navigateur
+du client la photographie — sous la vue de l'appareil photo, avec le décor, les surfaces
+d'ombre et le cadre commun de la pièce — et l'image part ici.
 L'éditeur la remplacera par la sienne (voie B : `editor_image_source = 'client'`, compteur,
 activité, avis).
 

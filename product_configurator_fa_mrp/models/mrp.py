@@ -24,17 +24,10 @@ class MrpProduction(models.Model):
         string="Custom Values",
     )
 
-    # ⓘ **`action_config_start` ET `reconfigure_product` ONT DISPARU** — arbitrage
-    # Gerry, 2026-09-19 : *« pour moi le wizard est mort, on peut le supprimer. »*
-    #
-    # Les deux n'existaient que pour ouvrir l'assistant OCA : la première depuis un
-    # bouton injecté dans toutes les listes du back-office, la seconde depuis un bouton
-    # « Reconfigure » du formulaire. Le configurateur 3D les remplace toutes les deux, et
-    # `product_configurator_web_3d_mrp` l'ouvre au moment où l'on CHOISIT le produit —
-    # ce qui supprime le besoin d'un bouton.
-    #
-    # ⚠️ `config_session_id` reste : c'est le lien vers la configuration, et le
-    # configurateur 3D l'écrit comme le faisait le wizard. Ce n'est pas lui qui meurt.
+    # ⓘ Ni `action_config_start` ni `reconfigure_product` : le configurateur 3D s'ouvre au
+    # CHOIX du produit, par `product_configurator_web_3d_mrp`.
+    # ⚠️ Ne pas retirer `config_session_id` : le configurateur 3D y écrit le lien vers la
+    # configuration.
 
 
 class MrpBom(models.Model):
@@ -96,7 +89,7 @@ class MrpBomLineConfiguration(models.Model):
 
         ⚠️ Elle se compare aux valeurs de l'ARTICLE (`create_get_bom`), et depuis l'option A une
         réponse « sans variante » n'y entre plus : la condition ne jouerait JAMAIS, sans un mot.
-        Même raison que le refus d'un composant « sans variante » (Gerry, Q1) : la nomenclature
+        Même raison que le refus d'un composant « sans variante » (D-393, Q1) : la nomenclature
         est bâtie par article.
         """
         for config in self:

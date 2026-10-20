@@ -2716,3 +2716,8 @@ msgstr ""
 "configurations qui ne diffèrent que par lui partageraient un même produit, "
 "et une même nomenclature. Réglez sa création de variantes sur « "
 "Dynamiquement », ou vendez-le à part."
+
+#. module: product_configurator_fa
+#: model_terms:ir.ui.view,arch_db:product_configurator_fa.product_template_attribute_line_form_config
+msgid "Free text"
+msgstr "Texte libre"

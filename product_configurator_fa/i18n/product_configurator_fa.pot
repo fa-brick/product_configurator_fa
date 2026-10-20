@@ -2482,3 +2482,8 @@ msgid ""
 "differing only by it would share one product, and one bill of materials. Set"
 " its variant creation to “Dynamically”, or sell it separately."
 msgstr ""
+
+#. module: product_configurator_fa
+#: model_terms:ir.ui.view,arch_db:product_configurator_fa.product_template_attribute_line_form_config
+msgid "Free text"
+msgstr ""

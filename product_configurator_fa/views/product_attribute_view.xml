@@ -700,6 +700,17 @@
                     </div>
                     <field name="visibility_domain_id" />
                 </group>
+                <!-- ⓘ La SAISIE d'un texte libre (W-136) : longueur et format qu'une réponse tapée doit
+                     tenir — un numéro de rue, une plaque. Contrôlés par `validate_custom_val`. -->
+                <field name="custom" invisible="1" />
+                <group
+                    name="free_text"
+                    string="Free text"
+                    invisible="not custom or attribute_custom_type not in [False, 'char']"
+                >
+                    <field name="max_length" />
+                    <field name="regexp" placeholder="[0-9]{1,4}( ?(bis|ter))?" />
+                </group>
                 <group
                     name="bounds"
                     string="Bounds"

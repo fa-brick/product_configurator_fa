@@ -89,6 +89,13 @@ describe("⚠️ la CUISSON et l'AMBIANCE traversent la mise en forme", () => {
         expect(toViewModel(PAYLOAD).imported).toBeNull();
     });
 
+    test("⚠️ les POLICES de la forme Texte aussi, avec leur URL à jeton (W-136)", () => {
+        // Même maillon : une police que la recopie oublie laisse la plaque sans son numéro ([[L-357]]).
+        const fonts = { 3: { name: "Roboto Bold", url: "/web/content/10231?access_token=abc" } };
+        expect(toViewModel({ ...PAYLOAD, fonts }).fonts).toEqual(fonts);
+        expect(toViewModel(PAYLOAD).fonts).toBeNull();
+    });
+
     test("l'ambiance aussi", () => {
         const ambience = { toneMapping: "aces", exposure: 1.2 };
         expect(toViewModel({ ...PAYLOAD, ambience }).ambience).toEqual(ambience);

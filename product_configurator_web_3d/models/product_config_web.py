@@ -690,10 +690,13 @@ class ProductConfigSession(models.Model):
                 piece_id = child.get("model3dId")
                 if piece_id in driven and child.get("id") in answers_by_node:
                     drivers = {r["driver_attribute_id"][0] for r in driven[piece_id]}
+                    # ⚠️ `isdigit` : la clé du TEXTE d'une réponse (`__attribute_text_<id>`, W-136)
+                    #    partage le préfixe, et `int()` y lèverait.
                     answers = {
                         int(key[len(marker):]): value
                         for key, value in answers_by_node[child["id"]].items()
-                        if key.startswith(marker) and int(key[len(marker):]) in drivers
+                        if key.startswith(marker) and key[len(marker):].isdigit()
+                        and int(key[len(marker):]) in drivers
                     }
                     signature = (piece_id, tuple(sorted(answers.items())))
                     groups.setdefault(signature, []).append(child["id"])
@@ -868,6 +871,15 @@ class ProductConfigSession(models.Model):
             if typed:
                 out.setdefault(link_id, {}).update(typed)
         return out
+
+    def _web_fonts(self, definition):
+        """Les polices que la définition CITE — `{id: {name, url}}` (W-136, D-499).
+
+        ⓘ `engine_fonts` est en `sudo` : le visiteur n'a aucun droit sur les polices.
+        ⚠️ L'URL porte son jeton : `/web/content/<id>` nu répond 404 à un visiteur ([[L-599]]).
+        """
+        Font = self.env["product.model3d.font"]
+        return Font.engine_fonts(Font.cited_in(definition))
 
     def _web_placements(self, model3d, definition, values):
         """Les PLACEMENTS que le client peut régler — `{nodeId → {linkId, label,
@@ -1660,6 +1672,10 @@ class ProductConfigSession(models.Model):
             # pour la même raison que la cuisson. Sans eux, toute pièce de fichier était un
             # volume VIDE sur la page : les inserts du JeNo manquaient (D-487).
             "imported": model3d.imported_files(values) if model3d else {},
+            # ⚠️ **LES POLICES de la forme Texte**, avec leur URL à jeton — hors de la
+            # définition pour la même raison (W-136). Sans elles, la plaque s'affiche sans
+            # son numéro.
+            "fonts": self._web_fonts(definition) if model3d else {},
             # Les PLACEMENTS que le client peut régler — et eux seuls (D-332, D-333).
             "placements": self._web_placements(model3d, definition, values) if model3d else {},
         }

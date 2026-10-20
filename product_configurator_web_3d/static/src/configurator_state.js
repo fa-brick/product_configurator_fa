@@ -631,6 +631,8 @@ export function toViewModel(payload, previous = null) {
         // ⚠️ Même maillon, même piège : un champ servi que cette recopie oublie n'atteint
         // jamais la page ([[L-357]]). Les fichiers importés, et leur URL à jeton.
         imported: payload.imported || null,
+        // ⚠️ Même maillon encore : les POLICES de la forme Texte, et leur URL à jeton (W-136).
+        fonts: payload.fonts || null,
         ambience: keepIfSame(previous?.ambience, payload.ambience || null),
     };
 }

@@ -62,6 +62,12 @@ describe("la scène se construit par la SESSION du moteur (D-329)", () => {
             .toBeLessThan(corps.indexOf("this._session.build("));
     });
 
+    test("⚠️ les POLICES aussi — sans elles, la forme Texte se construit sans lettres (W-136)", () => {
+        const corps = buildScene();
+        expect(corps.indexOf("await this._loadFonts(fonts)"))
+            .toBeLessThan(corps.indexOf("this._session.build("));
+    });
+
     test("les QUATRE projections viennent de la session — aucune n'est refaite ici", () => {
         const corps = buildScene();
         expect(corps).toContain("const { tree, worlds, solids, baked: bakedSolids, pieces, postBuild } =");

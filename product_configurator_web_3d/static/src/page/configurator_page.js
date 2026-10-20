@@ -65,6 +65,7 @@ import { AnswerPanel } from "../answers/answer_panel";
 // La copie du produit pour un HÔTE qui le montre dans sa propre scène (W-111, 8.4d).
 import { disposeSnapshot } from "@product_editor/engine/three/scene_snapshot";
 import { machiningOutline } from "@product_editor/engine/builder/hole_contour";
+import { loadFontUrls } from "@product_editor/engine/sketch/font_loader";
 
 /** Le calque par pose VIDE — une seule instance (voir `zoneMaterialsByNode`). */
 const NO_NODE_MATERIALS = Object.freeze({});
@@ -497,6 +498,25 @@ export class ConfiguratorPage extends Component {
      * c'est un téléchargement — et un échec n'est pas mémorisé : il se retente au tour
      * suivant ([[L-323]]).
      */
+    /**
+     * Les polices que la définition cite — `{id: {name, url}}`, URL à jeton du serveur (W-136).
+     *
+     * ⓘ Une police déjà lue ne se relit pas ; un échec n'arrête pas la construction, le texte manque seul.
+     */
+    async _loadFonts(fonts) {
+        const entries = {};
+        for (const [id, row] of Object.entries(fonts || {})) {
+            if (row?.url) entries[id] = row.url;
+        }
+        if (!Object.keys(entries).length) return;
+        try {
+            const { failed } = await loadFontUrls(entries);
+            if (failed.length) console.warn("[page] polices illisibles, leur texte manque :", failed);
+        } catch (e) {
+            console.warn("[page] lecteur de polices indisponible :", e);
+        }
+    }
+
     async _loadImported(buildable, imported) {
         const wanted = [...collectGlbAttachments(buildable)];
         if (!wanted.length) return this._importedGeometries || null;
@@ -575,7 +595,7 @@ export class ConfiguratorPage extends Component {
     }
 
     async _buildScene(model) {
-        const { definition, scope, baked = null, imported = null } = model || {};
+        const { definition, scope, baked = null, imported = null, fonts = null } = model || {};
         const ticket = this._buildTicket = (this._buildTicket || 0) + 1;
         this._building = true;
         this._sceneTarget = model;
@@ -601,6 +621,8 @@ export class ConfiguratorPage extends Component {
             // avant, et la session ne fait plus que la consulter.
             const bakedParts = await this._loadBaked(baked);
             const importedGeometries = await this._loadImported(buildable, imported);
+            // ⚠️ Les POLICES aussi, avant `build()` : un texte construit sans elles reste sans lettres (W-136).
+            await this._loadFonts(fonts);
             // ⓘ Le moteur se mesure PENDANT qu'il construit ([[D-094]]) : le relevé est
             // gardé sur la page, pour une sonde — jamais envoyé, une durée est une
             // propriété de la machine.

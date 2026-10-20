@@ -612,17 +612,9 @@ class ProductAttribute(models.Model):
         self.ensure_one()
         return self.value_type == "value" and self.create_variant != "no_variant"
 
-    @api.model
-    def normalize_custom_text(self, raw):
-        """Un texte saisi, débarrassé de ses espaces en trop — ou `""`.
-
-        ⓘ Pas de changement de casse : une valeur NEUVE garde l'écriture du client
-        (« Chêne massif »). C'est la COMPARAISON qui ignore la casse, pas le
-        rangement (`find_custom_value`).
-        """
-        if raw in (None, False):
-            return ""
-        return " ".join(str(raw).split())
+    # ⓘ `normalize_custom_text` vit dans `product_attribute_advanced` : l'éditeur la lit aussi,
+    #   pour le texte que dessine la forme Texte (W-136). C'est la COMPARAISON qui ignore la
+    #   casse, pas le rangement (`find_custom_value`).
 
     def canonical_custom_answer(self, raw):
         """La forme RANGÉE d'une saisie, nombre ou texte — ou `None` si elle est vide.

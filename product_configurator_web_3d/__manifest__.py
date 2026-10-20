@@ -56,6 +56,9 @@
             # fermeture des imports : ce n'est pas le viewer qui s'en sert.
             "product_editor/static/src/components/number_autocomplete/number_autocomplete.xml",
             "product_editor/static/src/components/number_autocomplete/number_autocomplete.js",
+            # ⚠️ LA PAGE AU-DESSUS DU CLAVIER (D-498) — un module de l'éditeur, que la page importe : même règle
+            # que le champ ci-dessus ([[L-150]]).
+            "product_editor/static/src/utils/keyboard_fit.js",
             "product_configurator_web_3d/static/src/page/configurator_page.scss",
             # Les réponses d'une question et le panneau de choix (E-3c-1) — avant la page qui les monte.
             "product_configurator_web_3d/static/src/answers/answers.xml",

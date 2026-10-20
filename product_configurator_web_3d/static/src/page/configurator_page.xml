@@ -4,9 +4,9 @@
     <!-- ⚠️ LE VIEWER À GAUCHE, LES QUESTIONS À DROITE.
          En colonne sous 900 px : sur un téléphone, la 3D en premier — c'est elle qu'on
          vient voir, et le lien arrive souvent par courriel. -->
-    <!-- ⓘ La classe « keyboard » : la page CALÉE AU-DESSUS DU CLAVIER du téléphone (`_watchKeyboard`). -->
+    <!-- ⓘ La classe « keyboard » : la page CALÉE AU-DESSUS DU CLAVIER tactile (`_watchKeyboard`, D-498). -->
     <div class="o_cfg3d_page" t-ref="page"
-         t-att-class="{ 'o_cfg3d_page--keyboard': state.keyboard, 'o_cfg3d_page--panel': props.panelOnly }"
+         t-att-class="{ 'o_cfg3d_page--keyboard': keyboardFit, 'o_cfg3d_page--panel': props.panelOnly }"
          t-att-style="keyboardStyle">
 
         <!-- ⚠️ **LA SORTIE est ICI, pas dans l'overlay de la fiche produit** : la grille de

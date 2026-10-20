@@ -38,6 +38,25 @@ $o-cfg3d-compact-max: 900px;
     }
 }
 
+/* ⓘ **LA PAGE PUBLIQUE TIENT DANS L'ÉCRAN, BANDEAU COMPRIS** (D-498). Le corps est une colonne de la hauteur
+   de l'écran : la page y prend la place que laisse ce qui s'ajoute après elle — le bandeau d'une base
+   neutralisée (`web.neutralize_banner`), en flux à la fin du corps.
+   ⚠️ Haute de `100dvh` elle-même, la page faisait déborder le document de la hauteur du bandeau : une
+   seconde barre de défilement, et la page qui glisse sous elle.
+   ⓘ `100dvh` après `100vh`, pour la même raison que la page : la barre d'adresse des téléphones. */
+body.o_cfg3d_body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+
+    > #wrapwrap { flex: 1 1 auto; min-height: 0; }
+    #wrapwrap > main, #wrap, owl-component { display: block; height: 100%; }
+    // ⚠️ Pas la page CALÉE au-dessus du clavier : cette règle, plus spécifique, lui reprendrait sa hauteur.
+    .o_cfg3d_page:not(.o_cfg3d_page--keyboard) { height: 100%; }
+}
+
 /* ⓘ **LA PAGE CALÉE AU-DESSUS DU CLAVIER** du téléphone (`_watchKeyboard`, D-389). Le clavier
    ne réduit que la partie VISIBLE de l'écran et fait glisser la page vers le haut : la 3D, la
    barre du prix et le panier en sortiraient ([[L-488]]). La page se pose sur
@@ -221,24 +240,48 @@ $o-cfg3d-compact-max: 900px;
     &--muted { opacity: 0.4; }
 }
 
-/* ⓘ LE BADGE DU SUPPLÉMENT (W-100) — `badge text-bg-info border` d'Odoo ; ses retouches vivent sous
-   `.variant_attribute` (`website_sale/…/product_configurator.scss`), absent de cette page : recopiées ici. */
+/* ⓘ LE BADGE DU SUPPLÉMENT (W-100, D-498) — le dessin de la boutique d'Odoo (contour, fond éclairci, montant en
+   italique), mais tenu ICI, par une classe à soi.
+   ⚠️ Pas `.badge text-bg-info` : ce dessin vient de `website.scss` (`.badge.text-bg-*`, en `!important`), absent du
+   back-office — le dialogue du devis montrait un aplat turquoise, montant illisible et tronqué (D-498).
+   ⚠️ L'écart entre le signe et le montant est un `gap` : OWL retire le blanc qui les séparait dans le gabarit.
+   ⓘ `$info` suit le thème là où il y en a un : la boutique et la page gardent la même teinte. */
 .o_cfg3d_extra {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    max-width: 100%;
     margin-left: 3px;
-    padding-left: 3px;
+    padding: 0.25em 0.6em;
+    border: 1px solid $info;
+    border-radius: 10rem;
+    background: mix(white, $info, 90%);
+    color: darken($info, 25%);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
     vertical-align: middle;
 
-    /* Sous le libellé d'une carte ou d'une pastille, centré : la marge d'Odoo le décalerait. */
+    /* Sous le libellé d'une carte ou d'une pastille, centré : la marge le décalerait. */
     .o_cfg3d_card &, .o_cfg3d_bigswatch & { margin-left: 0; }
 }
-.o_cfg3d_extra_sign {
-    display: inline-block;
-    width: 1rem;
-    height: 1rem;
-    color: $o-brand-primary;
-    background: white;
-    line-height: 1rem;
-    border-radius: 50%;
+.o_cfg3d_extra_sign { flex: 0 0 auto; }
+.o_cfg3d_extra_amount {
+    font-style: italic;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ⓘ LE BADGE SUIT LA CARTE : une carte étroite (quatre par ligne) réduit le badge et son texte, au lieu de le
+   tronquer (D-498). La carte se déclare conteneur ; sa largeur vient de la grille, jamais de son contenu. */
+.o_cfg3d_card, .o_cfg3d_bigswatch { container-type: inline-size; }
+@container (max-width: 96px) {
+    .o_cfg3d_extra { font-size: 0.68rem; padding: 0.22em 0.5em; gap: 0.25em; }
+}
+@container (max-width: 76px) {
+    .o_cfg3d_extra { font-size: 0.6rem; padding: 0.2em 0.4em; gap: 0.2em; }
 }
 
 /* ⓘ LA BARRE D'ACTION (D-389) — UNE ligne : le prix à gauche, le geste à droite. Elle vit

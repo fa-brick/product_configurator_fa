@@ -155,12 +155,12 @@
     </div>
 </t>
 
-<!-- ⓘ LE BADGE DU SUPPLÉMENT (W-100) — celui de la boutique d'Odoo (`website_sale.badge_extra_price`), à
-     l'identique : le signe, puis le montant en italique estompé. Reçoit `badge`, la réponse, par `t-set`. -->
+<!-- ⓘ LE BADGE DU SUPPLÉMENT (W-100, D-498) — le dessin de la boutique d'Odoo, tenu par la page
+     (`.o_cfg3d_extra`) : le même sur le site et dans le dialogue du devis. Reçoit `badge`, la réponse, par `t-set`. -->
 <t t-name="product_configurator_web_3d.ExtraBadge">
-    <span class="o_cfg3d_extra badge text-bg-info border">
-        <span t-if="badge.extraSign" class="o_cfg3d_extra_sign sign_badge_price_extra" t-esc="badge.extraSign"/>
-        <span class="variant_price_extra text-muted fst-italic text-nowrap" t-esc="badge.extraAmount"/>
+    <span class="o_cfg3d_extra">
+        <span t-if="badge.extraSign" class="o_cfg3d_extra_sign" t-esc="badge.extraSign"/>
+        <span class="o_cfg3d_extra_amount" t-esc="badge.extraAmount"/>
     </span>
 </t>
 

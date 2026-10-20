@@ -19,6 +19,9 @@
             <t t-set="no_header" t-value="True"/>
             <t t-set="no_footer" t-value="True"/>
             <t t-set="html_data" t-value="{'style': 'height: 100%;'}"/>
+            <!-- ⓘ Le corps en COLONNE de la hauteur de l'écran : un bandeau ajouté en bas (base neutralisée)
+                 prend sa ligne, la page le reste — sans seconde barre de défilement (D-498). -->
+            <t t-set="body_classname" t-value="'o_cfg3d_body'"/>
             <div id="wrap">
                 <!-- ⚠️ **L'ATTENTE COMMENCE AVANT OWL** : le composant ne peint qu'après son
                      `onWillStart` (plus d'une seconde sur un assemblage), et la page resterait

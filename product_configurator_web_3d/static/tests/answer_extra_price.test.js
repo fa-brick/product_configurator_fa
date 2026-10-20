@@ -64,11 +64,22 @@ describe("le supplément traverse la mise en forme", () => {
 });
 
 describe("le supplément se voit dans chaque forme", () => {
-    test("⚠️ le badge est CELUI d'Odoo : `badge text-bg-info border`, signe puis montant estompé", () => {
+    test("⚠️ le badge est tenu par la PAGE, sans `.badge` ni `text-bg-info` : le même au site et au devis (D-498)", () => {
         const badge = template("ExtraBadge");
-        expect(badge).toContain('class="o_cfg3d_extra badge text-bg-info border"');
-        expect(badge).toContain('class="o_cfg3d_extra_sign sign_badge_price_extra" t-esc="badge.extraSign"');
-        expect(badge).toContain('class="variant_price_extra text-muted fst-italic text-nowrap" t-esc="badge.extraAmount"');
+        expect(badge).toContain('<span class="o_cfg3d_extra">');
+        expect(badge).toContain('class="o_cfg3d_extra_sign" t-esc="badge.extraSign"');
+        expect(badge).toContain('class="o_cfg3d_extra_amount" t-esc="badge.extraAmount"');
+        expect(badge).not.toMatch(/\bbadge text-bg|text-muted/);
+    });
+
+    test("le signe et le montant sont séparés par un `gap`, et le badge rétrécit avec sa carte (D-498)", () => {
+        const scss = readFileSync(join(__dirname, "..", "src", "page", "configurator_page.scss"), "utf8");
+        const block = scss.match(/\.o_cfg3d_extra \{([\s\S]*?)\n\}/)[1];
+        expect(block).toMatch(/display: inline-flex;/);
+        expect(block).toMatch(/gap: 0\.3em;/);
+        expect(block).toMatch(/border: 1px solid \$info;/);
+        expect(scss).toMatch(/\.o_cfg3d_card, \.o_cfg3d_bigswatch \{ container-type: inline-size; \}/);
+        expect(scss).toMatch(/@container \(max-width: 76px\) \{/);
     });
 
     test("la carte, la grande pastille : sous le libellé", () => {

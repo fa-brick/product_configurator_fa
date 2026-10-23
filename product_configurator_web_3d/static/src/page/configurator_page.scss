@@ -399,6 +399,8 @@ body.o_cfg3d_body {
     background: transparent;
     cursor: pointer;
     text-align: center;
+    /* ⓘ La carte rogne sa vignette à ses coins arrondis. */
+    overflow: hidden;
 
     &--chosen { border-color: $o-brand-primary; border-width: 2px; padding: 7px 5px; }
     /* ÉTEINTE, pas désactivée : l'appui doit rester possible pour en donner la
@@ -410,11 +412,17 @@ body.o_cfg3d_body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100%;
+    /* ⓘ La vignette va jusqu'aux bords gauche, droit et haut de la carte : elle reprend
+       le padding de la carte, que le libellé et le supplément gardent. */
+    width: calc(100% + 12px);
+    margin: -8px -6px 0;
     aspect-ratio: 1;
-    border-radius: 6px;
     background: rgba(0, 0, 0, 0.04);
     overflow: hidden;
+
+    /* ⚠️ La carte choisie a un bord de 2 px et un padding de 7 px 5 px : sans cet écart,
+       la vignette déborderait sur le bord. */
+    .o_cfg3d_card--chosen > & { width: calc(100% + 10px); margin: -7px -5px 0; }
 
     img { max-width: 100%; max-height: 100%; object-fit: contain; }
 }

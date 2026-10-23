@@ -107,6 +107,8 @@ class ProductConfigSession(models.Model):
             "fov": view["fov"],
             "backdrop": root.preview_backdrop_effective,
             "bgColor": root.preview_bg_color_effective,
+            # ⚠️ L'espacement de l'éditeur, sinon la variante se cadre autrement que l'image du produit (D-519).
+            "padding": root.preview_padding_effective,
             # ⓘ Pas de surfaces d'ombre : ce sont les panneaux de l'AMBIANCE, que la page reçoit déjà (D-475).
             "framing": framing,
             "size": MAX_IMAGE_SIDE,

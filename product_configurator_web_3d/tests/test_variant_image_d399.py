@@ -88,6 +88,8 @@ class TestVariantImageD399(HttpCase):
         self.assertTrue(session.variant_created)
         photo = state["photo"]
         self.assertEqual(photo["backdrop"], "studio")
+        # ⓘ L'espacement de l'éditeur, celui de la société (D-519).
+        self.assertEqual(photo["padding"], self.env.company.editor_thumbnail_padding)
         # ⓘ Les surfaces d'ombre viennent de l'ambiance, plus de la vue (D-475).
         self.assertNotIn("surfaces", photo)
         self.assertIn("pose", photo)

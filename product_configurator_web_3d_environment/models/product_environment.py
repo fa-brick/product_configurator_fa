@@ -56,7 +56,9 @@ class ProductEnvironment(models.Model):
         offsets = {}
         if not bay or not session:
             return offsets
-        for key, attribute in zip(("width", "height"), self._common_attributes()):
+        for key in ("width", "height"):
+            # ⓘ L'attribut qui tient cette cote SUR CE PRODUIT : le rôle de son modèle, sinon l'attribut commun (lot 1).
+            attribute = placement.product_tmpl_id._dimension_attribute(key)
             # ⚠️ Pas `attribute and …` : un attribut non réglé est un recordset VIDE, que `and` rendrait au lieu de
             # `None` — et la soustraction tombait à la première pose (L-561).
             measure = self._session_measure(session, attribute) if attribute else None
@@ -97,13 +99,14 @@ class ProductEnvironment(models.Model):
         if not result.get("ok"):
             return result
         followed, messages = [], []
-        attributes = dict(zip(("width", "height"), self._common_attributes()))
         for placement, old_bay, offsets in before.values():
             new_bay = self._bay(placement.opening_id)
             if not old_bay or not new_bay:
                 continue
             session = placement.session_id.sudo()
             changed = False
+            # ⓘ Le rôle « dimensions » du produit posé, sinon l'attribut commun (lot 1).
+            attributes = {key: placement.product_tmpl_id._dimension_attribute(key) for key in ("width", "height")}
             for key, attribute in attributes.items():
                 if not attribute or new_bay[key] == old_bay[key]:
                     continue
@@ -172,7 +175,8 @@ class ProductEnvironment(models.Model):
             # ⓘ La FORME d'abord (E-3d-4b, Q-30.4) : la valeur du type du trou — une fenêtre cintrée dans un trou cintré ;
             # les bornes des cotes peuvent en dépendre.
             self._select_shape_value(session, product, bay.get("type"))
-            width_attr, height_attr = self._common_attributes()
+            # ⓘ Le rôle « dimensions » du produit, sinon l'attribut commun : le même que celui du filtre (lot 1).
+            width_attr, height_attr = product._dimension_attribute("width"), product._dimension_attribute("height")
             for attribute, measure in ((width_attr, bay["width"]), (height_attr, bay["height"])):
                 if not attribute or not product.attribute_line_ids.filtered(lambda l, a=attribute: l.attribute_id == a):
                     continue

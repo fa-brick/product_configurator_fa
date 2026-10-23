@@ -36,3 +36,20 @@ describe("saisie libre d'un nombre", () => {
         expect(free).toMatch(/<AutoComplete t-else=""[\s\S]*sources="this\.freeSources\(question\)"/);
     });
 });
+
+describe("unité d'une saisie libre", () => {
+    const SCSS = readFileSync(join(SRC, "configurator_page.scss"), "utf8");
+
+    test("l'unité est posée dans le cadre du champ, qui lui garde sa place à droite", () => {
+        expect(free).toContain(`t-att-class="{'o_cfg3d_free_with_unit': question.free.unit}"`);
+        const rule = SCSS.slice(SCSS.indexOf(".o_cfg3d_free_with_unit {"));
+        expect(rule).toMatch(/position: relative;[\s\S]*padding-right: 40px;/);
+        const unit = SCSS.slice(SCSS.indexOf(".o_cfg3d_free_unit {"));
+        expect(unit).toMatch(/position: absolute;[\s\S]*right: 10px;/);
+    });
+
+    test("⚠️ un clic sur l'unité traverse jusqu'au champ", () => {
+        const unit = SCSS.slice(SCSS.indexOf(".o_cfg3d_free_unit {"), SCSS.indexOf("}", SCSS.indexOf(".o_cfg3d_free_unit {")));
+        expect(unit).toContain("pointer-events: none;");
+    });
+});

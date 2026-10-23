@@ -1012,7 +1012,22 @@ body.o_cfg3d_body {
         }
     }
 }
-.o_cfg3d_free_unit { font-size: 13px; opacity: 0.7; }
+/* ⓘ L'unité est posée DANS le cadre du champ ; la marge droite du champ lui garde sa
+   place, sinon un nombre long passerait dessous. */
+.o_cfg3d_free_with_unit {
+    position: relative;
+    .o-autocomplete--input, .o_cfg3d_free_input { padding-right: 40px; }
+}
+.o_cfg3d_free_unit {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    /* ⚠️ Sans cela, un clic sur l'unité ne donne pas le focus au champ. */
+    pointer-events: none;
+    font-size: 13px;
+    opacity: 0.7;
+}
 .o_cfg3d_free_hint { margin-top: 4px; font-size: 12px; opacity: 0.7; }
 
 /* Le bandeau de conduite : il informe ET il agit, donc les deux tiennent sur une

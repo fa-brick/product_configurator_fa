@@ -324,7 +324,9 @@
              Un champ nu, sans la déroulante d'`AutoComplete` — elle se poserait sur les
              onglets, et sur Android le pavé se refermerait dès la frappe. -->
         <t t-if="question.free">
-            <div class="o_cfg3d_free">
+            <!-- ⓘ L'unité se lit DANS le cadre du champ, à droite : à côté, elle décale
+                 les champs d'une question à l'autre et les rend inégaux. -->
+            <div class="o_cfg3d_free" t-att-class="{'o_cfg3d_free_with_unit': question.free.unit}">
                 <input t-if="question.free.numeric" type="text" inputmode="decimal"
                        class="o_cfg3d_free_input" autocomplete="off"
                        t-att-value="this.freeText(question)"

@@ -19,6 +19,7 @@
     "depends": ["product_configurator_web_3d", "website_sale", "product_configurator_web_3d_sale"],
     "data": [
         "views/templates.xml",
+        "views/editor_views.xml",
     ],
     "assets": {
         # ⓘ Rien du moteur ici : il est DÉJÀ dans `web.assets_frontend`, donc sur

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ⓘ Le bouton « Aller au site web » de la fiche produit, dans l'éditeur 3D : même widget,
+         globe vert s'il est publié, rouge sinon. -->
+    <!-- ⚠️ Ici et pas dans `product_editor`, qui ne dépend pas de `website_sale` (D-520). -->
+    <record id="product_template_3d_editor_form_website" model="ir.ui.view">
+        <field name="name">product.template.form.3d.editor.website</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product_editor.product_template_3d_editor_form"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="sale_ok" invisible="1"/>
+            </field>
+            <div name="button_box" position="inside">
+                <field name="is_published" widget="website_redirect_button" invisible="not sale_ok"/>
+            </div>
+        </field>
+    </record>
+</odoo>

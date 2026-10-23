@@ -626,6 +626,8 @@ body.o_cfg3d_body {
     background: transparent;
     text-align: left;
     cursor: pointer;
+    /* ⓘ La ligne rogne sa vignette à ses coins arrondis. */
+    overflow: hidden;
 
     &:hover { border-color: rgba(0, 0, 0, 0.3); }
 }
@@ -640,6 +642,19 @@ body.o_cfg3d_body {
 
     &--disc { border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
     img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* ⓘ Une IMAGE est un CARRÉ qui va jusqu'aux bords gauche, haut et bas de la ligne : elle
+       reprend le padding de la ligne. Une pastille de couleur reste un disque. */
+    /* ⚠️ Un carré FIXE : c'est lui qui donne sa hauteur à la ligne. Étiré sur la hauteur du
+       texte, il cesserait d'être carré ; le texte est donc borné pour ne jamais la dépasser
+       (`.o_cfg3d_summary_question`). */
+    &:not(&--disc) {
+        flex: 0 0 60px;
+        width: 60px;
+        height: 60px;
+        margin: -8px 0 -8px -12px;
+        border-radius: 0;
+    }
 }
 
 .o_cfg3d_summary_text {
@@ -655,10 +670,18 @@ body.o_cfg3d_body {
     letter-spacing: 0.04em;
     text-transform: uppercase;
     opacity: 0.7;
+    /* ⚠️ Deux lignes au plus, et la réponse une seule : au-delà, le texte dépasse les 44 px
+       que laisse l'image carrée, et la ligne grandit sous elle. */
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .o_cfg3d_summary_answer {
     font-size: 13px;
+    line-height: 1.25;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

@@ -13,7 +13,7 @@ const SRC = join(__dirname, "../src/page");
 const XML = readFileSync(join(SRC, "configurator_page.xml"), "utf8").replace(/<!--[\s\S]*?-->/g, " ");
 const JS = readFileSync(join(SRC, "configurator_page.js"), "utf8");
 
-const free = XML.slice(XML.indexOf('<t t-if="question.free">'), XML.indexOf('class="o_cfg3d_free_unit"'));
+const free = XML.slice(XML.indexOf('<t t-if="question.free">'), XML.indexOf('class="o_cfg3d_free_unit'));
 const numeric = free.slice(free.indexOf('t-if="question.free.numeric"'), free.indexOf("<AutoComplete"));
 
 describe("saisie libre d'un nombre", () => {
@@ -41,17 +41,16 @@ describe("saisie libre d'un nombre", () => {
 describe("unité d'une saisie libre", () => {
     const SCSS = readFileSync(join(SRC, "configurator_page.scss"), "utf8");
 
-    test("l'unité est posée dans le cadre du champ, qui lui garde sa place à droite", () => {
-        expect(free).toContain(`t-att-class="{'o_cfg3d_free_with_unit': question.free.unit}"`);
+    test("l'unité est dans une case accolée au champ — le groupe de saisie de Bootstrap", () => {
+        expect(free).toContain(`t-att-class="{'o_cfg3d_free_with_unit input-group': question.free.unit}"`);
+        expect(XML).toContain('class="o_cfg3d_free_unit input-group-text"');
         const rule = SCSS.slice(SCSS.indexOf(".o_cfg3d_free_with_unit {"));
-        expect(rule).toMatch(/position: relative;[\s\S]*padding-right: 40px;/);
-        const unit = SCSS.slice(SCSS.indexOf(".o_cfg3d_free_unit {"));
-        expect(unit).toMatch(/position: absolute;[\s\S]*right: 10px;/);
+        expect(rule).toMatch(/gap: 0;[\s\S]*border-top-right-radius: 0;[\s\S]*border-bottom-right-radius: 0;/);
     });
 
-    test("⚠️ un clic sur l'unité traverse jusqu'au champ", () => {
-        const unit = SCSS.slice(SCSS.indexOf(".o_cfg3d_free_unit {"), SCSS.indexOf("}", SCSS.indexOf(".o_cfg3d_free_unit {")));
-        expect(unit).toContain("pointer-events: none;");
+    test("le focus entoure le groupe entier, case de l'unité comprise", () => {
+        const rule = SCSS.slice(SCSS.indexOf(".o_cfg3d_free_with_unit {"), SCSS.indexOf("\n.o_cfg3d_free_unit {"));
+        expect(rule).toMatch(/&:focus-within \{[\s\S]*box-shadow: 0 0 0 2px[\s\S]*\.o_cfg3d_free_unit \{ border-color: \$o-brand-primary; \}/);
     });
 });
 

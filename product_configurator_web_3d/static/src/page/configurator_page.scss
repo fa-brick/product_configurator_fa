@@ -1043,21 +1043,27 @@ body.o_cfg3d_body {
         }
     }
 }
-/* ⓘ L'unité est posée DANS le cadre du champ ; la marge droite du champ lui garde sa
-   place, sinon un nombre long passerait dessous. */
+/* ⓘ L'unité dans une case grise ACCOLÉE au champ (`input-group-text` de Bootstrap) : le cadre du groupe
+   est celui du champ, et le focus l'entoure en entier. */
 .o_cfg3d_free_with_unit {
-    position: relative;
-    .o-autocomplete--input, .o_cfg3d_free_input { padding-right: 40px; }
+    gap: 0;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    border-radius: 4px;
+
+    .o-autocomplete--input, .o_cfg3d_free_input {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        &:focus { box-shadow: none; }
+    }
+    &:focus-within {
+        box-shadow: 0 0 0 2px rgba($o-brand-primary, 0.15);
+        .o_cfg3d_free_unit { border-color: $o-brand-primary; }
+    }
 }
 .o_cfg3d_free_unit {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    /* ⚠️ Sans cela, un clic sur l'unité ne donne pas le focus au champ. */
-    pointer-events: none;
     font-size: 13px;
-    opacity: 0.7;
+    border-color: rgba(0, 0, 0, 0.15);
 }
 .o_cfg3d_free_hint { margin-top: 4px; font-size: 12px; opacity: 0.7; }
 

@@ -7,6 +7,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { ConfiguratorPage } from "@product_configurator_web_3d/page/configurator_page";
 
 const SRC = join(__dirname, "../src/page");
 const XML = readFileSync(join(SRC, "configurator_page.xml"), "utf8").replace(/<!--[\s\S]*?-->/g, " ");
@@ -29,7 +30,7 @@ describe("saisie libre d'un nombre", () => {
 
     test("la réponse part au changement, par la même porte que le texte", () => {
         expect(numeric).toContain('t-on-change="(ev) => this.onFreeChange(placementNodeId, question, ev.target.value)"');
-        expect(numeric).toContain('t-att-value="this.freeText(question)"');
+        expect(numeric).toContain('t-att-value="this.freeText(question, placementNodeId)"');
     });
 
     test("le texte libre garde ses suggestions", () => {
@@ -51,5 +52,77 @@ describe("unité d'une saisie libre", () => {
     test("⚠️ un clic sur l'unité traverse jusqu'au champ", () => {
         const unit = SCSS.slice(SCSS.indexOf(".o_cfg3d_free_unit {"), SCSS.indexOf("}", SCSS.indexOf(".o_cfg3d_free_unit {")));
         expect(unit).toContain("pointer-events: none;");
+    });
+});
+
+describe("la saisie validée reste dans le champ jusqu'à la réponse du serveur (L-617)", () => {
+    function setup() {
+        const question = { id: 7, free: { numeric: true, unit: "mm" }, customValue: null,
+                           values: [{ id: 1, chosen: true, raw: "6", name: "6 mm" }] };
+        const page = Object.create(ConfiguratorPage.prototype);
+        Object.defineProperty(page, "watching", { value: false });
+        page.state = { model: { questions: [question] }, loading: false, reason: null };
+        page.render = () => {};
+        page._showQuestionViewAfterPaint = async () => {};
+        let answer;
+        page._call = () => new Promise((resolve) => { answer = resolve; });
+        page._applyModel = async () => { question.customValue = "2"; };
+        return { page, question, answer: (value) => answer(value) };
+    }
+
+    test("pendant l'envoi, le champ montre ce qui a été tapé, pas l'ancienne valeur", async () => {
+        const { page, question, answer } = setup();
+        page.onFreeChange(null, question, "2");
+        expect(page.freeText(question, null)).toBe("2");
+        const sending = page._sendFreeAnswer(null, question, "2");
+        expect(page.state.loading).toBe(true);
+        expect(page.freeText(question, null)).toBe("2");
+        answer({});
+        await sending;
+        expect(page.freeText(question, null)).toBe("2");
+        expect(page._freeDrafts.size).toBe(0);
+    });
+
+    test("refusée, la saisie s'efface : le champ reprend la réponse rangée, la raison dit pourquoi", async () => {
+        const { page, question, answer } = setup();
+        page.onFreeChange(null, question, "300");
+        const sending = page._sendFreeAnswer(null, question, "300");
+        answer({ error: "invalid_custom", message: "200 au plus" });
+        await sending;
+        expect(page.freeText(question, null)).toBe("6");
+        expect(page.state.reason).toBe("200 au plus");
+    });
+
+    test("⚠️ retapée pendant l'envoi, la nouvelle saisie n'est pas effacée par la réponse de l'ancienne", async () => {
+        const { page, question, answer } = setup();
+        page.onFreeChange(null, question, "2");
+        const sending = page._sendFreeAnswer(null, question, "2");
+        page.onFreeChange(null, question, "3");
+        answer({});
+        await sending;
+        expect(page.freeText(question, null)).toBe("3");
+    });
+
+    test("une saisie en attente est propre à la pièce sélectionnée", () => {
+        const { page, question } = setup();
+        page.onFreeChange(42, question, "9");
+        expect(page.freeText(question, 42)).toBe("9");
+        expect(page.freeText(question, null)).toBe("6");
+    });
+});
+
+describe("valider au clavier retire le clavier", () => {
+    test("Entrée (la touche → du pavé) quitte le champ ; les autres touches non", () => {
+        const page = Object.create(ConfiguratorPage.prototype);
+        let blurred = 0;
+        const target = { blur: () => { blurred += 1; } };
+        page.onFreeKeydown({ key: "5", target });
+        expect(blurred).toBe(0);
+        page.onFreeKeydown({ key: "Enter", target });
+        expect(blurred).toBe(1);
+    });
+
+    test("le champ d'un nombre écoute la touche", () => {
+        expect(numeric).toContain('t-on-keydown="(ev) => this.onFreeKeydown(ev)"');
     });
 });

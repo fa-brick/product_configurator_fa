@@ -84,6 +84,11 @@ const CAMERA_SHARE_MS = 150;
 // d'une suggestion ANNULE la saisie en attente.
 const FREE_ANSWER_DELAY_MS = 200;
 
+/** La clé d'une saisie en attente : la question, et la pièce sélectionnée s'il y en a une. */
+function freeDraftKey(nodeId, question) {
+    return `${nodeId || ""}:${question.id}`;
+}
+
 /**
  * La page tourne-t-elle sur le SITE ? Le back-office ne pose pas `is_frontend` (W-100).
  *
@@ -1105,9 +1110,20 @@ export class ConfiguratorPage extends Component {
 
     // ── LA SAISIE LIBRE — D-353 ──────────────────────────────────────────────
 
-    /** Ce que le champ affiche — dans le séparateur décimal du visiteur. */
-    freeText(question) {
-        return freeText(question, localization.decimalPoint);
+    /**
+     * Ce que le champ affiche — la saisie EN ATTENTE, sinon la réponse rangée, dans le séparateur
+     * décimal du visiteur.
+     * ⚠️ Sans la saisie en attente, le rendu de l'envoi remet l'ancienne valeur dans le champ jusqu'à la réponse
+     *   du serveur : OWL réécrit `t-att-value` d'un `<input>` à chaque rendu (L-617).
+     */
+    freeText(question, nodeId = null) {
+        const draft = this._freeDrafts?.get(freeDraftKey(nodeId, question));
+        return draft ?? freeText(question, localization.decimalPoint);
+    }
+
+    /** Valider au clavier (→ ou Entrée) quitte le champ : la valeur part, le clavier tactile se retire. */
+    onFreeKeydown(ev) {
+        if (ev.key === "Enter") ev.target.blur();
     }
 
     /** La contrainte sous le champ — « 600 → 1200 mm », « 20 characters max ». */
@@ -1123,26 +1139,35 @@ export class ConfiguratorPage extends Component {
     /** Une suggestion CHOISIE est un clic sur la valeur — et elle annule la saisie en attente. */
     onFreeSelect(nodeId, question, option) {
         browser.clearTimeout(this._freeTimer);
+        this._freeDrafts?.delete(freeDraftKey(nodeId, question));
         const value = question.values.find((v) => v.id === option.value);
         if (value) this.onAnswer(nodeId, question.id, value);
     }
 
     /** Le champ a changé — la saisie part après un court délai (`FREE_ANSWER_DELAY_MS`). */
     onFreeChange(nodeId, question, raw) {
+        this._freeDrafts = this._freeDrafts || new Map();
+        this._freeDrafts.set(freeDraftKey(nodeId, question), raw);
         browser.clearTimeout(this._freeTimer);
         this._freeTimer = browser.setTimeout(
             () => this._sendFreeAnswer(nodeId, question, raw), FREE_ANSWER_DELAY_MS);
     }
 
     async _sendFreeAnswer(nodeId, question, raw) {
+        const key = freeDraftKey(nodeId, question);
         if (this.watching) {
+            this._freeDrafts?.delete(key);
             this.state.reason = this.handLabel;
             return;
         }
         const placement = nodeId ? this.selectedPlacement : null;
         const payload = customAnswerFor(
             this.state.model, question, raw, placement, localization.decimalPoint);
-        if (!payload) return;
+        if (!payload) {
+            this._freeDrafts?.delete(key);
+            this.render();
+            return;
+        }
         this.state.reason = null;
         this.state.loading = true;
         const next = await this._call("/configurator/set_value", payload);
@@ -1150,11 +1175,15 @@ export class ConfiguratorPage extends Component {
         // la valeur la plus proche, tels que le serveur les formule.
         const refusal = customError(next);
         if (refusal) {
+            // ⓘ Le champ reprend la réponse rangée : la raison dit pourquoi la saisie n'est pas prise.
+            this._freeDrafts?.delete(key);
             this.state.loading = false;
             this.state.reason = refusal;
             return;
         }
         await this._applyModel(next);
+        // ⚠️ Pas si le champ a été retapé entre-temps, sinon la nouvelle saisie, encore en route, s'efface (L-617).
+        if (this._freeDrafts?.get(key) === raw) this._freeDrafts.delete(key);
         this.state.loading = false;
         if (!nodeId) await this._showQuestionViewAfterPaint(question.id);
     }

@@ -329,10 +329,11 @@
             <div class="o_cfg3d_free" t-att-class="{'o_cfg3d_free_with_unit': question.free.unit}">
                 <input t-if="question.free.numeric" type="text" inputmode="decimal"
                        class="o_cfg3d_free_input" autocomplete="off"
-                       t-att-value="this.freeText(question)"
+                       t-att-value="this.freeText(question, placementNodeId)"
+                       t-on-keydown="(ev) => this.onFreeKeydown(ev)"
                        t-on-change="(ev) => this.onFreeChange(placementNodeId, question, ev.target.value)"/>
                 <AutoComplete t-else=""
-                    value="this.freeText(question)"
+                    value="this.freeText(question, placementNodeId)"
                     sources="this.freeSources(question)"
                     onSelect="(option) => this.onFreeSelect(placementNodeId, question, option)"
                     onChange="(ev) => this.onFreeChange(placementNodeId, question, ev.inputValue)"/>

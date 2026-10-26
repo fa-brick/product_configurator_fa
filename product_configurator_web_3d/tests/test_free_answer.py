@@ -123,6 +123,15 @@ class TestFreeAnswer(FreeAnswerCommon, TransactionCase):
         self.session.web_set_custom_value(self.width.id, "480 mm")
         self.assertEqual(self.session.custom_value_ids.value, "480")
 
+    def test_l_unite_d_une_PLAGE_tapee_par_habitude_est_toleree(self):
+        """D-533 — des plages portent une unité : « 3-34, 45 cm » se range sans elle."""
+        zones = self.env["product.attribute"].create({
+            "name": "Zones début", "custom_type": "range", "create_variant": "no_variant",
+            "uom_id": self.env.ref("uom.product_uom_cm").id,
+        })
+        self.assertEqual(self.session._web_strip_unit(zones, "3-34, 45 cm"), "3-34, 45")
+        self.assertEqual(self.session._web_strip_unit(zones, "3-34, 45"), "3-34, 45")
+
     def test_une_saisie_qui_designe_une_valeur_OFFERTE_est_un_choix(self):
         self.session.web_set_custom_value(self.width.id, "200,0")
         self.assertIn(self.w200, self.session.value_ids)

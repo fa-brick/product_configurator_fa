@@ -425,7 +425,9 @@ class ProductConfigSession(models.Model):
         est naturel de la retaper. La refuser ferait dire « pas un nombre » à une
         largeur parfaitement claire.
         """
-        if raw in (None, False) or not attribute.is_numeric() or not attribute.uom_id:
+        # ⓘ Des plages aussi : « 3-34, 45 cm » se retape avec son unité, comme une largeur (D-533).
+        if raw in (None, False) or not (attribute.is_numeric() or attribute.is_ranges()) \
+                or not attribute.uom_id:
             return raw
         text = str(raw).strip()
         unit = attribute.uom_id.name or ""

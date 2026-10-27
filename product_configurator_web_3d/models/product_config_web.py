@@ -1533,6 +1533,10 @@ class ProductConfigSession(models.Model):
                 "error": "incomplete",
                 "missing": missing.attribute_id.mapped("name"),
             }
+        # ⚠️ Hors grille, le prix retomberait sur le plus bas de la grille : refusé (D-537).
+        out_of_grid = self._out_of_grid_message(date=self._web_pricing()[1])
+        if out_of_grid:
+            return {"error": "out_of_grid", "message": out_of_grid}
         # ⚠️ Le compte du moteur est EXIGÉ ici : un compte manqué donnerait une quantité ou une variante fausse sur la commande (D-457, Q-1).
         try:
             with self.env.cr.savepoint():
@@ -1641,6 +1645,8 @@ class ProductConfigSession(models.Model):
             # panier et au devis (D-368).
             "separateLines": separate,
             "total": price + sum(line["price"] * line["qty"] for line in separate),
+            # ⓘ D-537 — une cote hors de la grille : le message, et le panier fermé.
+            "outOfGrid": self._out_of_grid_message(date=day),
             # ⚠️ Les réponses « sans variante », en `product.template.attribute.value` — à passer
             # au panier avec la ligne du produit. Sans elles, la boutique complète d'office
             # chaque question `no_variant` par sa PREMIÈRE valeur, et la ligne du JeNo affichait

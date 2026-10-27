@@ -227,6 +227,17 @@ describe("le refus de confirmation ne doit pas effacer la page", () => {
         expect(fallback).not.toContain("link");
     });
 
+    test("une cote hors de la grille dit le message du serveur (D-537)", () => {
+        expect(confirmError({ error: "out_of_grid", message: "Largeur : 3000 mm maximum" }))
+            .toBe("Largeur : 3000 mm maximum");
+        expect(confirmError({ error: "out_of_grid" })).not.toContain("link");
+    });
+
+    test("l'état porte le message hors grille, et rien quand la cote a un prix (D-537)", () => {
+        expect(toViewModel({ ...PAYLOAD, outOfGrid: "Hors grille" }).outOfGrid).toBe("Hors grille");
+        expect(toViewModel(PAYLOAD).outOfGrid).toBe(null);
+    });
+
     test("une session déjà confirmée le dit, et ne parle pas de lien invalide", () => {
         const message = confirmError({ error: "session_closed" });
         expect(message).toBeTruthy();

@@ -591,6 +591,8 @@ export function toViewModel(payload, previous = null) {
         // ⓘ Le total tel qu'on l'affiche : sa devise, ses taxes selon le site (W-100) ; `null` d'un serveur ancien.
         totalLabel: payload.totalLabel || null,
         separateLines: payload.separateLines || [],
+        // ⓘ D-537 — le message d'une cote hors de la grille ; `null` quand elle a un prix.
+        outOfGrid: payload.outOfGrid || null,
         noVariantPtavIds: payload.noVariantPtavIds || [],
         closed: payload.state && payload.state !== "draft",
         questions: (payload.attributes || []).map(toQuestion),
@@ -721,6 +723,10 @@ export function confirmError(payload) {
     }
     if (payload.error === "session_closed") {
         return _t("This configuration is already confirmed.");
+    }
+    if (payload.error === "out_of_grid") {
+        // ⓘ Le message vient du serveur, déjà traduit, avec les bornes de la grille (D-537).
+        return payload.message || _t("These dimensions have no price.");
     }
     if (payload.error === "engine") {
         // ⓘ Le message vient du serveur, déjà traduit (D-457) : le moteur n'a pas pu compter les pièces.

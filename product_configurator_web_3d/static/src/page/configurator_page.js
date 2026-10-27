@@ -1406,6 +1406,8 @@ export class ConfiguratorPage extends Component {
         // ⓘ Le TOTAL (D-368) : le produit plus ses pièces vendues à part — le détail se
         // lit au panier et au devis.
         // ⓘ Son LIBELLÉ d'abord : devise, taxes selon le site (W-100) ; le nombre nu d'un serveur ancien.
+        // ⚠️ Hors grille, le montant serait celui du plus bas de la grille : on n'en montre aucun (D-537).
+        if (this.state.model?.outOfGrid) return "—";
         return this.state.model?.totalLabel ?? this.state.model?.total ?? this.state.model?.price ?? 0;
     }
 

@@ -2721,3 +2721,21 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:product_configurator_fa.product_template_attribute_line_form_config
 msgid "Free text"
 msgstr "Texte libre"
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_config.py:0
+msgid "These dimensions have no price in the price grid."
+msgstr "Ces dimensions n'ont pas de prix dans la grille de prix."
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_config.py:0
+msgid "No price for these dimensions in the price grid (%(limits)s)."
+msgstr "Pas de prix pour ces dimensions dans la grille de prix (%(limits)s)."
+
+#. module: product_configurator_fa
+#. odoo-python
+#: code:addons/product_configurator_fa/models/product_config.py:0
+msgid "%(dimension)s: %(bound)s maximum"
+msgstr "%(dimension)s : %(bound)s maximum"

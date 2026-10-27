@@ -1669,6 +1669,36 @@ class ProductConfigSession(models.Model):
             return False
         return grid.get_price(dimensions["axis_x"], dimensions["axis_y"]) is None
 
+    def _out_of_grid_message(self, date=None):
+        """Ce que la page dit d'une configuration hors grille, ou `None` (D-537).
+
+        ⓘ Les BORNES de la grille quand une cote les dépasse : le client sait alors quoi changer.
+        """
+        self.ensure_one()
+        if not self._is_out_of_grid(date=date):
+            return None
+        grid = self.product_tmpl_id._get_price_grid(date=date)
+        lines = self.product_tmpl_id._grid_axis_lines()
+        dimensions = self._get_config_dimensions(
+            self.value_ids.ids, self._get_custom_vals_dict())
+        bounds = {}
+        for role, brackets in (("axis_x", grid.axis_x_bracket_ids),
+                               ("axis_y", grid.axis_y_bracket_ids)):
+            top = max(brackets.mapped("max_value"), default=0.0)
+            if dimensions[role] <= top:
+                continue
+            unit = lines[role].attribute_id.uom_id.name or ""
+            bounds[role] = f"{top:g} {unit}".strip()
+        if not bounds:
+            return self.env._("These dimensions have no price in the price grid.")
+        return self.env._(
+            "No price for these dimensions in the price grid (%(limits)s).",
+            limits=", ".join(
+                self.env._("%(dimension)s: %(bound)s maximum",
+                           dimension=lines[role].attribute_id.name, bound=bound)
+                for role, bound in bounds.items()),
+        )
+
     def get_config_surface(self, value_ids=None, custom_vals=None):
         """La surface en m² de la configuration courante, ou 0 — D-161.
 

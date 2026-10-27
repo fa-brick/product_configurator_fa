@@ -214,6 +214,9 @@
                                t-value="selectedPlacement ? state.selection.nodeId : null"/>
                         </t>
                         <p t-if="state.reason" class="o_cfg3d_reason" t-esc="state.reason"/>
+                        <div t-if="state.model and state.model.outOfGrid"
+                             class="alert alert-warning o_cfg3d_out_of_grid" role="alert"
+                             t-esc="state.model.outOfGrid"/>
                     </div>
                 </t>
 
@@ -222,6 +225,11 @@
 
                 <!-- La raison d'un refus, là où le doigt vient de se poser. -->
                 <p t-if="state.reason and !state.compact" class="o_cfg3d_reason" t-esc="state.reason"/>
+
+                <!-- ⓘ D-537 — une cote hors de la grille : le cadre jaune d'Odoo, sous les questions. -->
+                <div t-if="state.model and state.model.outOfGrid and !state.compact"
+                     class="alert alert-warning o_cfg3d_out_of_grid" role="alert"
+                     t-esc="state.model.outOfGrid"/>
 
                 </div>
 
@@ -283,7 +291,7 @@
         <button t-if="state.model and !state.model.closed and !state.model.error and !props.panelOnly"
                 type="button"
                 class="btn btn-primary o_cfg3d_confirm"
-                t-att-disabled="state.loading or watching"
+                t-att-disabled="state.loading or watching or state.model.outOfGrid"
                 t-att-title="confirmLabel" t-att-aria-label="confirmLabel"
                 t-on-click="() => this.onConfirm()">
             <i class="fa fa-shopping-cart" role="img"/>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<!-- ⓘ D-537 — une ligne par optionnel : image, nom, prix, et UN geste selon sa nature. -->
+<t t-name="product_configurator_web_3d_sale.OptionalProductsDialog">
+    <Dialog title="title" size="'md'">
+        <ul class="list-unstyled mb-0">
+            <li t-foreach="props.products" t-as="product" t-key="product.id"
+                class="d-flex align-items-center gap-3 py-2 border-bottom">
+                <img t-att-src="product.image" t-att-alt="product.name" width="64" height="64"
+                     class="rounded object-fit-contain flex-shrink-0"/>
+                <div class="flex-grow-1">
+                    <div t-esc="product.name"/>
+                    <div class="small">
+                        <span t-if="product.fromPrice" class="text-o-color-2 me-1" t-esc="fromLabel"/>
+                        <span t-esc="product.price"/>
+                    </div>
+                </div>
+                <t t-if="state.added[product.id]">
+                    <button type="button" class="btn btn-secondary" disabled="disabled">
+                        <i class="fa fa-check" role="img"/>
+                        <span class="ms-2 d-none d-md-inline" t-esc="addedLabel"/>
+                    </button>
+                </t>
+                <t t-elif="product.action === 'add'">
+                    <input t-if="props.withQuantity" type="number" min="1" step="1"
+                           class="form-control form-control-sm" style="width: 5rem;"
+                           t-att-value="quantityOf(product)" t-att-aria-label="quantityLabel"
+                           t-on-change="(ev) => this.setQuantity(product, ev.target.valueAsNumber)"/>
+                    <button type="button" class="btn btn-secondary" t-att-disabled="state.busy"
+                            t-on-click="() => this.add(product)">
+                        <i class="fa fa-plus" role="img"/>
+                        <span class="ms-2 d-none d-md-inline" t-esc="addLabel"/>
+                    </button>
+                </t>
+                <t t-elif="product.action === 'configure'">
+                    <button t-if="props.configure" type="button" class="btn btn-primary"
+                            t-att-disabled="state.busy" t-on-click="() => this.configure(product)">
+                        <i class="fa fa-cube" role="img"/>
+                        <span class="ms-2 d-none d-md-inline" t-esc="configureLabel"/>
+                    </button>
+                    <a t-else="" class="btn btn-primary" t-att-href="product.url">
+                        <i class="fa fa-cube" role="img"/>
+                        <span class="ms-2 d-none d-md-inline" t-esc="configureLabel"/>
+                    </a>
+                </t>
+                <a t-else="" class="btn btn-secondary" t-att-href="product.url" t-esc="viewLabel"/>
+            </li>
+        </ul>
+        <t t-set-slot="footer">
+            <t t-if="props.footerLinks">
+                <a t-foreach="props.footerLinks" t-as="link" t-key="link_index"
+                   t-att-class="link.primary ? 'btn btn-primary' : 'btn btn-secondary'"
+                   t-att-href="link.href" t-esc="link.label"/>
+            </t>
+            <button t-else="" type="button" class="btn btn-primary" t-on-click="() => this.props.close()"
+                    t-esc="closeLabel"/>
+        </t>
+    </Dialog>
+</t>
+
+</templates>

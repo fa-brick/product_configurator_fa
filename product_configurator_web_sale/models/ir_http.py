@@ -8,9 +8,9 @@ class IrHttp(models.AbstractModel):
 
     @classmethod
     def _get_translation_frontend_modules_name(cls):
-        """Les traductions JS de la fenêtre des optionnels, servies au site.
+        """Les traductions JS des optionnels sur le site : le patch d'ici, la fenêtre de `web_3d_sale`.
 
         ⚠️ Hors de cette liste, aucune chaîne `_t()` du module n'est traduite sur le site (L-394).
         """
         mods = super()._get_translation_frontend_modules_name()
-        return mods + ["product_configurator_web_sale"]
+        return mods + ["product_configurator_web_sale", "product_configurator_web_3d_sale"]

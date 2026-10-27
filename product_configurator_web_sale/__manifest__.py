@@ -31,8 +31,8 @@
             "product_configurator_web_sale/static/src/overlay/configurator_overlay.xml",
             "product_configurator_web_sale/static/src/overlay/configurator_overlay.js",
             # ⓘ D-537 — les produits optionnels, proposés après l'ajout au panier.
-            "product_configurator_web_sale/static/src/optional/optional_products_dialog.xml",
-            "product_configurator_web_sale/static/src/optional/optional_products_dialog.js",
+            "product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.xml",
+            "product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js",
             "product_configurator_web_sale/static/src/optional/page_optional_products.js",
         ],
     },

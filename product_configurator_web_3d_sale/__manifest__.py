@@ -27,6 +27,9 @@
         "web.assets_backend": [
             # ⓘ Le DIALOGUE est déclaré par `product_configurator_web_3d` : l'ordre de
             # fabrication en a le même besoin que le devis.
+            # ⓘ D-537 — la fenêtre des optionnels, partagée avec la boutique.
+            "product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.xml",
+            "product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js",
             "product_configurator_web_3d_sale/static/src/sale_product_field_patch.js",
         ],
     },

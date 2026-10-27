@@ -48,3 +48,51 @@ msgstr "Liste de prix du devis"
 #: model:ir.model.fields,help:product_configurator_web_3d_sale.field_product_config_session__order_pricelist_id
 msgid "Pricelist of the quotation this configuration was opened from."
 msgstr "Liste de prix du devis depuis lequel cette configuration a été ouverte."
+
+#. module: product_configurator_web_3d_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Add optional products"
+msgstr "Ajouter des produits optionnels"
+
+#. module: product_configurator_web_3d_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js:0
+msgid "From"
+msgstr "À partir de"
+
+#. module: product_configurator_web_3d_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Add"
+msgstr "Ajouter"
+
+#. module: product_configurator_web_3d_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Added"
+msgstr "Ajouté"
+
+#. module: product_configurator_web_3d_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Configure"
+msgstr "Configurer"
+
+#. module: product_configurator_web_3d_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js:0
+msgid "View"
+msgstr "Voir"
+
+#. module: product_configurator_web_3d_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Close"
+msgstr "Fermer"
+
+#. module: product_configurator_web_3d_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Quantity"
+msgstr "Quantité"

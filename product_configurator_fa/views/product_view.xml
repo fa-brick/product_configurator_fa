@@ -79,6 +79,7 @@
                     name="configure_product"
                     class="oe_highlight"
                     type="object"
+                    icon="fa-pencil"
                     string="Configure Product"
                     groups="product_configurator_fa.group_product_configurator_fa"
                     invisible="not config_ok"
@@ -311,6 +312,7 @@
                     groups="product_configurator_fa.group_product_configurator_fa"
                     class="oe_highlight"
                     type="object"
+                    icon="fa-pencil"
                     string="Reconfigure Product"
                     invisible="not config_ok"
                 />
@@ -335,7 +337,7 @@
                     <a
                         name="reconfigure_product"
                         type="object"
-                        class="fa fa-repeat fa-lg"
+                        class="fa fa-pencil fa-lg"
                         title="Reconfigure Product"
                     />
                 </div>

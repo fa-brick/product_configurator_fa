@@ -26,7 +26,7 @@
                      La promesse « sans attente » se dégrade, elle ne casse pas. -->
                 <a role="button" class="btn btn-primary o_cfg3d_configure"
                    t-attf-href="/configurator/start/#{slug(product)}">
-                    <i class="fa fa-cube me-2"/>Configure
+                    <i class="fa fa-pencil me-2"/>Configure
                 </a>
                 <!-- Prépare la configuration pendant que le visiteur lit la fiche :
                      un jeton, l'état, et la scène construite d'avance. -->
@@ -95,6 +95,30 @@
         </xpath>
     </template>
 
+    <!-- ══ LE CRAYON DU BOUTON « CONFIGURER », MÊME SUR UNE FICHE FIGÉE ═════
+         ⚠️ Une copie de site figée de `product_configure_button` garderait l'ancienne icône :
+         vue NEUVE (L-356, D-392).
+         ⓘ Le crayon partout où l'on configure, comme la ligne de devis d'Odoo (D-538). -->
+    <template id="product_configure_button_pencil" inherit_id="website_sale.product"
+              name="Configurable product: pencil on the Configure button">
+        <xpath expr="//a[hasclass('o_cfg3d_configure')]/i" position="attributes">
+            <attribute name="class">fa fa-pencil me-2</attribute>
+        </xpath>
+    </template>
+
+    <!-- ══ LE CRAYON DE LA VIGNETTE, MÊME SUR UNE BOUTIQUE FIGÉE ══════════════
+         ⚠️ Un « Enregistrer » de la boutique dans l'éditeur fige `products_item_configure` sur le
+         site : vue NEUVE (L-356, D-392). -->
+    <template id="products_item_configure_pencil" inherit_id="website_sale.products_item"
+              name="Configurable product: pencil on the grid item">
+        <xpath expr="//div[hasclass('o_wsale_product_btn')]/a[@t-if='product.config_ok']" position="attributes">
+            <attribute name="class">btn btn-primary</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_wsale_product_btn')]/a[@t-if='product.config_ok']/*[1]" position="attributes">
+            <attribute name="class">fa fa-pencil</attribute>
+        </xpath>
+    </template>
+
     <!-- ══ LA VIGNETTE DE LA GRILLE ═══════════════════════════════════════════
          Le même geste dans la liste de la boutique. L'ajout RAPIDE (l'icône de
          panier) disparaît par `_website_show_quick_add()` — en Python, parce que
@@ -102,10 +126,12 @@
     <template id="products_item_configure" inherit_id="website_sale.products_item"
               name="Configurable product: Configure button on the grid item">
         <xpath expr="//div[hasclass('o_wsale_product_btn')]" position="inside">
-            <a t-if="product.config_ok" role="button" class="btn btn-primary btn-sm"
+            <!-- ⚠️ Sans `btn-sm`, comme le cœur et le panier d'Odoo : étiré à leur hauteur, un
+                 bouton plus petit gardait son icône en haut (D-538). -->
+            <a t-if="product.config_ok" role="button" class="btn btn-primary"
                t-attf-href="/configurator/start/#{slug(product)}"
                aria-label="Configure" title="Configure">
-                <i class="fa fa-cube"/>
+                <span class="fa fa-pencil" role="img"/>
             </a>
         </xpath>
     </template>

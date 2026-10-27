@@ -36,11 +36,11 @@
                 <t t-elif="product.action === 'configure'">
                     <button t-if="props.configure" type="button" class="btn btn-primary"
                             t-att-disabled="state.busy" t-on-click="() => this.configure(product)">
-                        <i class="fa fa-cube" role="img"/>
+                        <i class="fa fa-pencil" role="img"/>
                         <span class="ms-2 d-none d-md-inline" t-esc="configureLabel"/>
                     </button>
                     <a t-else="" class="btn btn-primary" t-att-href="product.url">
-                        <i class="fa fa-cube" role="img"/>
+                        <i class="fa fa-pencil" role="img"/>
                         <span class="ms-2 d-none d-md-inline" t-esc="configureLabel"/>
                     </a>
                 </t>

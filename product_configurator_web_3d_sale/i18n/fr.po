@@ -24,3 +24,27 @@ msgstr "Session de configuration"
 #: model:ir.model,name:product_configurator_web_3d_sale.model_sale_order_line
 msgid "Sales Order Line"
 msgstr "Ligne de commande"
+
+#. module: product_configurator_web_3d_sale
+#: model:ir.model.fields,field_description:product_configurator_web_3d_sale.field_product_config_session__order_date
+msgid "Quotation Date"
+msgstr "Date du devis"
+
+#. module: product_configurator_web_3d_sale
+#: model:ir.model.fields,help:product_configurator_web_3d_sale.field_product_config_session__order_date
+msgid ""
+"Date of the quotation this configuration was opened from: its price grid "
+"applies."
+msgstr ""
+"Date du devis depuis lequel cette configuration a été ouverte : sa grille de "
+"prix s'applique."
+
+#. module: product_configurator_web_3d_sale
+#: model:ir.model.fields,field_description:product_configurator_web_3d_sale.field_product_config_session__order_pricelist_id
+msgid "Quotation Pricelist"
+msgstr "Liste de prix du devis"
+
+#. module: product_configurator_web_3d_sale
+#: model:ir.model.fields,help:product_configurator_web_3d_sale.field_product_config_session__order_pricelist_id
+msgid "Pricelist of the quotation this configuration was opened from."
+msgstr "Liste de prix du devis depuis lequel cette configuration a été ouverte."

@@ -25,7 +25,9 @@ class ProductConfigSession(models.Model):
 
         ⚠️ La même liste que `get_cfg_price`, sinon la devise affichée ne serait pas celle du montant (D-092).
         """
-        pricelist = self.env.user.partner_id.property_product_pricelist
+        pricelist = self._web_pricing()[0]
+        if pricelist is None:
+            pricelist = self.env.user.partner_id.property_product_pricelist
         return pricelist.currency_id or self.env.company.currency_id
 
     def _web_amount_label(self, amount, currency=None, signed=False, suffix=""):

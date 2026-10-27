@@ -5,11 +5,35 @@
 ⚠️ Sans `_web_after_confirm` ici, une configuration confirmée depuis une ligne ne pose
 pas sa VARIANTE sur le devis : seul le prix suivrait, par `config_session_id`.
 """
-from odoo import models
+from odoo import fields, models
 
 
 class ProductConfigSession(models.Model):
     _inherit = "product.config.session"
+
+    # ⚠️ Sans eux, la fenêtre ouverte depuis un devis afficherait le prix de la liste du
+    # commercial, et la ligne celui du devis : deux montants pour une configuration (D-537).
+    order_pricelist_id = fields.Many2one(
+        comodel_name="product.pricelist",
+        string="Quotation Pricelist",
+        help="Pricelist of the quotation this configuration was opened from.",
+    )
+    order_date = fields.Datetime(
+        string="Quotation Date",
+        help="Date of the quotation this configuration was opened from: its price grid applies.",
+    )
+
+    def _web_on_open(self, pricelist_id=None, date_order=None, **options):
+        """Le devis qui ouvre la configuration la chiffre : sa liste de prix, sa date (D-537)."""
+        super()._web_on_open(**options)
+        if pricelist_id or date_order:
+            self.write({"order_pricelist_id": pricelist_id or False,
+                        "order_date": date_order or False})
+
+    def _web_pricing(self):
+        if self.order_pricelist_id or self.order_date:
+            return self.order_pricelist_id, self.order_date or None
+        return super()._web_pricing()
 
     def _web_after_confirm(self):
         """Poser la variante née de la configuration sur la ligne qui l'attend.
@@ -25,7 +49,7 @@ class ProductConfigSession(models.Model):
 
         ⓘ Écrire `product_id` suffit : `name`, taxes et unité se recalculent
         (ce sont des champs calculés `readonly=False` depuis Odoo 17), et le
-        prix suit `config_session_id.price` par `_compute_price_unit`.
+        prix suit la session par `_compute_price_unit`.
         """
         res = super()._web_after_confirm()
         lines = self.env["sale.order.line"].sudo().search(

@@ -1163,6 +1163,16 @@ class ProductConfigSession(models.Model):
                             exc_info=True)
             return self.env["product.product"]
 
+    def _web_on_open(self, **options):
+        """Ce qu'un module pose sur la session quand le back-office l'ouvre — rien ici."""
+
+    def _web_pricing(self):
+        """La liste de prix et la date qui chiffrent la page — `None` : celles de qui regarde.
+
+        ⓘ Un module qui ouvre la page pour une COMMANDE rend les siennes (D-537).
+        """
+        return None, None
+
     def web_separate_lines(self, definition=None):
         """Les lignes de devis À PART de cette configuration — D-368.
 
@@ -1214,7 +1224,9 @@ class ProductConfigSession(models.Model):
         # ⚠️ **LA MÊME LISTE DE PRIX QUE LE PRODUIT** (`get_cfg_price`) : sans elle, la page
         # annonçait le bumper au prix catalogue (1,00) et le panier le facturait à 0,00 —
         # mesuré sur une copie de fabk18, dont la liste « Par défaut » porte des règles.
-        pricelist = self.env.user.partner_id.property_product_pricelist
+        pricelist = self._web_pricing()[0]
+        if pricelist is None:
+            pricelist = self.env.user.partner_id.property_product_pricelist
         out = []
         for value in self.value_ids.filtered(lambda v: v.attribute_id.id in apart):
             if not value.product_id:
@@ -1601,7 +1613,9 @@ class ProductConfigSession(models.Model):
         # scène contient. La recalculer serait la payer deux fois par clic.
         definition = (model3d.to_definition(values, link_answers=self._web_link_answers())
                       if model3d else None)
-        price = self.get_cfg_price(custom_vals=self._get_custom_vals_dict())
+        pricelist, day = self._web_pricing()
+        price = self.get_cfg_price(
+            custom_vals=self._get_custom_vals_dict(), pricelist=pricelist, date=day)
         separate = self.web_separate_lines(definition)
         # ⓘ UNE lecture des étapes pour les questions ET pour la liste qui suit : deux
         # lectures pourraient ne pas classer une question dans la même étape.

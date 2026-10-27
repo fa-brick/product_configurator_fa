@@ -19,6 +19,7 @@ import { SaleOrderLineProductField } from "@sale/js/sale_product_field";
 import { ConfiguratorDialog } from "@product_configurator_web_3d/configurator_dialog";
 import { getLinkedSaleOrderLines } from "@sale/js/sale_utils";
 import { uuid } from "@web/views/utils";
+import { serializeDateTime } from "@web/core/l10n/dates";
 
 patch(SaleOrderLineProductField.prototype, {
     /**
@@ -44,12 +45,19 @@ patch(SaleOrderLineProductField.prototype, {
         if (!line.product_tmpl_config_ok) {
             return super._openProductConfigurator(...arguments);
         }
+        const order = this.props.record.model.root.data;
         const opened = await this.orm.call(
             "product.template", "web3d_open_configuration",
             [line.product_template_id[0]],
-            // ⓘ On REPREND la configuration de la ligne quand elle en a une —
-            // rouvrir doit montrer ce qu'on avait répondu, pas une page neuve.
-            { session_id: (line.config_session_id && line.config_session_id[0]) || false },
+            {
+                // ⓘ On REPREND la configuration de la ligne quand elle en a une —
+                // rouvrir doit montrer ce qu'on avait répondu, pas une page neuve.
+                session_id: (line.config_session_id && line.config_session_id[0]) || false,
+                // ⚠️ Sans eux, la fenêtre chiffre à la liste du commercial et la ligne à
+                // celle du devis : deux prix pour une configuration (D-537).
+                pricelist_id: (order.pricelist_id && order.pricelist_id[0]) || false,
+                date_order: order.date_order ? serializeDateTime(order.date_order) : false,
+            },
         );
         this.dialog.add(ConfiguratorDialog, {
             token: opened.token,
@@ -64,7 +72,7 @@ patch(SaleOrderLineProductField.prototype, {
      * Poser sur la ligne ce que la configuration a produit.
      *
      * ⓘ Écrire `product_id` et `config_session_id` SUFFIT : le nom, les taxes et
-     * l'unité se recalculent, et le prix suit `config_session_id.price` par
+     * l'unité se recalculent, et le prix suit la session par
      * `_compute_price_unit`. La ligne n'est pas encore enregistrée — c'est le
      * devis qui la portera, comme pour n'importe quel produit.
      */

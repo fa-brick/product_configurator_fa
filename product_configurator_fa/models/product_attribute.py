@@ -1820,26 +1820,22 @@ class ProductAttributeValue(models.Model):
                 )
 
     @api.model
-    def get_attribute_value_extra_prices(
-        self, product_tmpl_id, pt_attr_value_ids, pricelist=None
-    ):
+    def get_attribute_value_extra_prices(self, product_tmpl_id, pt_attr_value_ids):
         """Le supplément de chaque valeur sur ce produit — `{id de valeur: montant}`.
 
         ⚠️ **UNE VALEUR QUI DÉSIGNE UN PRODUIT EST FACTURÉE AU PRIX DE CE PRODUIT**,
         et le montant enregistré est alors ignoré. Ce n'est pas un oubli : c'est la
         fonctionnalité, et `test_04_compute_cfg_price` l'énonce ligne à ligne —
         prix du modèle, plus le `lst_price` du moteur, de la finition, de la boîte
-        et de l'option. Le prix suit donc le catalogue et la liste de prix du
-        client, sans reprise.
+        et de l'option.
 
         ⚠️ **NE PAS RENDRE LE MONTANT ENREGISTRÉ DÉCISIONNAIRE** (D-199) : MESURÉ sur
         la base de démo, le prix d'une configuration tombait de 35 748 à 25 000, parce
         que les valeurs existantes ne stockent aucun montant.
-        """
-        extra_prices = {}
-        if not pricelist:
-            pricelist = self.env.user.partner_id.property_product_pricelist
 
+        ⚠️ Le prix CATALOGUE du composant, jamais celui de la liste de prix : le total
+        y passe déjà, et la remise compterait deux fois sur le composant (D-537).
+        """
         related_product_av_ids = self.env["product.attribute.value"].search(
             [("id", "in", pt_attr_value_ids.ids), ("product_id", "!=", False)]
         )
@@ -1853,9 +1849,9 @@ class ProductAttributeValue(models.Model):
             # ⓘ Ce qu'on lit est un PRIX, et il entre dans un total que le visiteur voit
             # de toute façon. Publier le composant serait l'autre issue — mais elle
             # exposerait dans la boutique des pièces qui n'ont pas à s'y vendre.
-            av.id: av.product_id.sudo().with_context(
-                pricelist=pricelist.id
-            )._get_contextual_price()
+            # ⓘ `_price_compute` et non `lst_price` : la grille d'un composant à grille
+            # n'entre que par lui (D-093).
+            av.id: av.product_id.sudo()._price_compute("list_price")[av.product_id.id]
             for av in related_product_av_ids
         }
         remaining_av_ids = pt_attr_value_ids - related_product_av_ids

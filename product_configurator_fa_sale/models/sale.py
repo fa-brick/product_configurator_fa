@@ -37,7 +37,7 @@ class SaleOrderLine(models.Model):
             if line.config_session_id:
                 account_tax_obj = self.env["account.tax"]
                 line.price_unit = account_tax_obj._fix_tax_included_price_company(
-                    line.config_session_id.price,
+                    line.config_session_id._get_order_price(line.order_id),
                     line.product_id.taxes_id,
                     line.tax_id,
                     line.company_id,

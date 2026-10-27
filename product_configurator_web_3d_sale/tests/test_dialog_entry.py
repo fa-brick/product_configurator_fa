@@ -126,3 +126,19 @@ class TestDialogEntry(TransactionCase):
         self.assertFalse(self._arch_devis().xpath(
             "//button[@name='reconfigure_product']"))
         self.assertTrue(hasattr(self.env["sale.order.line"], "reconfigure_product"))
+
+    def test_ouvert_depuis_un_devis_le_dialogue_chiffre_comme_le_devis(self):
+        """⚠️ Le prix de la fenêtre est celui de la LIGNE : la liste du devis, pas celle du
+        commercial (D-537)."""
+        self.tmpl.list_price = 200.0
+        pricelist = self.env["product.pricelist"].create({
+            "name": "Revendeur -10%",
+            "item_ids": [Command.create({
+                "applied_on": "3_global", "compute_price": "percentage", "percent_price": 10,
+            })],
+        })
+        quoted = self.tmpl.web3d_open_configuration(
+            pricelist_id=pricelist.id, date_order="2026-06-01 00:00:00")
+        self.assertAlmostEqual(quoted["state"]["price"], 180.0, places=2)
+        session = self.env["product.config.session"].browse(quoted["sessionId"])
+        self.assertEqual(session.order_pricelist_id, pricelist)

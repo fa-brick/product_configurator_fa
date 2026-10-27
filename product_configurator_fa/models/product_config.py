@@ -1537,12 +1537,13 @@ class ProductConfigSession(models.Model):
         return resolved
 
     @api.model
-    def get_cfg_price(self, value_ids=None, custom_vals=None, pricelist=None):
+    def get_cfg_price(self, value_ids=None, custom_vals=None, pricelist=None, date=None):
         """Computes the price of the configured product based on the
             configuration passed in via value_ids and custom_values
 
         :param value_ids: list of attribute value_ids
         :param custom_vals: dictionary of custom attribute values
+        :param date: the day whose grid and pricelist rules apply — today when empty
         :returns: final configuration price"""
 
         if value_ids is None:
@@ -1575,7 +1576,7 @@ class ProductConfigSession(models.Model):
         # D-093). Faute de grille, on retombe sur le comportement d'OCA : le
         # produit n'est pas dimensionné, ou son absence de grille a déjà été
         # signalée à l'arrivée dans la fiche.
-        base_price = self._get_config_grid_price(value_ids, custom_vals)
+        base_price = self._get_config_grid_price(value_ids, custom_vals, date=date)
         if base_price is None:
             base_price = product_tmpl.list_price
         price_sqm = self._get_cfg_price_sqm(value_ids, custom_vals)
@@ -1597,7 +1598,20 @@ class ProductConfigSession(models.Model):
             configurator_base_prices={product_tmpl.id: base_price},
             current_attributes_price_extra=[price_extra, price_sqm],
         )
-        return pricelist._get_product_price(template, 1.0)
+        return pricelist._get_product_price(template, 1.0, date=date)
+
+    def _get_order_price(self, order):
+        """Le prix de cette configuration sur UNE commande.
+
+        ⚠️ La liste de prix et la date de la COMMANDE, pas celles de qui calcule : sinon un
+        devis serait chiffré à la liste du commercial et à la grille du jour (D-537).
+        """
+        self.ensure_one()
+        return self.get_cfg_price(
+            custom_vals=self._get_custom_vals_dict(),
+            pricelist=order.pricelist_id,
+            date=order.date_order,
+        )
 
     def _get_config_dimensions(self, value_ids=None, custom_vals=None):
         """Les deux cotes de la configuration COURANTE — D-098, D-161.
@@ -1625,16 +1639,35 @@ class ProductConfigSession(models.Model):
                 continue
         return dimensions
 
-    def _get_config_grid_price(self, value_ids=None, custom_vals=None):
+    def _get_config_grid_price(self, value_ids=None, custom_vals=None, date=None):
         """Le prix de grille de la configuration courante, ou `None`."""
         self.ensure_one()
-        grid = self.product_tmpl_id._get_price_grid()
+        grid = self.product_tmpl_id._get_price_grid(date=date)
         if not grid:
             return None
         dimensions = self._get_config_dimensions(value_ids, custom_vals)
         if "axis_x" not in dimensions or "axis_y" not in dimensions:
             return None
         return grid.get_price(dimensions["axis_x"], dimensions["axis_y"])
+
+    def _is_out_of_grid(self, value_ids=None, custom_vals=None, date=None):
+        """Les deux cotes sont connues, une grille existe, et aucune case n'y répond.
+
+        ⚠️ Une cote MANQUANTE n'est pas hors grille : la configuration est seulement
+        incomplète, et la bloquer fermerait le panier avant la première réponse (D-537).
+        """
+        self.ensure_one()
+        grid = self.product_tmpl_id._get_price_grid(date=date)
+        if not grid:
+            return False
+        if value_ids is None:
+            value_ids = self.value_ids.ids
+        if custom_vals is None:
+            custom_vals = self._get_custom_vals_dict()
+        dimensions = self._get_config_dimensions(value_ids, custom_vals)
+        if "axis_x" not in dimensions or "axis_y" not in dimensions:
+            return False
+        return grid.get_price(dimensions["axis_x"], dimensions["axis_y"]) is None
 
     def get_config_surface(self, value_ids=None, custom_vals=None):
         """La surface en m² de la configuration courante, ou 0 — D-161.

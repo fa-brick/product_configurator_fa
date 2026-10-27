@@ -61,7 +61,7 @@ class SaleOrderLine(models.Model):
         ⓶ **La ligne n'en a pas** — on en crée une, **pré-remplie des valeurs de
         la variante** de la ligne, et on l'attache. ⚠️ Le pré-remplissage n'est
         pas cosmétique : `_compute_price_unit` recalcule le prix de la ligne à
-        partir de `config_session_id.price` dès que le lien existe. Une session
+        partir de sa session dès que le lien existe. Une session
         vide mettrait donc la ligne **à zéro**, sans un mot.
 
         ⚠️ **`force_create=True` ici**, contrairement à la fiche produit : une

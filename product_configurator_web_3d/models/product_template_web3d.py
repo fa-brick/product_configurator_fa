@@ -17,7 +17,7 @@ from odoo import models
 class ProductTemplate(models.Model):
     _inherit = "product.template"
 
-    def web3d_open_configuration(self, session_id=None):
+    def web3d_open_configuration(self, session_id=None, **options):
         """Préparer une configuration pour ce modèle, et rendre de quoi l'afficher.
 
         ⓘ **Le pendant back-office de `/configurator/prepare`**, et il rend
@@ -31,6 +31,9 @@ class ProductTemplate(models.Model):
 
         ⓘ `session_id` REPREND une configuration existante au lieu d'en ouvrir
         une neuve : c'est le cas « je rouvre la ligne pour la corriger ».
+
+        ⓘ `options` va à `_web_on_open` de la session, AVANT l'état : un module qui ouvre la
+        page pour une commande y pose ce qui la chiffre (D-537).
         """
         self.ensure_one()
         Session = self.env["product.config.session"]
@@ -42,6 +45,7 @@ class ProductTemplate(models.Model):
         if not session:
             session = Session.create_get_session(self.id, force_create=True)
         session._ensure_access_token()
+        session._web_on_open(**options)
         return {
             "sessionId": session.id,
             "token": session.access_token,

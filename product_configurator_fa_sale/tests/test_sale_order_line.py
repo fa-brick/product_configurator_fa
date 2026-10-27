@@ -107,10 +107,13 @@ class TestSaleOrderLine(BaseCommon):
         order_line_20 = sale_order.order_line - order_line_10
 
         # Assert: Each line has the unit price of the configuration session
+        # ⓘ Le prix de la session POUR CE DEVIS — sa liste de prix, sa date (D-537).
         config_session_10 = order_line_10.config_session_id
-        self.assertEqual(config_session_10.price, order_line_10.price_unit)
+        price_10 = config_session_10._get_order_price(sale_order)
+        self.assertEqual(price_10, order_line_10.price_unit)
         config_session_20 = order_line_20.config_session_id
-        self.assertEqual(config_session_20.price, order_line_20.price_unit)
+        self.assertEqual(config_session_20._get_order_price(sale_order), order_line_20.price_unit)
+        self.assertNotEqual(price_10, order_line_20.price_unit)
         # Changing the configuration session changes the unit price
         order_line_20.config_session_id = config_session_10
-        self.assertEqual(config_session_10.price, order_line_20.price_unit)
+        self.assertEqual(price_10, order_line_20.price_unit)

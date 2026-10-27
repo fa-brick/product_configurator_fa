@@ -106,19 +106,6 @@
         </xpath>
     </template>
 
-    <!-- ══ LE CRAYON DE LA VIGNETTE, MÊME SUR UNE BOUTIQUE FIGÉE ══════════════
-         ⚠️ Un « Enregistrer » de la boutique dans l'éditeur fige `products_item_configure` sur le
-         site : vue NEUVE (L-356, D-392). -->
-    <template id="products_item_configure_pencil" inherit_id="website_sale.products_item"
-              name="Configurable product: pencil on the grid item">
-        <xpath expr="//div[hasclass('o_wsale_product_btn')]/a[@t-if='product.config_ok']" position="attributes">
-            <attribute name="class">btn btn-primary</attribute>
-        </xpath>
-        <xpath expr="//div[hasclass('o_wsale_product_btn')]/a[@t-if='product.config_ok']/*[1]" position="attributes">
-            <attribute name="class">fa fa-pencil</attribute>
-        </xpath>
-    </template>
-
     <!-- ══ LA VIGNETTE DE LA GRILLE ═══════════════════════════════════════════
          Le même geste dans la liste de la boutique. L'ajout RAPIDE (l'icône de
          panier) disparaît par `_website_show_quick_add()` — en Python, parce que
@@ -133,6 +120,26 @@
                aria-label="Configure" title="Configure">
                 <span class="fa fa-pencil" role="img"/>
             </a>
+        </xpath>
+    </template>
+
+    <!-- ══ LE CRAYON DE LA VIGNETTE, MÊME SUR UNE BOUTIQUE FIGÉE ══════════════
+         ⚠️ Un « Enregistrer » de la boutique dans l'éditeur fige `products_item_configure` sur le
+         site : vue NEUVE (L-356, D-392).
+         ⚠️ APRÈS `products_item_configure` dans ce fichier : déclarée avant, elle s'appliquerait la
+         première sur une base neuve, ne trouverait pas le bouton, et l'installation échouerait.
+         ⓘ Le crayon suit l'option panier de la rangée « Boutons » de la boutique, comme le panier
+         d'Odoo (D-539). -->
+    <template id="products_item_configure_pencil" inherit_id="website_sale.products_item"
+              name="Configurable product: pencil on the grid item">
+        <xpath expr="//div[hasclass('o_wsale_product_btn')]/a[@t-if='product.config_ok']" position="attributes">
+            <attribute name="class">btn btn-primary</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_wsale_product_btn')]/a[@t-if='product.config_ok']/*[1]" position="attributes">
+            <attribute name="class">fa fa-pencil</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_wsale_product_btn')]/a[@t-if='product.config_ok']" position="attributes">
+            <attribute name="t-if">product.config_ok and is_view_active('website_sale.products_add_to_cart')</attribute>
         </xpath>
     </template>
 

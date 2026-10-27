@@ -66,9 +66,22 @@ class TestShopEntry(HttpCase):
         self.assertIn('id="add_to_cart"', html)
         self.assertNotIn("/configurator/start/", html)
 
+    def _add_to_cart_option(self, active):
+        """L'option panier comme la règle l'éditeur : celle DU SITE, copie comprise."""
+        website = self.env["website"].get_current_website()
+        website.with_context(website_id=website.id).viewref(
+            "website_sale.products_add_to_cart").active = active
+
     def test_la_vignette_de_la_grille_mene_a_la_configuration(self):
+        """ⓘ Le crayon suit l'option panier de la boutique, comme le panier d'Odoo (D-539)."""
+        self._add_to_cart_option(True)
         html = self.url_open("/shop?search=Porte configurable").text
         self.assertIn("/configurator/start/", html)
+
+    def test_sans_l_option_panier_la_vignette_n_a_pas_de_crayon(self):
+        self._add_to_cart_option(False)
+        html = self.url_open("/shop?search=Porte configurable").text
+        self.assertNotIn("/configurator/start/", html)
 
     def test_pas_d_ajout_rapide_pour_ce_qui_doit_etre_configure(self):
         """Le verrou est en Python : la vue qui porte l'icône est optionnelle."""

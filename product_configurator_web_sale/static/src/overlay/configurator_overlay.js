@@ -23,6 +23,7 @@ import { browser } from "@web/core/browser/browser";
 import { registry } from "@web/core/registry";
 import { rpc } from "@web/core/network/rpc";
 import { ConfiguratorPage } from "@product_configurator_web_3d/page/configurator_page";
+import { inOdooFrame } from "@product_configurator_web_3d/page/website_preview_exit";
 
 /** Le bouton que ce composant détourne, s'il le trouve. */
 const TRIGGER = ".o_cfg3d_configure";
@@ -37,6 +38,12 @@ export class ConfiguratorOverlay extends Component {
     setup() {
         this.state = useState({ token: null, initialState: null, open: false });
         onMounted(() => {
+            // ⚠️ Pas de scène préparée dans l'aperçu du site : le pavé numérique s'y referme seul (D-540, L-637).
+            // ⓘ Le lien ouvre la page dans la fenêtre entière, sans passer par le cadre.
+            if (inOdooFrame()) {
+                document.querySelector(TRIGGER)?.setAttribute("target", "_top");
+                return;
+            }
             this._bindTrigger();
             this._prepareWhenIdle();
             browser.addEventListener("popstate", this._onPopState);

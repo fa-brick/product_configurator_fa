@@ -50,3 +50,19 @@ class ProductConfiguratorShopEntry(http.Controller):
         session._ensure_access_token()
         # Le jeton entre dans l'URL — c'est la SEULE identité de ce visiteur.
         return request.redirect(f"/configurator/{session.access_token}")
+
+    @http.route(
+        "/configurator/optional_products", type="json", auth="public", website=True,
+        methods=["POST"],
+    )
+    def optional_products(self, token=None, **kwargs):
+        """Les optionnels du produit de cette configuration, prêts pour la fenêtre — D-537.
+
+        ⚠️ Le jeton seul ouvre la session (`sudo`), comme sur les routes de `web_3d` ; les
+        optionnels, eux, se lisent avec les droits du VISITEUR : il ne voit que ce qu'il peut acheter.
+        """
+        session = request.env["product.config.session"].sudo()._find_by_access_token(token)
+        if not session:
+            return []
+        tmpl = request.env["product.template"].browse(session.product_tmpl_id.id)
+        return tmpl._web_optional_products(request.website)

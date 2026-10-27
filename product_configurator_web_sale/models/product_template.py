@@ -1,6 +1,7 @@
 # Copyright 2026 fa-brick
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 from odoo import models
+from odoo.tools.misc import format_amount
 
 
 class ProductTemplate(models.Model):
@@ -54,3 +55,40 @@ class ProductTemplate(models.Model):
             return self.env["product.product"]
         return super()._get_possible_variants_sorted(parent_combination=parent_combination)
 
+    def _web_optional_products(self, website):
+        """Les produits optionnels à proposer une fois ce produit configuré mis au panier — D-537.
+
+        ⚠️ Seuls ceux que le visiteur peut ACHETER : publiés, vendables, de ce site. Un optionnel
+        invisible ouvrirait sur une page 403 ou un bouton refusé.
+        ⓘ Un optionnel configurable se CONFIGURE ; un optionnel qui a des choix d'Odoo s'ouvre sur sa
+        fiche ; les autres s'ajoutent, rattachés à la ligne du produit.
+        """
+        self.ensure_one()
+        options = self.optional_product_ids.filtered(
+            lambda tmpl: tmpl.sale_ok and tmpl.website_published
+            and tmpl.website_id in (website, website.browse())
+        )
+        prices = options._get_sales_prices(website)
+        out = []
+        for tmpl in options:
+            if tmpl.config_ok:
+                action, product_id, url = (
+                    "configure", None,
+                    f"/configurator/start/{self.env['ir.http']._slug(tmpl)}")
+            elif tmpl.has_configurable_attributes or not tmpl._is_add_to_cart_possible():
+                action, product_id, url = "view", None, tmpl.website_url
+            else:
+                action, product_id, url = "add", tmpl._get_first_possible_variant_id(), None
+            out.append({
+                "id": tmpl.id,
+                "name": tmpl.display_name,
+                "image": f"/web/image/product.template/{tmpl.id}/image_128",
+                "price": format_amount(self.env, prices[tmpl.id]["price_reduce"],
+                                       website.currency_id),
+                # ⓘ Un optionnel configurable n'a qu'un prix de départ, comme sur sa vignette (D-536).
+                "fromPrice": bool(tmpl.config_ok),
+                "action": action,
+                "productId": product_id,
+                "url": url,
+            })
+        return out

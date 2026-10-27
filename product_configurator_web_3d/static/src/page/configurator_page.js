@@ -1591,6 +1591,16 @@ export class ConfiguratorPage extends Component {
                                    refused.join(", "));
             return;
         }
+        await this._afterCart(main);
+    }
+
+    /**
+     * Après l'ajout au panier : le panier.
+     *
+     * ⓘ La boutique y glisse ses produits optionnels (`product_configurator_web_sale`, D-537) :
+     * `main` porte la ligne du produit, à laquelle ils se rattachent.
+     */
+    async _afterCart(main) {
         browser.location.href = "/shop/cart";
     }
 

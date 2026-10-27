@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<!-- ⓘ D-537 — une ligne par optionnel : image, nom, prix, et UN geste selon sa nature. -->
+<t t-name="product_configurator_web_sale.OptionalProductsDialog">
+    <Dialog title="title" size="'md'">
+        <ul class="list-unstyled mb-0">
+            <li t-foreach="props.products" t-as="product" t-key="product.id"
+                class="d-flex align-items-center gap-3 py-2 border-bottom">
+                <img t-att-src="product.image" t-att-alt="product.name" width="64" height="64"
+                     class="rounded object-fit-contain flex-shrink-0"/>
+                <div class="flex-grow-1">
+                    <div t-esc="product.name"/>
+                    <div class="small">
+                        <span t-if="product.fromPrice" class="text-o-color-2 me-1" t-esc="fromLabel"/>
+                        <span t-esc="product.price"/>
+                    </div>
+                </div>
+                <button t-if="product.action === 'add'" type="button" class="btn btn-secondary"
+                        t-att-disabled="state.busy or state.added[product.id]"
+                        t-on-click="() => this.add(product)">
+                    <i t-att-class="state.added[product.id] ? 'fa fa-check' : 'fa fa-plus'" role="img"/>
+                    <span class="ms-2 d-none d-md-inline"
+                          t-esc="state.added[product.id] ? addedLabel : addLabel"/>
+                </button>
+                <a t-elif="product.action === 'configure'" class="btn btn-primary" t-att-href="product.url">
+                    <i class="fa fa-cube" role="img"/>
+                    <span class="ms-2 d-none d-md-inline" t-esc="configureLabel"/>
+                </a>
+                <a t-else="" class="btn btn-secondary" t-att-href="product.url" t-esc="viewLabel"/>
+            </li>
+        </ul>
+        <t t-set-slot="footer">
+            <a class="btn btn-secondary" href="/shop" t-esc="continueLabel"/>
+            <a class="btn btn-primary" href="/shop/cart" t-esc="checkoutLabel"/>
+        </t>
+    </Dialog>
+</t>
+
+</templates>

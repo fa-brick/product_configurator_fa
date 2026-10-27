@@ -21,13 +21,17 @@ msgid "Attribute Value"
 msgstr "Valeur de l'attribut"
 
 #. module: product_configurator_web_sale
+#. odoo-javascript
 #: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.products_item_configure
+#: code:addons/product_configurator_web_sale/static/src/optional/optional_products_dialog.js:0
 msgid "Configure"
 msgstr "Configurer"
 
 #. module: product_configurator_web_sale
+#. odoo-javascript
 #: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.product_configure_questions_hidden
 #: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.products_item_price_from
+#: code:addons/product_configurator_web_sale/static/src/optional/optional_products_dialog.js:0
 msgid "From"
 msgstr "À partir de"
 
@@ -45,3 +49,39 @@ msgstr "Ligne d'attribut du modèle du produit"
 #: model:ir.model,name:product_configurator_web_sale.model_sale_order
 msgid "Sales Order"
 msgstr "Commande client"
+
+#. module: product_configurator_web_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Add optional products"
+msgstr "Ajouter des produits optionnels"
+
+#. module: product_configurator_web_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Add"
+msgstr "Ajouter"
+
+#. module: product_configurator_web_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Added"
+msgstr "Ajouté"
+
+#. module: product_configurator_web_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_sale/static/src/optional/optional_products_dialog.js:0
+msgid "View"
+msgstr "Voir"
+
+#. module: product_configurator_web_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Continue Shopping"
+msgstr "Continuer les achats"
+
+#. module: product_configurator_web_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_sale/static/src/optional/optional_products_dialog.js:0
+msgid "Proceed to Checkout"
+msgstr "Finaliser les achats"

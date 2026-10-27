@@ -21,6 +21,24 @@ class ProductTemplate(models.Model):
             return False
         return super()._website_show_quick_add()
 
+    def _get_sales_prices(self, website):
+        """Le prix de la vignette d'un produit configurable = celui de sa fiche.
+
+        ⚠️ Laisser le calcul d'Odoo, c'est annoncer le seul `list_price` du modèle, sans le prix
+        des composants : la liste afficherait un montant qu'aucune configuration n'atteint (D-536).
+        ⓘ Même calcul que la fiche (`_get_combination_info`, combinaison par défaut).
+        """
+        res = super()._get_sales_prices(website)
+        for template in self.filtered("config_ok"):
+            info = template._get_combination_info()
+            vals = {"price_reduce": info["price"]}
+            if info["has_discounted_price"]:
+                vals["base_price"] = info["list_price"]
+            elif info["compare_list_price"]:
+                vals["base_price"] = info["compare_list_price"]
+            res[template.id] = vals
+        return res
+
     def _get_possible_variants_sorted(self, parent_combination=None):
         """Pas de LISTE des variantes sur la fiche d'un produit configurable — W-69.
 

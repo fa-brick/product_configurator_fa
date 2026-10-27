@@ -27,6 +27,7 @@ msgstr "Configurer"
 
 #. module: product_configurator_web_sale
 #: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.product_configure_questions_hidden
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.products_item_price_from
 msgid "From"
 msgstr "À partir de"
 

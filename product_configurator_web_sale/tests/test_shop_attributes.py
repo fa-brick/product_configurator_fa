@@ -157,3 +157,21 @@ class ShopPageAttributes(HttpCase):
         ordinary = self.url_open(self.ordinary.website_url).text
         self.assertIn("radio_variant_", ordinary)            # le mode est bien actif
 
+
+    def test_06_la_vignette_annonce_le_prix_de_la_fiche(self):
+        """⚠️ Une valeur qui désigne un produit est facturée à son prix : la fiche le compte,
+        le `list_price` du modèle — seul lu par Odoo pour la vignette — non (JeNo, D-536)."""
+        self.color_attr.value_type = "product"
+        self.colors[0].product_id = self.env["product.product"].create(
+            {"name": "Lame Omega", "list_price": 40.0})
+        website = self.env["website"].get_current_website()
+        listed = self.configurable._get_sales_prices(website)[self.configurable.id]
+        shown = self.configurable._get_combination_info()["price"]
+        self.assertAlmostEqual(listed["price_reduce"], shown)
+        # Le témoin : le composant entre bien dans ce prix, sans quoi l'égalité ne dit rien.
+        template_only = self.configurable._get_combination_info(only_template=True)["price"]
+        self.assertGreater(shown, template_only)
+
+    def test_07_la_vignette_s_annonce_comme_un_plancher(self):
+        self.assertIn("o_cfg3d_from", self.url_open("/shop?search=Portail configurable").text)
+        self.assertNotIn("o_cfg3d_from", self.url_open("/shop?search=Portail ordinaire").text)

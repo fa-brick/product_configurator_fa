@@ -87,10 +87,11 @@
              faire ici — une exclusion peut rendre invalide le « moins cher de chaque
              question ». ⓘ Lot à part, non tranché.
 
-             ⓘ Rien quand le prix est nul : « À partir de 0 € » est pire que le silence. -->
+             ⓘ Rien quand le prix est nul : « À partir de 0 € » est pire que le silence.
+             ⓘ À côté du prix, mais du même style que sur la vignette (D-536). -->
         <xpath expr="//t[@t-call='website_sale.product_price']" position="before">
             <span t-if="product.config_ok and combination_info['price']"
-                  class="o_cfg3d_from me-1 text-muted">From</span>
+                  class="o_cfg3d_from me-1 small text-o-color-2">From</span>
         </xpath>
     </template>
 
@@ -106,6 +107,23 @@
                aria-label="Configure" title="Configure">
                 <i class="fa fa-cube"/>
             </a>
+        </xpath>
+    </template>
+
+    <!-- ══ LE « À PARTIR DE » DE LA VIGNETTE : UNE VUE À PART ═════════════════
+         ⚠️ Une règle ajoutée à `products_item_configure` ne serait pas servie par une copie
+         de site figée : vue NEUVE (L-356, D-392).
+         ⓘ Le montant est celui de la fiche — `_get_sales_prices`, côté Python (D-536). -->
+    <template id="products_item_price_from" inherit_id="website_sale.products_item"
+              name="Configurable product: price from on the grid item">
+        <!-- ⚠️ Sans `text-end`, la mention, plus large que le prix, le laisserait à gauche
+             sous elle (D-536). -->
+        <xpath expr="//div[hasclass('product_price')]" position="attributes">
+            <attribute name="class" add="text-end" separator=" "/>
+        </xpath>
+        <xpath expr="//div[hasclass('product_price')]/span[1]" position="before">
+            <div t-if="product.config_ok and template_price_vals['price_reduce']"
+                 class="o_cfg3d_from small text-o-color-2">From</div>
         </xpath>
     </template>
 

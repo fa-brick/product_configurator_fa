@@ -1,3 +1,2 @@
-from . import product_config_session
-from . import sale_order_line
-from . import product_template  # noqa: F401  (optionnels du devis, D-537)
+# ⓘ Les déclarations d'abord, la logique ensuite : une extension ne se charge pas avant la classe qui porte `_name` (D-541).
+from . import bo, bll  # noqa: F401

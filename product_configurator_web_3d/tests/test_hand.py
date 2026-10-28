@@ -12,9 +12,7 @@ from unittest.mock import patch
 from odoo import Command, fields
 from odoo.tests import HttpCase, tagged
 
-from odoo.addons.product_configurator_web_3d.models.product_config_hand import (
-    HAND_TTL_SECONDS,
-)
+from odoo.addons.product_configurator_web_3d.models.bll.product_config_session.hand import HAND_TTL_SECONDS
 
 
 @tagged("post_install", "-at_install")

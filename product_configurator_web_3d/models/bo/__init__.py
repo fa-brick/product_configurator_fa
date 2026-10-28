@@ -1,0 +1,6 @@
+from . import product_template_attribute_line  # noqa: F401
+from . import product_attribute  # noqa: F401
+from . import product_attribute_value  # noqa: F401
+from . import product_config_step_line  # noqa: F401
+from . import product_config_session  # noqa: F401
+from . import product_configurator_condition  # noqa: F401

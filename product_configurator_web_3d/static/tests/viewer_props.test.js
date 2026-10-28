@@ -11,7 +11,7 @@
  * ⓘ On éprouve donc le GABARIT : ces quatre props sont le contrat entre la page et
  * le viewer, et leur oubli est silencieux par construction.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const TEMPLATE = readFileSync(
@@ -242,8 +242,11 @@ describe("le dialogue n'ajoute pas sa marge autour de la scène", () => {
 describe("l'AMBIANCE du produit atteint le viewer", () => {
     const SOURCE = readFileSync(
         join(__dirname, "..", "src", "page", "configurator_page.js"), "utf8");
-    const PAYLOAD = readFileSync(
-        join(__dirname, "..", "..", "models", "product_config_web.py"), "utf8");
+    // ⚠️ L'état de la page vit dans un DOSSIER de domaines (BO / BLL, D-541) : `web_state` dans `page.py`,
+    //   l'ambiance dans `scene.py`. Lire un seul fichier passerait à côté de l'un ou de l'autre ([[L-601]]).
+    const SESSION = join(__dirname, "..", "..", "models", "bll", "product_config_session");
+    const PAYLOAD = readdirSync(SESSION).filter((f) => f.endsWith(".py")).sort()
+        .map((f) => readFileSync(join(SESSION, f), "utf8")).join("\n");
 
     test("le gabarit la passe — sans quoi la page rend les constantes du moteur", () => {
         // ⓘ Son absence ne LÈVE pas : le viewer se rabat sur son studio en dur, et la page

@@ -1,5 +1,2 @@
-# License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-from . import sale_order_line
-from . import sale_order
-from . import ir_actions_report
-from . import drawing_report
+# ⓘ Les déclarations d'abord, la logique ensuite : une extension ne se charge pas avant la classe qui porte `_name` (D-541).
+from . import bo, bll  # noqa: F401

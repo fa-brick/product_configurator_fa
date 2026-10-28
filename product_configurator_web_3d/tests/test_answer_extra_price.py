@@ -8,7 +8,7 @@ from odoo import Command
 from odoo.tests import TransactionCase, tagged
 from odoo.tools.misc import format_amount
 
-from odoo.addons.product_configurator_web_3d.models.product_config_price_label import MINUS
+from odoo.addons.product_configurator_web_3d.models.bll.product_config_session.price_label import MINUS
 
 
 @tagged("post_install", "-at_install")

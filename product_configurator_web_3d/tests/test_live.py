@@ -9,7 +9,7 @@ from unittest.mock import patch
 from odoo import Command
 from odoo.tests import TransactionCase, tagged
 
-from odoo.addons.product_configurator_web_3d.models.ir_websocket import CHANNEL_PREFIX
+from odoo.addons.product_configurator_web_3d.models.bll.ir_websocket import CHANNEL_PREFIX
 
 
 @tagged("post_install", "-at_install")

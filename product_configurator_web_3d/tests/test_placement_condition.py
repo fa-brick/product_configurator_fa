@@ -11,11 +11,9 @@ et ce que la traduction refuse plutôt que de le perdre.
 from odoo.exceptions import UserError
 from odoo.tests.common import TransactionCase
 
-from odoo.addons.product_configurator_web_3d.models.placement_condition import (
-    clauses_to_domain, domain_to_clauses, merge_clauses,
-)
+from odoo.addons.product_configurator_web_3d.models.bll.product_configurator_condition import clauses_to_domain, domain_to_clauses, merge_clauses
 from odoo.addons.product_editor.models.bll.product_attribute import ATTRIBUTE_SCOPE_PREFIX
-from odoo.addons.product_configurator_fa.models.product_config import ProductConfigDomain
+from odoo.addons.product_configurator_fa.models.bll.product_config_domain import ProductConfigDomain
 
 
 class TestPlacementCondition(TransactionCase):

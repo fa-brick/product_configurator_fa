@@ -1,6 +1,2 @@
-# Copyright (C) 2021 Open Source Integrators
-# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
-
-from . import mrp
-from . import product
-from . import product_config
+# ⓘ Les déclarations d'abord, la logique ensuite : une extension ne se charge pas avant la classe qui porte `_name` (D-541).
+from . import bo, bll  # noqa: F401

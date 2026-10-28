@@ -1,0 +1,53 @@
+"""Ce qu'exécute `sale.order.line` (BLL, D-541)."""
+from odoo import api, models
+
+
+class SaleOrderLine(models.Model):
+    _inherit = "sale.order.line"
+
+    # ⓘ **`reconfigure_product` A DISPARU D'ICI**, et elle n'a pas disparu tout court :
+    # `product_configurator_web_3d_sale` en donne sa propre version, qui ouvre la page 3D
+    # de la ligne. Celle-ci ne faisait qu'ouvrir l'assistant OCA, et la remplaçait déjà
+    # sans l'appeler — la garder ne laissait qu'un corps mort sous un nom vivant.
+    @api.depends(
+        "config_session_id",
+        "tax_id",
+        "company_id",
+    )
+    def _compute_price_unit(self):
+        result = None
+        for line in self:
+            if line.config_session_id:
+                account_tax_obj = self.env["account.tax"]
+                line.price_unit = account_tax_obj._fix_tax_included_price_company(
+                    line.config_session_id._get_order_price(line.order_id),
+                    line.product_id.taxes_id,
+                    line.tax_id,
+                    line.company_id,
+                )
+            else:
+                result = super(SaleOrderLine, line)._compute_price_unit()
+        return result
+
+    def _get_sale_order_line_multiline_description_variants(self):
+        """La description d'Odoo — réponses « sans variante » et saisies de la ligne — PUIS les
+        textes saisis dans la configuration qui n'y sont pas encore.
+
+        ⚠️ **W-99 / D-393 : elle S'AJOUTE, elle ne remplace plus.** La version d'OCA écrivait
+        les saisies de la session À LA PLACE de la description d'Odoo : depuis que les réponses
+        « sans variante » vivent sur la ligne et non dans l'article, elles auraient disparu du
+        devis dès qu'un texte était saisi. Et seules les saisies des questions « sans variante »
+        s'écrivent ici : celles des questions qui créent des variantes sont devenues des
+        valeurs de l'article (D-353), son nom les porte déjà.
+        """
+        name = ""
+        for line in self:
+            name += super(SaleOrderLine, line)._get_sale_order_line_multiline_description_variants()
+            on_line = line.product_custom_attribute_value_ids \
+                .custom_product_template_attribute_value_id.attribute_id
+            typed = line.custom_value_ids.filtered(
+                lambda cv: cv.attribute_id.create_variant == "no_variant"
+                and cv.attribute_id not in on_line)
+            if typed:
+                name += "\n" + "\n".join(f"{cv.display_name}: {cv.value}" for cv in typed)
+        return name

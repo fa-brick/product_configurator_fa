@@ -2,7 +2,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 from odoo import _, fields, models
 
-from odoo.addons.product_editor.models.product_model3d_count import EngineCountError
+from odoo.addons.product_editor.models.bll.product_model3d.structure import EngineCountError
 
 #: Les états d'un devis encore modifiable — comme la réouverture d'une configuration (D-371).
 OPEN_STATES = ("draft", "sent")

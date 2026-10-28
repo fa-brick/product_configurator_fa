@@ -17,7 +17,7 @@ from collections import Counter
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
-from odoo.addons.product_editor.models.product_model3d_count import EngineCountError
+from odoo.addons.product_editor.models.bll.product_model3d.structure import EngineCountError
 
 _logger = logging.getLogger(__name__)
 

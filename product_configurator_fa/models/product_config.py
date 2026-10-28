@@ -416,7 +416,8 @@ class ProductConfigDomain(models.Model):
     )
     trans_implied_ids = fields.Many2many(
         comodel_name="product.config.domain",
-        compute=_get_trans_implied,
+        # ⚠️ La méthode se cite par son NOM : citée par objet, elle devrait précéder le champ dans la même classe (D-541).
+        compute="_get_trans_implied",
         column1="domain_id",
         column2="parent_id",
         string="Transitively inherits",
@@ -503,7 +504,7 @@ class ProductConfigDomainLine(models.Model):
         # et n'existe pas sans elle.
         ondelete="cascade",
     )
-    condition = fields.Selection(selection=_get_domain_conditions, required=True)
+    condition = fields.Selection(selection="_get_domain_conditions", required=True)
     value_ids = fields.Many2many(
         comodel_name="product.attribute.value",
         relation="product_config_domain_line_attr_rel",
@@ -657,7 +658,7 @@ class ProductConfigDomainLine(models.Model):
         return res
 
     operator = fields.Selection(
-        selection=_get_domain_operators,
+        selection="_get_domain_operators",
         string="Operators",
         default="and",
         required=True,

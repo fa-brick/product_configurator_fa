@@ -72,38 +72,6 @@ class ProductTemplate(models.Model):
             prices[template.id] = price
         return prices
 
-        domain_obj = self.env["product.config.domain"]
-        template = self.browse(template_id)
-        for line in template.attribute_line_ids:
-            attribute = line.attribute_id
-            fields[domain_obj._attribute_field_name(attribute)] = {
-                "string": attribute.name,
-                "type": "many2one",
-                "relation": "product.attribute.value",
-                "domain": [("attribute_id", "=", attribute.id)],
-                "searchable": True,
-                "sortable": False,
-                "store": False,
-                "readonly": True,
-            }
-            # ⓘ C4, D-201 — un attribut de type PRODUIT se teste aussi par ses
-            # produits. Le champ est offert EN PLUS, jamais à la place : les
-            # deux formes coexistent, et une règle déjà écrite sur des valeurs
-            # doit continuer de s'éditer telle quelle.
-            if attribute.value_type == "product":
-                fields[domain_obj._product_field_name(attribute)] = {
-                    "string": self.env._(
-                        "%(attribute)s (products)", attribute=attribute.name
-                    ),
-                    "type": "many2one",
-                    "relation": "product.product",
-                    "searchable": True,
-                    "sortable": False,
-                    "store": False,
-                    "readonly": True,
-                }
-        return fields
-
     # ⚠️ PAS de bandeau « pas de grille » : sans grille, `_get_config_grid_price` rend
     # `None` et l'appelant retombe sur le `list_price` du modèle — configurer sans
     # grille est licite (D-215).

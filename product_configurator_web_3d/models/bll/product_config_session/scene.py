@@ -109,7 +109,7 @@ class ProductConfigSession(models.Model):
         rows = Zone.search_read(
             [("model3d_id", "in", model_ids)],
             ["id", "name", "face_keys", "face_role", "material_id", "origin",
-             "sequence", "model3d_id", "driver_attribute_id", "file_material"],
+             "sequence", "model3d_id", "driver_attribute_id", "file_material", "file_color"],
             order="sequence, id",
         )
         pieces = self.env["product.model3d"].sudo().browse(model_ids)
@@ -141,6 +141,9 @@ class ProductConfigSession(models.Model):
                 "faceRole": row["face_role"] or None,
                 "auto": row["origin"] == "auto",
                 "fileMaterial": bool(row["file_material"]),
+                # ⓘ La couleur qu'un STEP donne à la zone (D-550 de l'éditeur) : sans elle, la page la
+                # rendrait au neutre là où l'éditeur montre la teinte du fabricant.
+                "fileColor": row["file_color"] or None,
                 "materialId": default_id,
                 "renderMaterialId": render_id,
             })

@@ -70,8 +70,10 @@ describe("la liste ne remonte pas jusqu'en haut", () => {
 
     // ⚠️ En % de la PAGE et non de l'écran (L-532) : dans le dialogue du back-office, la page
     // n'est pas l'écran, et 58dvh + 30vh débordaient d'une page de 70vh.
-    test("sur téléphone, à 58 % de la page, et la 3D peut descendre sous 45 %", () => {
-        expect(SCSS).toMatch(/&\.o_cfg3d_side--panel \{\s*(\/\*[\s\S]*?\*\/\s*)?flex-basis: 58%;\s*\}/);
+    test("sur téléphone, à la hauteur de son contenu, 58 % de la page au plus, et la 3D peut descendre sous 45 %", () => {
+        const side = SCSS.slice(SCSS.indexOf("&.o_cfg3d_side--panel {"));
+        expect(side).toMatch(/^&\.o_cfg3d_side--panel \{\s*flex: 0 0 auto;[\s\S]*?max-height: 58%;/);
+        expect(side).not.toMatch(/^[^}]*flex-basis: 58%/);
         const viewer = SCSS.slice(SCSS.indexOf(".o_cfg3d_viewer {"), SCSS.indexOf(".o_cfg3d_side {"));
         expect(viewer).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*min-height: 30%;/);
         // 58 + 30 tiennent dans la page ; avec 45 %, elle aurait débordé.
@@ -105,5 +107,16 @@ describe("l'en-tête du panneau : la flèche, puis le nom, sur une ligne (D-389)
         expect(head).toContain('<span t-esc="question.name"/>');
         expect(head).not.toContain('t-esc="backLabel"');
         expect(SCSS).toMatch(/\.o_cfg3d_panel_title \{\s*display: flex;\s*align-items: center;/);
+    });
+});
+
+describe("le panneau de choix sur téléphone prend la hauteur de son contenu", () => {
+
+    // ⚠️ À hauteur fixe, deux cartes laissaient un vide sous elles qui prenait la place de la 3D (Gerry, 2026-10-30).
+    test("le panneau entre dans le flux, et le corps des questions en sort sans être détruit", () => {
+        const panel = SCSS.slice(SCSS.indexOf(".o_cfg3d_panel {"), SCSS.indexOf("@keyframes o_cfg3d_panel_from_right"));
+        expect(panel).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{[^}]*position: relative;[^}]*flex: 0 1 auto;[^}]*min-height: 0;/);
+        const side = SCSS.slice(SCSS.indexOf("&.o_cfg3d_side--panel {"));
+        expect(side).toMatch(/> \.o_cfg3d_scroll \{\s*position: absolute;\s*inset: 0;\s*visibility: hidden;/);
     });
 });

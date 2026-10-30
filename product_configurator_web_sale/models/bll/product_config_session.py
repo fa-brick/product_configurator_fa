@@ -37,6 +37,13 @@ class ProductConfigSession(models.Model):
         state["inCart"] = self._web_is_in_cart()
         return state
 
+    def web_confirm_summary(self):
+        """Le résumé d'une confirmation, plus le panier : c'est par lui que la page sait si elle ajoute ou revient (D-561)."""
+        summary = super().web_confirm_summary()
+        summary["cart"] = self._web_goes_to_cart()
+        summary["inCart"] = self._web_is_in_cart()
+        return summary
+
     def _web_is_in_cart(self):
         """La configuration a-t-elle déjà sa ligne dans un panier du site ? La confirmer y ramène — D-556.
 

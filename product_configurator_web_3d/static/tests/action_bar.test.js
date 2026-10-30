@@ -27,7 +27,7 @@ describe("la barre d'action", () => {
         expect(bar).toContain('class="o_cfg3d_price"');
         expect(bar).toContain('t-esc="price"');
         const button = bar.slice(bar.indexOf("<button"), bar.indexOf("</button>"));
-        expect(button).toContain('<i class="fa fa-shopping-cart" role="img"/>');
+        expect(button).toContain('<i t-att-class="buttonIcon" role="img"/>');
         expect(button).toContain('t-att-title="confirmLabel"');
         expect(button).toContain('t-att-aria-label="confirmLabel"');
         // L'icône SEULE : plus de libellé écrit dans le bouton.

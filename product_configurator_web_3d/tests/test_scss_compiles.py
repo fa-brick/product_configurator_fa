@@ -22,7 +22,13 @@ try:
 except ImportError:  # pragma: no cover — libsass est une dépendance d'Odoo
     sass = None
 
-PREAMBULE = "$o-brand-primary: #71639e;\n"
+# ⓘ `$primary` sur une feuille du site (L-644) ; le mixin de Bootstrap, de la même forme (un `@content` sous `@media`).
+PREAMBULE = (
+    "$o-brand-primary: #71639e;\n"
+    "$primary: $o-brand-primary;\n"
+    "$info: #17a2b8;\n"
+    "@mixin media-breakpoint-down($name) { @media (max-width: 575.98px) { @content; } }\n"
+)
 SRC = pathlib.Path(__file__).resolve().parent.parent / "static" / "src"
 
 

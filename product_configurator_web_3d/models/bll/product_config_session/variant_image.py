@@ -117,6 +117,12 @@ class ProductConfigSession(models.Model):
         state["photo"] = self._web_photo()
         return state
 
+    def web_confirm_summary(self):
+        """Le résumé d'une confirmation, plus la prise de vue : la page photographie avant de partir (D-561)."""
+        summary = super().web_confirm_summary()
+        summary["photo"] = self._web_photo()
+        return summary
+
     # ------------------------------------------------------------------
     # L'image envoyée par la page
     # ------------------------------------------------------------------

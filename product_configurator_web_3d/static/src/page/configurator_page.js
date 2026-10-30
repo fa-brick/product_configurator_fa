@@ -47,7 +47,7 @@ import { collectGlbAttachments, extractImportedGeometries }
 // ne portaient pas le drapeau `baked` — ni la session ni `bakedSolidsByNode` ne les
 // auraient reconnus.
 import { bakedSolidsFromScene } from "@product_editor/engine/three/baked_scene";
-import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, handState, handMessage,
+import { createBakedReader, toViewModel, answerFor, reasonFor, confirmError, confirmSummary, handState, handMessage,
          placementOf, selectableNodeIds, familyOf, answerForPlacement,
          freeText, boundsLabel, freeSuggestions, customAnswerFor, customError,
          activeStepId, stepQuestions, missingBefore, stepChips,
@@ -1508,9 +1508,11 @@ export class ConfiguratorPage extends Component {
             return;
         }
         this.state.loading = true;
+        // ⚠️ La page part ensuite (panier, devis) : un résumé, pas l'état complet qui coûtait les deux tiers de la confirmation (D-561).
+        const lean = this._leavesAfterConfirm();
         // ⓘ D-368 — dans le dialogue du devis, c'est l'hôte qui pose les lignes rattachées.
         const next = await this._call("/configurator/confirm",
-                                      { client_lines: !!this.props.onConfirmed });
+                                      { client_lines: !!this.props.onConfirmed, lean });
         this.state.loading = false;
         const refusal = confirmError(next);
         if (refusal) {
@@ -1518,7 +1520,11 @@ export class ConfiguratorPage extends Component {
             return;
         }
         this.state.reason = null;
-        await this._applyModel(next);
+        if (lean) {
+            this.state.model = { ...this.state.model, ...confirmSummary(next) };
+        } else {
+            await this._applyModel(next);
+        }
         // ⓘ **LA PHOTO DE LA VARIANTE** (D-399, lot 5) — avant le panier comme avant le devis :
         // le serveur n'envoie `photo` que si cette confirmation a CRÉÉ la variante (ou qu'elle
         // n'a pas d'image). Dans un budget de quelques secondes : une image perdue n'empêche
@@ -1526,7 +1532,7 @@ export class ConfiguratorPage extends Component {
         this.state.loading = true;
         await sendVariantPhoto(this, next.photo, this.state.model?.productId);
         this.state.loading = false;
-        // ⚠️ APRÈS `_applyModel` : c'est lui qui pose la variante née de la
+        // ⚠️ APRÈS `_applyModel` ou le résumé : c'est lui qui pose la variante née de la
         // confirmation dans l'état, et c'est elle que l'hôte attend.
         if (this.props.onConfirmed) {
             this.props.onConfirmed({ productId: this.state.model?.productId,
@@ -1646,6 +1652,11 @@ export class ConfiguratorPage extends Component {
         return _t("This configuration is confirmed and can no longer be changed.");
     }
     get emptyLabel() { return _t("This product asks no question."); }
+    /** La confirmation fera-t-elle partir la page — vers le panier, ou rendre la main au devis ? (D-561) */
+    _leavesAfterConfirm() {
+        return !!this.props.onConfirmed || !!this.state.model?.inCart || this.goesToCart;
+    }
+
     /**
      * Le geste qui termine met-il au panier ?
      *
@@ -1657,7 +1668,14 @@ export class ConfiguratorPage extends Component {
     }
 
     get confirmLabel() {
+        // ⚠️ Pas « Ajouter au panier » pour une configuration déjà au panier : rien ne s'y ajoute, la ligne est validée (D-560).
+        if (this.state.model?.inCart) return _t("Validate");
         return this.goesToCart ? _t("Add to cart") : _t("Confirm");
+    }
+
+    /** L'icône du bouton de fin : la coche quand la configuration est déjà au panier (D-560). */
+    get buttonIcon() {
+        return this.state.model?.inCart ? "fa fa-check" : "fa fa-shopping-cart";
     }
 }
 

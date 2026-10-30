@@ -709,6 +709,23 @@ export function handMessage(hand) {
 }
 
 /**
+ * Le résumé d'une confirmation `lean`, fondu dans le modèle affiché — D-561.
+ *
+ * ⚠️ Les seules clés que la page lit après une confirmation qui la fait partir : la variante, ses lignes à part,
+ * les réponses « sans variante », le panier. Le reste du modèle (questions, scène) reste celui d'avant.
+ */
+export function confirmSummary(payload) {
+    return {
+        closed: !!payload.state && payload.state !== "draft",
+        productId: payload.productId || null,
+        separateLines: payload.separateLines || [],
+        noVariantPtavIds: payload.noVariantPtavIds || [],
+        cart: !!payload.cart,
+        inCart: !!payload.inCart,
+    };
+}
+
+/**
  * Ce que la page DIT quand la confirmation est refusée — ou `null` si elle a réussi.
  *
  * ⚠️ Un refus de confirmation n'est PAS une réponse d'état : le passer à `toViewModel`

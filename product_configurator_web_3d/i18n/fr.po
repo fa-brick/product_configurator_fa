@@ -642,3 +642,9 @@ msgstr "« %s » est un attribut numérique : comparez-le à un nombre."
 #: code:addons/product_configurator_web_3d/static/src/configurator_state.js:0
 msgid "These dimensions have no price."
 msgstr "Ces dimensions n'ont pas de prix."
+
+#. module: product_configurator_web_3d
+#. odoo-javascript
+#: code:addons/product_configurator_web_3d/static/src/page/configurator_page.js:0
+msgid "Validate"
+msgstr "Valider"

@@ -4,7 +4,7 @@
  * ⓘ **Ce fichier est aussi la preuve que le harnais JS du fork existe** (D-191) : la page
  * naît sous tests plutôt que l'inverse.
  */
-import { toViewModel, answerFor, reasonFor, sameDefinition, confirmError, handState, handMessage,
+import { confirmSummary, toViewModel, answerFor, reasonFor, sameDefinition, confirmError, handState, handMessage,
          placementOf, selectableNodeIds, familyOf, answerForPlacement }
     from "@product_configurator_web_3d/configurator_state";
 
@@ -512,5 +512,22 @@ describe("toViewModel — les zones et l'ambiance gardent leur référence (L-44
     test("sans modèle précédent, ni zones ni ambiance, rien n'est inventé", () => {
         expect(toViewModel(PAYLOAD).zones).toBeNull();
         expect(toViewModel(PAYLOAD, toViewModel(PAYLOAD)).ambience).toBeNull();
+    });
+});
+
+describe("le RÉSUMÉ d'une confirmation lean (D-561)", () => {
+    test("seules les clés lues avant de partir, closes sur la variante née", () => {
+        const lines = [{ productId: 7, qty: 2 }];
+        expect(confirmSummary({ state: "done", productId: 12, separateLines: lines, noVariantPtavIds: [3],
+                                cart: true, inCart: false, photo: { size: 1024 } }))
+            .toEqual({ closed: true, productId: 12, separateLines: lines, noVariantPtavIds: [3],
+                       cart: true, inCart: false });
+    });
+
+    test("sans boutique, ni panier ni ligne déjà au panier", () => {
+        const summary = confirmSummary({ state: "done", productId: 12 });
+        expect(summary.cart).toBe(false);
+        expect(summary.inCart).toBe(false);
+        expect(summary.separateLines).toEqual([]);
     });
 });

@@ -59,3 +59,38 @@ describe("une configuration rouverte depuis le panier y retourne (D-556)", () =>
         expect(back).toBeLessThan(addToCart.indexOf('rpc("/shop/cart/update_json"'));
     });
 });
+
+describe("une configuration déjà au panier se VALIDE, elle ne s'ajoute pas (D-560)", () => {
+    const body = (signature) => {
+        const start = PAGE.indexOf(signature);
+        expect(start).toBeGreaterThan(-1);
+        return PAGE.slice(start, PAGE.indexOf("\n    }\n", start));
+    };
+
+    test("le bouton porte une coche, et son nom dit « Valider »", () => {
+        expect(body("get buttonIcon() {")).toContain('this.state.model?.inCart ? "fa fa-check" : "fa fa-shopping-cart"');
+        const label = body("get confirmLabel() {");
+        expect(label.indexOf('_t("Validate")')).toBeGreaterThan(-1);
+        expect(label.indexOf("inCart")).toBeLessThan(label.indexOf('_t("Add to cart")'));
+    });
+});
+
+describe("une page qui part demande un résumé, pas l'état complet (D-561)", () => {
+    const body = (signature) => {
+        const start = PAGE.indexOf(signature);
+        expect(start).toBeGreaterThan(-1);
+        return PAGE.slice(start, PAGE.indexOf("\n    }\n", start));
+    };
+
+    test("la confirmation part `lean` quand la page partira, et fond le résumé sans reconstruire la scène", () => {
+        const confirm = body("async onConfirm() {");
+        expect(confirm).toContain("const lean = this._leavesAfterConfirm();");
+        expect(confirm).toContain("{ client_lines: !!this.props.onConfirmed, lean }");
+        expect(confirm).toMatch(/if \(lean\) \{\s*this\.state\.model = \{ \.\.\.this\.state\.model, \.\.\.confirmSummary\(next\) \};\s*\} else \{\s*await this\._applyModel\(next\);/);
+    });
+
+    test("partir, c'est le panier, une ligne déjà au panier, ou le devis qui reprend la main", () => {
+        expect(body("_leavesAfterConfirm() {"))
+            .toContain("!!this.props.onConfirmed || !!this.state.model?.inCart || this.goesToCart");
+    });
+});

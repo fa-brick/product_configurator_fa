@@ -310,8 +310,10 @@ class ProductConfigSession(models.Model):
         """
         return False
 
-    def web_confirm(self):
+    def web_confirm(self, lean=False):
         """Terminer la configuration : la variante naît, la session se ferme.
+
+        ⓘ `lean` : la page part ensuite (panier, devis) et ne lit que `web_confirm_summary` (D-561).
 
         ⚠️ **Une session confirmée ne se rouvre pas.** Elle a donné sa variante,
         et cette variante peut déjà être sur une commande : la changer ensuite
@@ -341,7 +343,21 @@ class ProductConfigSession(models.Model):
             return {"error": "engine", "message": exc.args[0]}
         # ⓘ Close, la configuration n'a plus de conducteur : la main est rendue (D-371).
         self._release_hand()
-        return self.web_state()
+        # ⚠️ Pas l'état complet pour une page qui part : il coûtait les deux tiers de la confirmation (D-561).
+        return self.web_confirm_summary() if lean else self.web_state()
+
+    def web_confirm_summary(self):
+        """Ce que la page lit d'une confirmation après laquelle elle part : la variante, ses lignes à part — D-561.
+
+        ⚠️ Toute clé lue par la page après une confirmation `lean` doit être ici, ou dans une extension (photo, panier).
+        """
+        self.ensure_one()
+        return {
+            "state": self.state,
+            "productId": self.product_id.id or None,
+            "separateLines": self.web_separate_lines(),
+            "noVariantPtavIds": self._web_no_variant_ptav_ids(),
+        }
 
     def _web_product_url(self):
         """L'adresse publique du produit — ou `None` s'il n'y a pas de site.

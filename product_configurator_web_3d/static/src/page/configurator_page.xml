@@ -294,7 +294,8 @@
                 t-att-disabled="state.loading or watching or state.model.outOfGrid"
                 t-att-title="confirmLabel" t-att-aria-label="confirmLabel"
                 t-on-click="() => this.onConfirm()">
-            <i class="fa fa-shopping-cart" role="img"/>
+            <!-- ⓘ Déjà au panier, la confirmation ne fait que valider la ligne : une coche, pas un panier (D-560). -->
+            <i t-att-class="buttonIcon" role="img"/>
         </button>
     </div>
 </t>

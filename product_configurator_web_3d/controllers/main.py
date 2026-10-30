@@ -268,7 +268,7 @@ class ProductConfiguratorWeb3D(http.Controller):
         "/configurator/confirm", type="json", auth="public", methods=["POST"],
         website=False, csrf=False,
     )
-    def confirm(self, token=None, holder=None, client_lines=False, **kwargs):
+    def confirm(self, token=None, holder=None, client_lines=False, lean=False, **kwargs):
         """Terminer la configuration — la seule route qui la FERME.
 
         ⚠️ Le porteur du jeton confirme, et c'est cohérent avec tout le reste :
@@ -289,7 +289,8 @@ class ProductConfiguratorWeb3D(http.Controller):
         # ⓘ D-368 — `client_lines` : le DIALOGUE du devis pose lui-même les lignes rattachées
         # (pièces vendues à part) dans le formulaire qu'il tient ; le serveur ne les pose que
         # pour une confirmation venue du LIEN, sinon elles le seraient deux fois.
-        return session.with_context(cfg_client_lines=bool(client_lines)).web_confirm()
+        # ⓘ D-561 — `lean` : la page part ensuite, un résumé lui suffit.
+        return session.with_context(cfg_client_lines=bool(client_lines)).web_confirm(lean=bool(lean))
 
     @http.route(
         "/configurator/set_value", type="json", auth="public", methods=["POST"],

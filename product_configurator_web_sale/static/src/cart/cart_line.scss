@@ -1,0 +1,19 @@
+// ⓘ LA LIGNE DU PANIER SUR TÉLÉPHONE — D-559.
+// ⚠️ Sans ce resserrement, la quantité prend 137 px sur 412 et les trois boutons d'une ligne configurée (crayon,
+// corbeille, cœur) passent sur deux lignes (D-559).
+// ⓘ Sous `md` seulement : au-dessus, les boutons sont des liens texte, et la place ne manque pas.
+@include media-breakpoint-down(md) {
+    .o_cart_product .css_quantity {
+        .btn {
+            padding-left: $btn-padding-x * .5;
+            padding-right: $btn-padding-x * .5;
+        }
+
+        input.quantity {
+            max-width: 3ch;
+            padding-left: 0;
+            padding-right: 0;
+            text-align: center;
+        }
+    }
+}

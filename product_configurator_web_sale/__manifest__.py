@@ -35,6 +35,8 @@
             "product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.xml",
             "product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js",
             "product_configurator_web_sale/static/src/optional/page_optional_products.js",
+            # ⓘ D-559 — la quantité se resserre sur téléphone : les boutons de la ligne tiennent sur une ligne.
+            "product_configurator_web_sale/static/src/cart/cart_line.scss",
         ],
     },
     "installable": True,

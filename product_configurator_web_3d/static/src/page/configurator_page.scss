@@ -849,7 +849,9 @@ body.o_cfg3d_body {
     &--on {
         border-color: $primary;
         background: $primary;
-        color: #fff;
+        /* ⚠️ Le texte se choisit sur le fond, comme `.btn-primary` : un blanc fixe disparaît sur une couleur
+           primaire claire (le jaune du thème d'IONOS). */
+        color: color-contrast($primary);
     }
 }
 

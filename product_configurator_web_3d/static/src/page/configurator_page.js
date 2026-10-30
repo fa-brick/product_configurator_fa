@@ -109,8 +109,7 @@ export class ConfiguratorPage extends Component {
         // courriel, qui arrive sans rien de préparé.
         initialState: { type: Object, optional: true },
         // ⓘ Le contexte BOUTIQUE : le geste qui termine met au panier, et le dit.
-        // Ailleurs — un lien reçu par courriel, une ligne de devis — terminer reste
-        // terminer : il n'y a pas de panier où aller.
+        // ⓘ Sans cette prop, l'état le dit aussi (`cart`, `product_configurator_web_sale`) : voir `goesToCart` (D-553).
         cart: { type: Boolean, optional: true },
         // ⓘ **QUI ACCUEILLE reprend la main à la fin** — le dialogue d'un devis,
         // qui doit poser la variante sur sa ligne et se refermer (D-259). Absent
@@ -1548,7 +1547,12 @@ export class ConfiguratorPage extends Component {
      * clic n'avait pas eu lieu.
      */
     async _addToCart() {
-        if (!this.props.cart) return;
+        // ⓘ Rouverte depuis le panier, la configuration y retourne : le serveur vient d'y mettre sa ligne à jour (D-556).
+        if (this.state.model?.inCart) {
+            browser.location.href = "/shop/cart";
+            return;
+        }
+        if (!this.goesToCart) return;
         const productId = this.state.model?.productId;
         if (!productId) return;
         let main;
@@ -1642,8 +1646,18 @@ export class ConfiguratorPage extends Component {
         return _t("This configuration is confirmed and can no longer be changed.");
     }
     get emptyLabel() { return _t("This product asks no question."); }
+    /**
+     * Le geste qui termine met-il au panier ?
+     *
+     * ⚠️ L'état en décide aussi, pas seulement l'hôte : atteinte par lien ou rechargement, la page confirmait sans rien mettre au panier (D-553).
+     * ⚠️ Pas pour une configuration déjà au panier : un second ajout doublerait sa ligne (D-556).
+     */
+    get goesToCart() {
+        return !this.state.model?.inCart && !!(this.props.cart || this.state.model?.cart);
+    }
+
     get confirmLabel() {
-        return this.props.cart ? _t("Add to cart") : _t("Confirm");
+        return this.goesToCart ? _t("Add to cart") : _t("Confirm");
     }
 }
 

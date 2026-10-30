@@ -226,7 +226,7 @@ body.o_cfg3d_body {
     flex: 0 0 auto;
     /* ⓘ La barre de GESTE d'un téléphone sans bouton d'accueil recouvre les derniers
        pixels : `env()` les rend, et vaut zéro partout ailleurs. */
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 16px calc(6px + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid rgba(0, 0, 0, 0.08);
     background: #fff;
 }
@@ -1108,10 +1108,18 @@ body.o_cfg3d_body {
    de 44 px au moins : c'est aussi le doigt qui le vise. */
 .o_cfg3d_confirm {
     flex: 0 0 auto;
-    min-width: 56px;
-    height: 44px;
     font-size: 18px;
-    border-radius: 22px;
+}
+
+/* ⚠️ Un ROND : largeur, hauteur et padding fixés plus fort que le `.btn` tactile d'Odoo (0,3,0), sinon un ovale (L-604). */
+.o_cfg3d_page .o_cfg3d_actionbar .btn.o_cfg3d_confirm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 50%;
 }
 
 /* ── LA SORTIE ──────────────────────────────────────────────────────────────
@@ -1167,13 +1175,13 @@ body.o_cfg3d_body {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
 
     .o_cfg3d_actionbar { height: 100%; }
-    .o_cfg3d_confirm {
-        min-width: 48px;
-        height: 36px;
-        padding: 0 12px;
-        font-size: 16px;
-        border-radius: 18px;
-    }
+}
+
+/* ⓘ Le même rond, à 36 px : 4 px autour dans la barre de 44. Placé APRÈS la règle du pied, à spécificité égale. */
+.o_cfg3d_page .o_cfg3d_topbar .btn.o_cfg3d_confirm {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
 }
 
 .o_cfg3d_error { margin: 15vh auto; text-align: center; }

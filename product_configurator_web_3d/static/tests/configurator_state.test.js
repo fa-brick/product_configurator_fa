@@ -464,6 +464,21 @@ describe("le TOTAL et les lignes À PART (D-368)", () => {
     });
 });
 
+describe("le PANIER annoncé par le serveur traverse la mise en forme (D-553)", () => {
+    test("une session du site garde son `cart`", () => {
+        expect(toViewModel({ price: 100, cart: true }).cart).toBe(true);
+    });
+
+    test("sans boutique, la clé est absente : la confirmation ne met pas au panier", () => {
+        expect(toViewModel({ price: 100 }).cart).toBe(false);
+    });
+
+    test("une configuration déjà au panier le dit (D-556)", () => {
+        expect(toViewModel({ price: 100, inCart: true }).inCart).toBe(true);
+        expect(toViewModel({ price: 100 }).inCart).toBe(false);
+    });
+});
+
 describe("la MARQUE du choix d'une grande pastille", () => {
     test("la coche par défaut, l'anneau si l'attribut le dit", () => {
         const line = { id: 1, name: "Bois", displayType: "swatch", values: [] };

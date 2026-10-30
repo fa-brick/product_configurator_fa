@@ -6,3 +6,4 @@
 # pas à sa cause.
 from . import test_sale_order_line
 from . import test_order_pricing  # noqa: F401  (D-537)
+from . import test_line_description  # noqa: F401  (D-555)

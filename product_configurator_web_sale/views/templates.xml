@@ -179,4 +179,52 @@
         </xpath>
     </template>
 
+    <!-- ══ MODIFIER UNE CONFIGURATION DEPUIS LE PANIER (D-556) ═══════════════════
+         ⓘ Le lien rouvre la configuration de la ligne ; la confirmer met la ligne à jour et
+         ramène au panier.
+         ⚠️ Avant « Supprimer », qui porte la classe de l'action : ce lien-ci n'en porte aucune,
+         sinon le clic supprimerait la ligne au lieu de l'ouvrir. -->
+    <template id="cart_line_edit_configuration" inherit_id="website_sale.cart_lines"
+              name="Configured product: Edit from the cart">
+        <xpath expr="//div[@name='o_wsale_cart_line_button_container']/a[hasclass('js_delete_product')]"
+               position="before">
+            <t t-set="cfg_edit_url" t-value="line._configurator_edit_url()"/>
+            <a t-if="cfg_edit_url" t-att-href="cfg_edit_url"
+               class="o_cfg3d_cart_edit d-none d-md-inline-block small pe-2 me-2 border-end"
+               title="Edit this configuration">Edit</a>
+        </xpath>
+        <xpath expr="//div[@name='o_wsale_cart_line_button_container']/button[hasclass('js_delete_product')]"
+               position="before">
+            <a t-if="cfg_edit_url" t-att-href="cfg_edit_url"
+               class="o_cfg3d_cart_edit btn btn-light d-inline-block d-md-none"
+               title="Edit this configuration" aria-label="Edit this configuration">
+                <i class="fa fa-pencil"/>
+            </a>
+        </xpath>
+    </template>
+
+    <!-- ══ LE TEXTE DU BOUTON « CONFIGURER », RÉGLÉ DANS LES PARAMÈTRES (D-558) ═══════
+         ⚠️ Vues NEUVES : une copie de site figée par l'éditeur ne servirait pas un changement des vues
+         d'origine (L-356, D-392).
+         ⚠️ APRÈS `product_configure_button` et `products_item_configure` dans ce fichier : elles
+         modifient leurs boutons, qui doivent déjà exister sur une base neuve. -->
+    <template id="product_configure_button_label" inherit_id="website_sale.product"
+              name="Configurable product: Configure button text from the settings">
+        <!-- ⓘ `inner` : le mot est la queue de texte de l'icône, qu'aucun xpath ne vise. -->
+        <xpath expr="//a[hasclass('o_cfg3d_configure')]" position="replace" mode="inner">
+            <i class="fa fa-pencil me-2"/><t t-out="website._configure_button_label()"/>
+        </xpath>
+    </template>
+
+    <template id="products_item_configure_label" inherit_id="website_sale.products_item"
+              name="Configurable product: grid Configure tooltip from the settings">
+        <xpath expr="//div[hasclass('o_wsale_product_btn')]/a[contains(@t-attf-href, '/configurator/start/')]"
+               position="attributes">
+            <attribute name="title"/>
+            <attribute name="aria-label"/>
+            <attribute name="t-att-title">website._configure_button_label()</attribute>
+            <attribute name="t-att-aria-label">website._configure_button_label()</attribute>
+        </xpath>
+    </template>
+
 </odoo>

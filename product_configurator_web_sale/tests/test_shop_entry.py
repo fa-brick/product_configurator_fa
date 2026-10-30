@@ -46,8 +46,20 @@ class TestShopEntry(HttpCase):
 
     # ── LA FICHE PRODUIT ─────────────────────────────────────────────────
 
+    def _without_wishlist_heart(self):
+        """⚠️ Le ♡ de `website_sale_wishlist` crée la première variante à l'AFFICHAGE : en test, l'écriture pendant un GET
+        en lecture seule rend un 500, qu'Odoo rattrape hors test en rejouant la requête en écriture."""
+        heart = self.env.ref("website_sale_wishlist.product_add_to_wishlist", raise_if_not_found=False)
+        if heart:
+            heart.active = False
+
     def test_un_produit_configurable_se_configure_au_lieu_de_s_acheter(self):
-        html = self.url_open(self.configurable.website_url).text
+        # ⓘ Une variante existe déjà, comme sur un produit déjà configuré : le formulaire d'Odoo pourrait alors se rendre.
+        self.configurable._create_product_variant(
+            self.configurable.attribute_line_ids.product_template_value_ids[:1])
+        response = self.url_open(self.configurable.website_url)
+        self.assertEqual(response.status_code, 200)
+        html = response.text
         self.assertIn("/configurator/start/", html)
         # ⚠️ C'est le REMPLACEMENT qu'on éprouve, pas l'ajout : laisser les deux
         # boutons côte à côte serait le vrai défaut, et il passerait inaperçu
@@ -58,8 +70,12 @@ class TestShopEntry(HttpCase):
         """⚠️ Sans variante, Odoo retombe sur son `t-else` et annonce une page
         vide de sens : *« This product has no valid combination »*. C'est l'état
         NORMAL d'un produit configurable avant sa premiere configuration."""
-        html = self.url_open(self.configurable.website_url).text
-        self.assertNotIn("no valid combination", html)
+        self._without_wishlist_heart()
+        response = self.url_open(self.configurable.website_url)
+        # ⚠️ Le code d'abord : une page d'erreur ne contient pas non plus la phrase cherchée.
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.configurable.product_variant_ids)
+        self.assertNotIn("no valid combination", response.text)
 
     def test_un_produit_ordinaire_ne_change_pas(self):
         html = self.url_open(self.ordinaire.website_url).text

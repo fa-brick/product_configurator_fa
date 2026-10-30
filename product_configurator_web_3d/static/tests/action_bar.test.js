@@ -51,6 +51,19 @@ describe("la barre d'action", () => {
         expect(SCSS).toMatch(/\.o_cfg3d_confirm \{\s*flex: 0 0 auto;/);
         expect(SCSS).not.toMatch(/\.o_cfg3d_confirm \{[^}]*width: 100%/);
     });
+
+    test("le panier est un ROND, au pied comme en haut du viewer — et plus fort que le `.btn` tactile (L-604)", () => {
+        const footer = rule(".o_cfg3d_page .o_cfg3d_actionbar .btn.o_cfg3d_confirm");
+        expect(footer).toMatch(/width: 44px;/);
+        expect(footer).toMatch(/height: 44px;/);
+        expect(footer).toMatch(/padding: 0;/);
+        expect(footer).toMatch(/border-radius: 50%;/);
+        const top = rule(".o_cfg3d_page .o_cfg3d_topbar .btn.o_cfg3d_confirm");
+        expect(top).toMatch(/width: 36px;/);
+        expect(top).toMatch(/height: 36px;/);
+        expect(SCSS.indexOf(".o_cfg3d_page .o_cfg3d_topbar .btn.o_cfg3d_confirm"))
+            .toBeGreaterThan(SCSS.indexOf(".o_cfg3d_page .o_cfg3d_actionbar .btn.o_cfg3d_confirm"));
+    });
 });
 
 /** Le bloc d'une règle SCSS, accolades imbriquées comprises. */

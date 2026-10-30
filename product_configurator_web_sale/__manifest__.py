@@ -20,6 +20,7 @@
     "data": [
         "views/templates.xml",
         "views/editor_views.xml",
+        "views/res_config_settings_views.xml",
     ],
     "assets": {
         # ⓘ Rien du moteur ici : il est DÉJÀ dans `web.assets_frontend`, donc sur

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ══ UN PRODUIT CONFIGURÉ DANS LA LISTE DE SOUHAITS (D-557) ════════════════
+         ⓘ Comme au panier (D-555) : le nom en titre, une réponse par ligne dessous.
+         ⚠️ « Configurer » à la place d'« Ajouter » : la liste ne garde que la variante, et un ajout direct
+         mettrait au panier une ligne sans sa configuration, donc sans son prix ni « Modifier » (D-557).
+         ⓘ La configuration ouverte est NEUVE, préremplie des réponses de la variante (`?variant=`). -->
+    <template id="wishlist_configured_product" inherit_id="website_sale_wishlist.product_wishlist"
+              name="Configured product: answers and Configure in the wishlist">
+        <xpath expr="//t[@t-esc='wish.product_id.display_name']" position="replace">
+            <t t-if="wish.product_id.config_ok" t-esc="wish.product_id.name"/>
+            <t t-else="" t-esc="wish.product_id.display_name"/>
+        </xpath>
+        <xpath expr="//t[@t-foreach='wishes']//td[hasclass('text-start')]/strong" position="after">
+            <div t-if="wish.product_id.config_ok" class="o_cfg3d_wish_answers small text-muted">
+                <div t-foreach="wish.product_id._configured_answer_lines()" t-as="answer" t-esc="answer"/>
+            </div>
+        </xpath>
+        <!-- ⚠️ Ni `t-elif` ni `t-else` : selon les modules, le bouton porte `t-else` ou `t-if`, avec un `t-set` intercalé
+             (`website_sale_stock_wishlist`) — un maillon accroché à cette chaîne ne compile plus. -->
+        <xpath expr="//button[@id='add_to_cart_button']" position="attributes">
+            <attribute name="class"/>
+            <attribute name="t-attf-class">btn btn-secondary btn-block o_wish_add mb4 #{'d-none' if wish.product_id.config_ok else ''}</attribute>
+        </xpath>
+        <xpath expr="//button[@id='add_to_cart_button']" position="after">
+            <a t-if="wish.product_id.config_ok and not combination_info['prevent_zero_price_sale']" role="button"
+               class="o_cfg3d_wish_configure btn btn-secondary btn-block mb4 text-nowrap"
+               t-attf-href="/configurator/start/#{slug(wish.product_id.product_tmpl_id)}?variant=#{wish.product_id.id}"
+               title="Open the configurator with these answers">
+                <span class="fa fa-fw fa-cube"/>
+                <!-- ⓘ Le texte réglé dans les paramètres de la boutique (D-558). -->
+                <span class="d-none d-md-inline" t-out="website._configure_button_label()"/>
+            </a>
+        </xpath>
+    </template>
+
+</odoo>

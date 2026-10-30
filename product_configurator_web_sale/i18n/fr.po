@@ -12,8 +12,8 @@ msgstr ""
 
 #. module: product_configurator_web_sale
 #: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.product_configure_button
-msgid "<i class=\"fa fa-cube me-2\"/>Configure"
-msgstr "<i class=\"fa fa-cube me-2\"/>Configurer"
+msgid "<i class=\"fa fa-pencil me-2\"/>Configure"
+msgstr "<i class=\"fa fa-pencil me-2\"/>Configurer"
 
 #. module: product_configurator_web_sale
 #: model:ir.model,name:product_configurator_web_sale.model_product_attribute_value
@@ -21,9 +21,50 @@ msgid "Attribute Value"
 msgstr "Valeur de l'attribut"
 
 #. module: product_configurator_web_sale
+#: model:ir.model,name:product_configurator_web_sale.model_res_config_settings
+msgid "Config Settings"
+msgstr "Paramètres de configuration"
+
+#. module: product_configurator_web_sale
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.view_website_form_configure_button
+msgid "Configurator"
+msgstr "Configurateur"
+
+#. module: product_configurator_web_sale
+#. odoo-python
+#: code:addons/product_configurator_web_sale/models/bll/website.py:0
 #: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.products_item_configure
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.res_config_settings_view_form_configure_button
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.view_website_form_configure_button
 msgid "Configure"
 msgstr "Configurer"
+
+#. module: product_configurator_web_sale
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.res_config_settings_view_form_configure_button
+msgid "Configure button"
+msgstr "Bouton Configurer"
+
+#. module: product_configurator_web_sale
+#: model:ir.model.fields,field_description:product_configurator_web_sale.field_res_config_settings__website_configure_button_text
+#: model:ir.model.fields,field_description:product_configurator_web_sale.field_website__configure_button_text
+msgid "Configure button text"
+msgstr "Texte du bouton Configurer"
+
+#. module: product_configurator_web_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_sale/static/src/optional/page_optional_products.js:0
+msgid "Continue Shopping"
+msgstr "Continuer les achats"
+
+#. module: product_configurator_web_sale
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.cart_line_edit_configuration
+msgid "Edit"
+msgstr "Modifier"
+
+#. module: product_configurator_web_sale
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.cart_line_edit_configuration
+msgid "Edit this configuration"
+msgstr "Modifier cette configuration"
 
 #. module: product_configurator_web_sale
 #: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.product_configure_questions_hidden
@@ -32,9 +73,25 @@ msgid "From"
 msgstr "À partir de"
 
 #. module: product_configurator_web_sale
+#: model:ir.model,name:product_configurator_web_sale.model_ir_http
+msgid "HTTP Routing"
+msgstr "Routage HTTP"
+
+#. module: product_configurator_web_sale
+#. odoo-javascript
+#: code:addons/product_configurator_web_sale/static/src/optional/page_optional_products.js:0
+msgid "Proceed to Checkout"
+msgstr "Finaliser les achats"
+
+#. module: product_configurator_web_sale
 #: model:ir.model,name:product_configurator_web_sale.model_product_template
 msgid "Product"
 msgstr "Produit"
+
+#. module: product_configurator_web_sale
+#: model:ir.model,name:product_configurator_web_sale.model_product_config_session
+msgid "Product Config Session"
+msgstr "Session de configuration"
 
 #. module: product_configurator_web_sale
 #: model:ir.model,name:product_configurator_web_sale.model_product_template_attribute_line
@@ -47,13 +104,36 @@ msgid "Sales Order"
 msgstr "Commande client"
 
 #. module: product_configurator_web_sale
-#. odoo-javascript
-#: code:addons/product_configurator_web_sale/static/src/optional/page_optional_products.js:0
-msgid "Continue Shopping"
-msgstr "Continuer les achats"
+#: model:ir.model,name:product_configurator_web_sale.model_sale_order_line
+msgid "Sales Order Line"
+msgstr "Ligne de commande"
 
 #. module: product_configurator_web_sale
-#. odoo-javascript
-#: code:addons/product_configurator_web_sale/static/src/optional/page_optional_products.js:0
-msgid "Proceed to Checkout"
-msgstr "Finaliser les achats"
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.res_config_settings_view_form_configure_button
+msgid ""
+"Text of the button that opens the configurator: product page, shop grid, "
+"wishlist."
+msgstr ""
+"Texte du bouton qui ouvre le configurateur : fiche produit, grille de la "
+"boutique, liste de souhaits."
+
+#. module: product_configurator_web_sale
+#: model:ir.model.fields,help:product_configurator_web_sale.field_res_config_settings__website_configure_button_text
+#: model:ir.model.fields,help:product_configurator_web_sale.field_website__configure_button_text
+msgid ""
+"Text of the button that opens the configurator: product page, shop grid, "
+"wishlist. Empty, the button says \"Configure\" in the visitor's language."
+msgstr ""
+"Texte du bouton qui ouvre le configurateur : fiche produit, grille de la "
+"boutique, liste de souhaits. Vide, le bouton dit « Configurer » dans la "
+"langue du visiteur."
+
+#. module: product_configurator_web_sale
+#: model_terms:ir.ui.view,arch_db:product_configurator_web_sale.res_config_settings_view_form_configure_button
+msgid "To translate it: Website › Configuration › Websites."
+msgstr "Pour le traduire : Site web › Configuration › Sites web."
+
+#. module: product_configurator_web_sale
+#: model:ir.model,name:product_configurator_web_sale.model_website
+msgid "Website"
+msgstr "Site Web"

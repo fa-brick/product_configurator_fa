@@ -21,3 +21,41 @@ describe("la mise au panier", () => {
         expect(main).toContain("no_variant_attribute_value_ids: this.state.model?.noVariantPtavIds");
     });
 });
+
+describe("la page met au panier sans hôte qui le lui dise (D-553)", () => {
+    const body = (signature) => {
+        const start = PAGE.indexOf(signature);
+        expect(start).toBeGreaterThan(-1);
+        return PAGE.slice(start, PAGE.indexOf("\n    }", start));
+    };
+
+    test("l'ajout au panier ne dépend plus de la seule prop de l'overlay", () => {
+        const addToCart = body("async _addToCart() {");
+        expect(addToCart).toContain("if (!this.goesToCart) return;");
+        expect(addToCart).not.toContain("this.props.cart");
+    });
+
+    test("l'état de la session en décide aussi, et le bouton le dit", () => {
+        expect(body("get goesToCart() {")).toContain("this.props.cart || this.state.model?.cart");
+        expect(body("get confirmLabel() {")).toContain("this.goesToCart ?");
+    });
+});
+
+describe("une configuration rouverte depuis le panier y retourne (D-556)", () => {
+    const body = (signature) => {
+        const start = PAGE.indexOf(signature);
+        expect(start).toBeGreaterThan(-1);
+        return PAGE.slice(start, PAGE.indexOf("\n    }\n", start));
+    };
+
+    test("elle n'est jamais ajoutée une seconde fois", () => {
+        expect(body("get goesToCart() {")).toContain("!this.state.model?.inCart &&");
+    });
+
+    test("la confirmer ramène au panier, AVANT tout ajout", () => {
+        const addToCart = body("async _addToCart() {");
+        const back = addToCart.indexOf('if (this.state.model?.inCart) {\n            browser.location.href = "/shop/cart";');
+        expect(back).toBeGreaterThan(-1);
+        expect(back).toBeLessThan(addToCart.indexOf('rpc("/shop/cart/update_json"'));
+    });
+});

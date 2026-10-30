@@ -594,6 +594,10 @@ export function toViewModel(payload, previous = null) {
         // ⓘ D-537 — le message d'une cote hors de la grille ; `null` quand elle a un prix.
         outOfGrid: payload.outOfGrid || null,
         noVariantPtavIds: payload.noVariantPtavIds || [],
+        // ⓘ D-553 — la confirmation met au panier ; posé par `product_configurator_web_sale`, absent sans boutique.
+        cart: !!payload.cart,
+        // ⓘ D-556 — la configuration a déjà sa ligne au panier : la confirmer la met à jour et y ramène.
+        inCart: !!payload.inCart,
         closed: payload.state && payload.state !== "draft",
         questions: (payload.attributes || []).map(toQuestion),
         // ⓘ D-385 — les ÉTAPES visibles, dans l'ordre ; vide sans étape déclarée.

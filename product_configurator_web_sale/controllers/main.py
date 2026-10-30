@@ -47,9 +47,30 @@ class ProductConfiguratorShopEntry(http.Controller):
         session = request.env["product.config.session"].sudo().create_get_session(
             product_tmpl.id, force_create=True,
         )
+        # ⓘ `variant` : la configuration NEUVE part des réponses de cette variante (liste de souhaits, D-557).
+        variant = self._variant_of(product_tmpl, kwargs.get("variant"))
+        if variant:
+            session.value_ids = [(6, 0, variant.product_template_attribute_value_ids
+                                  .product_attribute_value_id.ids)]
         session._ensure_access_token()
         # Le jeton entre dans l'URL — c'est la SEULE identité de ce visiteur.
         return request.redirect(f"/configurator/{session.access_token}")
+
+    @staticmethod
+    def _variant_of(product_tmpl, variant_id):
+        """La variante demandée, si elle est bien une variante active de CE produit ; sinon rien.
+
+        ⚠️ Jamais la configuration qui a fait naître la variante : elle appartient à un autre client (D-557).
+        ⚠️ Une variante d'un autre produit est ignorée : ses réponses ne sont pas des questions de celui-ci (D-557).
+        """
+        try:
+            variant_id = int(variant_id or 0)
+        except ValueError:
+            return None
+        variant = request.env["product.product"].sudo().browse(variant_id).exists()
+        if not variant or not variant.active or variant.product_tmpl_id != product_tmpl.sudo():
+            return None
+        return variant
 
     @http.route(
         "/configurator/optional_products", type="json", auth="public", website=True,

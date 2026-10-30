@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- ⓘ À côté du réglage d'Odoo qui remplace « Ajouter au panier » par « Nous contacter » :
+         le même genre de texte de bouton, au même endroit (D-558). -->
+    <record id="res_config_settings_view_form_configure_button" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.configure.button</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="website_sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <setting id="hide_add_to_cart_setting" position="after">
+                <setting id="configure_button_text_setting" string="Configure button"
+                         help="Text of the button that opens the configurator: product page, shop grid, wishlist.">
+                    <field name="website_configure_button_text" placeholder="Configure"/>
+                    <div class="text-muted small">To translate it: Website › Configuration › Websites.</div>
+                </setting>
+            </setting>
+        </field>
+    </record>
+
+    <!-- ⚠️ La traduction se fait ICI : sur un vrai enregistrement, le bouton de langue ouvre sa fenêtre (D-558). -->
+    <record id="view_website_form_configure_button" model="ir.ui.view">
+        <field name="name">website.form.configure.button</field>
+        <field name="model">website</field>
+        <field name="inherit_id" ref="website.view_website_form"/>
+        <field name="arch" type="xml">
+            <group name="domain" position="after">
+                <group name="configurator" string="Configurator">
+                    <field name="configure_button_text" placeholder="Configure"/>
+                </group>
+            </group>
+        </field>
+    </record>
+
+</odoo>

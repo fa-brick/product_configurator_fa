@@ -1,6 +1,7 @@
 /* La page publique du configurateur — viewer à gauche, questions à droite.
-   Aucune couleur de thème n'est empruntée : cette page est NUE, et rien de Bootstrap ne
-   décide de son fond. */
+   Le fond n'emprunte rien au thème : cette page est NUE, et rien de Bootstrap ne décide de son fond.
+   ⚠️ L'accent est `$primary`, jamais `$o-brand-primary` : sur le site, seul `$primary` suit la couleur
+   primaire réglée dans le thème — l'autre reste le violet d'Odoo (L-644). Au back-office, les deux valent pareil. */
 
 /* ⓘ LE MODE COMPACT (D-389) — le téléphone. ⚠️ Le MÊME nombre que `COMPACT_MAX_WIDTH`
    (`configurator_state.js`), que le JS lit pour décider de ce qu'il rend : un test compare
@@ -180,7 +181,7 @@ body.o_cfg3d_body {
     &--on {
         color: rgba(0, 0, 0, 0.9);
         font-weight: 600;
-        border-bottom-color: $o-brand-primary;
+        border-bottom-color: $primary;
     }
 }
 
@@ -235,7 +236,7 @@ body.o_cfg3d_body {
     padding: 6px 10px;
     background: transparent;
 
-    &--chosen { border-color: $o-brand-primary; color: $o-brand-primary; font-weight: 600; }
+    &--chosen { border-color: $primary; color: $primary; font-weight: 600; }
     /* ÉTEINTE, pas désactivée : le bouton reste cliquable pour pouvoir DIRE pourquoi. */
     &--muted { opacity: 0.4; }
 }
@@ -402,7 +403,7 @@ body.o_cfg3d_body {
     /* ⓘ La carte rogne sa vignette à ses coins arrondis. */
     overflow: hidden;
 
-    &--chosen { border-color: $o-brand-primary; border-width: 2px; padding: 7px 5px; }
+    &--chosen { border-color: $primary; border-width: 2px; padding: 7px 5px; }
     /* ÉTEINTE, pas désactivée : l'appui doit rester possible pour en donner la
        raison (D-178). */
     &--muted { opacity: 0.4; }
@@ -495,7 +496,7 @@ body.o_cfg3d_body {
     }
     /* L'ANNEAU — seulement quand l'attribut le choisit (sinon c'est la coche). */
     .o_cfg3d_bigswatches--ring .o_cfg3d_bigswatch--chosen & {
-        box-shadow: 0 0 0 2px #fff, 0 0 0 4px $o-brand-primary;
+        box-shadow: 0 0 0 2px #fff, 0 0 0 4px $primary;
     }
 }
 
@@ -796,7 +797,7 @@ body.o_cfg3d_body {
     border-radius: 4px;
     background: #fff;
 
-    &:focus { outline: none; border-color: $o-brand-primary; }
+    &:focus { outline: none; border-color: $primary; }
 }
 
 .o_cfg3d_panel_views {
@@ -818,7 +819,7 @@ body.o_cfg3d_body {
     cursor: pointer;
 
     &:hover { color: rgba(0, 0, 0, 0.75); }
-    &--on { color: $o-brand-primary; background: rgba($o-brand-primary, 0.1); }
+    &--on { color: $primary; background: rgba($primary, 0.1); }
 }
 
 /* Les pastilles de catégories : une rangée qui défile sous la recherche, sans barre. */
@@ -846,8 +847,8 @@ body.o_cfg3d_body {
 
     &:hover { border-color: rgba(0, 0, 0, 0.3); }
     &--on {
-        border-color: $o-brand-primary;
-        background: $o-brand-primary;
+        border-color: $primary;
+        background: $primary;
         color: #fff;
     }
 }
@@ -932,8 +933,8 @@ body.o_cfg3d_body {
 }
 
 @keyframes o_cfg3d_question_flash {
-    0%, 30% { box-shadow: 0 0 0 3px rgba($o-brand-primary, 0.45); background: rgba($o-brand-primary, 0.06); }
-    100% { box-shadow: 0 0 0 3px rgba($o-brand-primary, 0); background: transparent; }
+    0%, 30% { box-shadow: 0 0 0 3px rgba($primary, 0.45); background: rgba($primary, 0.06); }
+    100% { box-shadow: 0 0 0 3px rgba($primary, 0); background: transparent; }
 }
 
 .o_cfg3d_panel_reason { margin: 8px 16px 0; }
@@ -978,7 +979,7 @@ body.o_cfg3d_body {
 }
 
 .o_cfg3d_panel_name { flex: 1 1 auto; font-size: 13px; }
-.o_cfg3d_panel_check { color: $o-brand-primary; }
+.o_cfg3d_panel_check { color: $primary; }
 
 /* ── LA COULEUR ─────────────────────────────────────────────────────────── */
 /* ⓘ Le PADDING est la place de l'anneau de sélection (voir `--chosen`). */
@@ -998,7 +999,7 @@ body.o_cfg3d_body {
     /* ⚠️ **UNE OMBRE, PAS UN `outline`** ([[L-435]]) : la pastille qu'on vient de cliquer
        garde le FOCUS, et le reboot de Bootstrap efface l'outline de tout élément focalisé à
        la souris (`:focus:not(:focus-visible) { outline: 0 }`). */
-    &--chosen { box-shadow: 0 0 0 2px #fff, 0 0 0 4px $o-brand-primary; }
+    &--chosen { box-shadow: 0 0 0 2px #fff, 0 0 0 4px $primary; }
     &--muted { opacity: 0.4; }
 }
 
@@ -1038,8 +1039,8 @@ body.o_cfg3d_body {
 
         &:focus {
             outline: none;
-            border-color: $o-brand-primary;
-            box-shadow: 0 0 0 2px rgba($o-brand-primary, 0.15);
+            border-color: $primary;
+            box-shadow: 0 0 0 2px rgba($primary, 0.15);
         }
     }
 }
@@ -1057,8 +1058,8 @@ body.o_cfg3d_body {
         &:focus { box-shadow: none; }
     }
     &:focus-within {
-        box-shadow: 0 0 0 2px rgba($o-brand-primary, 0.15);
-        .o_cfg3d_free_unit { border-color: $o-brand-primary; }
+        box-shadow: 0 0 0 2px rgba($primary, 0.15);
+        .o_cfg3d_free_unit { border-color: $primary; }
     }
 }
 .o_cfg3d_free_unit {

@@ -36,7 +36,7 @@ describe("la grande pastille", () => {
     });
 
     test("⚠️ l'anneau est une OMBRE dans une marge réservée — un contour se faisait rogner", () => {
-        expect(SCSS).toMatch(/\.o_cfg3d_bigswatches--ring \.o_cfg3d_bigswatch--chosen &\s*\{\s*box-shadow:[^}]*\$o-brand-primary/);
+        expect(SCSS).toMatch(/\.o_cfg3d_bigswatches--ring \.o_cfg3d_bigswatch--chosen &\s*\{\s*box-shadow:[^}]*\$primary/);
         expect(SCSS).toMatch(/\.o_cfg3d_bigswatches\s*\{[^}]*padding:/);
     });
 
@@ -44,7 +44,7 @@ describe("la grande pastille", () => {
         // ⓘ La TAILLE (D-382) s'ajoute derrière la marque, dans le même attribut.
         expect(bloc).toContain("t-att-class=\"'o_cfg3d_bigswatches--' + question.swatchMark + ");
         // L'anneau n'existe que sous `--ring` : aucune autre règle ne le pose sur la pastille choisie.
-        const rings = SCSS.match(/0 0 0 4px \$o-brand-primary/g) || [];
+        const rings = SCSS.match(/0 0 0 4px \$primary/g) || [];
         expect(rings.length).toBe(2);                 // la grande (sous --ring) et la petite « Couleur »
     });
 
@@ -62,5 +62,13 @@ describe("la grande pastille", () => {
     test("le dialogue de vente d'Odoo l'accepte", () => {
         const tolerance = readFileSync(join(SRC, "sale_card_tolerance.js"), "utf8");
         expect(tolerance).toContain('type === "swatch"');
+    });
+});
+
+describe("l'accent de la page suit le thème du site", () => {
+
+    test("⚠️ `$primary`, jamais `$o-brand-primary` : sur le site, seul `$primary` suit la couleur primaire du thème", () => {
+        const rules = SCSS.replace(/\/\*[\s\S]*?\*\//g, "");
+        expect(rules).not.toMatch(/\$o-brand-primary/);
     });
 });

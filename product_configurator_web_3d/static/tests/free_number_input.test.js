@@ -50,7 +50,7 @@ describe("unité d'une saisie libre", () => {
 
     test("le focus entoure le groupe entier, case de l'unité comprise", () => {
         const rule = SCSS.slice(SCSS.indexOf(".o_cfg3d_free_with_unit {"), SCSS.indexOf("\n.o_cfg3d_free_unit {"));
-        expect(rule).toMatch(/&:focus-within \{[\s\S]*box-shadow: 0 0 0 2px[\s\S]*\.o_cfg3d_free_unit \{ border-color: \$o-brand-primary; \}/);
+        expect(rule).toMatch(/&:focus-within \{[\s\S]*box-shadow: 0 0 0 2px[\s\S]*\.o_cfg3d_free_unit \{ border-color: \$primary; \}/);
     });
 });
 

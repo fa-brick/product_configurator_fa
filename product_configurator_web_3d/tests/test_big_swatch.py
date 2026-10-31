@@ -13,14 +13,14 @@ class TestBigSwatch(TransactionCase):
         # ⓘ La marque du choix : la coche par défaut (celle du modèle fourni).
         self.assertEqual(attribute.swatch_mark, "check")
 
-    def test_la_boutique_le_rend_comme_une_couleur(self):
-        """Sans la rustine, `website_sale.variants` n'a pas de cas par défaut : la question
-        disparaîtrait de la fiche produit, sans erreur."""
+    def test_la_boutique_lui_donne_sa_branche(self):
+        """Sans elle, `website_sale.variants` n'a pas de cas par défaut : la question
+        disparaîtrait de la fiche produit, sans erreur (D-563 : rendue comme au configurateur)."""
         view = self.env.ref("website_sale.variants", raise_if_not_found=False)
         if not view:
             self.skipTest("boutique absente")
         arch = view._get_combined_arch()
-        self.assertTrue(arch.xpath("//t[@t-elif=\"attribute.display_type in ('color', 'swatch')\"]"))
+        self.assertTrue(arch.xpath("//t[@t-elif=\"attribute.display_type in ('card', 'swatch')\"]"))
 
 
 @tagged("post_install", "-at_install")

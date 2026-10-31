@@ -416,10 +416,12 @@ body.o_cfg3d_body {
     /* ⓘ La carte rogne sa vignette à ses coins arrondis. */
     overflow: hidden;
 
-    &--chosen { border-color: $primary; border-width: 2px; padding: 7px 5px; }
+    /* ⓘ Hors de la page (boutique, dialogue de vente), le choix est le bouton radio coché (D-563). */
+    &--chosen, &:has(> input:checked) { border-color: $primary; border-width: 2px; padding: 7px 5px; }
     /* ÉTEINTE, pas désactivée : l'appui doit rester possible pour en donner la
        raison (D-178). */
-    &--muted { opacity: 0.4; }
+    /* ⓘ `css_not_available` : la réponse qu'Odoo exclut, hors de la page (D-563). */
+    &--muted, &.css_not_available { opacity: 0.4; }
 }
 
 .o_cfg3d_card_shot {
@@ -436,7 +438,8 @@ body.o_cfg3d_body {
 
     /* ⚠️ La carte choisie a un bord de 2 px et un padding de 7 px 5 px : sans cet écart,
        la vignette déborderait sur le bord. */
-    .o_cfg3d_card--chosen > & { width: calc(100% + 10px); margin: -7px -5px 0; }
+    .o_cfg3d_card--chosen > &,
+    .o_cfg3d_card:has(> input:checked) > & { width: calc(100% + 10px); margin: -7px -5px 0; }
 
     img { max-width: 100%; max-height: 100%; object-fit: contain; }
 }
@@ -481,7 +484,7 @@ body.o_cfg3d_body {
     cursor: pointer;
     text-align: center;
 
-    &--muted { opacity: 0.4; }
+    &--muted, &.css_not_available { opacity: 0.4; }
 }
 
 .o_cfg3d_bigswatch_disc {
@@ -504,10 +507,11 @@ body.o_cfg3d_body {
     /* ⚠️ Le survol ne vise que les pastilles NON choisies : `:hover` pèse plus lourd que la
        classe, et la souris reste sur celle qu'on vient de cliquer — l'anneau disparaissait
        jusqu'à ce qu'elle s'en aille (mesuré au pixel sur une copie de fabk18). */
-    .o_cfg3d_bigswatch:not(.o_cfg3d_bigswatch--chosen):hover & {
+    .o_cfg3d_bigswatch:not(.o_cfg3d_bigswatch--chosen):not(:has(> input:checked)):hover & {
         box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
     }
     /* L'ANNEAU — seulement quand l'attribut le choisit (sinon c'est la coche). */
+    .o_cfg3d_bigswatches--ring .o_cfg3d_bigswatch:has(> input:checked) &,
     .o_cfg3d_bigswatches--ring .o_cfg3d_bigswatch--chosen & {
         box-shadow: 0 0 0 2px #fff, 0 0 0 4px $primary;
     }
@@ -527,6 +531,10 @@ body.o_cfg3d_body {
     /* La coche suit le disque, pour ne pas le remplir ni s'y perdre. */
     .o_cfg3d_bigswatches--small & { font-size: 16px; }
     .o_cfg3d_bigswatches--large & { font-size: 26px; }
+
+    /* ⚠️ Hors de la page, la coche est rendue pour chaque réponse : sans cette règle, toutes paraîtraient
+       choisies (D-563). */
+    .o_cfg3d_bigswatch:has(> input:not(:checked)) & { display: none; }
 }
 
 .o_cfg3d_bigswatch_label {
@@ -537,8 +545,14 @@ body.o_cfg3d_body {
     -webkit-box-orient: vertical;
     overflow: hidden;
 
-    .o_cfg3d_bigswatch--chosen & { font-weight: 600; }
+    .o_cfg3d_bigswatch--chosen &,
+    .o_cfg3d_bigswatch:has(> input:checked) & { font-weight: 600; }
 }
+
+/* ⚠️ Hors de la page, le bouton radio est caché : sans ce contour, la réponse atteinte au clavier ne se voit pas
+   (D-563). */
+.o_cfg3d_card:has(> input:focus-visible),
+.o_cfg3d_bigswatch:has(> input:focus-visible) { outline: 2px solid $primary; outline-offset: 2px; }
 
 /* ── LA RANGÉE QUI DÉFILE (D-382, disposition `scroll`) ─────────────────────
    La grille de cartes ou de grandes pastilles passe sur UNE rangée, qui défile de gauche à

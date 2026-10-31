@@ -160,23 +160,84 @@
         </xpath>
     </template>
 
-    <!-- ══ LA FORME « CARTE » N'EST PAS D'ODOO ════════════════════════════════
-         `website_sale.variants` enchaîne t-if/t-elif sur des chaînes exactes et
-         n'a AUCUN cas par défaut : une forme qu'il ne connaît pas ne rend RIEN
-         — pas d'erreur, pas de trace, juste une question absente de la page.
-         Notre configurateur, lui, sait dessiner la carte ; ici on rattache
-         simplement `card` aux pastilles, dont elle est la parente visuelle. -->
+    <!-- ══ LA CARTE ET LA GRANDE PASTILLE SUR LA FICHE, COMME AU CONFIGURATEUR (D-563) ══════════
+         ⚠️ `website_sale.variants` n'a pas de cas par défaut : sans cette branche, une forme d'ici ne rend rien,
+         sans erreur (D-258).
+         ⚠️ La « Couleur » du cœur ne lit que l'image POSÉE sur la valeur : une valeur qui désigne une matière
+         ou un produit restait un damier (D-563). -->
     <template id="variants_card_fallback" inherit_id="website_sale.variants"
-              name="Card display type: fall back to pills on standard pages">
-        <xpath expr="//t[@t-elif=&quot;attribute.display_type == 'pills'&quot;]"
-               position="attributes">
-            <attribute name="t-elif">attribute.display_type in ('pills', 'card')</attribute>
+              name="Card and large swatch display types on standard pages">
+        <xpath expr="//t[@t-elif=&quot;attribute.display_type == 'color'&quot;]" position="before">
+            <t t-elif="attribute.display_type in ('card', 'swatch')">
+                <t t-call="product_configurator_web_sale.variant_image_answers"/>
+            </t>
         </xpath>
-        <!-- ⓘ La GRANDE PASTILLE (`swatch`) : sa parente est la « Couleur ». -->
-        <xpath expr="//t[@t-elif=&quot;attribute.display_type == 'color'&quot;]"
-               position="attributes">
-            <attribute name="t-elif">attribute.display_type in ('color', 'swatch')</attribute>
+        <xpath expr="//t[@t-elif=&quot;attribute.display_type == 'color'&quot;]//t[@t-set='img_style']"
+               position="before">
+            <t t-set="ptav_preview" t-value="ptav.product_attribute_value_id._preview_url()"/>
         </xpath>
+        <xpath expr="//t[@t-elif=&quot;attribute.display_type == 'color'&quot;]//t[@t-set='img_style']"
+               position="attributes">
+            <attribute name="t-value">'background:url(%s); background-size:cover;' % ptav_preview if ptav_preview else ''</attribute>
+        </xpath>
+    </template>
+
+    <!-- ⓘ Le dessin de `product_configurator_web_3d.Card` et `.BigSwatch` : mêmes classes, même feuille.
+         ⚠️ Un `<label>` autour du bouton radio : `sale_variant_mixin` pose `css_not_available` sur le libellé
+         parent d'une réponse exclue (D-563).
+         ⚠️ Le bouton radio garde `js_variant_change` et ses `data-*` : c'est par eux qu'Odoo lit la combinaison
+         (D-563).
+         ⓘ Toujours la liste complète : la rangée qui défile et la ligne résumé demandent le panneau du
+         configurateur (D-563). -->
+    <template id="variant_image_answers" name="Card and large swatch answers">
+        <t t-set="is_swatch" t-value="attribute.display_type == 'swatch'"/>
+        <t t-set="answer_form" t-value="'bigswatch' if is_swatch else 'card'"/>
+        <div t-att-data-attribute_id="attribute.id"
+             t-attf-class="o_wsale_product_attribute #{'o_cfg3d_bigswatches o_cfg3d_bigswatches--%s o_cfg3d_bigswatches--%s' % (attribute.swatch_mark, attribute.answer_size) if is_swatch else 'o_cfg3d_cards o_cfg3d_cards--%s' % attribute.answer_size} #{'d-none' if single_and_custom else ''}">
+            <t t-foreach="ptavs" t-as="ptav">
+                <t t-set="ptav_preview" t-value="ptav.product_attribute_value_id._preview_url()"/>
+                <label t-attf-class="o_cfg3d_#{answer_form}" t-att-title="ptav.name if is_swatch else None">
+                    <input type="radio"
+                           t-attf-class="visually-hidden js_variant_change #{attribute.create_variant}"
+                           t-att-checked="ptav in combination"
+                           t-att-name="'ptal-%s' % ptal.id"
+                           t-att-value="ptav.id"
+                           t-att-title="ptav.name"
+                           t-att-data-attribute-value-id="ptav.product_attribute_value_id.id"
+                           t-att-data-value_id="ptav.id"
+                           t-att-data-value_name="ptav.name"
+                           t-att-data-attribute_name="attribute.name"
+                           t-att-data-is_custom="ptav.is_custom"
+                           t-att-data-is_single="single"
+                           t-att-data-is_single_and_custom="single_and_custom"/>
+                    <t t-if="is_swatch">
+                        <span class="o_cfg3d_bigswatch_disc"
+                              t-att-style="'background-color: %s' % ptav.html_color if ptav.html_color else None">
+                            <img t-if="ptav_preview" t-att-src="ptav_preview" t-att-alt="ptav.name" loading="lazy"/>
+                            <span t-if="attribute.swatch_mark != 'ring'" class="o_cfg3d_bigswatch_check">
+                                <i class="fa fa-check"/>
+                            </span>
+                        </span>
+                        <span class="o_cfg3d_bigswatch_label" t-field="ptav.name"/>
+                    </t>
+                    <t t-else="">
+                        <!-- ⚠️ Pas de cadre sans image : une vignette vide se lit comme un chargement en panne
+                             (D-262). -->
+                        <span t-if="ptav_preview" class="o_cfg3d_card_shot">
+                            <img t-att-src="ptav_preview" t-att-alt="ptav.name" loading="lazy"/>
+                        </span>
+                        <span class="o_cfg3d_card_label" t-field="ptav.name"/>
+                    </t>
+                    <t t-set="price_extra" t-value="ptav._get_extra_price(combination_info)"/>
+                    <!-- ⓘ Le montant du badge d'Odoo (`website_sale.badge_extra_price`), dans le badge du configurateur. -->
+                    <span t-if="price_extra" class="o_cfg3d_extra">
+                        <span class="o_cfg3d_extra_sign" t-out="price_extra &gt; 0 and '+' or '-'"/>
+                        <span class="o_cfg3d_extra_amount" t-out="abs(price_extra)"
+                              t-options='{"widget": "monetary", "display_currency": (website.pricelist_id or product.env.company).currency_id}'/>
+                    </span>
+                </label>
+            </t>
+        </div>
     </template>
 
     <!-- ══ MODIFIER UNE CONFIGURATION DEPUIS LE PANIER (D-556) ═══════════════════

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- sale_image_forms.xml — La carte, la grande pastille et la couleur illustrée dans le dialogue de vente d'Odoo
+     (D-563). Le dessin est celui de `product_configurator_web_3d.Card` et `.BigSwatch` : mêmes classes, même feuille.
+     ⚠️ Un `<label>` autour du bouton radio, jamais un `<button>` : le cœur pose `css_not_available` sur ce libellé,
+     et le clic sur le libellé coche la réponse (D-563).
+     ⓘ L'état choisi se lit sur le bouton radio coché (`:has(> input:checked)`), sans classe à tenir à jour. -->
+<templates xml:space="preserve">
+
+<t t-name="product_configurator_web_3d.ptav_input">
+    <input type="radio" class="visually-hidden"
+           t-attf-id="ptav-{{ptav.id}}-input"
+           t-att-value="ptav.id"
+           t-att-name="'ptal-' + this.props.id"
+           t-att-checked="this.props.selected_attribute_value_ids.includes(ptav.id)"
+           t-on-change="updateSelectedPTAV"/>
+</t>
+
+<t t-name="product_configurator_web_3d.ptav_extra">
+    <span t-if="ptav.price_extra" class="o_cfg3d_extra">
+        <span class="o_cfg3d_extra_sign" t-esc="ptav.price_extra > 0 ? '+' : '-'"/>
+        <span class="o_cfg3d_extra_amount" t-esc="this.extraAmount(ptav)"/>
+    </span>
+</t>
+
+<t t-name="product_configurator_web_3d.ptav_card">
+    <div class="o_cfg3d_cards flex-grow-1" t-att-class="this.imageFormGridClass()">
+        <label t-foreach="this.props.attribute_values" t-as="ptav" t-key="ptav.id"
+               class="o_cfg3d_card" t-att-class="{ 'css_not_available': ptav.excluded }">
+            <t t-call="product_configurator_web_3d.ptav_input"/>
+            <!-- ⚠️ Pas de cadre sans image : une vignette vide se lit comme un chargement en panne (D-262). -->
+            <span t-if="ptav.preview" class="o_cfg3d_card_shot">
+                <img t-att-src="ptav.preview" t-att-alt="ptav.name" loading="lazy"/>
+            </span>
+            <span class="o_cfg3d_card_label" t-esc="ptav.name"/>
+            <t t-call="product_configurator_web_3d.ptav_extra"/>
+        </label>
+    </div>
+</t>
+
+<t t-name="product_configurator_web_3d.ptav_swatch">
+    <div class="o_cfg3d_bigswatches flex-grow-1" t-att-class="this.imageFormGridClass()">
+        <label t-foreach="this.props.attribute_values" t-as="ptav" t-key="ptav.id"
+               class="o_cfg3d_bigswatch" t-att-title="ptav.name"
+               t-att-class="{ 'css_not_available': ptav.excluded }">
+            <t t-call="product_configurator_web_3d.ptav_input"/>
+            <span class="o_cfg3d_bigswatch_disc"
+                  t-att-style="ptav.html_color ? 'background-color: ' + ptav.html_color : ''">
+                <img t-if="ptav.preview" t-att-src="ptav.preview" t-att-alt="ptav.name" loading="lazy"/>
+                <span t-if="this.props.attribute.swatch_mark !== 'ring'" class="o_cfg3d_bigswatch_check">
+                    <i class="fa fa-check"/>
+                </span>
+            </span>
+            <span class="o_cfg3d_bigswatch_label" t-esc="ptav.name"/>
+            <t t-call="product_configurator_web_3d.ptav_extra"/>
+        </label>
+    </div>
+</t>
+
+<!-- ⚠️ La « Couleur » du cœur ne lit que l'image POSÉE sur la valeur : une valeur qui désigne une matière ou un
+     produit restait un damier (D-563).
+     ⚠️ Sans `preview`, la règle du cœur reste : une donnée servie sans notre contrôleur perdrait l'image posée (D-563). -->
+<t t-inherit="sale.ptav_color" t-inherit-mode="extension">
+    <xpath expr="//t[@t-set='img_style']" position="attributes">
+        <attribute name="t-value">ptav.preview ? 'background:url(' + ptav.preview + '); background-size:cover;' : (ptav.image ? 'background:url(/web/image/product.template.attribute.value/' + ptav.id + '/image); background-size:cover;' : '')</attribute>
+    </xpath>
+</t>
+
+</templates>

@@ -49,7 +49,7 @@ describe("la grande pastille", () => {
     });
 
     test("⚠️ le SURVOL ne vise que les pastilles non choisies — il masquait l'anneau", () => {
-        expect(SCSS).toContain(".o_cfg3d_bigswatch:not(.o_cfg3d_bigswatch--chosen):hover &");
+        expect(SCSS).toContain(".o_cfg3d_bigswatch:not(.o_cfg3d_bigswatch--chosen):not(:has(> input:checked)):hover &");
     });
 
     test("⚠️ la petite pastille « Couleur » : une OMBRE, plus un outline effacé au focus", () => {

@@ -1,39 +1,58 @@
 /** @odoo-module **/
 /**
- * Le dialogue d'Odoo ne CONNAÎT pas la carte — on l'empêche de tomber. D-258.
+ * Le dialogue de vente d'Odoo dessine la carte et la grande pastille comme le configurateur — D-258, D-563.
  *
- * ⚠️ **Ajouter une forme d'affichage engage les interfaces d'Odoo, qui l'ignorent
- * toutes.** `ProductTemplateAttributeLine` (Odoo 18) est le pire des trois cas
- * relevés : il **valide** `display_type` contre une liste fermée, puis choisit
- * son gabarit par un `switch` **sans `default`** — une carte y donne `undefined`
- * à `t-call`, et le dialogue entier tombe.
- *
- * ⓘ **Exposition réelle** : un attribut en carte posé sur un produit ORDINAIRE,
- * ouvert depuis un devis. Nos produits configurables, eux, passent par notre
- * dialogue (D-259) et ne traversent jamais ce composant.
- *
- * ⓘ **Pourquoi ici, et sans module-pont** : `sale` est déjà dans les dépendances
- * de ce module (`product_configurator_web_3d` → `product_editor` → `sale`).
- * Le module qui AJOUTE la valeur est donc celui qui peut
- * — et doit — garder debout ce qui s'y ramifie.
- *
- * ⚠️ La carte retombe sur les PASTILLES, comme sur les pages du site
- * (`variants_card_fallback`) : une réponse visible sans image vaut mieux qu'une
- * question absente ou qu'un écran mort.
+ * ⚠️ `ProductTemplateAttributeLine` (Odoo 18) VALIDE `display_type` contre une liste fermée : une forme d'ici y est
+ * refusée en mode développeur (D-258).
+ * ⚠️ Son `switch` n'a pas de `default` : une forme inconnue rend `undefined` à `t-call`, et le dialogue entier
+ * tombe (D-258).
+ * ⚠️ Chargé au back-office ET au site (`product_configurator_web_sale`) : sans lui, le dialogue des options du site
+ * tombait sur une carte (D-563).
+ * ⓘ Le dessin vient de `configurator_page.scss` ; l'état choisi se lit sur le bouton radio coché (D-563).
  */
+import { formatCurrency } from "@web/core/currency";
 import { patch } from "@web/core/utils/patch";
 import {
     ProductTemplateAttributeLine,
 } from "@sale/js/product_template_attribute_line/product_template_attribute_line";
 
-// La validation d'abord : elle refuse la valeur avant même que le gabarit soit
-// choisi, et le refus casse le rendu en mode développeur.
-const forme = ProductTemplateAttributeLine.props.attribute.shape.display_type;
-const acceptaitAvant = forme.validate;
-forme.validate = (type) => type === "card" || type === "swatch" || acceptaitAvant(type);
+const IMAGE_FORMS = {
+    card: "product_configurator_web_3d.ptav_card",
+    swatch: "product_configurator_web_3d.ptav_swatch",
+};
+
+// La validation d'abord : elle refuse la valeur avant même que le gabarit soit choisi.
+const displayType = ProductTemplateAttributeLine.props.attribute.shape.display_type;
+const acceptedBefore = displayType.validate;
+displayType.validate = (type) => type === "card" || type === "swatch" || acceptedBefore(type);
+
+// ⚠️ Les clés servies par `SaleProductConfiguratorImageForms` : un `shape` refuse toute clé qu'il ne nomme pas.
+Object.assign(ProductTemplateAttributeLine.props.attribute.shape, {
+    swatch_mark: { type: String, optional: true },
+    answer_size: { type: String, optional: true },
+});
+Object.assign(ProductTemplateAttributeLine.props.attribute_values.element.shape, {
+    preview: { type: [Boolean, String], optional: true },
+});
 
 patch(ProductTemplateAttributeLine.prototype, {
     getPTAVTemplate() {
-        return super.getPTAVTemplate(...arguments) || "sale.ptav_pills";
+        return IMAGE_FORMS[this.props.attribute.display_type]
+            || super.getPTAVTemplate(...arguments)
+            || "sale.ptav_pills";
+    },
+
+    /** Les classes de la grille d'une forme à image : la taille, et la marque d'une grande pastille. */
+    imageFormGridClass() {
+        const { display_type, answer_size, swatch_mark } = this.props.attribute;
+        const size = answer_size || "medium";
+        return display_type === "swatch"
+            ? `o_cfg3d_bigswatches--${swatch_mark || "check"} o_cfg3d_bigswatches--${size}`
+            : `o_cfg3d_cards--${size}`;
+    },
+
+    /** Le montant du supplément, sans signe : le badge du configurateur les sépare. */
+    extraAmount(ptav) {
+        return formatCurrency(Math.abs(ptav.price_extra), this.env.currency.id);
     },
 });

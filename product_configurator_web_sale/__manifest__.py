@@ -35,6 +35,12 @@
             "product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.xml",
             "product_configurator_web_3d_sale/static/src/optional/optional_products_dialog.js",
             "product_configurator_web_sale/static/src/optional/page_optional_products.js",
+            # ⚠️ Le dialogue de vente d'Odoo sert aussi le SITE (options d'un produit ordinaire) : sans ces deux
+            # fichiers, une carte y rendait `undefined` à `t-call` et le dialogue tombait (D-563).
+            # ⚠️ Ici et pas dans `product_configurator_web_3d` : sans `website_sale`, l'import de `@sale/…` ne
+            # résoudrait pas sur le site, et tout le paquet tomberait (L-150).
+            "product_configurator_web_3d/static/src/sale_card_tolerance.js",
+            "product_configurator_web_3d/static/src/sale_image_forms.xml",
         ],
     },
     "installable": True,

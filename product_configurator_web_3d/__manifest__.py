@@ -91,6 +91,7 @@
         # paquet — c'est le FRONT qui avait dû les recevoir, pas l'inverse.
         "web.assets_backend": [
             "product_configurator_web_3d/static/src/sale_card_tolerance.js",
+            "product_configurator_web_3d/static/src/sale_image_forms.xml",
             "product_configurator_web_3d/static/src/configurator_state.js",
             "product_configurator_web_3d/static/src/page/configurator_page.scss",
             # Les réponses d'une question et le panneau de choix (E-3c-1) — avant la page qui les monte.

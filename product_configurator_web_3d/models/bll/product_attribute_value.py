@@ -72,6 +72,16 @@ class ProductAttributeValue(models.Model):
             return self.material_id, "preview_image"
         return None, None
 
+    def _preview_url(self):
+        """L'adresse de la vignette de cette valeur, ou `False` — pour la fiche boutique et le dialogue de vente (D-563).
+
+        ⚠️ En `sudo` : un visiteur ne lit ni un composant non publié, ni le catalogue des matières (D-258).
+        ⚠️ Pas `/web/image` : il refuserait l'image d'un composant non publié, une vignette par réponse (D-258).
+        """
+        self.ensure_one()
+        record, _field = self.sudo()._preview_source()
+        return "/configurator/value/%s/image" % self.id if record else False
+
     def _purge_designation(self, value_type):
         """Le crochet du cœur, complété : la matière s'efface aussi — D-219.
 

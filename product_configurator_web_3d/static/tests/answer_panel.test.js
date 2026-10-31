@@ -194,7 +194,7 @@ describe("le gabarit du panneau, de la ligne et du résumé", () => {
         expect(summary).toBeGreaterThan(0);
         expect(card).toBeGreaterThan(summary);
         // ⓘ Et jamais en mode compact : l'onglet porte le nom (D-389).
-        expect(question).toMatch(/<h2 t-if="!state.compact and \(question.free or question.answerLayout !== 'summary'\)"\s*t-esc="question.name"\/>/);
+        expect(question).toMatch(/<div t-if="!state.compact and \(question.free or question.answerLayout !== 'summary'\)"\s*class="variant_attribute pb-0">\s*<strong class="attribute_name" t-esc="question.name"\/>/);
     });
 
     test("« +N » : dans les deux grilles, il ouvre le panneau", () => {

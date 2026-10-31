@@ -310,8 +310,13 @@
         <!-- ⓘ La LIGNE RÉSUMÉ porte le nom de la question dans son cadre (D-382) : il ne
              se répète pas au-dessus. Une saisie libre garde son titre. -->
         <!-- ⓘ En mode compact, l'ONGLET porte déjà le nom (D-389). -->
-        <h2 t-if="!state.compact and (question.free or question.answerLayout !== 'summary')"
-            t-esc="question.name"/>
+        <!-- ⓘ Le balisage du nom d'un attribut sur la fiche boutique (`website_sale.variants`) : son style vient
+             de `website_sale`, sans copie ici (D-564).
+             ⚠️ `pb-0` : `.variant_attribute` ajoute 1 rem sous la question, en plus de l'écart de la page (D-564). -->
+        <div t-if="!state.compact and (question.free or question.answerLayout !== 'summary')"
+             class="variant_attribute pb-0">
+            <strong class="attribute_name" t-esc="question.name"/>
+        </div>
         <!-- ⚠️ **LA QUESTION PREND LA FORME QU'ON LUI A DONNÉE.**
              `display_type` est réglé en back-office (D-258). Cinq formes viennent
              d'Odoo, la sixième — la CARTE — a été ajoutée pour les

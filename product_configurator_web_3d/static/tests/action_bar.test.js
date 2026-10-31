@@ -92,7 +92,7 @@ describe("sur téléphone, la barre monte sur la 3D (lot 2)", () => {
         expect(bar).toMatch(/z-index: 3;/);
         const right = Number(bar.match(/right: (\d+)px;/)[1]);
         const close = rule(".o_cfg3d_close");
-        const mobileClose = close.slice(close.indexOf("@media (max-width: $o-cfg3d-compact-max)"));
+        const mobileClose = close.slice(close.indexOf("@media #{$o-cfg3d-compact}"));
         const width = Number(mobileClose.match(/width: (\d+)px;/)[1]);
         const closeRight = Number(mobileClose.match(/right: (\d+)px;/)[1]);
         expect(right).toBeGreaterThan(width + closeRight);
@@ -100,11 +100,11 @@ describe("sur téléphone, la barre monte sur la 3D (lot 2)", () => {
 
     test("les étapes passent sous la barre, toujours dans le viewer (Q1)", () => {
         const steps = rule(".o_cfg3d_steps");
-        const mobile = steps.slice(steps.indexOf("@media (max-width: $o-cfg3d-compact-max)"));
+        const mobile = steps.slice(steps.indexOf("@media #{$o-cfg3d-compact}"));
         expect(mobile).toMatch(/top: calc\(68px \+ env\(safe-area-inset-top, 0px\)\);/);
     });
 
     test("les toasts descendent sous les étapes — page pleine seulement", () => {
-        expect(SCSS).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*body:has\(\.o_cfg3d_page\):not\(:has\(\.o_cfg3d_action\)\) \.o_notification_manager \{\s*top: calc\(106px/);
+        expect(SCSS).toMatch(/@media #\{\$o-cfg3d-compact\} \{\s*body:has\(\.o_cfg3d_page\):not\(:has\(\.o_cfg3d_action\)\) \.o_notification_manager \{\s*top: calc\(106px/);
     });
 });

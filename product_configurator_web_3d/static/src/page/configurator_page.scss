@@ -3,10 +3,18 @@
    ⚠️ L'accent est `$primary`, jamais `$o-brand-primary` : sur le site, seul `$primary` suit la couleur
    primaire réglée dans le thème — l'autre reste le violet d'Odoo (L-644). Au back-office, les deux valent pareil. */
 
-/* ⓘ LE MODE COMPACT (D-389) — le téléphone. ⚠️ Le MÊME nombre que `COMPACT_MAX_WIDTH`
+/* ⓘ LE MODE COMPACT (D-389) — le téléphone TENU DROIT (D-565). ⚠️ La MÊME requête que `COMPACT_QUERY`
    (`configurator_state.js`), que le JS lit pour décider de ce qu'il rend : un test compare
-   les deux. Toute media query de largeur de cette page passe par cette variable. */
+   les deux. Toute media query de mise en page de cette page passe par `$o-cfg3d-compact`.
+   ⚠️ `orientation: portrait` : à l'horizontale, la 3D au-dessus des questions ne laissait qu'un titre et des
+   onglets dans 340 px de haut (D-565). */
 $o-cfg3d-compact-max: 900px;
+$o-cfg3d-compact: "(max-width: #{$o-cfg3d-compact-max}) and (orientation: portrait)";
+/* ⓘ LE TÉLÉPHONE À L'HORIZONTALE (D-565) : la colonne s'amincit pour la 3D. */
+$o-cfg3d-low: "(orientation: landscape) and (max-height: 500px)";
+/* ⚠️ 320 px, pas 300 : il reste 288 px utiles, trois cartes moyennes de 88 px et leurs écarts en
+   demandent 280 — à 300, il n'en tenait plus que deux par ligne (D-565). */
+$o-cfg3d-side-low: 320px;
 .o_cfg3d_page {
     display: flex;
     align-items: stretch;
@@ -34,7 +42,7 @@ $o-cfg3d-compact-max: 900px;
 
     /* ⚠️ Sous 900 px, la 3D PASSE AU-DESSUS : le lien arrive souvent par courriel, donc
        sur un téléphone, et c'est le produit qu'on vient voir en premier. */
-    @media (max-width: $o-cfg3d-compact-max) {
+    @media #{$o-cfg3d-compact} {
         flex-direction: column;
     }
 }
@@ -86,13 +94,14 @@ body.o_cfg3d_body {
     /* ⓘ Sur téléphone, la 3D prend ce que la colonne laisse (D-389) — y compris quand le
        panneau de choix la fait grandir : elle doit pouvoir descendre sous 45 %. */
     /* ⚠️ En % de la PAGE et non de l'écran : dans un dialogue, la page n'est pas l'écran (L-532). */
-    @media (max-width: $o-cfg3d-compact-max) {
+    @media #{$o-cfg3d-compact} {
         min-height: 30%;
     }
 }
 
 .o_cfg3d_side {
     flex: 0 0 340px;
+    @media #{$o-cfg3d-low} { flex-basis: $o-cfg3d-side-low; }
     display: flex;
     flex-direction: column;
     /* ⚠️ `min-height: 0` — sans lui, un enfant flexible REFUSE de rétrécir sous sa
@@ -116,7 +125,7 @@ body.o_cfg3d_body {
     /* ⓘ SUR TÉLÉPHONE (D-389), la colonne prend la hauteur de son contenu — titre, onglets,
        boîte du champ, tous de hauteur fixe — et la 3D prend TOUT le reste : la colonne passe
        de la moitié de l'écran à un petit tiers. */
-    @media (max-width: $o-cfg3d-compact-max) {
+    @media #{$o-cfg3d-compact} {
         flex: 0 0 auto;
         border-left: none;
         border-top: 1px solid rgba(0, 0, 0, 0.08);
@@ -154,7 +163,7 @@ body.o_cfg3d_body {
 
     /* ⓘ En mode compact, c'est la BOÎTE DU CHAMP qui défile (`.o_cfg3d_field`) ; le corps
        n'a plus de pied à laisser, et la barre de geste du téléphone se prend en bas. */
-    @media (max-width: $o-cfg3d-compact-max) {
+    @media #{$o-cfg3d-compact} {
         padding: 10px 16px env(safe-area-inset-bottom, 0px);
     }
 }
@@ -235,7 +244,7 @@ body.o_cfg3d_body {
     font-size: 20px;
     margin-bottom: 12px;
 
-    @media (max-width: $o-cfg3d-compact-max) {
+    @media #{$o-cfg3d-compact} {
         font-size: 17px;
         margin-bottom: 2px;
     }
@@ -737,7 +746,7 @@ body.o_cfg3d_body {
        monte depuis le bas. Il était `fixed` sur tout l'écran, 3D comprise. */
     /* ⚠️ DANS LE FLUX, pas posé sur la colonne : c'est sa hauteur qui fait celle de la colonne, et son
        corps défile quand elle atteint son plafond. */
-    @media (max-width: $o-cfg3d-compact-max) {
+    @media #{$o-cfg3d-compact} {
         position: relative;
         inset: auto;
         flex: 0 1 auto;
@@ -906,7 +915,7 @@ body.o_cfg3d_body {
     /* ⓘ SUR TÉLÉPHONE (D-389), la barre d'action et la croix occupent le haut : les étapes
        passent SOUS elles, toujours dans le viewer, et n'ont plus de croix à éviter sur leur
        ligne. */
-    @media (max-width: $o-cfg3d-compact-max) {
+    @media #{$o-cfg3d-compact} {
         top: calc(68px + env(safe-area-inset-top, 0px));
         padding: 0 12px;
     }
@@ -946,14 +955,16 @@ body.o_cfg3d_body {
    ⓘ Page pleine seulement : dans le dialogue du back-office, la colonne n'est pas collée
    au bord de la fenêtre, et la place du cœur ne recouvre rien. Sous 900 px, la colonne
    passe sous le viewer : la place du cœur est déjà sur la 3D. */
-@media (min-width: $o-cfg3d-compact-max + 1) {
+@media not all and #{$o-cfg3d-compact} {
     body:has(.o_cfg3d_page):not(:has(.o_cfg3d_action)) .o_notification_manager {
         right: calc(340px + 16px);
+
+        @media #{$o-cfg3d-low} { right: calc(#{$o-cfg3d-side-low} + 16px); }
     }
 }
 /* ⓘ SUR TÉLÉPHONE (D-389), la place du cœur (≈ 53 px du haut) tombe sur la barre d'action :
    les toasts descendent sous les étapes, toujours sur la 3D. */
-@media (max-width: $o-cfg3d-compact-max) {
+@media #{$o-cfg3d-compact} {
     body:has(.o_cfg3d_page):not(:has(.o_cfg3d_action)) .o_notification_manager {
         top: calc(106px + env(safe-area-inset-top, 0px));
     }
@@ -1158,7 +1169,7 @@ body.o_cfg3d_body {
 
     /* ⓘ SUR TÉLÉPHONE (D-389), un bouton rond posé sur la 3D, à droite de la barre d'action
        et aligné sur elle : le trait seul s'y perdrait sur une scène sombre. */
-    @media (max-width: $o-cfg3d-compact-max) {
+    @media #{$o-cfg3d-compact} {
         top: calc(14px + env(safe-area-inset-top, 0px));
         right: 10px;
         width: 44px;

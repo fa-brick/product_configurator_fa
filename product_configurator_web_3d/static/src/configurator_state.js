@@ -26,9 +26,10 @@ import { _t } from "@web/core/l10n/translation";
  * nombres distincts laisseraient une bande de largeurs où la page serait disposée pour le
  * téléphone et rendue pour l'ordinateur : un test compare les deux.
  * ⓘ Pas le `ui.isSmall` d'Odoo : il vaut ≤ 767 px, ce serait un second seuil.
+ * ⚠️ `orientation: portrait` : à l'horizontale, un téléphone garde la colonne à droite de la 3D (D-565).
  */
 export const COMPACT_MAX_WIDTH = 900;
-export const COMPACT_QUERY = `(max-width: ${COMPACT_MAX_WIDTH}px)`;
+export const COMPACT_QUERY = `(max-width: ${COMPACT_MAX_WIDTH}px) and (orientation: portrait)`;
 
 /** Les tailles d'une carte ou d'une grande pastille (`answer_size`, D-382). */
 export const ANSWER_SIZES = ["small", "medium", "large"];

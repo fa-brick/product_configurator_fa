@@ -12,19 +12,32 @@ import { ConfiguratorPage } from "@product_configurator_web_3d/page/configurator
 const SCSS = readFileSync(join(__dirname, "..", "src", "page", "configurator_page.scss"), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, " ");
 
-describe("un seul seuil pour le SCSS et le JS", () => {
-    test("la variable du SCSS vaut le seuil du JS", () => {
-        const declared = SCSS.match(/\$o-cfg3d-compact-max:\s*(\d+)px;/);
-        expect(declared).not.toBe(null);
-        expect(Number(declared[1])).toBe(COMPACT_MAX_WIDTH);
-        expect(COMPACT_QUERY).toBe(`(max-width: ${COMPACT_MAX_WIDTH}px)`);
+describe("une seule requête pour le SCSS et le JS", () => {
+    test("la requête du SCSS est celle du JS", () => {
+        const width = SCSS.match(/\$o-cfg3d-compact-max:\s*(\d+)px;/);
+        expect(width).not.toBe(null);
+        expect(Number(width[1])).toBe(COMPACT_MAX_WIDTH);
+        const query = SCSS.match(/\$o-cfg3d-compact:\s*"([^"]+)";/);
+        expect(query).not.toBe(null);
+        expect(query[1].replace("#{$o-cfg3d-compact-max}", `${COMPACT_MAX_WIDTH}px`)).toBe(COMPACT_QUERY);
+    });
+
+    test("⚠️ à l'horizontale, un téléphone garde la colonne à droite de la 3D (D-565)", () => {
+        expect(COMPACT_QUERY).toBe(`(max-width: ${COMPACT_MAX_WIDTH}px) and (orientation: portrait)`);
     });
 
     test("⚠️ aucune media query de largeur n'écrit son nombre en dur", () => {
         // Un 900px recopié survivrait au changement de la variable, et la bande entre les
         // deux serait disposée pour le téléphone et rendue pour l'ordinateur.
         expect(SCSS).not.toMatch(/@media[^{]*(max|min)-width:\s*\d/);
-        expect(SCSS).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\)/);
+        expect(SCSS).not.toMatch(/@media \(max-width: \$o-cfg3d-compact-max\)/);
+        expect(SCSS).toMatch(/@media #\{\$o-cfg3d-compact\}/);
+        expect(SCSS).toMatch(/@media not all and #\{\$o-cfg3d-compact\}/);
+    });
+
+    test("à l'horizontale et bas, la colonne s'amincit — et le toast la suit", () => {
+        expect(SCSS).toMatch(/\.o_cfg3d_side \{\s*flex: 0 0 340px;\s*@media #\{\$o-cfg3d-low\} \{ flex-basis: \$o-cfg3d-side-low; \}/);
+        expect(SCSS).toContain("@media #{$o-cfg3d-low} { right: calc(#{$o-cfg3d-side-low} + 16px); }");
     });
 });
 

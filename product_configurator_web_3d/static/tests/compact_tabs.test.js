@@ -162,6 +162,6 @@ describe("le gabarit : les onglets en mode compact, la colonne d'avant sinon", (
         const field = SCSS.slice(SCSS.indexOf(".o_cfg3d_field {"), SCSS.indexOf("}", SCSS.indexOf(".o_cfg3d_field {")));
         expect(field).not.toMatch(/(^|\s)height:/);
         expect(field).toMatch(/max-height: 40vh;\s*max-height: 40dvh;\s*overflow-y: auto;/);
-        expect(SCSS).toMatch(/@media \(max-width: \$o-cfg3d-compact-max\) \{\s*flex: 0 0 auto;/);
+        expect(SCSS).toMatch(/@media #\{\$o-cfg3d-compact\} \{\s*flex: 0 0 auto;/);
     });
 });

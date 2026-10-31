@@ -617,6 +617,8 @@ export function toViewModel(payload, previous = null) {
         // L'attente a un visage : la photo du produit tient la place
         // de la 3D, et la VUE d'où elle a été prise sert à s'y poser exactement.
         image: payload.image || null,
+        // ⓘ Le fond de la scène, celui de la photo (D-566).
+        viewerBg: payload.viewerBg || null,
         camera: payload.camera || null,
         // Les MATIÈRES de la scène, composées par le serveur : la page n'a le droit
         // de lire aucun des modèles qui les portent.

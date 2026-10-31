@@ -419,6 +419,8 @@ class ProductConfigSession(models.Model):
             # L'attente a un visage : la photo du produit, puis la vue d'où elle
             # a été prise — la 3D se pose dessus au lieu d'apparaître ailleurs.
             "image": self._web_image(),
+            # ⓘ Le décor des vignettes de la pièce : la scène prend le fond de sa photo (D-566).
+            "viewerBg": model3d.preview_bg_color_effective if model3d else None,
             "camera": self._web_camera(model3d),
             # L'AMBIANCE du produit — sous quel éclairage il se montre.
             "ambience": self._web_ambience(model3d),

@@ -32,10 +32,21 @@
                      avec un fond opaque. Rien à synchroniser, donc rien qui puisse
                      rester coincé si le montage échoue.
 
-                     ⚠️ Et il ne montre PAS l'image du produit : la connaître demande de
-                     résoudre le jeton, donc de dire ici s'il existe — ce que D-190
-                     refuse. La photo arrive avec l'état, un instant plus tard. -->
-                <div class="o_cfg3d_boot"><span class="o_cfg3d_spinner"/></div>
+                     ⓘ La PHOTO du produit est là dès le premier octet : son adresse ne
+                     demande que le jeton, déjà dans l'URL (D-566).
+                     ⚠️ Le jeton est recopié, jamais résolu : la page est la même qu'il
+                     existe ou non, et un jeton inconnu donne une image absente (D-190).
+                     ⓘ Le décor reprend la scène du viewer, à la même place : la photo ne
+                     bouge pas quand la page se monte par-dessus (D-566). -->
+                <div class="o_cfg3d_boot">
+                    <div class="o_cfg3d_boot_stage"
+                         t-att-style="'background: %s' % stage_color if stage_color else None">
+                        <!-- ⚠️ `eager` : sans attribut, `website` pose `loading="lazy"`, qui retarde la photo (D-566). -->
+                        <img t-attf-src="/configurator/#{token}/image" alt="" loading="eager" fetchpriority="high"/>
+                        <span class="o_cfg3d_spinner"/>
+                    </div>
+                    <div class="o_cfg3d_boot_side"/>
+                </div>
                 <owl-component name="product_configurator_web_3d.ConfiguratorPage"
                                t-att-props="props"/>
             </div>

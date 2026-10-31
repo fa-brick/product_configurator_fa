@@ -175,12 +175,44 @@ class TestPublicRoutes(HttpCase):
         page = self.url_open("/configurator/" + "z" * 32)
         self.assertEqual(page.status_code, 200)
 
-    def test_le_jeton_voyage_en_PROP_et_nulle_part_ailleurs(self):
+    def test_le_jeton_voyage_en_PROP_et_dans_l_adresse_de_la_photo(self):
         page = self.url_open(f"/configurator/{self.session.access_token}")
-        # Il est dans le prop du composant — c'est ainsi qu'il entre — et la page ne
-        # porte ni le numéro de session ni un autre jeton.
+        # Il est dans le prop du composant — c'est ainsi qu'il entre — et dans l'adresse de la
+        # photo du premier instant (D-566) ; la page ne porte ni le numéro de session ni un autre jeton.
         self.assertIn(self.session.access_token, page.text)
         self.assertNotIn(self.session.name, page.text)
+
+    # ── LE PREMIER INSTANT (D-566) ───────────────────────────────────────
+
+    def test_la_photo_est_dans_le_HTML_du_premier_instant(self):
+        token = self.session.access_token
+        page = self.url_open(f"/configurator/{token}")
+        img = page.text[page.text.index('<div class="o_cfg3d_boot_stage"'):]
+        img = img[img.index("<img"):img.index(">", img.index("<img"))]
+        self.assertIn(f'src="/configurator/{token}/image"', img)
+        # ⚠️ Sans `eager`, `website` pose `loading="lazy"`, qui retarde la photo.
+        self.assertIn('loading="eager"', img)
+
+    def test_la_page_d_un_jeton_inconnu_est_la_MEME(self):
+        """⚠️ D-190 : le jeton est recopié, jamais résolu — rien ne distingue un lien valide."""
+        token = self.session.access_token
+        known = self.url_open(f"/configurator/{token}").text.replace(token, "JETON")
+        unknown = self.url_open("/configurator/" + "z" * 43).text.replace("z" * 43, "JETON")
+        boot = lambda html: html[html.index('<div class="o_cfg3d_boot">'):html.index("</owl-component>")]
+        self.assertEqual(boot(known), boot(unknown))
+
+    def test_le_fond_du_premier_instant_est_le_decor_de_la_societe(self):
+        self.env.company.editor_thumbnail_bg_color = "#E0E4EA"
+        page = self.url_open(f"/configurator/{self.session.access_token}")
+        self.assertIn('style="background: #E0E4EA"', page.text)
+
+    def test_la_scene_recoit_le_fond_de_la_photo_de_sa_piece(self):
+        """La page passe ce fond au viewer et au voile d'attente (D-566)."""
+        model3d = self.env["product.model3d"].create(
+            {"name": "Porte", "product_tmpl_id": self.tmpl.id})
+        self.assertEqual(self.session.web_state()["viewerBg"], model3d.preview_bg_color_effective)
+        self.assertTrue(model3d.preview_bg_color_effective)
+
 
 
 @tagged("post_install", "-at_install")

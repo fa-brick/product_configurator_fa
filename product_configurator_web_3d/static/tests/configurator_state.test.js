@@ -39,6 +39,11 @@ describe("toViewModel — la réponse du serveur, mise en forme", () => {
         expect(noir.muted).toBe(true);
     });
 
+    test("⚠️ le fond de la scène est recopié — une clé que `toViewModel` ne nomme pas n'atteint pas la page (D-566)", () => {
+        expect(toViewModel({ ...PAYLOAD, viewerBg: "#F7F7F7" }).viewerBg).toBe("#F7F7F7");
+        expect(toViewModel(PAYLOAD).viewerBg).toBe(null);
+    });
+
     test("une session close se signale", () => {
         expect(toViewModel({ ...PAYLOAD, state: "done" }).closed).toBe(true);
         expect(toViewModel(PAYLOAD).closed).toBe(false);

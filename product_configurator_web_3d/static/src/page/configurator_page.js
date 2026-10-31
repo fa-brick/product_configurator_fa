@@ -182,6 +182,8 @@ export class ConfiguratorPage extends Component {
             // reconstruction n'est pas une attente, c'est une mise à jour, et
             // recouvrir la 3D à chaque clic la ferait clignoter.
             ready: false,
+            // ⓘ VRAI quand la photo a fini de s'effacer (D-566) : elle quitte alors le DOM.
+            loadingGone: false,
             // ⓘ **CE QUE LE DOIGT DÉSIGNE dans la 3D** — voir `onSelectPiece`. `null` tant
             // que rien n'est touché, et le vide y ramène : on désigne une pièce, on ne
             // s'engage à rien.
@@ -1210,6 +1212,21 @@ export class ConfiguratorPage extends Component {
      */
     get ambience() {
         return this.state.model?.ambience || undefined;
+    }
+
+    /** Le fond de la scène : le décor des vignettes de la pièce, celui de sa photo (D-566). */
+    get viewerBg() {
+        return this.state.model?.viewerBg || undefined;
+    }
+
+    /** ⓘ Le même fond sous la photo d'attente : sans lui, la photo se détachait en carré sur du blanc (D-566). */
+    get stageStyle() {
+        return this.viewerBg ? `background: ${this.viewerBg}` : "";
+    }
+
+    /** ⚠️ Le voile seul : une transition d'un enfant remonte aussi jusqu'ici (D-566). */
+    onLoadingFaded(ev) {
+        if (ev.target === ev.currentTarget && this.state.ready) this.state.loadingGone = true;
     }
 
     get rootPieceId() {

@@ -96,8 +96,17 @@ class ProductConfiguratorWeb3D(http.Controller):
         """
         return request.render(
             "product_configurator_web_3d.configurator_page",
-            {"props": json.dumps({"token": token})},
+            {"props": json.dumps({"token": token}), "token": token,
+             "stage_color": self._stage_color()},
         )
+
+    def _stage_color(self):
+        """Le fond du premier instant : la couleur du décor des vignettes de la SOCIÉTÉ (D-566).
+
+        ⚠️ Celle de la société, jamais celle de la pièce : la lire résoudrait le jeton (D-190).
+        ⓘ `#RRGGBB` garanti par la contrainte de la société (`_check_editor_thumbnail_bg_color`).
+        """
+        return request.env.company.sudo().editor_thumbnail_bg_color or None
 
     @http.route(
         "/configurator/state", type="json", auth="public", methods=["POST"],

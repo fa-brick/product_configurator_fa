@@ -33,7 +33,11 @@
                      (`is_thumbnail`, D-115), donc le passage ne déplace rien.
                      ⓘ `!` et non `not` : dans un gabarit OWL, `not` est une variable et
                      le composant entier cesse de compiler (L-209). -->
-                <div t-if="!state.ready" class="o_cfg3d_loading">
+                <!-- ⓘ La 3D prête, la photo s'efface en fondu, puis quitte le DOM (D-566). -->
+                <div t-if="!state.loadingGone" class="o_cfg3d_loading"
+                     t-att-class="{ 'o_cfg3d_loading--done': state.ready }"
+                     t-att-style="stageStyle"
+                     t-on-transitionend="onLoadingFaded">
                     <img t-if="state.model and state.model.image"
                          t-att-src="state.model.image" alt=""/>
                     <span class="o_cfg3d_spinner"/>
@@ -94,6 +98,7 @@
                               onSelectSketch="() => {}"
                               displayMode="'realistic'"
                               ambience="ambience"
+                              viewerBg="viewerBg"
                               showPlanes="false"
                               origineVisible="false"
                               hideViewGizmo="true"

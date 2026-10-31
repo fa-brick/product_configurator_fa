@@ -15,6 +15,9 @@ $o-cfg3d-low: "(orientation: landscape) and (max-height: 500px)";
 /* ⚠️ 320 px, pas 300 : il reste 288 px utiles, trois cartes moyennes de 88 px et leurs écarts en
    demandent 280 — à 300, il n'en tenait plus que deux par ligne (D-565). */
 $o-cfg3d-side-low: 320px;
+/* ⓘ LE FOND DE LA SCÈNE avant que la page ne connaisse celui de la pièce : le décor des vignettes par
+   défaut (D-383). La page et le serveur posent ensuite la couleur réglée (D-566). */
+$o-cfg3d-stage: #F7F7F7;
 .o_cfg3d_page {
     display: flex;
     align-items: stretch;
@@ -336,15 +339,37 @@ body.o_cfg3d_body {
     margin: 8px 0;
 }
 
-/* Le tourniquet du PREMIER INSTANT — rendu par le serveur, sous le composant.
-   Il n'a pas besoin d'être masqué : la page se monte par-dessus, opaque. */
+/* Le PREMIER INSTANT — la photo et le tourniquet, rendus par le serveur, sous le composant.
+   Il n'a pas besoin d'être masqué : la page se monte par-dessus, opaque.
+   ⚠️ Dans `#wrap`, pas sur toute la fenêtre : le bandeau d'une base neutralisée prend sa ligne
+   sous la page, et la photo descendait de sa hauteur au montage (D-566).
+   ⚠️ La scène et la colonne de la PAGE, aux mêmes largeurs : la photo reste où la page la
+   reposera (D-566). */
+body.o_cfg3d_body #wrap { position: relative; }
 .o_cfg3d_boot {
-    position: fixed;
+    position: absolute;
     inset: 0;
+    display: flex;
+    background: #fff;
+
+    @media #{$o-cfg3d-compact} { flex-direction: column; }
+}
+.o_cfg3d_boot_stage {
+    flex: 1 1 auto;
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #eef1f5;
+    min-height: 0;
+    background: $o-cfg3d-stage;
+}
+.o_cfg3d_boot_side {
+    flex: 0 0 340px;
+    border-left: 1px solid rgba(0, 0, 0, 0.08);
+
+    @media #{$o-cfg3d-low} { flex-basis: $o-cfg3d-side-low; }
+    /* ⓘ Sur téléphone, la hauteur de la colonne n'est connue qu'au montage : la photo prend tout. */
+    @media #{$o-cfg3d-compact} { display: none; }
 }
 
 /* ── L'ATTENTE ──────────────────────────────────────────────────────────────
@@ -362,12 +387,22 @@ body.o_cfg3d_body {
        la même pièce à deux endroits, en même temps. Un
        fond hérité d'un parent qui n'en a pas est une absence qui se déguise en
        valeur. */
-    background: #fff;
+    background: $o-cfg3d-stage;
     z-index: 2;
+    /* ⓘ LE FONDU (D-566) : la 3D prête, la photo s'efface au lieu de disparaître d'un coup. */
+    transition: opacity 0.4s ease-out;
 
+    &--done { opacity: 0; pointer-events: none; }
+
+    @media (prefers-reduced-motion: reduce) { transition: none; }
+}
+
+/* ⚠️ Toute la hauteur, et la même règle aux deux instants : à 70 %, la pièce de la photo était bien plus
+   petite que celle de la 3D (D-566). */
+.o_cfg3d_loading, .o_cfg3d_boot_stage {
     img {
-        max-width: 70%;
-        max-height: 70%;
+        max-width: 100%;
+        max-height: 100%;
         object-fit: contain;
     }
 }
@@ -375,9 +410,6 @@ body.o_cfg3d_body {
 .o_cfg3d_spinner {
     position: absolute;
     bottom: 24px;
-    /* ⓘ Au CENTRE quand il est celui du premier instant : il n'y a alors
-       aucune image sous laquelle se ranger. */
-    .o_cfg3d_boot & { position: static; }
     width: 22px;
     height: 22px;
     border: 2px solid rgba(0, 0, 0, 0.15);
